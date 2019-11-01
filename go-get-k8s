@@ -1,0 +1,3 @@
+#! /bin/bash
+v=${1:-1.14.3}
+go get -d k8s.io/{client-go,api,apimachinery}@kubernetes-$v
