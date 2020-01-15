@@ -4,7 +4,7 @@ import (
 	"net"
 
 	"k8s.io/klog"
-	"k8s.io/kube-localnet-api/pkg/diffstore"
+	"github.com/mcluseau/kube-localnet-api/pkg/diffstore"
 )
 
 var endpointsIPsStore = diffstore.New()

@@ -5,8 +5,8 @@ import (
 	"path"
 	"sort"
 
-	"k8s.io/kube-localnet-api/pkg/api/localnetv1"
-	"k8s.io/kube-localnet-api/pkg/store"
+	"github.com/mcluseau/kube-localnet-api/pkg/api/localnetv1"
+	"github.com/mcluseau/kube-localnet-api/pkg/store"
 )
 
 var (

@@ -13,7 +13,7 @@ import (
 	"github.com/OneOfOne/xxhash"
 	"github.com/golang/protobuf/proto"
 
-	"k8s.io/kube-localnet-api/pkg/api/localnetv1"
+	"github.com/mcluseau/kube-localnet-api/pkg/api/localnetv1"
 )
 
 func localnetExtIptables() {

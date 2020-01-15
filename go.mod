@@ -1,6 +1,6 @@
-module k8s.io/kube-localnet-api
+module github.com/mcluseau/kube-localnet-api
 
-go 1.12
+go 1.13
 
 require (
 	github.com/OneOfOne/xxhash v1.2.5

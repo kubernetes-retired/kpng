@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"k8s.io/kube-localnet-api/pkg/diffstore"
+	"github.com/mcluseau/kube-localnet-api/pkg/diffstore"
 )
 
 var servicePortTargetsStore = diffstore.New()
