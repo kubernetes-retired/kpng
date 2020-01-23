@@ -47,6 +47,8 @@ stats:	1798000	3078	2	0	2	0.264	1.18	0.065
 stats:	1799000	3078	2	0	0	0.037	1.18	0.065
 ```
 
+![graph](test-run.kind-empty.svg)
+
 On a bigger cluster (1k services, 1.5k pods):
 ```
 stats:	time	events	rev	usr cpu	sys cpu	tot cpu	mem	revs/events
@@ -69,3 +71,4 @@ stats:	1798000	130722	1064	0	0	0.091	3.87	0.814
 stats:	1799000	130723	1064	0	0	0.055	3.88	0.814
 ```
 
+![graph](test-run.1k-svc.svg)
