@@ -34,7 +34,7 @@ Collected using `time timeout 30m ./kube-localnet-api --kubeconfig $KUBECONFIG |
 
 On an empty KinD cluster:
 ```
-stats:	time	events	rev	usr cpu	sys cpu	tot cpu	mem	revs/events
+stats:	time	events	rev	sys cpu	usr cpu	tot cpu	mem	revs/events
 stats:	ms	count	count	ms	ms	%	MiB	%
 stats:	0	0	0	0	0	+Inf	1.13	NaN
 stats:	1000	9	2	3	37	4.058	0.83	22.222
@@ -55,7 +55,7 @@ stats:	1799000	3078	2	0	0	0.037	1.18	0.065
 
 On a bigger cluster (1k services, 1.5k pods):
 ```
-stats:	time	events	rev	usr cpu	sys cpu	tot cpu	mem	revs/events
+stats:	time	events	rev	sys cpu	usr cpu	tot cpu	mem	revs/events
 stats:	ms	count	count	ms	ms	%	MiB	%
 stats:	0	0	0	0	0	+Inf	1.22	NaN
 stats:	1000	2134	1064	8	304	31.326	4.38	49.859
