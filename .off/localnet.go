@@ -62,10 +62,10 @@ func updateLocalnetAPI(change serviceEndpointsChange) {
 	for _, port := range svc.Spec.Ports {
 		ports = append(ports, &localnetv1.PortMapping{
 			Name:       port.Name,
-			Protocol:   string(port.Protocol),
+			Protocol:   localnetv1.ParseProtocol(string(port.Protocol)),
 			Port:       port.Port,
 			NodePort:   port.NodePort,
-			TargetPort: int32(port.TargetPort.IntValue()), // TODO support string values
+			TargetPort: int32(port.TargetPort.IntValue()), // TODO support string values?
 		})
 	}
 
@@ -76,8 +76,8 @@ func updateLocalnetAPI(change serviceEndpointsChange) {
 		Type:      string(svc.Spec.Type),
 		IPs: &localnetv1.ServiceIPs{
 			ClusterIP:   svc.Spec.ClusterIP,
-			ExternalIPs: extIPs,
-			EndpointIPs: epIPs,
+			ExternalIPs: &localnetv1.IPList{Items: extIPs},
+			EndpointIPs: &localnetv1.IPList{Items: epIPs},
 		},
 		Ports: ports,
 	}
@@ -88,10 +88,15 @@ func updateLocalnetAPI(change serviceEndpointsChange) {
 type SEps []*localnetv1.ServiceEndpoints
 
 func (a SEps) ExternalIPs() []string {
-	ips := make(uniq, 0)
+	count := 0
+	for _, sep := range a {
+		count += len(sep.IPs.ExternalIPs.Items)
+	}
+
+	ips := make(uniq, 0, count)
 
 	for _, sep := range a {
-		for _, ip := range sep.IPs.ExternalIPs {
+		for _, ip := range sep.IPs.ExternalIPs.Items {
 			ips.Add(ip)
 		}
 	}

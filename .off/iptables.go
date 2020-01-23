@@ -46,7 +46,7 @@ func localnetExtIptables() {
 				continue
 			}
 
-			if len(sep.IPs.ExternalIPs) == 0 {
+			if sep.IPs.ExternalIPs.Len() == 0 {
 				// filter out services without external IPs
 				continue
 			}
@@ -60,9 +60,9 @@ func localnetExtIptables() {
 		fmt.Fprint(ipt, ":", forwardChain, " -\n")
 		for _, sep := range seps {
 			key := path.Join(sep.Namespace, sep.Name)
-			for _, ip := range sep.IPs.EndpointIPs {
+			for _, ip := range sep.IPs.EndpointIPs.GetAsStrings() {
 				for _, port := range sep.Ports {
-					proto := strings.ToLower(port.Protocol)
+					proto := strings.ToLower(port.Protocol.String())
 
 					fmt.Fprintf(ipt, "-A %s -d %s -j ACCEPT -m %s -p %s --dport %d %s\n",
 						forwardChain, ip, proto, proto, port.TargetPort,
@@ -82,14 +82,21 @@ func localnetExtIptables() {
 		for _, sep := range seps {
 			key := path.Join(sep.Namespace, sep.Name)
 
-			for _, extIP := range sep.IPs.ExternalIPs {
-				epCount := len(sep.IPs.EndpointIPs)
+			epCount := sep.IPs.EndpointIPs.Len()
 
-				for i, ip := range sep.IPs.EndpointIPs {
+			if epCount == 0 {
+				continue
+			}
+
+			epIPs := sep.IPs.EndpointIPs.GetAsStrings()
+
+			for _, extIP := range sep.IPs.ExternalIPs.GetAsStrings() {
+				for i, ip := range epIPs {
 					rndProba := iptRandom(i, epCount)
 
 					for _, port := range sep.Ports {
-						proto := strings.ToLower(port.Protocol)
+						proto := strings.ToLower(port.Protocol.String())
+
 						fmt.Fprintf(ipt, "-A %s -d %s -m %s -p %s --dport %d -j DNAT --to-destination %s:%d %s %s\n",
 							dnatChain, extIP, proto, proto, port.Port, ip, port.TargetPort, rndProba,
 							iptCommentf("%s: %s:%d -> %s:%d", key, extIP, port.Port, ip, port.TargetPort))
@@ -104,10 +111,15 @@ func localnetExtIptables() {
 		for _, sep := range seps {
 			key := path.Join(sep.Namespace, sep.Name)
 
-			// use the first external IP
-			extIP := sep.IPs.ExternalIPs[0]
+			if sep.IPs.EndpointIPs.Len() == 0 {
+				continue
+			}
 
-			for _, ip := range sep.IPs.EndpointIPs {
+			// use the first external IP
+			extIPs := sep.IPs.EndpointIPs.GetAsStrings()
+			extIP := extIPs[0]
+
+			for _, ip := range extIPs {
 				if revExt[ip] == "" || extIP < revExt[ip] {
 					revExt[ip] = extIP
 					revExtKey[ip] = key

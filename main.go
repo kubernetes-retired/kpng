@@ -1,34 +1,22 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
+	"github.com/mcluseau/kube-localnet-api/pkg/api/localnetv1"
+	"github.com/mcluseau/kube-localnet-api/pkg/endpoints"
+	"github.com/mcluseau/kube-localnet-api/pkg/proxy"
+	srvendpoints "github.com/mcluseau/kube-localnet-api/pkg/server/endpoints"
 	"github.com/spf13/cobra"
 
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 )
 
-var (
-	masterURL  string
-	kubeconfig string
-
-	quitCh = make(chan struct{}, 1)
-)
-
-func init() {
-	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-}
-
 func main() {
-	klog.InitFlags(flag.CommandLine)
+	proxy.InitFlags(flag.CommandLine)
 
 	cmd := cobra.Command{
 		Use: "localnet-api",
@@ -37,39 +25,69 @@ func main() {
 
 	cmd.Flags().AddGoFlagSet(flag.CommandLine)
 
-	go func() {
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-		<-ch
-		klog.Info("shutting down...")
-		close(quitCh)
-		os.Exit(0) // FIXME quitCh doesn't make app exits...
-	}()
-
 	if err := cmd.Execute(); err != nil {
 		klog.Fatal(err)
 	}
 }
 
 func run(_ *cobra.Command, _ []string) {
-	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
+	srv, err := proxy.NewServer()
+
 	if err != nil {
-		klog.Errorf("Error building kubeconfig: %s", err.Error())
+		klog.Error(err)
 		os.Exit(1)
 	}
 
-	kubeClient, err := kubernetes.NewForConfig(cfg)
+	endpointsCorrelator := endpoints.NewCorrelator(srv)
+	go endpointsCorrelator.Run(srv.QuitCh)
+
+	localnetv1.RegisterEndpointsServer(srv.GRPC, &srvendpoints.Server{
+		InstanceID: srv.InstanceID,
+		Correlator: endpointsCorrelator,
+	})
+
+	conn, err := srv.InProcessClient(func(err error) { klog.Error("serve failed: ", err) })
 	if err != nil {
-		klog.Errorf("Error building kubernetes clientset: %s", err.Error())
+		klog.Error("error setting up in-memory gRPC: ", err)
 		os.Exit(1)
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+	ctx, ctxCancel := context.WithCancel(context.Background())
 
-	controller := &controller{kubeClient, kubeInformerFactory}
+	go func() {
+		proxy.WaitForTermSignal()
 
-	go localnetExtIptables()
+		ctxCancel()
+		conn.Close()
 
-	kubeInformerFactory.Start(quitCh)
-	controller.Run(quitCh)
+		srv.Stop()
+
+		// FIXME srv.Stop() doesn't make app exits...
+		time.Sleep(10 * time.Millisecond)
+		os.Exit(0)
+	}()
+
+	go func() {
+		epc := localnetv1.NewEndpointsClient(conn)
+
+		klog.Info("next: calling...")
+		next, err := epc.Next(ctx, &localnetv1.NextFilter{})
+		if err != nil {
+			klog.Info("next failed: ", err)
+			return
+		}
+
+		klog.Info("next: success")
+
+		for {
+			nextItem, err := next.Recv()
+			if err != nil {
+				klog.Info("next: error: ", err)
+				break
+			}
+			klog.Info("next: - item: ", nextItem)
+		}
+	}()
+
+	select {}
 }

@@ -5,26 +5,22 @@ package services;
 option go_package = "localnetv1";
 
 service Endpoints {
-    // Returns all the endpoints for this node, then continue to stream the changes to them.
+    // Returns all the endpoints for this node.
     rpc Next (NextFilter) returns (stream NextItem);
 }
 
-message NextItem {
-    // The revision being sent (first element in the stream)
-    uint64 Rev = 1;
-    // A service endpoints item
-    ServiceEndpoints Endpoints = 2;
+message NextFilter {
+    // Unique instance ID to manage proxy restarts
+    uint64 InstanceID = 1;
+    // The latest revision we're aware of (0 at first)
+    uint64 Rev = 2;
 }
 
-message NextFilter {
-    // The latest revision we're aware of (0 at first)
-    uint64 Rev = 1;
-    // Limit the list to one namespace (empty for all).
-    string Namespace = 2;
-    // Limit the list to services of the given type (ClusterIP, ExternalLoadBalancer, etc.).
-    string Type = 3;
-    // Limit the list to services matching those labels.
-    map<string, string> MatchLabels = 4;
+message NextItem {
+    // Filter to use to get the next notification (first item in stream)
+    NextFilter Next = 1;
+    // A service endpoints item (any item after the first)
+    ServiceEndpoints Endpoints = 2;
 }
 
 message ServiceEndpoints {
@@ -34,18 +30,41 @@ message ServiceEndpoints {
 
     ServiceIPs IPs = 100;
     repeated PortMapping Ports = 101;
+
+    repeated EndpointsSubset Subsets = 102;
+    repeated string AllIPsV4  = 103;
+    repeated string AllIPsV6  = 104;
 }
 
 message ServiceIPs {
     string ClusterIP = 1;
     repeated string ExternalIPs = 2;
-    repeated string EndpointIPs = 3;
+}
+
+message EndpointsSubset {
+    // Ports ready on all the IPs in this definition
+    repeated Port   Ports = 1;
+    repeated string IPsV4 = 2;
+    repeated string IPsV6 = 3;
+}
+
+message Port {
+    string   Name     = 1;
+    Protocol Protocol = 2;
+    int32    Port     = 3;
+}
+
+enum Protocol {
+    UnknownProtocol = 0;
+    TCP = 1;
+    UDP = 2;
+    SCTP = 3;
 }
 
 message PortMapping {
-    string Name       = 1;
-    string Protocol   = 2;
-    int32  Port       = 3;
-    int32  NodePort   = 4;
-    int32  TargetPort = 5;
+    string   Name       = 1;
+    Protocol Protocol   = 2;
+    int32    Port       = 3;
+    int32    NodePort   = 4;
+    int32    TargetPort = 5;
 }
