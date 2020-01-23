@@ -39,5 +39,35 @@ I0122 17:31:28.111528 1254706 event-handlers.go:41] -- event 8, rev 2, revs/even
 I0122 17:31:28.960892 1254706 event-handlers.go:41] -- event 9, rev 2, revs/events=22%
 I0122 17:31:29.002326 1254706 event-handlers.go:41] -- event 10, rev 2, revs/events=20%
 ...
+I0122 18:07:35.201162 1263406 event-handlers.go:46] -- event 371, rev 4, revs/events=1%
+I0122 18:07:37.251036 1263406 event-handlers.go:46] -- event 374, rev 4, revs/events=1%
+^C
+real 36m10.553s
+user  0m01.836s
+sys	  0m00.481s
 ```
+
+=> `(1.836+0.481)/(36*60+10.553) => 1.07%`
+
+On a bigger cluster (1k services, 1.5k pods):
+
+```
+I0123 15:41:51.368492   15541 event-handlers.go:46] -- event 1, rev 0, revs/events=0%
+... (initial rush) ...
+I0123 15:41:52.389062   15541 event-handlers.go:46] -- event 2137, rev 1065, revs/events=49%
+I0123 15:41:53.560916   15541 event-handlers.go:46] -- event 2139, rev 1065, revs/events=49%
+I0123 15:41:54.754649   15541 event-handlers.go:46] -- event 2141, rev 1065, revs/events=49%
+...
+I0123 15:53:13.321570   15541 event-handlers.go:46] -- event 50149, rev 1065, revs/events=2%
+I0123 15:53:15.343342   15541 event-handlers.go:46] -- event 50154, rev 1065, revs/events=2%
+...
+I0123 16:11:48.897208   15541 event-handlers.go:46] -- event 131074, rev 1211, revs/events=0%
+I0123 16:11:50.256433   15541 event-handlers.go:46] -- event 131076, rev 1211, revs/events=0%
+^C
+real	30m0.006s
+user	0m4.705s
+sys	0m0.536s
+```
+
+=> `(4.705+0.536)/(30*60+0.006) => 2.91%`
 
