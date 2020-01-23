@@ -22,6 +22,8 @@ rev = real changes propagated to listener
 
 event = number of API events received
 
+On an empty KinD cluster:
+
 ```
 I0122 17:31:28.028679 1254706 event-handlers.go:41] -- event 1, rev 0, revs/events=0%
 I0122 17:31:28.028704 1254706 event-handlers.go:41] -- event 2, rev 0, revs/events=0%

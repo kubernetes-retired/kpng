@@ -70,8 +70,6 @@ func (c *Correlator) Next(lastKnownRev uint64) (results []*localnetv1.ServiceEnd
 }
 
 func (c *Correlator) Run(stopCh chan struct{}) {
-	// FIXME panics on close(stopCh) (?!)
-
 	factory := c.proxy.InformerFactory
 	coreFactory := factory.Core().V1()
 

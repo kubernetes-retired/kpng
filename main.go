@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"os"
-	"time"
 
 	"github.com/mcluseau/kube-localnet-api/pkg/api/localnetv1"
 	"github.com/mcluseau/kube-localnet-api/pkg/endpoints"
@@ -41,6 +40,7 @@ func run(_ *cobra.Command, _ []string) {
 	endpointsCorrelator := endpoints.NewCorrelator(srv)
 	go endpointsCorrelator.Run(srv.QuitCh)
 
+	// setup gRPC
 	localnetv1.RegisterEndpointsServer(srv.GRPC, &srvendpoints.Server{
 		InstanceID: srv.InstanceID,
 		Correlator: endpointsCorrelator,
@@ -54,6 +54,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
+	// handle exit signals
 	go func() {
 		proxy.WaitForTermSignal()
 
@@ -61,33 +62,29 @@ func run(_ *cobra.Command, _ []string) {
 		conn.Close()
 
 		srv.Stop()
-
-		// FIXME srv.Stop() doesn't make app exits...
-		time.Sleep(10 * time.Millisecond)
-		os.Exit(0)
 	}()
 
-	go func() {
-		epc := localnetv1.NewEndpointsClient(conn)
+	// draft of client run
+	epc := localnetv1.NewEndpointsClient(conn)
 
-		klog.Info("next: calling...")
-		next, err := epc.Next(ctx, &localnetv1.NextFilter{})
+	klog.Info("next: calling...")
+	next, err := epc.Next(ctx, &localnetv1.NextFilter{})
+	if err != nil {
+		klog.Info("next failed: ", err)
+		return
+	}
+
+	klog.Info("next: success")
+
+	for {
+		nextItem, err := next.Recv()
 		if err != nil {
-			klog.Info("next failed: ", err)
-			return
+			klog.Info("next: error: ", err)
+			break
 		}
+		klog.Info("next: - item: ", nextItem)
+	}
 
-		klog.Info("next: success")
-
-		for {
-			nextItem, err := next.Recv()
-			if err != nil {
-				klog.Info("next: error: ", err)
-				break
-			}
-			klog.Info("next: - item: ", nextItem)
-		}
-	}()
-
-	select {}
+	// wait and exit
+	_, _ = <-srv.QuitCh
 }
