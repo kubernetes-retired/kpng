@@ -19,6 +19,7 @@ This probably means a lot a reimplementation, going from scratch and trying to m
 ## Example of event frequency reduction made by diff'ing the ENLS
 
 rev = real changes propagated to listener
+
 event = number of API events received
 
 ```
