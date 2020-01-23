@@ -1,7 +1,11 @@
 package endpoints
 
 import (
+	"fmt"
+	"runtime"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/cespare/xxhash"
 	"github.com/gogo/protobuf/proto"
@@ -23,7 +27,8 @@ type Correlator struct {
 	endpointsSynced       bool
 	endpointsSlicesSynced bool
 
-	eventL sync.Mutex
+	eventL     sync.Mutex
+	eventCount int
 
 	// index to correlate service-related resource by services' namespace/name
 	sources map[string]correlationSource
@@ -93,9 +98,66 @@ func (c *Correlator) Run(stopCh chan struct{}) {
 		epInformer.AddEventHandler(endpointsEventHandler{c, &c.endpointsSynced, epInformer})
 		go epInformer.Run(stopCh)
 	}
+
+	go c.logStats()
+}
+
+func (c *Correlator) logStats() {
+	evtCount := 0
+
+	rusage := &syscall.Rusage{}
+	memStats := &runtime.MemStats{}
+
+	syscall.Getrusage(syscall.RUSAGE_SELF, rusage)
+	prevSys := rusage.Stime.Nano()
+	prevUsr := rusage.Utime.Nano()
+
+	t0 := time.Now()
+	prevTime := time.Time{}
+
+	tick := time.Tick(time.Second)
+	fmt.Println("stats:\ttime\tevents\trev\tusr cpu\tsys cpu\ttot cpu\tmem\trevs/events")
+	fmt.Println("stats:\tms\tcount\tcount\tms\tms\t%\tMiB\t%")
+	for {
+		evtCount = c.eventCount
+
+		syscall.Getrusage(syscall.RUSAGE_SELF, rusage)
+		runtime.ReadMemStats(memStats)
+
+		now := time.Now()
+
+		sys := rusage.Stime.Nano()
+		usr := rusage.Utime.Nano()
+		sysD := sys - prevSys
+		usrD := usr - prevUsr
+
+		var elapsed int64
+		if !prevTime.IsZero() {
+			elapsed = now.Sub(prevTime).Nanoseconds()
+		}
+
+		fmt.Printf("stats:\t%d\t%d\t%d\t%d\t%d\t%.3f\t%.2f\t%.3f\n",
+			time.Since(t0).Milliseconds(),
+			evtCount,
+			c.rev,
+			sysD/1e6,
+			usrD/1e6,
+			float64(sysD+usrD)*100/float64(elapsed),
+			float64(memStats.Alloc)/(2<<20),
+			float64(c.rev*100)/float64(evtCount),
+		)
+
+		prevTime = now
+		prevSys = sys
+		prevUsr = usr
+
+		<-tick
+	}
 }
 
 func (c *Correlator) afterEvent(namespace, name string) {
+	c.eventCount++
+
 	synced := c.servicesSynced &&
 		c.endpointsSynced &&
 		c.endpointsSlicesSynced
@@ -121,6 +183,7 @@ func (c *Correlator) afterEvent(namespace, name string) {
 			c.rwL.Lock()
 			defer c.rwL.Unlock()
 
+			klog.V(1).Infof("endpoints removed: %s/%s", namespace, name)
 			c.endpoints.Delete(item)
 
 			updated = true
@@ -142,9 +205,8 @@ func (c *Correlator) afterEvent(namespace, name string) {
 			c.rwL.Lock()
 			defer c.rwL.Unlock()
 
+			klog.V(1).Infof("endpoints updated: %s/%s", namespace, name)
 			c.endpoints.ReplaceOrInsert(epKV)
-
-			klog.Info("endpoints update: ", epKV.Endpoints.String())
 
 			updated = true
 		}

@@ -32,8 +32,8 @@ message ServiceEndpoints {
     repeated PortMapping Ports = 101;
 
     repeated EndpointsSubset Subsets = 102;
-    repeated string AllIPsV4  = 103;
-    repeated string AllIPsV6  = 104;
+    repeated string AllIPsV4 = 103;
+    repeated string AllIPsV6 = 104;
 }
 
 message ServiceIPs {

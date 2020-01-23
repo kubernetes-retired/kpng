@@ -5,13 +5,18 @@ import (
 	"flag"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/mcluseau/kube-localnet-api/pkg/api/localnetv1"
 	"github.com/mcluseau/kube-localnet-api/pkg/endpoints"
 	"github.com/mcluseau/kube-localnet-api/pkg/proxy"
 	srvendpoints "github.com/mcluseau/kube-localnet-api/pkg/server/endpoints"
-	"github.com/spf13/cobra"
 
 	"k8s.io/klog"
+)
+
+const (
+	testGRPC = false
 )
 
 func main() {
@@ -40,6 +45,21 @@ func run(_ *cobra.Command, _ []string) {
 	endpointsCorrelator := endpoints.NewCorrelator(srv)
 	go endpointsCorrelator.Run(srv.QuitCh)
 
+	// handle exit signals
+	go func() {
+		proxy.WaitForTermSignal()
+		srv.Stop()
+	}()
+
+	if testGRPC {
+		doTestGRPC(srv, endpointsCorrelator)
+	}
+
+	// wait and exit
+	_, _ = <-srv.QuitCh
+}
+
+func doTestGRPC(srv *proxy.Server, endpointsCorrelator *endpoints.Correlator) {
 	// setup gRPC
 	localnetv1.RegisterEndpointsServer(srv.GRPC, &srvendpoints.Server{
 		InstanceID: srv.InstanceID,
@@ -53,15 +73,10 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
-
-	// handle exit signals
-	go func() {
-		proxy.WaitForTermSignal()
-
+	defer func() {
 		ctxCancel()
 		conn.Close()
 
-		srv.Stop()
 	}()
 
 	// draft of client run
@@ -84,7 +99,4 @@ func run(_ *cobra.Command, _ []string) {
 		}
 		klog.Info("next: - item: ", nextItem)
 	}
-
-	// wait and exit
-	_, _ = <-srv.QuitCh
 }

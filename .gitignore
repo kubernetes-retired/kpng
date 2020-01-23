@@ -1,2 +1,3 @@
 /kube-localnet-api
 .*.sw[po]
+/test-run.*.log
