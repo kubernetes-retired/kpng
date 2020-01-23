@@ -1,6 +1,8 @@
 package endpoints
 
 import (
+	"time"
+
 	v1 "k8s.io/api/core/v1"
 	discovery "k8s.io/api/discovery/v1beta1"
 	"k8s.io/client-go/tools/cache"
@@ -9,6 +11,7 @@ import (
 
 var (
 	evtCount = uint64(0)
+	lastLog  = time.Time{}
 )
 
 type eventHandler struct {
@@ -38,7 +41,11 @@ func (h eventHandler) handle(namespace, name string, handle func(*correlationSou
 	h.c.afterEvent(namespace, name)
 
 	evtCount++
-	klog.Infof("-- event %d, rev %d, revs/events=%d%%", evtCount, h.c.rev, h.c.rev*100/evtCount)
+
+	if time.Since(lastLog) >= time.Second {
+		klog.Infof("-- event %d, rev %d, revs/events=%d%%", evtCount, h.c.rev, h.c.rev*100/evtCount)
+		lastLog = time.Now()
+	}
 }
 
 type serviceEventHandler eventHandler
