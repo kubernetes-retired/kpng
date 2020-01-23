@@ -6,9 +6,13 @@ docker pull mcluseau/kube-proxy2
 
 ## Draft of goals
 
+```
+[ k8s API ] ----> [ local model ] ----> [plugin] ----> [aggregator] ----> [subsystem]
+```
+
 * build an intermediate model specific to represent the expected node-local state (ENLS)
 * digest API server's changes to the ENLS
-  * allows to trigger changes only when the ENLS changes (not on every API event)
+  * trigger events only when the ENLS changes (not on every API event)
   * naturally decouples and factorizes proxy-specific logic
 * ENLS should be serializable in protobuf, and may be available through an API (internal?)
   * should ease debugging
