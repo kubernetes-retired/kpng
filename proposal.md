@@ -7,7 +7,7 @@ docker pull mcluseau/kube-proxy2
 ## Draft of goals
 
 ```
-[ k8s API ] ----> [ local model ] ----> [plugin] ----> [aggregator] ----> [subsystem]
+[k8s API] ----> [local model] ----> [plugin] ----> [aggregator] ----> [subsystem]
 ```
 
 * build an intermediate model specific to represent the expected node-local state (ENLS)
@@ -55,24 +55,21 @@ stats:	1799000	3078	2	0	0	0.037	1.18	0.065
 
 On a bigger cluster (1k services, 1.5k pods):
 ```
-stats:	time	events	rev	sys cpu	usr cpu	tot cpu	mem	revs/events
+stats:	time	events	rev	usr cpu	sys cpu	tot cpu	mem	revs/events
 stats:	ms	count	count	ms	ms	%	MiB	%
 stats:	0	0	0	0	0	+Inf	1.22	NaN
-stats:	1000	2134	1064	8	304	31.326	4.38	49.859
-stats:	2000	2135	1064	0	0	0.055	4.38	49.836
-stats:	3000	2137	1064	0	0	0.092	4.39	49.789
+stats:	1000	2134	1064	3	308	31.280	3.93	49.859
+stats:	2000	2137	1064	0	1	0.131	3.94	49.789
+stats:	3000	2138	1064	0	0	0.050	3.94	49.766
 [...]
-stats:	298000	21785	1064	0	0	0.055	5.22	4.884
-stats:	299000	21787	1064	0	0	0.087	5.22	4.884
-stats:	300000	21788	1064	0	0	0.066	5.22	4.883
-stats:	301000	23923	1064	8	60	6.937	4.35	4.448 # GC, and maybe kube client resync
-stats:	302000	23924	1064	0	0	0.053	4.36	4.447
+stats:	298000	21785	1067	0	0	0.050	4.16	4.898
+stats:	299000	21787	1067	0	0	0.089	4.16	4.897
+stats:	300000	21788	1067	0	0	0.061	4.17	4.897
+stats:	301000	23925	1068	4	64	6.882	3.35	4.464 # GC after 2k+ events (without a proxy-related change)
+stats:	302000	23926	1068	0	0	0.052	3.35	4.464
 [...]
-stats:	570000	41397	1064	0	0	0.030	5.72	2.570
-stats:	571000	43533	1064	1	73	7.476	4.73	2.444 # 2k+ events without a proxy-related change
-[...]
-stats:	1798000	130722	1064	0	0	0.091	3.87	0.814
-stats:	1799000	130723	1064	0	0	0.055	3.88	0.814
+stats:	1798000	130941	1218	0	0	0.090	4.68	0.930
+stats:	1799000	130942	1218	0	0	0.055	4.69	0.930
 ```
 
 ![graph](test-run.1k-svc.svg)
