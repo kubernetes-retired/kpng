@@ -3,7 +3,7 @@ package store
 import (
 	"testing"
 
-	"github.com/mcluseau/kube-localnet-api/pkg/api/localnetv1"
+	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 )
 
 func TestNext(t *testing.T) {

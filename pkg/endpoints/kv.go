@@ -3,7 +3,7 @@ package endpoints
 import (
 	"github.com/google/btree"
 
-	"github.com/mcluseau/kube-localnet-api/pkg/api/localnetv1"
+	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 )
 
 type endpointsKV struct {

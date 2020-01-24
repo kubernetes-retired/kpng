@@ -12,8 +12,8 @@ import (
 	"github.com/google/btree"
 	"k8s.io/klog"
 
-	"github.com/mcluseau/kube-localnet-api/pkg/api/localnetv1"
-	"github.com/mcluseau/kube-localnet-api/pkg/proxy"
+	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
+	"github.com/mcluseau/kube-proxy2/pkg/proxy"
 )
 
 type Correlator struct {

@@ -1,6 +1,6 @@
 package endpoints
 
-import "github.com/mcluseau/kube-localnet-api/pkg/endpoints"
+import "github.com/mcluseau/kube-proxy2/pkg/endpoints"
 
 type Server struct {
 	InstanceID uint64

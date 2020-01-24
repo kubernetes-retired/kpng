@@ -7,10 +7,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/mcluseau/kube-localnet-api/pkg/api/localnetv1"
-	"github.com/mcluseau/kube-localnet-api/pkg/endpoints"
-	"github.com/mcluseau/kube-localnet-api/pkg/proxy"
-	srvendpoints "github.com/mcluseau/kube-localnet-api/pkg/server/endpoints"
+	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
+	"github.com/mcluseau/kube-proxy2/pkg/endpoints"
+	"github.com/mcluseau/kube-proxy2/pkg/proxy"
+	srvendpoints "github.com/mcluseau/kube-proxy2/pkg/server/endpoints"
 
 	"k8s.io/klog"
 )
@@ -23,7 +23,7 @@ func main() {
 	proxy.InitFlags(flag.CommandLine)
 
 	cmd := cobra.Command{
-		Use: "localnet-api",
+		Use: "proxy2",
 		Run: run,
 	}
 

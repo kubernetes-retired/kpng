@@ -7,7 +7,7 @@ import (
 	discovery "k8s.io/api/discovery/v1beta1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	"github.com/mcluseau/kube-localnet-api/pkg/api/localnetv1"
+	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 )
 
 var (

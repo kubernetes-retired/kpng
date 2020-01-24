@@ -30,7 +30,7 @@ docker pull mcluseau/kube-proxy2
 * rev = real changes that would be propagated to listeners
 * eventCount = number of API events received
 
-Collected using `time timeout 30m ./kube-localnet-api --kubeconfig $KUBECONFIG |tee test-run.XXX.log`
+Collected using `time timeout 30m ./kube-proxy2 --kubeconfig $KUBECONFIG |tee test-run.XXX.log`
 
 On an empty KinD cluster:
 ```

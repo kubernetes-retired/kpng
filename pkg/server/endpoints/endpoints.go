@@ -4,7 +4,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/mcluseau/kube-localnet-api/pkg/api/localnetv1"
+	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 )
 
 var _ localnetv1.EndpointsServer = &Server{}
