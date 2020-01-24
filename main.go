@@ -23,7 +23,7 @@ func main() {
 	proxy.InitFlags(flag.CommandLine)
 
 	cmd := cobra.Command{
-		Use: "proxy2",
+		Use: "proxy",
 		Run: run,
 	}
 

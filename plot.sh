@@ -1,2 +1,7 @@
 #! /bin/sh
-gnuplot -e "output='${1%.*}.svg'" -e "input='$1'" cpu-mem.gnuplot
+
+input="${1}"
+output="${2:-${1%.*}.svg}"
+
+set -x
+gnuplot -e "output='${output}'" -e "input='${input}'" cpu-mem.gnuplot
