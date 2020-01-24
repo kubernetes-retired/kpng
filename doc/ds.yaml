@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  creationTimestamp: null
+  labels:
+    app: kube-proxy2
+  name: kube-proxy2
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: kube-proxy2
+  template:
+    metadata:
+      labels:
+        app: kube-proxy2
+    spec:
+      serviceAccountName: kube-proxy
+      containers:
+      - image: mcluseau/kube-proxy2
+        name: kube-proxy2
