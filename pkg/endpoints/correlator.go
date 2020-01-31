@@ -26,12 +26,15 @@ type Correlator struct {
 	servicesSynced        bool
 	endpointsSynced       bool
 	endpointsSlicesSynced bool
+	nodesSynced           bool
 
 	eventL     sync.Mutex
 	eventCount int
 
 	// index to correlate service-related resource by services' namespace/name
 	sources map[string]correlationSource
+
+	nodeLabels map[string]map[string]string
 
 	endpoints *btree.BTree
 
@@ -86,6 +89,7 @@ func (c *Correlator) Run(stopCh chan struct{}) {
 
 	if proxy.ManageEndpointSlices {
 		c.endpointsSynced = true // not going to watch them
+		c.nodesSynced = true     // not going to watch them
 
 		sliceInformer := factory.Discovery().V1beta1().EndpointSlices().Informer()
 		sliceInformer.AddEventHandler(sliceEventHandler{c, &c.endpointsSlicesSynced, sliceInformer})
@@ -97,6 +101,10 @@ func (c *Correlator) Run(stopCh chan struct{}) {
 		epInformer := coreFactory.Endpoints().Informer()
 		epInformer.AddEventHandler(endpointsEventHandler{c, &c.endpointsSynced, epInformer})
 		go epInformer.Run(stopCh)
+
+		nodesInformer := coreFactory.Nodes().Informer()
+		nodesInformer.AddEventHandler(nodesEventHandler{c, &c.nodesSynced, nodesInformer})
+		go nodesInformer.Run(stopCh)
 	}
 
 	go c.logStats()
@@ -155,62 +163,78 @@ func (c *Correlator) logStats() {
 	}
 }
 
-func (c *Correlator) afterEvent(namespace, name string) {
-	c.eventCount++
-
-	synced := c.servicesSynced &&
+func (c *Correlator) hasSourcesSynced() bool {
+	return c.servicesSynced &&
 		c.endpointsSynced &&
-		c.endpointsSlicesSynced
+		c.endpointsSlicesSynced &&
+		c.nodesSynced
+}
 
-	source := c.sources[namespace+"/"+name]
+func (c *Correlator) updateEndpoints(source correlationSource) bool {
+	namespace := source.Service.Namespace
+	name := source.Service.Name
 
 	epKV := endpointsKV{
 		Namespace: namespace,
 		Name:      name,
-		Endpoints: computeServiceEndpoints(source),
+		Endpoints: computeServiceEndpoints(source, c.nodeLabels),
 	}
-
-	updated := false
-
-	// TODO later: batch tree updates
 
 	// fetch current item
 	item := c.endpoints.Get(epKV)
 
 	if epKV.Endpoints == nil {
 		// deleted
-		if item != nil {
-			c.rwL.Lock()
-			defer c.rwL.Unlock()
-
-			klog.V(1).Infof("endpoints removed: %s/%s", namespace, name)
-			c.endpoints.Delete(item)
-
-			updated = true
+		if item == nil {
+			return false
 		}
 
-	} else {
-		// created or updated
-		encoded, err := proto.Marshal(epKV.Endpoints) // TODO use a cached proto.NewBuffer
-		if err != nil {
-			klog.Errorf("failed to marshal endpoints for %s/%s: %v", namespace, name, err)
-			return
-		}
+		c.rwL.Lock()
+		defer c.rwL.Unlock()
 
-		h := xxhash.Sum64(encoded)
+		klog.V(1).Infof("endpoints removed: %s/%s", namespace, name)
+		c.endpoints.Delete(item)
 
-		if item == nil || item.(endpointsKV).EndpointsHash != h {
-			epKV.EndpointsHash = h
-
-			c.rwL.Lock()
-			defer c.rwL.Unlock()
-
-			klog.V(1).Infof("endpoints updated: %s/%s", namespace, name)
-			c.endpoints.ReplaceOrInsert(epKV)
-
-			updated = true
-		}
+		return true
 	}
+
+	// created or updated
+	encoded, err := proto.Marshal(epKV.Endpoints) // TODO use a cached proto.NewBuffer
+	if err != nil {
+		klog.Errorf("failed to marshal endpoints for %s/%s: %v", namespace, name, err)
+		return false
+	}
+
+	h := xxhash.Sum64(encoded)
+
+	if item != nil && item.(endpointsKV).EndpointsHash == h {
+		return false
+	}
+
+	epKV.EndpointsHash = h
+
+	c.rwL.Lock()
+	defer c.rwL.Unlock()
+
+	klog.V(1).Infof("endpoints updated: %s/%s", namespace, name)
+	c.endpoints.ReplaceOrInsert(epKV)
+
+	return true
+}
+
+func (c *Correlator) afterEvent(namespace, name string) {
+	c.eventCount++
+
+	source := c.sources[namespace+"/"+name]
+	updated := c.updateEndpoints(source)
+
+	c.bumpRev(updated)
+}
+
+func (c *Correlator) bumpRev(updated bool) {
+	c.eventCount++
+
+	synced := c.hasSourcesSynced()
 
 	if (c.synced == synced) && !updated {
 		return

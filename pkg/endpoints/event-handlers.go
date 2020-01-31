@@ -30,7 +30,10 @@ func (h eventHandler) handle(namespace, name string, handle func(*correlationSou
 	}
 
 	*h.synced = h.informer.HasSynced()
-	h.c.afterEvent(namespace, name)
+
+	updated := h.c.updateEndpoints(src)
+
+	h.c.bumpRev(updated)
 }
 
 type serviceEventHandler eventHandler

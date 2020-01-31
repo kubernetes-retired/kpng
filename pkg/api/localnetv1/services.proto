@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package services;
+package localnetv1;
 
-option go_package = "localnetv1";
+option go_package = "github.com/mcluseau/kube-proxy2/pkg/api/localnetv1";
 
 service Endpoints {
     // Returns all the endpoints for this node.

@@ -15,7 +15,7 @@ var (
 	_false = false
 )
 
-func computeServiceEndpoints(src correlationSource) (eps *localnetv1.ServiceEndpoints) {
+func computeServiceEndpoints(src correlationSource, nodeLabels map[string]map[string]string) (eps *localnetv1.ServiceEndpoints) {
 	if src.Service == nil {
 		return
 	}

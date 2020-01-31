@@ -3,21 +3,25 @@ package main
 import (
 	"context"
 	"flag"
+	"log"
 	"os"
+	"runtime/pprof"
 
 	"github.com/spf13/cobra"
+
+	"k8s.io/klog"
 
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 	"github.com/mcluseau/kube-proxy2/pkg/endpoints"
 	"github.com/mcluseau/kube-proxy2/pkg/proxy"
 	srvendpoints "github.com/mcluseau/kube-proxy2/pkg/server/endpoints"
-
-	"k8s.io/klog"
 )
 
 const (
 	testGRPC = false
 )
+
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
 func main() {
 	proxy.InitFlags(flag.CommandLine)
@@ -35,6 +39,15 @@ func main() {
 }
 
 func run(_ *cobra.Command, _ []string) {
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+
 	srv, err := proxy.NewServer()
 
 	if err != nil {
