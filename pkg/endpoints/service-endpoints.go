@@ -87,9 +87,14 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 					continue
 				}
 
+				labels := map[string]string{}
+				if addr.NodeName != nil && *addr.NodeName != "" {
+					labels = nodes[*addr.NodeName].Labels
+				}
+
 				addInfo(hasAllPorts, EndpointInfo{
 					AddressOrHostname: addrOrHost,
-					Topology:          nodes[*addr.NodeName].Labels,
+					Topology:          labels,
 				})
 			}
 
@@ -146,7 +151,33 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 
 	epList := &localnetv1.EndpointList{}
 
-	mergeEndpoints := func() {
+	// merge from topology
+	topologyKeys := src.Service.Spec.TopologyKeys
+
+	if len(topologyKeys) == 0 {
+		topologyKeys = []string{"*"}
+	}
+
+	for _, topoKey := range src.Service.Spec.TopologyKeys {
+		ref := ""
+
+		if topoKey != "*" {
+			ref = myNode.Labels[topoKey]
+
+			if ref == "" {
+				// we do not have that key, skip
+				continue
+			}
+		}
+
+		epList.ResetSets()
+		for _, info := range readyEndpoints {
+			if topoKey == "*" || info.Topology[topoKey] == ref {
+				epList.Add(info.AddressOrHostname)
+			}
+		}
+
+		// merge endpoints
 		if !ipv4Done && len(epList.IPsV4) != 0 {
 			seps.SelectedEndpoints.IPsV4 = epList.IPsV4
 			ipv4Done = true
@@ -161,39 +192,10 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 			seps.SelectedEndpoints.Hostnames = epList.Hostnames
 			hostnamesDone = true
 		}
-	}
 
-	// merge from topology
-	for _, topoKey := range src.Service.Spec.TopologyKeys {
 		if ipv4Done && ipv6Done && hostnamesDone {
 			break
 		}
-
-		ref := myNode.Labels[topoKey]
-
-		if ref == "" {
-			// we do not have that key, skip
-			continue
-		}
-
-		epList.ResetSets()
-		for _, info := range readyEndpoints {
-			if info.Topology[topoKey] == ref {
-				epList.Add(info.AddressOrHostname)
-			}
-		}
-
-		mergeEndpoints()
-	}
-
-	// if topology didn't solve everything, use all ready endpoints
-	if !(ipv4Done && ipv6Done && hostnamesDone) {
-		epList.ResetSets()
-		for _, info := range readyEndpoints {
-			epList.Add(info.AddressOrHostname)
-		}
-
-		mergeEndpoints()
 	}
 
 	return

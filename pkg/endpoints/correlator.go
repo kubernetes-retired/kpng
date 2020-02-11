@@ -2,6 +2,7 @@ package endpoints
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 	"sync"
 	"syscall"
@@ -34,7 +35,7 @@ type Correlator struct {
 	// index to correlate service-related resource by services' namespace/name
 	sources map[string]correlationSource
 
-	nodeLabels map[string]map[string]string
+	nodesInfo map[string]NodeInfo
 
 	endpoints *btree.BTree
 
@@ -43,12 +44,21 @@ type Correlator struct {
 }
 
 func NewCorrelator(proxyServer *proxy.Server) *Correlator {
+	if *myNodeName == "" {
+		var err error
+		*myNodeName, err = os.Hostname()
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	return &Correlator{
 		proxy:     proxyServer,
 		rwL:       &sync.RWMutex{},
 		cond:      sync.NewCond(&sync.Mutex{}),
 		sources:   make(map[string]correlationSource),
 		endpoints: btree.New(2),
+		nodesInfo: make(map[string]NodeInfo),
 	}
 }
 
@@ -171,13 +181,17 @@ func (c *Correlator) hasSourcesSynced() bool {
 }
 
 func (c *Correlator) updateEndpoints(source correlationSource) bool {
+	if source.Service == nil {
+		return false // service not yet known
+	}
+
 	namespace := source.Service.Namespace
 	name := source.Service.Name
 
 	epKV := endpointsKV{
 		Namespace: namespace,
 		Name:      name,
-		Endpoints: computeServiceEndpoints(source, c.nodeLabels),
+		Endpoints: computeServiceEndpoints(source, c.nodesInfo, *myNodeName),
 	}
 
 	// fetch current item
