@@ -36,8 +36,7 @@ func SliceKeyFromCoreV1(svc *v1.Service, subset *v1.EndpointSubset, nodeLabels m
 
 	// return the key
 	return &SliceKey{
-        AddressType:
-		Ports:    ports,
+		Ports: ports,
 	}
 }
 
@@ -60,8 +59,7 @@ func SliceKeyFromDiscoveryV1(slice *discovery.EndpointSlice, endpoint *discovery
 
 	// return the key
 	return &SliceKey{
-		Ports:    ports,
-		Topology: endpoint.Topology,
+		Ports: ports,
 	}
 }
 

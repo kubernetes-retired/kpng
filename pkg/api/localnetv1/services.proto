@@ -28,12 +28,19 @@ message ServiceEndpoints {
     string Name = 2;
     string Type = 3;
 
-    ServiceIPs IPs = 100;
-    repeated PortMapping Ports = 101;
+    ServiceIPs IPs = 4;
 
-    repeated EndpointsSubset Subsets = 102;
-    repeated string AllIPsV4 = 103;
-    repeated string AllIPsV6 = 104;
+    // true if the service maps the whole IP, not just individual ports.
+    bool MapAll = 5;
+
+    // Individual ports mapped for the this service
+    repeated PortMapping Ports = 6;
+
+    // Endpoints selected for service from this host
+    EndpointList SelectedEndpoints = 7;
+
+    // All possible endpoints for this service
+    EndpointList AllEndpoints = 8;
 }
 
 message ServiceIPs {
@@ -41,11 +48,10 @@ message ServiceIPs {
     repeated string ExternalIPs = 2;
 }
 
-message EndpointsSubset {
-    // Ports ready on all the IPs in this definition
-    repeated Port   Ports = 1;
-    repeated string IPsV4 = 2;
-    repeated string IPsV6 = 3;
+message EndpointList {
+    repeated string IPsV4 = 1;
+    repeated string IPsV6 = 2;
+    repeated string Hostnames = 3;
 }
 
 message Port {

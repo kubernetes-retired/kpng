@@ -40,7 +40,6 @@ func (agg *aggregatedSlices) SliceFromCoreV1(sk *SliceKey) *discovery.EndpointSl
 		AddressType: discovery.AddressType(sk.AddressType),
 		Endpoints: []discovery.Endpoint{
 			{
-				Topology: sk.Topology,
 				Conditions: discovery.EndpointConditions{
 					Ready: &_true,
 				},
