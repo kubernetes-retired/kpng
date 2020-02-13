@@ -11,6 +11,8 @@ var (
 	_false = false
 )
 
+const hostNameLabel = "kubernetes.io/hostname"
+
 type NodeInfo struct {
 	Labels map[string]string
 }
@@ -36,9 +38,11 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 			ClusterIP:   svcSpec.ClusterIP,
 			ExternalIPs: svcSpec.ExternalIPs,
 		},
-		MapAll:            false, // TODO
-		SelectedEndpoints: &localnetv1.EndpointList{},
-		AllEndpoints:      &localnetv1.EndpointList{},
+		MapAll:                 false, // TODO
+		AllEndpoints:           &localnetv1.EndpointList{},
+		SelectedEndpoints:      &localnetv1.EndpointList{},
+		LocalEndpoints:         &localnetv1.EndpointList{},
+		ExternalTrafficToLocal: src.Service.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal,
 	}
 
 	// ports information
@@ -80,33 +84,23 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 
 			// ready endpoints
 			for _, addr := range subset.Addresses {
-				addrOrHost := addressOrHostname(addr)
-
-				if addrOrHost == "" {
-					// no IP or hostname, skip
-					continue
-				}
-
 				labels := map[string]string{}
 				if addr.NodeName != nil && *addr.NodeName != "" {
 					labels = nodes[*addr.NodeName].Labels
 				}
 
-				addInfo(hasAllPorts, EndpointInfo{
-					AddressOrHostname: addrOrHost,
-					Topology:          labels,
-				})
+				for _, addrOrHost := range addressOrHostname(addr) {
+					addInfo(hasAllPorts, EndpointInfo{
+						AddressOrHostname: addrOrHost,
+						Topology:          labels,
+					})
+				}
 			}
 
 			for _, addr := range subset.NotReadyAddresses {
-				addrOrHost := addressOrHostname(addr)
-
-				if addrOrHost == "" {
-					// no IP or hostname, skip
-					continue
+				for _, addrOrHost := range addressOrHostname(addr) {
+					seps.AllEndpoints.Add(addrOrHost)
 				}
-
-				seps.AllEndpoints.Add(addrOrHost)
 			}
 		}
 	}
@@ -158,7 +152,7 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 		topologyKeys = []string{"*"}
 	}
 
-	for _, topoKey := range src.Service.Spec.TopologyKeys {
+	for _, topoKey := range topologyKeys {
 		ref := ""
 
 		if topoKey != "*" {
@@ -198,13 +192,24 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 		}
 	}
 
+	// compute local endpoints
+	for _, info := range readyEndpoints {
+		if info.Topology[hostNameLabel] == myNodeName {
+			seps.LocalEndpoints.Add(info.AddressOrHostname)
+		}
+	}
+
 	return
 }
 
-func addressOrHostname(addr v1.EndpointAddress) string {
+func addressOrHostname(addr v1.EndpointAddress) (a []string) {
 	if addr.IP != "" {
-		return addr.IP
+		a = append(a, addr.IP)
 	}
 
-	return addr.Hostname
+	if addr.Hostname != "" {
+		a = append(a, addr.Hostname)
+	}
+
+	return
 }

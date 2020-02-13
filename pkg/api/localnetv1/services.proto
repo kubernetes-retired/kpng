@@ -36,11 +36,15 @@ message ServiceEndpoints {
     // Individual ports mapped for the this service
     repeated PortMapping Ports = 6;
 
-    // Endpoints selected for service from this host
-    EndpointList SelectedEndpoints = 7;
-
     // All possible endpoints for this service
-    EndpointList AllEndpoints = 8;
+    EndpointList AllEndpoints = 7;
+
+    // Endpoints selected for this service from this host
+    EndpointList SelectedEndpoints = 8;
+
+    // Local endpoints for this service
+    EndpointList LocalEndpoints = 9;
+    bool ExternalTrafficToLocal = 10;
 }
 
 message ServiceIPs {
