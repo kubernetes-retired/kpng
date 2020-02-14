@@ -19,8 +19,8 @@ type NodeInfo struct {
 
 // EndpointInfo contains all information necessary for endpoint selection
 type EndpointInfo struct {
-	AddressOrHostname string
-	Topology          map[string]string
+	Topology map[string]string
+	Endpoint *localnetv1.Endpoint
 }
 
 func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, myNodeName string) (seps *localnetv1.ServiceEndpoints) {
@@ -39,9 +39,6 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 			ExternalIPs: svcSpec.ExternalIPs,
 		},
 		MapAll:                 false, // TODO
-		AllEndpoints:           &localnetv1.EndpointList{},
-		SelectedEndpoints:      &localnetv1.EndpointList{},
-		LocalEndpoints:         &localnetv1.EndpointList{},
 		ExternalTrafficToLocal: src.Service.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal,
 	}
 
@@ -61,19 +58,7 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 	seps.Ports = ports
 
 	// find and normalize endpoints
-	readyEndpoints := make([]EndpointInfo, 0)
-
-	addInfo := func(ready bool, info EndpointInfo) {
-		if info.AddressOrHostname == "" {
-			return
-		}
-
-		if ready {
-			readyEndpoints = append(readyEndpoints, info)
-		}
-
-		seps.AllEndpoints.Add(info.AddressOrHostname)
-	}
+	infos := make([]EndpointInfo, 0)
 
 	if src.Endpoints != nil {
 		// pre-EndpointSlice compat
@@ -82,24 +67,37 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 			// check ports
 			hasAllPorts := len(subset.Ports) == len(ports)
 
-			// ready endpoints
-			for _, addr := range subset.Addresses {
-				labels := map[string]string{}
-				if addr.NodeName != nil && *addr.NodeName != "" {
-					labels = nodes[*addr.NodeName].Labels
-				}
+			// add endpoints
+			for _, set := range []struct {
+				ready     bool
+				addresses []v1.EndpointAddress
+			}{
+				{true, subset.Addresses},
+				{false, subset.NotReadyAddresses},
+			} {
+				for _, addr := range set.addresses {
+					info := EndpointInfo{
+						Endpoint: &localnetv1.Endpoint{
+							Hostname: addr.Hostname,
+							Conditions: &localnetv1.EndpointConditions{
+								Ready: set.ready && hasAllPorts,
+							},
+						},
+					}
 
-				for _, addrOrHost := range addressOrHostname(addr) {
-					addInfo(hasAllPorts, EndpointInfo{
-						AddressOrHostname: addrOrHost,
-						Topology:          labels,
-					})
-				}
-			}
+					if addr.NodeName != nil && *addr.NodeName != "" {
+						info.Topology = nodes[*addr.NodeName].Labels
 
-			for _, addr := range subset.NotReadyAddresses {
-				for _, addrOrHost := range addressOrHostname(addr) {
-					seps.AllEndpoints.Add(addrOrHost)
+						if *addr.NodeName == myNodeName {
+							info.Endpoint.Conditions.Local = true
+						}
+					}
+
+					if addr.IP != "" {
+						info.Endpoint.AddAddress(addr.IP)
+					}
+
+					infos = append(infos, info)
 				}
 			}
 		}
@@ -109,27 +107,32 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 		hasAllPorts := len(slice.Ports) == len(ports)
 
 		for _, sliceEndpoint := range slice.Endpoints {
-			ready := false
-
-			if r := sliceEndpoint.Conditions.Ready; r != nil {
-				ready = *r
+			info := EndpointInfo{
+				Topology: sliceEndpoint.Topology,
+				Endpoint: &localnetv1.Endpoint{
+					Conditions: &localnetv1.EndpointConditions{
+						Ready: false,
+					},
+				},
 			}
 
-			ready = hasAllPorts && ready
+			if h := sliceEndpoint.Hostname; h != nil {
+				info.Endpoint.Hostname = *h
+			}
+
+			if r := sliceEndpoint.Conditions.Ready; hasAllPorts && r != nil && *r {
+				info.Endpoint.Conditions.Ready = true
+			}
+
+			if labels := info.Topology; labels != nil && labels[hostNameLabel] == myNodeName {
+				info.Endpoint.Conditions.Local = true
+			}
 
 			for _, addr := range sliceEndpoint.Addresses {
-				addInfo(ready, EndpointInfo{
-					AddressOrHostname: addr,
-					Topology:          sliceEndpoint.Topology,
-				})
+				info.Endpoint.AddAddress(addr)
 			}
 
-			if hostname := sliceEndpoint.Hostname; hostname != nil && *hostname != "" {
-				addInfo(ready, EndpointInfo{
-					AddressOrHostname: *hostname,
-					Topology:          sliceEndpoint.Topology,
-				})
-			}
+			infos = append(infos, info)
 		}
 	}
 
@@ -138,14 +141,6 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 	// - filter by topology
 	myNode := nodes[myNodeName]
 
-	// only look for things we have
-	ipv4Done := len(seps.AllEndpoints.IPsV4) == 0
-	ipv6Done := len(seps.AllEndpoints.IPsV6) == 0
-	hostnamesDone := len(seps.AllEndpoints.Hostnames) == 0
-
-	epList := &localnetv1.EndpointList{}
-
-	// merge from topology
 	topologyKeys := src.Service.Spec.TopologyKeys
 
 	if len(topologyKeys) == 0 {
@@ -164,39 +159,23 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 			}
 		}
 
-		epList.ResetSets()
-		for _, info := range readyEndpoints {
-			if topoKey == "*" || info.Topology[topoKey] == ref {
-				epList.Add(info.AddressOrHostname)
+		selected := false
+		for _, info := range infos {
+			if info.Endpoint.Conditions.Ready && (topoKey == "*" || (info.Topology != nil && info.Topology[topoKey] == ref)) {
+				info.Endpoint.Conditions.Selected = true
+				selected = true
 			}
 		}
 
-		// merge endpoints
-		if !ipv4Done && len(epList.IPsV4) != 0 {
-			seps.SelectedEndpoints.IPsV4 = epList.IPsV4
-			ipv4Done = true
-		}
-
-		if !ipv6Done && len(epList.IPsV6) != 0 {
-			seps.SelectedEndpoints.IPsV6 = epList.IPsV6
-			ipv6Done = true
-		}
-
-		if !hostnamesDone && len(epList.Hostnames) != 0 {
-			seps.SelectedEndpoints.Hostnames = epList.Hostnames
-			hostnamesDone = true
-		}
-
-		if ipv4Done && ipv6Done && hostnamesDone {
+		if selected {
 			break
 		}
 	}
 
-	// compute local endpoints
-	for _, info := range readyEndpoints {
-		if info.Topology[hostNameLabel] == myNodeName {
-			seps.LocalEndpoints.Add(info.AddressOrHostname)
-		}
+	// build final endpoints list
+	seps.Endpoints = make([]*localnetv1.Endpoint, len(infos))
+	for idx, info := range infos {
+		seps.Endpoints[idx] = info.Endpoint
 	}
 
 	return
