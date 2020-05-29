@@ -1,20 +1,17 @@
 package endpoints
 
 import (
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
+	"github.com/mcluseau/kube-proxy2/pkg/endpoints"
+	"github.com/mcluseau/kube-proxy2/pkg/proxy"
 )
 
-var _ localnetv1.EndpointsServer = &Server{}
+func Setup(srv *proxy.Server) {
+	endpointsCorrelator := endpoints.NewCorrelator(srv)
+	go endpointsCorrelator.Run(srv.QuitCh)
 
-func (s *Server) Next(filter *localnetv1.NextFilter, res localnetv1.Endpoints_NextServer) (err error) {
-	if filter.InstanceID == s.InstanceID {
-		s.Correlator.WaitRev(filter.Rev)
-	}
-
-	// TODO
-
-	return status.Error(codes.Unimplemented, "unimplemented")
+	localnetv1.RegisterEndpointsServer(srv.GRPC, &Server{
+		InstanceID: srv.InstanceID,
+		Correlator: endpointsCorrelator,
+	})
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"log"
+	"net"
+	"net/url"
 	"os"
 	"runtime/pprof"
 
@@ -12,7 +14,6 @@ import (
 	"k8s.io/klog"
 
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
-	"github.com/mcluseau/kube-proxy2/pkg/endpoints"
 	"github.com/mcluseau/kube-proxy2/pkg/proxy"
 	srvendpoints "github.com/mcluseau/kube-proxy2/pkg/server/endpoints"
 )
@@ -21,7 +22,10 @@ const (
 	testGRPC = false
 )
 
-var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+var (
+	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+	bindSpec   = flag.String("bind", "tcp://127.0.0.1:12090", "local API port")
+)
 
 func main() {
 	proxy.InitFlags(flag.CommandLine)
@@ -55,8 +59,8 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	endpointsCorrelator := endpoints.NewCorrelator(srv)
-	go endpointsCorrelator.Run(srv.QuitCh)
+	// setup correlator
+	srvendpoints.Setup(srv)
 
 	// handle exit signals
 	go func() {
@@ -64,21 +68,32 @@ func run(_ *cobra.Command, _ []string) {
 		srv.Stop()
 	}()
 
+	if *bindSpec != "" {
+		u, err := url.Parse(*bindSpec)
+		if err != nil {
+			klog.Error("invalid bind URL: ", err)
+			os.Exit(1)
+		}
+
+		lis, err := net.Listen(u.Scheme, u.Host)
+		if err != nil {
+			klog.Error("failed to listen on ", u, ": ", err)
+			os.Exit(1)
+		}
+
+		klog.Info("API listening on ", *bindSpec)
+		go klog.Fatal(srv.GRPC.Serve(lis))
+	}
+
 	if testGRPC {
-		doTestGRPC(srv, endpointsCorrelator)
+		doTestGRPC(srv)
 	}
 
 	// wait and exit
 	_, _ = <-srv.QuitCh
 }
 
-func doTestGRPC(srv *proxy.Server, endpointsCorrelator *endpoints.Correlator) {
-	// setup gRPC
-	localnetv1.RegisterEndpointsServer(srv.GRPC, &srvendpoints.Server{
-		InstanceID: srv.InstanceID,
-		Correlator: endpointsCorrelator,
-	})
-
+func doTestGRPC(srv *proxy.Server) {
 	conn, err := srv.InProcessClient(func(err error) { klog.Error("serve failed: ", err) })
 	if err != nil {
 		klog.Error("error setting up in-memory gRPC: ", err)

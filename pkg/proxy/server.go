@@ -10,6 +10,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
+
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -19,6 +20,7 @@ import (
 var (
 	kubeconfig string
 	masterURL  string
+	bindSpec   string
 
 	inProcessConnBufferSize int = 32 << 10
 

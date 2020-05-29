@@ -47,9 +47,6 @@ message ServiceIPs {
     repeated string ExternalIPs = 2;
 }
 
-message EndpointList {
-}
-
 message Endpoint {
     string Hostname = 1;
     EndpointConditions Conditions = 2;

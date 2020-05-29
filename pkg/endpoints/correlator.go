@@ -70,11 +70,13 @@ func (c *Correlator) WaitRev(lastKnownRev uint64) {
 	c.cond.L.Unlock()
 }
 
-func (c *Correlator) Next(lastKnownRev uint64) (results []*localnetv1.ServiceEndpoints) {
+func (c *Correlator) Next(lastKnownRev uint64) (results []*localnetv1.ServiceEndpoints, rev uint64) {
 	c.WaitRev(lastKnownRev)
 
 	c.rwL.RLock()
 	defer c.rwL.RUnlock()
+
+	rev = c.rev
 
 	results = make([]*localnetv1.ServiceEndpoints, 0, c.endpoints.Len())
 
