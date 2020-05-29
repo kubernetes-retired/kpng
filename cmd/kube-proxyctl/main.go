@@ -16,6 +16,9 @@ import (
 var (
 	target = flag.String("target", "127.0.0.1:12090", "local API to reach")
 	once   = flag.Bool("once", false, "only one fetch loop")
+
+	instanceID = flag.Uint64("instance-id", 0, "Instance ID (to resume a watch)")
+	rev        = flag.Uint64("rev", 0, "Rev (to resume a watch)")
 )
 
 func main() {
@@ -37,7 +40,10 @@ func main() {
 	// draft of client run
 	epc := localnetv1.NewEndpointsClient(conn)
 
-	nextFilter := &localnetv1.NextFilter{}
+	nextFilter := &localnetv1.NextFilter{
+		InstanceID: *instanceID,
+		Rev:        *rev,
+	}
 
 	for {
 		next, err := epc.Next(ctx, &localnetv1.NextFilter{
@@ -69,7 +75,7 @@ func main() {
 		}
 
 		if *once {
-			klog.Info("next filter: ", nextFilter)
+			klog.Infof("to resume this watch, use --instance-id %d --rev %d", nextFilter.InstanceID, nextFilter.Rev)
 			break
 		}
 
