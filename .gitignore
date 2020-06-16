@@ -1,4 +1,3 @@
-/kube-proxy2
 .*.sw[po]
 /test-run.*.log
-/kube-proxyctl
+/dist
