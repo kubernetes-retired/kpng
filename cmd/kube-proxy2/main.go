@@ -5,9 +5,10 @@ import (
 	"flag"
 	"log"
 	"net"
-	"net/url"
 	"os"
 	"runtime/pprof"
+	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
@@ -24,7 +25,7 @@ const (
 
 var (
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
-	bindSpec   = flag.String("bind", "tcp://127.0.0.1:12090", "local API port")
+	bindSpec   = flag.String("listen", "tcp://127.0.0.1:12090", "local API listen spec formatted as protocol://address")
 )
 
 func main() {
@@ -69,17 +70,29 @@ func run(_ *cobra.Command, _ []string) {
 	}()
 
 	if *bindSpec != "" {
-		u, err := url.Parse(*bindSpec)
-		if err != nil {
-			klog.Error("invalid bind URL: ", err)
+		parts := strings.SplitN(*bindSpec, "://", 2)
+		if len(parts) != 2 {
+			klog.Error("invalid listen spec: expected protocol://address format but got ", *bindSpec)
 			os.Exit(1)
 		}
 
-		lis, err := net.Listen(u.Scheme, u.Host)
+		protocol, addr := parts[0], parts[1]
+
+		// handle protocol specifics
+		afterListen := func() {}
+		switch protocol {
+		case "unix":
+			prevMask := syscall.Umask(0007)
+			afterListen = func() { syscall.Umask(prevMask) }
+		}
+
+		lis, err := net.Listen(protocol, addr)
 		if err != nil {
-			klog.Error("failed to listen on ", u, ": ", err)
+			klog.Error("failed to listen on ", *bindSpec, ": ", err)
 			os.Exit(1)
 		}
+
+		afterListen()
 
 		klog.Info("API listening on ", *bindSpec)
 		go klog.Fatal(srv.GRPC.Serve(lis))
