@@ -5,7 +5,6 @@ go 1.13
 require (
 	github.com/OneOfOne/xxhash v1.2.7 // indirect
 	github.com/cespare/xxhash v1.1.0
-	github.com/elazarl/goproxy v0.0.0-20180725130230-947c36da3153 // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.3
 	github.com/google/btree v1.0.0
@@ -15,8 +14,8 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/json-iterator/go v1.1.9 // indirect
-	github.com/onsi/ginkgo v1.11.0 // indirect
 	github.com/spf13/cobra v0.0.5
+	github.com/spf13/pflag v1.0.5
 	golang.org/x/crypto v0.0.0-20200208060501-ecb85df21340 // indirect
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect
@@ -26,7 +25,7 @@ require (
 	google.golang.org/genproto v0.0.0-20200210034751-acff78025515 // indirect
 	google.golang.org/grpc v1.27.1
 	k8s.io/api v0.17.2
-	k8s.io/apimachinery v0.17.3-beta.0 // indirect
+	k8s.io/apimachinery v0.17.3-beta.0
 	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/klog v1.0.0
 	k8s.io/utils v0.0.0-20200124190032-861946025e34 // indirect

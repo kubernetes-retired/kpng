@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/OneOfOne/xxhash"
+	"github.com/cespare/xxhash"
 	"github.com/golang/protobuf/proto"
 
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
