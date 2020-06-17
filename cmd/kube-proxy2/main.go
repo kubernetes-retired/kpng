@@ -82,6 +82,7 @@ func run(_ *cobra.Command, _ []string) {
 		afterListen := func() {}
 		switch protocol {
 		case "unix":
+			os.Remove(addr)
 			prevMask := syscall.Umask(0007)
 			afterListen = func() { syscall.Umask(prevMask) }
 		}
