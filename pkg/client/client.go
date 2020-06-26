@@ -26,6 +26,7 @@ type FlagSet interface {
 // Other needs can use `&EndpointsClient{...}` directly.
 func New(flags FlagSet) (epc *EndpointsClient) {
 	epc = &EndpointsClient{}
+	epc.ctx, epc.cancel = context.WithCancel(context.Background())
 	epc.DefaultFlags(flags)
 	return
 }
@@ -59,19 +60,12 @@ func (epc *EndpointsClient) DefaultFlags(flags FlagSet) {
 }
 
 // Next returns the next set of ServiceEndpoints, waiting for a new revision as needed.
-// It's designed to never fail and will only return nil if this client is canceled.
-func (epc *EndpointsClient) Next() []*localnetv1.ServiceEndpoints {
+// It's designed to never fail and will always return latest items, unless canceled.
+func (epc *EndpointsClient) Next() (items []*localnetv1.ServiceEndpoints, canceled bool) {
 	if epc.conn == nil {
-		if canceled := epc.dial(); canceled {
-			return nil
+		if canceled = epc.dial(); canceled {
+			return
 		}
-	}
-
-	ctx := epc.ctx
-
-	if ctx == nil {
-		ctx, epc.cancel = context.WithCancel(context.Background())
-		epc.ctx = ctx
 	}
 
 	if epc.nextFilter == nil {
@@ -81,21 +75,23 @@ func (epc *EndpointsClient) Next() []*localnetv1.ServiceEndpoints {
 		}
 	}
 
+	ctx := epc.ctx
+
 	client := localnetv1.NewEndpointsClient(epc.conn)
 
-	// prepare items assuming a mild increase of the number of items
+	// prepare items assuming a 10% increase of the number of items
 	expectedCap := epc.prevLen * 110 / 100
 	if expectedCap == 0 {
 		expectedCap = 10
 	}
 
-	items := make([]*localnetv1.ServiceEndpoints, 0, expectedCap)
+	items = make([]*localnetv1.ServiceEndpoints, 0, expectedCap)
 
 	for {
 		next, err := client.Next(ctx, epc.nextFilter)
 		if err != nil {
 			if grpc.Code(err) == codes.Canceled || err == context.Canceled {
-				return nil
+				return nil, true
 			}
 
 			klog.Error("next failed: ", err)
@@ -125,18 +121,13 @@ func (epc *EndpointsClient) Next() []*localnetv1.ServiceEndpoints {
 		}
 
 		epc.prevLen = len(items)
-		return items
+		return
 	}
 }
 
 // Cancel will cancel this client, quickly closing any call to Next.
 func (epc *EndpointsClient) Cancel() {
-	cancel := epc.cancel
-	if cancel != nil {
-		epc.cancel = nil
-		epc.ctx = nil
-		cancel()
-	}
+	epc.cancel()
 }
 
 // CancelOnSignals make the default termination signals to cancel this client.
@@ -160,7 +151,7 @@ func (epc *EndpointsClient) dial() (canceled bool) {
 	klog.Info("connecting to ", epc.Target)
 
 retry:
-	conn, err := grpc.Dial(epc.Target, grpc.WithInsecure())
+	conn, err := grpc.DialContext(epc.ctx, epc.Target, grpc.WithInsecure())
 
 	if err == context.Canceled {
 		return true

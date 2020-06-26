@@ -16,6 +16,7 @@ require (
 	github.com/json-iterator/go v1.1.9 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
+	go.etcd.io/etcd v3.3.22+incompatible
 	golang.org/x/crypto v0.0.0-20200208060501-ecb85df21340 // indirect
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect

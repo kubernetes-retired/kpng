@@ -11,41 +11,18 @@ import (
 	"sort"
 	"strings"
 
-	"k8s.io/klog"
-
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 	"github.com/mcluseau/kube-proxy2/pkg/client"
 )
 
 var (
-	once           = flag.Bool("once", false, "only one fetch loop")
 	extLBsOnly     = flag.Bool("load-balancers-only", false, "only manage services of type LoadBalancer")
 	iptChainPrefix = flag.String("iptables-chain-prefix", "k8s-", "prefix of iptables chains")
 	dryRun         = flag.Bool("dry-run", false, "dry run")
 )
 
 func main() {
-	epc := client.New(flag.CommandLine)
-
-	flag.Parse()
-
-	epc.CancelOnSignals()
-
-	for {
-		items := epc.Next()
-
-		if items == nil {
-			// canceled
-			return
-		}
-
-		handleEndpoints(items)
-
-		if *once {
-			klog.Infof("to resume this watch, use --instance-id %d --rev %d", epc.InstanceID, epc.Rev)
-			return
-		}
-	}
+	client.Run(handleEndpoints)
 }
 
 func handleEndpoints(items []*localnetv1.ServiceEndpoints) {
