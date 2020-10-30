@@ -94,7 +94,7 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 					}
 
 					if addr.IP != "" {
-						info.Endpoint.AddAddress(addr.IP)
+						info.Endpoint.AddAddress(addr.IP) // XXX handle nil result ? (parse error)
 					}
 
 					infos = append(infos, info)
