@@ -2,6 +2,8 @@ package endpoints
 
 import (
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/klog"
 
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 )
@@ -43,16 +45,65 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 	}
 
 	// ports information
-	ports := make([]*localnetv1.PortMapping, len(svcSpec.Ports))
+	ports := make([]*localnetv1.PortMapping, 0, len(svcSpec.Ports))
 
-	for idx, port := range svcSpec.Ports {
-		ports[idx] = &localnetv1.PortMapping{
-			Name:       port.Name,
-			NodePort:   port.NodePort,
-			Port:       port.Port,
-			Protocol:   localnetv1.ParseProtocol(string(port.Protocol)),
-			TargetPort: port.TargetPort.IntVal, // FIXME translate name?
+portLoop:
+	for _, port := range svcSpec.Ports {
+		p := &localnetv1.PortMapping{
+			Name:     port.Name,
+			NodePort: port.NodePort,
+			Port:     port.Port,
+			Protocol: localnetv1.ParseProtocol(string(port.Protocol)),
 		}
+
+		if port.TargetPort.Type == intstr.Int {
+			p.TargetPort = port.TargetPort.IntVal
+		} else {
+			// translate name to port
+			portName := port.TargetPort.StrVal
+
+			if src.Endpoints != nil {
+				for _, subset := range src.Endpoints.Subsets {
+					for _, ssPort := range subset.Ports {
+						//log.Print("ssport: ", ssPort.Protocol, "/", ssPort.Name, "; lookup: ", port.Protocol, "/", portName)
+						if ssPort.Protocol == port.Protocol && ssPort.Name == portName {
+							if p.TargetPort != 0 && p.TargetPort != port.Port {
+								// FIXME not supported yet
+								klog.V(1).Infof("in service %s/%s: port %v is inconsistent across endpoints (resolves to at least %d and %d)",
+									src.Service.Namespace, src.Service.Name, port.TargetPort.StrVal, p.TargetPort, port.Port)
+								continue portLoop
+							}
+
+							p.TargetPort = port.Port
+						}
+					}
+				}
+
+				/*
+							if p.TargetPort == 0 {
+								var protocol string
+								switch port.Protocol {
+								case v1.ProtocolTCP:
+									protocol = "tcp"
+								case v1.ProtocolUDP:
+									protocol = "udp"
+								}
+
+								lp, err := net.LookupPort(protocol, port.TargetPort.StrVal)
+								if err == nil {
+									p.TargetPort = int32(lp)
+								}
+							}
+				            // */
+
+				if p.TargetPort == 0 {
+					klog.V(1).Infof("in service %s/%s: target port %q not found", src.Service.Namespace, src.Service.Name, port.TargetPort.StrVal)
+					continue portLoop
+				}
+			}
+		}
+
+		ports = append(ports, p)
 	}
 
 	seps.Ports = ports
