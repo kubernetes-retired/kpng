@@ -33,11 +33,14 @@ func New(flags FlagSet) (epc *EndpointsClient) {
 
 // EndpointsClient is a simple client to kube-proxy's Endpoints API.
 type EndpointsClient struct {
+	// Target is the gRPC dial target
 	Target string
 
+	// InstanceID and Rev are the latest known state (used to resume a watch)
 	InstanceID uint64
 	Rev        uint64
 
+	// ErrorDelay is the delay before retrying after an error.
 	ErrorDelay time.Duration
 
 	conn       *grpc.ClientConn

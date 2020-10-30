@@ -10,8 +10,6 @@ type Server struct {
 	Correlator *endpoints.Correlator
 }
 
-var _ localnetv1.EndpointsServer = &Server{}
-
 func (s *Server) Next(filter *localnetv1.NextFilter, res localnetv1.Endpoints_NextServer) (err error) {
 	if filter.InstanceID != s.InstanceID {
 		// instance changed, so anything we have is new
