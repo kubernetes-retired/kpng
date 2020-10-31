@@ -353,13 +353,14 @@ func renderNftables(output io.WriteCloser) {
 
 		// delete removed chains (already done by deleting the chain on fullResync)
 		if !fullResync {
+			deleted := table.chains.Deleted()
+
 			// flush before deleting to clear self-references
-			for _, chain := range table.chains.Deleted() {
+			for _, chain := range deleted {
 				fmt.Fprintf(out, "flush chain %s %s %s\n", table.familly, table.name, chain)
 			}
-
 			// delete
-			for _, chain := range table.chains.Deleted() {
+			for _, chain := range deleted {
 				fmt.Fprintf(out, "delete chain %s %s %s\n", table.familly, table.name, chain)
 			}
 		}
