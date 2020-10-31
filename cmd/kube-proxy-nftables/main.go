@@ -29,6 +29,12 @@ var (
 	fullResync = true
 )
 
+// FIXME atomic delete with references are currently buggy, so defer it
+const deferDelete = true
+
+// FIXME defer delete also is buggy; having to wait ~1s which is not acceptable...
+const canDeleteChains = false
+
 func init() {
 	klog.InitFlags(flag.CommandLine)
 }
@@ -199,7 +205,8 @@ func updateNftables(items []*localnetv1.ServiceEndpoints) {
 	// render the rule set
 	cmdIn, pipeOut := io.Pipe()
 
-	go renderNftables(pipeOut)
+	deferred := new(bytes.Buffer)
+	go renderNftables(pipeOut, deferred)
 
 	if *dryRun {
 		io.Copy(ioutil.Discard, cmdIn)
@@ -226,9 +233,30 @@ func updateNftables(items []*localnetv1.ServiceEndpoints) {
 				fullResync = true
 				updateNftables(items)
 			}
+			return
+		}
 
-		} else {
-			klog.V(1).Infof("nft ok (%s)", elapsed)
+		klog.V(1).Infof("nft ok (%s)", elapsed)
+
+		if deferred.Len() != 0 {
+			klog.V(1).Infof("running deferred nft actions")
+
+			// too fast and deletes fail... :(
+			//time.Sleep(100 * time.Millisecond)
+
+			if klog.V(2) {
+				os.Stdout.Write(deferred.Bytes())
+			}
+
+			cmd := exec.Command("nft", "-f", "-")
+			cmd.Stdin = deferred
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+
+			err = cmd.Run()
+			if err != nil {
+				klog.Warning("nft deferred script failed: ", err)
+			}
 		}
 	}
 
@@ -287,7 +315,7 @@ func addDispatchChains(familly string, chainBuffers *chainBufferSet, chainNets m
 	}
 }
 
-func renderNftables(output io.WriteCloser) {
+func renderNftables(output io.WriteCloser, deferred io.Writer) {
 	defer output.Close()
 
 	outputs := make([]io.Writer, 0, 2)
@@ -314,6 +342,11 @@ func renderNftables(output io.WriteCloser) {
 		} else {
 			if !table.chains.Changed() {
 				continue
+			}
+
+			// flush deleted chains
+			for _, chain := range table.chains.Deleted() {
+				fmt.Fprintf(out, "flush chain %s %s %s\n", table.familly, table.name, chain)
 			}
 
 			// update only changed rules
@@ -351,17 +384,17 @@ func renderNftables(output io.WriteCloser) {
 			fmt.Fprintln(out, "}")
 		}
 
-		// delete removed chains (already done by deleting the chain on fullResync)
+		// flush removed chains (already done by deleting the chain on fullResync)
 		if !fullResync {
-			deleted := table.chains.Deleted()
-
-			// flush before deleting to clear self-references
-			for _, chain := range deleted {
-				fmt.Fprintf(out, "flush chain %s %s %s\n", table.familly, table.name, chain)
-			}
 			// delete
-			for _, chain := range deleted {
-				fmt.Fprintf(out, "delete chain %s %s %s\n", table.familly, table.name, chain)
+			if canDeleteChains {
+				var out io.Writer = out
+				if deferDelete {
+					out = deferred
+				}
+				for _, chain := range table.chains.Deleted() {
+					fmt.Fprintf(out, "delete chain %s %s %s\n", table.familly, table.name, chain)
+				}
 			}
 		}
 	}
