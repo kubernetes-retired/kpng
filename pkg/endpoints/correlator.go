@@ -64,7 +64,7 @@ func NewCorrelator(proxyServer *proxy.Server) *Correlator {
 
 func (c *Correlator) WaitRev(lastKnownRev uint64) {
 	c.cond.L.Lock()
-	for c.rev <= lastKnownRev {
+	for c.rev < lastKnownRev {
 		c.cond.Wait()
 	}
 	c.cond.L.Unlock()
