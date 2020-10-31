@@ -15,7 +15,40 @@ spec:
       labels:
         app: kube-proxy2
     spec:
+      nodeSelector:
+        kube-proxy: v2
       serviceAccountName: kube-proxy
+      hostNetwork: true
       containers:
       - image: mcluseau/kube-proxy2
         name: kube-proxy2
+        volumeMounts:
+        - name: empty
+          mountPath: /k8s
+        args:
+        - --listen
+        - unix:///k8s/proxy.sock
+      - image: mcluseau/kube-proxy2
+        name: kube-proxy-nftables
+        securityContext:
+          capabilities:
+           add:
+           - NET_ADMIN
+        volumeMounts:
+        - name: empty
+          mountPath: /k8s
+        - name: modules
+          mountPath: /lib/modules
+          readOnly: true
+        command:
+        - kube-proxy-nftables
+        - --target
+        - unix:///k8s/proxy.sock
+        #- --debug
+        #- --dry-run
+      volumes:
+      - name: empty
+        emptyDir: {}
+      - name: modules
+        hostPath:
+          path: /lib/modules
