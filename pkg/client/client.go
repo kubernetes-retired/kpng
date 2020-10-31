@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"k8s.io/klog"
 
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
@@ -44,6 +43,7 @@ type EndpointsClient struct {
 	ErrorDelay time.Duration
 
 	conn       *grpc.ClientConn
+	client     localnetv1.EndpointsClient
 	nextFilter *localnetv1.NextFilter
 
 	prevLen int
@@ -80,8 +80,6 @@ func (epc *EndpointsClient) Next() (items []*localnetv1.ServiceEndpoints, cancel
 
 	ctx := epc.ctx
 
-	client := localnetv1.NewEndpointsClient(epc.conn)
-
 	// prepare items assuming a 10% increase of the number of items
 	expectedCap := epc.prevLen * 110 / 100
 	if expectedCap == 0 {
@@ -90,10 +88,11 @@ func (epc *EndpointsClient) Next() (items []*localnetv1.ServiceEndpoints, cancel
 
 	items = make([]*localnetv1.ServiceEndpoints, 0, expectedCap)
 
+mainLoop:
 	for {
-		next, err := client.Next(ctx, epc.nextFilter)
+		next, err := epc.client.Next(ctx, epc.nextFilter)
 		if err != nil {
-			if grpc.Code(err) == codes.Canceled || err == context.Canceled {
+			if epc.ctx.Err() == context.Canceled {
 				return nil, true
 			}
 
@@ -118,6 +117,8 @@ func (epc *EndpointsClient) Next() (items []*localnetv1.ServiceEndpoints, cancel
 				break
 			} else if err != nil {
 				klog.Error("recv failed: ", err)
+				epc.postError()
+				continue mainLoop
 			}
 
 			items = append(items, nextItem.Endpoints)
@@ -151,25 +152,25 @@ func (epc *EndpointsClient) CancelOn(signals ...os.Signal) {
 }
 
 func (epc *EndpointsClient) dial() (canceled bool) {
+retry:
 	if epc.ctx.Err() == context.Canceled {
 		return true
 	}
 
 	klog.Info("connecting to ", epc.Target)
 
-retry:
 	conn, err := grpc.DialContext(epc.ctx, epc.Target, grpc.WithInsecure())
 
-	if err == context.Canceled {
-		return true
-	} else if err != nil {
+	if err != nil {
 		klog.Info("failed to connect: ", err)
 		epc.errorSleep()
 		goto retry
 	}
 
 	epc.conn = conn
-	klog.V(1).Info("connected")
+	epc.client = localnetv1.NewEndpointsClient(epc.conn)
+
+	//klog.V(1).Info("connected")
 	return false
 }
 
