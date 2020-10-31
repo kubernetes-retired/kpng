@@ -222,7 +222,7 @@ func updateNftables(items []*localnetv1.ServiceEndpoints) {
 
 			if !fullResync {
 				// failsafe: rebuild everything
-				klog.Infof("trying a full resync avec nft failure")
+				klog.Infof("trying a full resync after nft failure")
 				fullResync = true
 				updateNftables(items)
 			}
