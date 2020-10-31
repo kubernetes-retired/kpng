@@ -3,7 +3,7 @@ module github.com/mcluseau/kube-proxy2
 go 1.13
 
 require (
-	github.com/OneOfOne/xxhash v1.2.7 // indirect
+	github.com/OneOfOne/xxhash v1.2.7
 	github.com/cespare/xxhash v1.1.0
 	github.com/go-logr/logr v0.2.1 // indirect
 	github.com/gogo/protobuf v1.3.1
