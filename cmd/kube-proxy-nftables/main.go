@@ -26,7 +26,7 @@ var (
 	splitBits    = flag.Int("split-bits", 24, "dispatch services in multiple chains, spliting at the nth bit")
 	splitBits6   = flag.Int("split-bits6", 120, "dispatch services in multiple chains, spliting at the nth bit (for IPv6)")
 
-	firstRun = true
+	fullResync = true
 )
 
 func init() {
@@ -77,12 +77,9 @@ func updateNftables(items []*localnetv1.ServiceEndpoints) {
 			}
 
 			familly := "ip"
-			if set.v6 {
-				familly = "ip6"
-			}
-
 			chainBuffers := chainBuffers4
 			if set.v6 {
+				familly = "ip6"
 				chainBuffers = chainBuffers6
 			}
 
@@ -168,73 +165,33 @@ func updateNftables(items []*localnetv1.ServiceEndpoints) {
 				}
 
 				if len(extIPs) != 0 {
-					fmt.Fprintf(chainBuffers.Get(prefix+"external"), "  %s daddr {%s} goto %s\n", familly, strings.Join(extIPs, ", "), chain)
+					protoMatch := "protocol "
+					if set.v6 {
+						protoMatch = "nexthdr "
+					}
+
+					switch protocol {
+					case localnetv1.Protocol_TCP:
+						protoMatch += "tcp"
+					case localnetv1.Protocol_UDP:
+						protoMatch += "udp"
+					case localnetv1.Protocol_SCTP:
+						protoMatch += "sctp"
+					}
+
+					fmt.Fprintf(chainBuffers.Get(prefix+"external"), "  %s %s %s daddr {%s} goto %s\n",
+						familly, protoMatch, familly, strings.Join(extIPs, ", "), chain)
 				}
 			}
 		}
 	}
 
 	// dispatch chains
-	for _, iter := range []struct {
-		familly string
-		buffers *chainBufferSet
-		nets    map[string]*net.IPNet
-	}{
-		{"ip", chainBuffers4, chain4Nets},
-		{"ip6", chainBuffers6, chain6Nets},
-	} {
-		chainBuffers := iter.buffers
-		chainNets := iter.nets
+	addDispatchChains("ip", chainBuffers4, chain4Nets)
+	addDispatchChains("ip6", chainBuffers6, chain6Nets)
 
-		chains := chainBuffers.List()
-		for _, prefix := range []string{"dnat_", "filter_"} {
-			chain := chainBuffers.Get("z_" + prefix + "all")
-
-			others := make([]string, 0)
-			targets := make([]string, 0)
-			for _, target := range chains {
-				if !strings.HasPrefix(target, prefix) {
-					continue
-				}
-
-				ipNet := chainNets[target]
-				if ipNet == nil {
-					if !strings.HasPrefix(target, prefix+"net_") {
-						// unknown chains in the prefix go to the global dispatch
-						others = append(others, target)
-					}
-					continue
-				}
-
-				ones, _ := ipNet.Mask.Size()
-				targets = append(targets, fmt.Sprintf("%s/%d: jump %s", ipNet.IP.String(), ones, target))
-			}
-
-			if len(targets) != 0 {
-				fmt.Fprintf(chain, "  %s daddr vmap { \\\n    %s}\n", iter.familly, strings.Join(targets, ", \\\n    "))
-			}
-
-			for _, other := range others {
-				fmt.Fprintf(chain, "  goto %s\n", other)
-			}
-		}
-
-		if chainBuffers.Get("z_dnat_all").Len() != 0 {
-			fmt.Fprintf(chainBuffers.Get("hook_nat_prerouting"),
-				"  type nat hook prerouting priority %d;\n  jump z_dnat_all\n", *hookPrio)
-			fmt.Fprintf(chainBuffers.Get("hook_nat_output"),
-				"  type nat hook output priority %d;\n  jump z_dnat_all\n", *hookPrio)
-		}
-
-		if chainBuffers.Get("z_filter_all").Len() != 0 {
-			fmt.Fprintf(chainBuffers.Get("hook_filter_forward"),
-				"  type filter hook forward priority %d;\n  jump z_filter_all\n", *hookPrio)
-			fmt.Fprintf(chainBuffers.Get("hook_filter_output"),
-				"  type filter hook output priority %d;\n  jump z_filter_all\n", *hookPrio)
-		}
-	}
-
-	if !firstRun && !chainBuffers4.Changed() && !chainBuffers6.Changed() {
+	// check if we have changes to apply
+	if !fullResync && !chainBuffers4.Changed() && !chainBuffers6.Changed() {
 		klog.V(1).Info("no changes to apply")
 		return
 	}
@@ -258,14 +215,15 @@ func updateNftables(items []*localnetv1.ServiceEndpoints) {
 		elapsed := time.Since(start)
 
 		if err != nil {
-			klog.Infof("nft failed: %v (%s)", err, elapsed)
+			klog.Errorf("nft failed: %v (%s)", err, elapsed)
 
 			// ensure render is finished
 			io.Copy(ioutil.Discard, cmdIn)
 
-			if !firstRun {
-				// rewrite everything
-				firstRun = true
+			if !fullResync {
+				// failsafe: rebuild everything
+				klog.Infof("trying a full resync avec nft failure")
+				fullResync = true
 				updateNftables(items)
 			}
 
@@ -274,8 +232,58 @@ func updateNftables(items []*localnetv1.ServiceEndpoints) {
 		}
 	}
 
-	if firstRun {
-		firstRun = false
+	if fullResync {
+		// all done, we can valide the first run
+		fullResync = false
+	}
+}
+
+func addDispatchChains(familly string, chainBuffers *chainBufferSet, chainNets map[string]*net.IPNet) {
+	chains := chainBuffers.List()
+	for _, prefix := range []string{"dnat_", "filter_"} {
+		chain := chainBuffers.Get("z_" + prefix + "all")
+
+		others := make([]string, 0)
+		targets := make([]string, 0)
+		for _, target := range chains {
+			if !strings.HasPrefix(target, prefix) {
+				continue
+			}
+
+			ipNet := chainNets[target]
+			if ipNet == nil {
+				if !strings.HasPrefix(target, prefix+"net_") {
+					// unknown chains in the prefix go to the global dispatch
+					others = append(others, target)
+				}
+				continue
+			}
+
+			ones, _ := ipNet.Mask.Size()
+			targets = append(targets, fmt.Sprintf("%s/%d: jump %s", ipNet.IP.String(), ones, target))
+		}
+
+		if len(targets) != 0 {
+			fmt.Fprintf(chain, "  %s daddr vmap { \\\n    %s}\n", familly, strings.Join(targets, ", \\\n    "))
+		}
+
+		for _, other := range others {
+			fmt.Fprintf(chain, "  goto %s\n", other)
+		}
+	}
+
+	if chainBuffers.Get("z_dnat_all").Len() != 0 {
+		fmt.Fprintf(chainBuffers.Get("hook_nat_prerouting"),
+			"  type nat hook prerouting priority %d;\n  jump z_dnat_all\n", *hookPrio)
+		fmt.Fprintf(chainBuffers.Get("hook_nat_output"),
+			"  type nat hook output priority %d;\n  jump z_dnat_all\n", *hookPrio)
+	}
+
+	if chainBuffers.Get("z_filter_all").Len() != 0 {
+		fmt.Fprintf(chainBuffers.Get("hook_filter_forward"),
+			"  type filter hook forward priority %d;\n  jump z_filter_all\n", *hookPrio)
+		fmt.Fprintf(chainBuffers.Get("hook_filter_output"),
+			"  type filter hook output priority %d;\n  jump z_filter_all\n", *hookPrio)
 	}
 }
 
@@ -299,7 +307,7 @@ func renderNftables(output io.WriteCloser) {
 		{"ip6", "k8s_svc6", chainBuffers6},
 	} {
 		chains := table.chains.List()
-		if firstRun {
+		if fullResync {
 			fmt.Fprintf(out, "table %s %s\n", table.familly, table.name)
 			fmt.Fprintf(out, "delete table %s %s\n", table.familly, table.name)
 
@@ -343,9 +351,17 @@ func renderNftables(output io.WriteCloser) {
 			fmt.Fprintln(out, "}")
 		}
 
-		// delete removed chains
-		for _, chain := range table.chains.Deleted() {
-			fmt.Fprintf(out, "delete chain %s %s %s\n", table.familly, table.name, chain)
+		// delete removed chains (already done by deleting the chain on fullResync)
+		if !fullResync {
+			// flush before deleting to clear self-references
+			for _, chain := range table.chains.Deleted() {
+				fmt.Fprintf(out, "flush chain %s %s %s\n", table.familly, table.name, chain)
+			}
+
+			// delete
+			for _, chain := range table.chains.Deleted() {
+				fmt.Fprintf(out, "delete chain %s %s %s\n", table.familly, table.name, chain)
+			}
 		}
 	}
 

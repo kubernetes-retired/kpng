@@ -23,6 +23,7 @@ func Run(handlers ...HandlerFunc) {
 		items, canceled := epc.Next()
 
 		if canceled {
+			klog.Infof("finished")
 			return
 		}
 

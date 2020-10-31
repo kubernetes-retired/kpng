@@ -151,6 +151,10 @@ func (epc *EndpointsClient) CancelOn(signals ...os.Signal) {
 }
 
 func (epc *EndpointsClient) dial() (canceled bool) {
+	if epc.ctx.Err() == context.Canceled {
+		return true
+	}
+
 	klog.Info("connecting to ", epc.Target)
 
 retry:

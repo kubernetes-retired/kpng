@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"net"
 	"os"
 	"runtime/pprof"
@@ -47,7 +46,7 @@ func run(_ *cobra.Command, _ []string) {
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
-			log.Fatal(err)
+			klog.Fatal(err)
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
