@@ -38,7 +38,7 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 		Type:      string(svcSpec.Type),
 		IPs: &localnetv1.ServiceIPs{
 			ClusterIP:   svcSpec.ClusterIP,
-			ExternalIPs: svcSpec.ExternalIPs,
+			ExternalIPs: localnetv1.NewIPSet(svcSpec.ExternalIPs),
 		},
 		MapAll:                 false, // TODO
 		ExternalTrafficToLocal: src.Service.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal,

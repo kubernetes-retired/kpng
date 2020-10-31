@@ -44,14 +44,18 @@ message ServiceEndpoints {
 
 message ServiceIPs {
     string ClusterIP = 1;
-    repeated string ExternalIPs = 2;
+    IPSet  ExternalIPs = 2;
 }
 
 message Endpoint {
     string Hostname = 1;
     EndpointConditions Conditions = 2;
-    repeated string IPsV4 = 3;
-    repeated string IPsV6 = 4;
+    IPSet  IPs = 3;
+}
+
+message IPSet {
+    repeated string V4 = 1;
+    repeated string V6 = 2;
 }
 
 message EndpointConditions {
