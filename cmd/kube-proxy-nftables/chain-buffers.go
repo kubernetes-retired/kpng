@@ -9,7 +9,8 @@ import (
 )
 
 var (
-	chainBuffers = chainBufferSet{btree.New(4)}
+	chainBuffers4 = &chainBufferSet{btree.New(4)}
+	chainBuffers6 = &chainBufferSet{btree.New(4)}
 )
 
 type chainBufferSet struct {

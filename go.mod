@@ -3,7 +3,7 @@ module github.com/mcluseau/kube-proxy2
 go 1.13
 
 require (
-	github.com/OneOfOne/xxhash v1.2.7
+	github.com/OneOfOne/xxhash v1.2.8
 	github.com/cespare/xxhash v1.1.0
 	github.com/go-logr/logr v0.2.1 // indirect
 	github.com/gogo/protobuf v1.3.1
@@ -16,13 +16,14 @@ require (
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
-	github.com/zevenet/kube-nftlb v0.1.1-0.20201027100916-c95119c4e332
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
-	golang.org/x/net v0.0.0-20201029221708-28c70e62bb1d // indirect
+	golang.org/x/net v0.0.0-20201031054903-ff519b6c9102 // indirect
+	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
 	golang.org/x/sys v0.0.0-20201029080932-201ba4db2418 // indirect
 	golang.org/x/text v0.3.4 // indirect
+	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20201029200359-8ce4113da6f7 // indirect
+	google.golang.org/genproto v0.0.0-20201030142918-24207fddd1c3 // indirect
 	google.golang.org/grpc v1.33.1
 	google.golang.org/protobuf v1.25.0
 	k8s.io/api v0.19.3
@@ -31,6 +32,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.4.0 // indirect
 	k8s.io/utils v0.0.0-20201027101359-01387209bb0d // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.0.2 // indirect
 )
 
 replace (

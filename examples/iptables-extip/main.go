@@ -35,7 +35,7 @@ func handleEndpoints(items []*localnetv1.ServiceEndpoints) {
 			continue
 		}
 
-		if len(item.IPs.ExternalIPs) == 0 {
+		if len(item.IPs.ExternalIPs.V4) == 0 {
 			// filter out services without external IPs
 			continue
 		}
@@ -56,7 +56,7 @@ func handleEndpoints(items []*localnetv1.ServiceEndpoints) {
 	for _, sep := range filteredItems {
 		key := path.Join(sep.Namespace, sep.Name)
 		for _, ep := range sep.Endpoints {
-			for _, ip := range ep.IPsV4 {
+			for _, ip := range ep.IPs.V4 {
 				for _, port := range sep.Ports {
 					proto := strings.ToLower(port.Protocol.String())
 
@@ -83,11 +83,11 @@ func handleEndpoints(items []*localnetv1.ServiceEndpoints) {
 		targetIPs := make([]string, 0)
 
 		for _, ep := range sep.Endpoints {
-			if len(ep.IPsV4) == 0 {
+			if len(ep.IPs.V4) == 0 {
 				continue
 			}
 
-			targetIPs = append(targetIPs, ep.IPsV4[0])
+			targetIPs = append(targetIPs, ep.IPs.V4[0])
 		}
 
 		targetCount := len(targetIPs)
@@ -96,7 +96,7 @@ func handleEndpoints(items []*localnetv1.ServiceEndpoints) {
 			continue
 		}
 
-		for _, extIP := range sep.IPs.ExternalIPs {
+		for _, extIP := range sep.IPs.ExternalIPs.V4 {
 			for i, ip := range targetIPs {
 				rndProba := iptRandom(i, targetCount)
 
@@ -124,10 +124,10 @@ func handleEndpoints(items []*localnetv1.ServiceEndpoints) {
 		key := path.Join(sep.Namespace, sep.Name)
 
 		// use the first external IP
-		extIP := sep.IPs.ExternalIPs[0]
+		extIP := sep.IPs.ExternalIPs.V4[0]
 
 		for _, ep := range sep.Endpoints {
-			for _, ip := range ep.IPsV4 {
+			for _, ip := range ep.IPs.V4 {
 				if revExt[ip].extIP == "" || extIP < revExt[ip].extIP {
 					revExt[ip] = struct{ key, extIP string }{key, extIP}
 				}

@@ -44,7 +44,7 @@ spec:
         - kube-proxy-nftables
         - --target
         - unix:///k8s/proxy.sock
-        #- --debug
+        #- --v=2
         #- --dry-run
       volumes:
       - name: empty

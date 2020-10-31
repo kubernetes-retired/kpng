@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -17,272 +16,237 @@ import (
 
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 	"github.com/mcluseau/kube-proxy2/pkg/client"
+	"k8s.io/klog"
 )
 
 var (
 	dryRun       = flag.Bool("dry-run", false, "dry run (do not apply rules)")
-	debug        = flag.Bool("debug", false, "debug nft script")
 	hookPrio     = flag.Int("hook-priority", 0, "nftable hooks priority")
 	skipComments = flag.Bool("skip-comments", false, "don't comment rules")
 	splitBits    = flag.Int("split-bits", 24, "dispatch services in multiple chains, spliting at the nth bit")
-	// TODO splitBits6   = flag.Int("split-bits6", 120, "dispatch services in multiple chains, spliting at the nth bit (for IPv6)")
+	splitBits6   = flag.Int("split-bits6", 120, "dispatch services in multiple chains, spliting at the nth bit (for IPv6)")
 
 	firstRun = true
 )
+
+func init() {
+	klog.InitFlags(flag.CommandLine)
+}
 
 func main() {
 	client.Run(updateNftables)
 }
 
 func updateNftables(items []*localnetv1.ServiceEndpoints) {
-	defer chainBuffers.Reset()
+	defer chainBuffers4.Reset()
+	defer chainBuffers6.Reset()
 
 	rule := new(bytes.Buffer)
 
 	ipv4Mask := net.CIDRMask(*splitBits, 32)
-	// TODO ipv6Mask := net.CIDRMask(*splitBits6, 128)
+	ipv6Mask := net.CIDRMask(*splitBits6, 128)
 
-	chainNets := map[string]*net.IPNet{}
+	chain4Nets := map[string]*net.IPNet{}
+	chain6Nets := map[string]*net.IPNet{}
 
 	for _, endpoints := range items {
-		// TODO doing IPv4 only for now
-
 		// only handle cluster IPs
 		if endpoints.Type != "ClusterIP" {
 			continue
 		}
 
-		ips := make([]string, 0)
+		ips := &localnetv1.IPSet{}
+
 		if ip := endpoints.IPs.ClusterIP; ip != "" && ip != "None" {
-			ips = append(ips, ip)
+			ips.Add(ip)
 		}
 
-		ips = append(ips, endpoints.IPs.ExternalIPs...)
+		ips.AddSet(endpoints.IPs.ExternalIPs)
 
-		if len(ips) == 0 {
-			continue
-		}
-
-		for _, m := range []struct {
-			match    string
-			protocol localnetv1.Protocol
+		for _, set := range []struct {
+			ips []string
+			v6  bool
 		}{
-			{"tcp dport", localnetv1.Protocol_TCP},
-			{"udp dport", localnetv1.Protocol_UDP},
-			{"sctp dport", localnetv1.Protocol_SCTP},
+			{ips.V4, false},
+			{ips.V6, true},
 		} {
-			rule.Reset()
+			ips := set.ips
 
-			srcPorts := make([]string, 0)
-			portMaps := make([]string, 0)
-			var dstPort int32     // for the single port case
-			portsIdentity := true // if every source port is mapped to the same target
-			for _, port := range endpoints.Ports {
-				if port.Protocol != m.protocol {
-					continue
-				}
-
-				if portsIdentity && port.Port != port.TargetPort {
-					portsIdentity = false
-				}
-
-				srcPorts = append(srcPorts, fmt.Sprintf("%d", port.Port))
-				dstPort = port.TargetPort
-				portMaps = append(portMaps, fmt.Sprintf("%d : %d", port.Port, port.TargetPort))
-			}
-
-			if len(srcPorts) == 0 {
+			if len(ips) == 0 {
 				continue
 			}
 
-			if len(ips) == 1 {
-				fmt.Fprintf(rule, "  ip daddr %s", ips[0])
-			} else {
-				fmt.Fprintf(rule, "  ip daddr {%s}", strings.Join(ips, ", "))
+			familly := "ip"
+			if set.v6 {
+				familly = "ip6"
 			}
 
-			if len(srcPorts) == 1 {
-				fmt.Fprintf(rule, " %s %s", m.match, srcPorts[0])
-			} else {
-				fmt.Fprintf(rule, " %s {%s}", m.match, strings.Join(srcPorts, ", "))
+			chainBuffers := chainBuffers4
+			if set.v6 {
+				chainBuffers = chainBuffers6
 			}
 
-			dstIPs := make([]string, 0, len(endpoints.Endpoints))
-			dstMap := make([]string, 0, len(endpoints.Endpoints))
-			for idx, ep := range endpoints.Endpoints {
-				if len(ep.IPsV4) == 0 {
+			endpointIPs := make([]string, 0, len(endpoints.Endpoints))
+			for _, ep := range endpoints.Endpoints {
+				epIPs := ep.IPs.V4
+				if set.v6 {
+					epIPs = ep.IPs.V6
+				}
+
+				if len(epIPs) == 0 {
 					continue
 				}
 
-				dstIPs = append(dstIPs, ep.IPsV4[0])
-				dstMap = append(dstMap, fmt.Sprintf("%d : %s", idx, ep.IPsV4[0]))
+				endpointIPs = append(endpointIPs, epIPs[0])
 			}
 
-			//fmt.Fprintf(out, "comment \"dnat for %s/%s port %d\" ", endpoints.Namespace, endpoints.Name, port.Port)
+			for _, protocol := range []localnetv1.Protocol{
+				localnetv1.Protocol_TCP,
+				localnetv1.Protocol_UDP,
+				localnetv1.Protocol_SCTP,
+			} {
+				rule.Reset()
 
-			fmt.Fprint(rule, " ")
-			if len(dstIPs) == 0 {
-				fmt.Fprint(rule, "reject")
-			} else {
-				if len(dstIPs) == 1 {
-					fmt.Fprintf(rule, "dnat to %s", dstIPs[0])
-				} else {
-					fmt.Fprintf(rule, "dnat to numgen random mod %d map {%s}", len(dstMap), strings.Join(dstMap, ", "))
+				n, err := dnatRule{
+					Namespace:   endpoints.Namespace,
+					Name:        endpoints.Name,
+					Familly:     familly,
+					ServiceIPs:  ips,
+					Protocol:    protocol,
+					Ports:       endpoints.Ports,
+					EndpointIPs: endpointIPs,
+				}.WriteTo(rule)
+
+				if err != nil {
+					klog.Error("failed to write rule: ", err)
+					continue
 				}
 
-				if !portsIdentity {
-					if len(portMaps) == 1 {
-						fmt.Fprintf(rule, ":%d", dstPort)
-					} else {
-						fmt.Fprintf(rule, ":%s map { %s }", m.match, strings.Join(portMaps, ", "))
+				if n == 0 {
+					continue
+				}
+
+				fmt.Fprintln(rule)
+
+				// filter or nat? reject does not work in prerouting
+				prefix := "dnat_"
+				if len(endpointIPs) == 0 {
+					prefix = "filter_"
+				}
+
+				// use ClusterIP to group rules in chains
+				ip := net.ParseIP(endpoints.IPs.ClusterIP)
+
+				mask := ipv4Mask
+				if ip.To4() == nil {
+					mask = ipv6Mask
+				}
+
+				ip = ip.Mask(mask)
+
+				chain := prefix + "net_" + hex.EncodeToString(ip)
+
+				// write rule to the chain
+				rule.WriteTo(chainBuffers.Get(chain))
+
+				// reference the chain from the dispatch if the cluster IP is of the current familly
+				ipNet := &net.IPNet{
+					IP:   ip,
+					Mask: mask,
+				}
+
+				if set.v6 && ip.To4() == nil {
+					chain6Nets[chain] = ipNet
+				} else if !set.v6 && ip.To4() != nil {
+					chain4Nets[chain] = ipNet
+				}
+
+				// handle external IPs dispatch
+				extIPs := endpoints.IPs.ExternalIPs.V4
+				if set.v6 {
+					extIPs = endpoints.IPs.ExternalIPs.V6
+				}
+
+				if len(extIPs) != 0 {
+					fmt.Fprintf(chainBuffers.Get(prefix+"external"), "  %s daddr {%s} goto %s\n", familly, strings.Join(extIPs, ", "), chain)
+				}
+			}
+		}
+	}
+
+	// dispatch chains
+	for _, iter := range []struct {
+		familly string
+		buffers *chainBufferSet
+		nets    map[string]*net.IPNet
+	}{
+		{"ip", chainBuffers4, chain4Nets},
+		{"ip6", chainBuffers6, chain6Nets},
+	} {
+		chainBuffers := iter.buffers
+		chainNets := iter.nets
+
+		chains := chainBuffers.List()
+		for _, prefix := range []string{"dnat_", "filter_"} {
+			chain := chainBuffers.Get("z_" + prefix + "all")
+
+			others := make([]string, 0)
+			targets := make([]string, 0)
+			for _, target := range chains {
+				if !strings.HasPrefix(target, prefix) {
+					continue
+				}
+
+				ipNet := chainNets[target]
+				if ipNet == nil {
+					if !strings.HasPrefix(target, prefix+"net_") {
+						// unknown chains in the prefix go to the global dispatch
+						others = append(others, target)
 					}
+					continue
 				}
+
+				ones, _ := ipNet.Mask.Size()
+				targets = append(targets, fmt.Sprintf("%s/%d: jump %s", ipNet.IP.String(), ones, target))
 			}
 
-			if !*skipComments {
-				fmt.Fprintf(rule, " comment \"%s/%s %v ports\"", endpoints.Namespace, endpoints.Name, m.protocol)
+			if len(targets) != 0 {
+				fmt.Fprintf(chain, "  %s daddr vmap { \\\n    %s}\n", iter.familly, strings.Join(targets, ", \\\n    "))
 			}
 
-			fmt.Fprintln(rule)
-
-			// filter or nat? reject does not work in prerouting
-			prefix := "dnat_"
-			if len(dstIPs) == 0 {
-				prefix = "filter_"
+			for _, other := range others {
+				fmt.Fprintf(chain, "  goto %s\n", other)
 			}
+		}
 
-			ip := net.ParseIP(endpoints.IPs.ClusterIP).Mask(ipv4Mask)
+		if chainBuffers.Get("z_dnat_all").Len() != 0 {
+			fmt.Fprintf(chainBuffers.Get("hook_nat_prerouting"),
+				"  type nat hook prerouting priority %d;\n  jump z_dnat_all\n", *hookPrio)
+			fmt.Fprintf(chainBuffers.Get("hook_nat_output"),
+				"  type nat hook output priority %d;\n  jump z_dnat_all\n", *hookPrio)
+		}
 
-			chain := prefix + hex.EncodeToString(ip)
-			chainNets[chain] = &net.IPNet{
-				IP:   ip,
-				Mask: ipv4Mask,
-			}
-
-			rule.WriteTo(chainBuffers.Get(chain))
-
-			if extIPs := endpoints.IPs.ExternalIPs; len(extIPs) != 0 {
-				fmt.Fprintf(chainBuffers.Get(prefix+"external"), "  ip daddr {%s} goto %s\n", strings.Join(extIPs, ", "), chain)
-			}
+		if chainBuffers.Get("z_filter_all").Len() != 0 {
+			fmt.Fprintf(chainBuffers.Get("hook_filter_forward"),
+				"  type filter hook forward priority %d;\n  jump z_filter_all\n", *hookPrio)
+			fmt.Fprintf(chainBuffers.Get("hook_filter_output"),
+				"  type filter hook output priority %d;\n  jump z_filter_all\n", *hookPrio)
 		}
 	}
 
-	// dispatch chain
-	chains := chainBuffers.List()
-	for _, prefix := range []string{"dnat_", "filter_"} {
-		chain := chainBuffers.Get(prefix + "z_all")
-
-		others := make([]string, 0)
-		targets := make([]string, 0)
-		for _, target := range chains {
-			if !strings.HasPrefix(target, prefix) {
-				continue
-			}
-
-			// z chains are excluded from auto-grab
-			if strings.HasPrefix(target, prefix+"z_") {
-				continue
-			}
-
-			ipNet := chainNets[target]
-			if ipNet == nil {
-				others = append(others, target)
-				continue
-			}
-
-			ones, _ := ipNet.Mask.Size()
-			targets = append(targets, fmt.Sprintf("%s/%d: jump %s", ipNet.IP.String(), ones, target))
-		}
-
-		if len(targets) != 0 {
-			fmt.Fprintf(chain, "  ip daddr vmap { \\\n    %s}\n", strings.Join(targets, ", \\\n    "))
-		}
-
-		for _, other := range others {
-			fmt.Fprintf(chain, "  goto %s\n", other)
-		}
-	}
-
-	fmt.Fprintf(chainBuffers.Get("nat_z_forward"),
-		"  type nat hook prerouting priority %d;\n  jump dnat_z_all\n", *hookPrio)
-	fmt.Fprintf(chainBuffers.Get("nat_z_output"),
-		"  type nat hook output priority %d;\n  jump dnat_z_all\n", *hookPrio)
-	fmt.Fprintf(chainBuffers.Get("filter_z_forward"),
-		"  type filter hook forward priority %d;\n  jump filter_z_all\n", *hookPrio)
-	fmt.Fprintf(chainBuffers.Get("filter_z_output"),
-		"  type filter hook output priority %d;\n  jump filter_z_all\n", *hookPrio)
-
-	if !firstRun && !chainBuffers.Changed() {
-		log.Print("no changes to apply")
+	if !firstRun && !chainBuffers4.Changed() && !chainBuffers6.Changed() {
+		klog.V(1).Info("no changes to apply")
 		return
 	}
 
 	// render the rule set
 	cmdIn, pipeOut := io.Pipe()
 
-	go func() {
-		outputs := make([]io.Writer, 0, 2)
-		outputs = append(outputs, pipeOut)
-
-		if *debug {
-			outputs = append(outputs, os.Stdout)
-		}
-
-		out := bufio.NewWriter(io.MultiWriter(outputs...))
-
-		chains := chainBuffers.List()
-		if firstRun {
-			fmt.Fprintln(out, "table ip k8s_svc")
-			fmt.Fprintln(out, "flush table k8s_svc")
-
-		} else {
-			// update only changed rules
-			changedChains := make([]string, 0, len(chains))
-
-			// flush changed chains
-			for _, chain := range chains {
-				c := chainBuffers.Get(chain)
-				if !c.Changed() {
-					continue
-				}
-
-				if !c.Created() {
-					fmt.Fprintf(out, "flush chain k8s_svc %s\n", chain)
-				}
-
-				changedChains = append(changedChains, chain)
-			}
-
-			chains = changedChains
-		}
-
-		// create/update changed chains
-		if len(chains) != 0 {
-			fmt.Fprintln(out, "table ip k8s_svc {")
-
-			for _, chain := range chains {
-				c := chainBuffers.Get(chain)
-
-				fmt.Fprintf(out, " chain %s {\n", chain)
-				io.Copy(out, c)
-				fmt.Fprintln(out, " }")
-			}
-
-			fmt.Fprintln(out, "}")
-		}
-
-		// delete removed chains
-		for _, chain := range chainBuffers.Deleted() {
-			fmt.Fprintf(out, "delete chain k8s_svc %s\n", chain)
-		}
-
-		out.Flush()
-		pipeOut.Close()
-	}()
+	go renderNftables(pipeOut)
 
 	if *dryRun {
 		io.Copy(ioutil.Discard, cmdIn)
-		log.Print("not running nft (dry run mode)")
+		klog.Info("not running nft (dry run mode)")
 	} else {
 		cmd := exec.Command("nft", "-f", "-")
 		cmd.Stdin = cmdIn
@@ -294,7 +258,10 @@ func updateNftables(items []*localnetv1.ServiceEndpoints) {
 		elapsed := time.Since(start)
 
 		if err != nil {
-			log.Printf("nft failed: %v (%s)", err, elapsed)
+			klog.Infof("nft failed: %v (%s)", err, elapsed)
+
+			// ensure render is finished
+			io.Copy(ioutil.Discard, cmdIn)
 
 			if !firstRun {
 				// rewrite everything
@@ -303,11 +270,84 @@ func updateNftables(items []*localnetv1.ServiceEndpoints) {
 			}
 
 		} else {
-			log.Printf("nft ok (%s)", elapsed)
+			klog.V(1).Infof("nft ok (%s)", elapsed)
 		}
 	}
 
 	if firstRun {
 		firstRun = false
 	}
+}
+
+func renderNftables(output io.WriteCloser) {
+	defer output.Close()
+
+	outputs := make([]io.Writer, 0, 2)
+	outputs = append(outputs, output)
+
+	if klog.V(2) {
+		outputs = append(outputs, os.Stdout)
+	}
+
+	out := bufio.NewWriter(io.MultiWriter(outputs...))
+
+	for _, table := range []struct {
+		familly, name string
+		chains        *chainBufferSet
+	}{
+		{"ip", "k8s_svc", chainBuffers4},
+		{"ip6", "k8s_svc6", chainBuffers6},
+	} {
+		chains := table.chains.List()
+		if firstRun {
+			fmt.Fprintf(out, "table %s %s\n", table.familly, table.name)
+			fmt.Fprintf(out, "delete table %s %s\n", table.familly, table.name)
+
+		} else {
+			if !table.chains.Changed() {
+				continue
+			}
+
+			// update only changed rules
+			changedChains := make([]string, 0, len(chains))
+
+			// flush changed chains
+			for _, chain := range chains {
+				c := table.chains.Get(chain)
+				if !c.Changed() {
+					continue
+				}
+
+				if !c.Created() {
+					fmt.Fprintf(out, "flush chain %s %s %s\n", table.familly, table.name, chain)
+				}
+
+				changedChains = append(changedChains, chain)
+			}
+
+			chains = changedChains
+		}
+
+		// create/update changed chains
+		if len(chains) != 0 {
+			fmt.Fprintf(out, "table %s %s {\n", table.familly, table.name)
+
+			for _, chain := range chains {
+				c := table.chains.Get(chain)
+
+				fmt.Fprintf(out, " chain %s {\n", chain)
+				io.Copy(out, c)
+				fmt.Fprintln(out, " }")
+			}
+
+			fmt.Fprintln(out, "}")
+		}
+
+		// delete removed chains
+		for _, chain := range table.chains.Deleted() {
+			fmt.Fprintf(out, "delete chain %s %s %s\n", table.familly, table.name, chain)
+		}
+	}
+
+	out.Flush()
 }
