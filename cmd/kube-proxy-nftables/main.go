@@ -384,7 +384,7 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 			fmt.Fprintln(out, "}")
 		}
 
-		// flush removed chains (already done by deleting the chain on fullResync)
+		// delete removed chains (already done by deleting the table on fullResync)
 		if !fullResync {
 			// delete
 			if canDeleteChains {
