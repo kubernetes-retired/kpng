@@ -40,10 +40,20 @@ func init() {
 }
 
 func main() {
-	client.Run(updateNftables)
+	client.RunWithIterator(updateNftables)
 }
 
-func updateNftables(items []*localnetv1.ServiceEndpoints) {
+func updateNftables(iter *client.Iterator) {
+	svcCount := 0
+	epCount := 0
+
+	{
+		start := time.Now()
+		defer func() {
+			klog.V(1).Infof("%d services and %d endpoints applied in %v", svcCount, epCount, time.Since(start))
+		}()
+	}
+
 	defer chainBuffers4.Reset()
 	defer chainBuffers6.Reset()
 
@@ -55,11 +65,13 @@ func updateNftables(items []*localnetv1.ServiceEndpoints) {
 	chain4Nets := map[string]*net.IPNet{}
 	chain6Nets := map[string]*net.IPNet{}
 
-	for _, endpoints := range items {
+	for endpoints := range iter.Ch {
 		// only handle cluster IPs
 		if endpoints.Type != "ClusterIP" {
 			continue
 		}
+
+		svcCount++
 
 		ips := &localnetv1.IPSet{}
 
@@ -102,6 +114,7 @@ func updateNftables(items []*localnetv1.ServiceEndpoints) {
 
 				endpointIPs = append(endpointIPs, epIPs[0])
 			}
+			epCount += len(endpointIPs)
 
 			for _, protocol := range []localnetv1.Protocol{
 				localnetv1.Protocol_TCP,
@@ -192,6 +205,11 @@ func updateNftables(items []*localnetv1.ServiceEndpoints) {
 		}
 	}
 
+	if iter.RecvErr != nil {
+		fullResync = true // recv error, fully resync on next call
+		return
+	}
+
 	// dispatch chains
 	addDispatchChains("ip", chainBuffers4, chain4Nets)
 	addDispatchChains("ip6", chainBuffers6, chain6Nets)
@@ -203,6 +221,7 @@ func updateNftables(items []*localnetv1.ServiceEndpoints) {
 	}
 
 	// render the rule set
+retry:
 	cmdIn, pipeOut := io.Pipe()
 
 	deferred := new(bytes.Buffer)
@@ -229,9 +248,9 @@ func updateNftables(items []*localnetv1.ServiceEndpoints) {
 
 			if !fullResync {
 				// failsafe: rebuild everything
-				klog.Infof("trying a full resync after nft failure")
+				klog.Infof("doing a full resync avec nft failure")
 				fullResync = true
-				updateNftables(items)
+				goto retry
 			}
 			return
 		}

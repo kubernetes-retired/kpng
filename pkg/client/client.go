@@ -65,8 +65,37 @@ func (epc *EndpointsClient) DefaultFlags(flags FlagSet) {
 // Next returns the next set of ServiceEndpoints, waiting for a new revision as needed.
 // It's designed to never fail and will always return latest items, unless canceled.
 func (epc *EndpointsClient) Next() (items []*localnetv1.ServiceEndpoints, canceled bool) {
+	// prepare items assuming a 10% increase of the number of items
+	expectedCap := epc.prevLen * 110 / 100
+	if expectedCap == 0 {
+		expectedCap = 10
+	}
+
+	items = make([]*localnetv1.ServiceEndpoints, 0, expectedCap)
+
+	iter := epc.NextIterator()
+
+	for seps := range iter.Ch {
+		items = append(items, seps)
+	}
+
+	canceled = iter.Canceled
+	return
+}
+
+// NextIterator returns the next set of ServiceEndpoints as an iterator, waiting for a new revision as needed.
+// It's designed to never fail and will always return an valid iterator (than may be canceled or end on error)
+func (epc *EndpointsClient) NextIterator() (iter *Iterator) {
+	results := make(chan *localnetv1.ServiceEndpoints, 100)
+
+	iter = &Iterator{
+		Ch: results,
+	}
+
 	if epc.conn == nil {
-		if canceled = epc.dial(); canceled {
+		if canceled := epc.dial(); canceled {
+			iter.Canceled = true
+			close(results)
 			return
 		}
 	}
@@ -80,20 +109,15 @@ func (epc *EndpointsClient) Next() (items []*localnetv1.ServiceEndpoints, cancel
 
 	ctx := epc.ctx
 
-	// prepare items assuming a 10% increase of the number of items
-	expectedCap := epc.prevLen * 110 / 100
-	if expectedCap == 0 {
-		expectedCap = 10
-	}
+	count := 0
 
-	items = make([]*localnetv1.ServiceEndpoints, 0, expectedCap)
-
-mainLoop:
 	for {
 		next, err := epc.client.Next(ctx, epc.nextFilter)
 		if err != nil {
 			if epc.ctx.Err() == context.Canceled {
-				return nil, true
+				iter.Canceled = true
+				close(results)
+				return
 			}
 
 			klog.Error("next failed: ", err)
@@ -107,24 +131,27 @@ mainLoop:
 			continue
 		}
 
-		epc.nextFilter = nextItem.Next
+		nextFilter := nextItem.Next
 
-		items = items[:0]
-		for {
-			nextItem, err := next.Recv()
+		go func() {
+			defer close(results)
+			for {
+				nextItem, err := next.Recv()
 
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				klog.Error("recv failed: ", err)
-				epc.postError()
-				continue mainLoop
+				if err == io.EOF {
+					break
+				} else if err != nil {
+					iter.RecvErr = err
+					return
+				}
+
+				results <- nextItem.Endpoints
+				count++
 			}
+		}()
 
-			items = append(items, nextItem.Endpoints)
-		}
-
-		epc.prevLen = len(items)
+		epc.nextFilter = nextFilter
+		epc.prevLen = count
 		return
 	}
 }
