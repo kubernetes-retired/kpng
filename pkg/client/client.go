@@ -16,9 +16,10 @@ import (
 
 // FlagSet matches flag.FlagSet and pflag.FlagSet
 type FlagSet interface {
+	DurationVar(varPtr *time.Duration, name string, value time.Duration, doc string)
+	IntVar(varPtr *int, name string, value int, doc string)
 	StringVar(varPtr *string, name, value, doc string)
 	Uint64Var(varPtr *uint64, name string, value uint64, doc string)
-	DurationVar(varPtr *time.Duration, name string, value time.Duration, doc string)
 }
 
 // New returns a new EndpointsClient with values bound to the given flag-set for command-line tools.
@@ -42,6 +43,9 @@ type EndpointsClient struct {
 	// ErrorDelay is the delay before retrying after an error.
 	ErrorDelay time.Duration
 
+	// GRPCBuffer is the max size of a gRPC message
+	MaxMsgSize int
+
 	conn       *grpc.ClientConn
 	client     localnetv1.EndpointsClient
 	nextFilter *localnetv1.NextFilter
@@ -60,6 +64,8 @@ func (epc *EndpointsClient) DefaultFlags(flags FlagSet) {
 	flags.Uint64Var(&epc.Rev, "rev", 0, "Rev (to resume a watch)")
 
 	flags.DurationVar(&epc.ErrorDelay, "error-delay", 1*time.Second, "duration to wait before retrying after errors")
+
+	flags.IntVar(&epc.MaxMsgSize, "max-msg-size", 4<<20, "max gRPC message size")
 }
 
 // Next returns the next set of ServiceEndpoints, waiting for a new revision as needed.
@@ -73,10 +79,17 @@ func (epc *EndpointsClient) Next() (items []*localnetv1.ServiceEndpoints, cancel
 
 	items = make([]*localnetv1.ServiceEndpoints, 0, expectedCap)
 
+retry:
 	iter := epc.NextIterator()
 
 	for seps := range iter.Ch {
 		items = append(items, seps)
+	}
+
+	if iter.RecvErr != nil {
+		klog.Warning("recv error: ", iter.RecvErr)
+		items = items[:0]
+		goto retry
 	}
 
 	canceled = iter.Canceled
@@ -186,7 +199,7 @@ retry:
 
 	klog.Info("connecting to ", epc.Target)
 
-	conn, err := grpc.DialContext(epc.ctx, epc.Target, grpc.WithInsecure())
+	conn, err := grpc.DialContext(epc.ctx, epc.Target, grpc.WithInsecure(), grpc.WithMaxMsgSize(epc.MaxMsgSize))
 
 	if err != nil {
 		klog.Info("failed to connect: ", err)
