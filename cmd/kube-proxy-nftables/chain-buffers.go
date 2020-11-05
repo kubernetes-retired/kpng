@@ -22,6 +22,8 @@ type chainBuffer struct {
 	previousHash uint64
 	currentHash  *xxhash.XXHash64
 	buffer       *bytes.Buffer
+	lenMA        int
+	deferred     []func(*chainBuffer)
 }
 
 var (
@@ -56,6 +58,16 @@ func (c *chainBuffer) Changed() bool {
 	return c.currentHash.Sum64() != c.previousHash
 }
 
+func (c *chainBuffer) Defer(deferred func(*chainBuffer)) {
+	c.deferred = append(c.deferred, deferred)
+}
+
+func (c *chainBuffer) RunDeferred() {
+	for _, deferred := range c.deferred {
+		deferred(c)
+	}
+}
+
 func (c *chainBuffer) Created() bool {
 	return c.previousHash == 0 && c.currentHash != nil
 }
@@ -63,7 +75,23 @@ func (c *chainBuffer) Created() bool {
 func (set *chainBufferSet) Reset() {
 	set.data.Ascend(func(i btree.Item) bool {
 		cb := i.(*chainBuffer)
-		cb.buffer.Reset()
+
+		cb.deferred = cb.deferred[:0]
+
+		// compute buffer len moving average
+		if cb.lenMA == 0 {
+			cb.lenMA = cb.buffer.Len()
+		} else {
+			cb.lenMA = (4*cb.lenMA + cb.buffer.Len()) / 5
+		}
+		// expect len+20%
+		expCap := cb.lenMA * 120 / 100
+
+		if cb.buffer.Cap() <= expCap {
+			cb.buffer.Reset()
+		} else {
+			cb.buffer = bytes.NewBuffer(make([]byte, 0, expCap))
+		}
 
 		if cb.currentHash == nil {
 			// no writes -> empty
@@ -81,8 +109,9 @@ func (set *chainBufferSet) Get(chainName string) *chainBuffer {
 
 	if i == nil {
 		i = &chainBuffer{
-			name:   chainName,
-			buffer: new(bytes.Buffer),
+			name:     chainName,
+			buffer:   new(bytes.Buffer),
+			deferred: make([]func(*chainBuffer), 0, 1),
 		}
 		set.data.ReplaceOrInsert(i)
 	}
@@ -130,4 +159,11 @@ func (set *chainBufferSet) Changed() (changed bool) {
 	})
 
 	return
+}
+
+func (set *chainBufferSet) RunDeferred() {
+	set.data.Ascend(func(i btree.Item) bool {
+		i.(*chainBuffer).RunDeferred()
+		return true
+	})
 }

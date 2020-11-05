@@ -12,8 +12,6 @@ import (
 type dnatRule struct {
 	Namespace   string
 	Name        string
-	Familly     string
-	ServiceIPs  []string
 	Protocol    localnetv1.Protocol
 	Ports       []*localnetv1.PortMapping
 	EndpointIPs []string
@@ -67,17 +65,10 @@ func (d dnatRule) WriteTo(rule io.Writer) (n int64, err error) {
 		return
 	}
 
-	printf("  %s daddr ", d.Familly)
-	if len(d.ServiceIPs) == 1 {
-		printf("%s", d.ServiceIPs[0])
-	} else {
-		printf("{%s}", strings.Join(d.ServiceIPs, ", "))
-	}
-
 	if len(srcPorts) == 1 {
-		printf(" %s %s", protoMatch, srcPorts[0])
+		printf("  %s %s", protoMatch, srcPorts[0])
 	} else {
-		printf(" %s {%s}", protoMatch, strings.Join(srcPorts, ", "))
+		printf("  %s {%s}", protoMatch, strings.Join(srcPorts, ", "))
 	}
 
 	dstIPs := make([]string, 0, len(d.EndpointIPs))
