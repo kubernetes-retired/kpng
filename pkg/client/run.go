@@ -11,31 +11,36 @@ import (
 
 type HandlerFunc func(items []*localnetv1.ServiceEndpoints)
 
-func Default() (*EndpointsClient, bool) {
-	once := flag.Bool("once", false, "only one fetch loop")
+func Default() (epc *EndpointsClient, once bool, stop func()) {
+	onceFlag := flag.Bool("once", false, "only one fetch loop")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
 
-	epc := New(flag.CommandLine)
+	epc = New(flag.CommandLine)
 
 	flag.Parse()
 
-	if *cpuprofile != "" {
+	once = *onceFlag
+
+	if *cpuprofile == "" {
+		stop = func() {}
+	} else {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
 			klog.Fatal(err)
 		}
 		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
+		stop = pprof.StopCPUProfile
 	}
 
 	epc.CancelOnSignals()
 
-	return epc, *once
+	return
 }
 
 // Run the client with the standard options
 func Run(handlers ...HandlerFunc) {
-	epc, once := Default()
+	epc, once, stop := Default()
+	defer stop()
 
 	for {
 		items, canceled := epc.Next()
@@ -60,7 +65,8 @@ func Run(handlers ...HandlerFunc) {
 // It should consume less memory as the dataset is processed as it's read instead of buffered.
 // The handler MUST check iter.Err to ensure the dataset was fuly retrieved without error.
 func RunWithIterator(handler func(*Iterator)) {
-	epc, once := Default()
+	epc, once, stop := Default()
+	defer stop()
 
 	for {
 		iter := epc.NextIterator()

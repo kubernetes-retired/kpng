@@ -1,9 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"io"
-	"strings"
+	"bytes"
+	"strconv"
 
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 	"k8s.io/klog"
@@ -17,7 +16,18 @@ type dnatRule struct {
 	EndpointIPs []string
 }
 
-func (d dnatRule) WriteTo(rule io.Writer) (n int64, err error) {
+// inlined write helpers
+func writeInt(w *bytes.Buffer, v int) (int, error) {
+	return w.WriteString(strconv.FormatInt(int64(v), 10))
+}
+func writeInt32(w *bytes.Buffer, v int32) (int, error) {
+	return w.WriteString(strconv.FormatInt(int64(v), 10))
+}
+func writeUint64(w *bytes.Buffer, v uint64) (int, error) {
+	return w.WriteString(strconv.FormatUint(v, 10))
+}
+
+func (d dnatRule) WriteTo(rule *bytes.Buffer, endpointsMap string, endpointsOffset uint64) {
 	var protoMatch string
 	switch d.Protocol {
 	case localnetv1.Protocol_TCP:
@@ -31,77 +41,55 @@ func (d dnatRule) WriteTo(rule io.Writer) (n int64, err error) {
 		return
 	}
 
-	printf := func(pattern string, values ...interface{}) {
-		if err != nil {
-			return
-		}
-
-		myN, myErr := fmt.Fprintf(rule, pattern, values...)
-		n += int64(myN)
-		if myErr != nil {
-			err = myErr
-		}
-	}
-
-	srcPorts := make([]string, 0)
-	portMaps := make([]string, 0)
-	var dstPort int32     // for the single port case
-	portsIdentity := true // if every source port is mapped to the same target
+	ports := make([]*localnetv1.PortMapping, 0, len(d.Ports))
 	for _, port := range d.Ports {
 		if port.Protocol != d.Protocol {
 			continue
 		}
 
-		if portsIdentity && port.Port != port.TargetPort {
-			portsIdentity = false
-		}
-
-		srcPorts = append(srcPorts, fmt.Sprintf("%d", port.Port))
-		dstPort = port.TargetPort
-		portMaps = append(portMaps, fmt.Sprintf("%d : %d", port.Port, port.TargetPort))
+		ports = append(ports, port)
 	}
 
-	if len(srcPorts) == 0 {
+	if len(ports) == 0 {
 		return
 	}
 
-	if len(srcPorts) == 1 {
-		printf("  %s %s", protoMatch, srcPorts[0])
-	} else {
-		printf("  %s {%s}", protoMatch, strings.Join(srcPorts, ", "))
-	}
+	// printf is nice but take 50% on CPU time so... optimize!
+	for _, port := range ports {
+		rule.WriteString("  ")
+		rule.WriteString(protoMatch)
 
-	dstIPs := make([]string, 0, len(d.EndpointIPs))
-	dstMap := make([]string, 0, len(d.EndpointIPs))
+		rule.WriteByte(' ')
+		writeInt32(rule, port.Port)
 
-	for idx, epIP := range d.EndpointIPs {
-		dstIPs = append(dstIPs, epIP)
-		dstMap = append(dstMap, fmt.Sprintf("%d : %s", idx, epIP))
-	}
+		// handle reject case
+		if len(d.EndpointIPs) == 0 {
+			rule.WriteString(" counter reject\n")
+			continue
+		}
 
-	//fmt.Fprintf(out, "comment \"dnat for %s/%s port %d\" ", endpoints.Namespace, endpoints.Name, port.Port)
+		// dnat case
+		//fmt.Fprintf(out, "comment \"dnat for %s/%s port %d\" ", endpoints.Namespace, endpoints.Name, port.Port)
+		if len(d.EndpointIPs) == 1 {
+			// single destination
+			rule.WriteString(" counter dnat to ")
+			rule.Write([]byte(d.EndpointIPs[0]))
 
-	fmt.Fprint(rule, " ")
-	if len(dstIPs) == 0 {
-		printf("reject")
-	} else {
-		if len(dstIPs) == 1 {
-			printf("dnat to %s", dstIPs[0])
 		} else {
-			printf("dnat to numgen random mod %d map {%s}", len(dstMap), strings.Join(dstMap, ", "))
+			rule.WriteString(" counter dnat to numgen random mod ")
+			writeInt(rule, len(d.EndpointIPs))
+			rule.WriteString(" offset ")
+			writeUint64(rule, endpointsOffset)
+			rule.WriteString(" map @")
+			rule.WriteString(endpointsMap)
 		}
 
-		if !portsIdentity {
-			if len(portMaps) == 1 {
-				printf(":%d", dstPort)
-			} else {
-				printf(":%s map { %s }", protoMatch, strings.Join(portMaps, ", "))
-			}
+		if port.Port != port.TargetPort {
+			rule.WriteByte(':')
+			writeInt32(rule, port.TargetPort)
 		}
-	}
 
-	if !*skipComments {
-		printf(" comment \"%s/%s %v\"", d.Namespace, d.Name, d.Protocol)
+		rule.WriteByte('\n')
 	}
 
 	return

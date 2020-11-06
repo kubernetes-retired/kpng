@@ -18,6 +18,7 @@ type chainBufferSet struct {
 }
 
 type chainBuffer struct {
+	kind         string
 	name         string
 	previousHash uint64
 	currentHash  *xxhash.XXHash64
@@ -104,19 +105,30 @@ func (set *chainBufferSet) Reset() {
 	})
 }
 
-func (set *chainBufferSet) Get(chainName string) *chainBuffer {
-	i := set.data.Get(&chainBuffer{name: chainName})
+func (set *chainBufferSet) Get(kind, name string) *chainBuffer {
+	i := set.data.Get(&chainBuffer{name: name})
 
 	if i == nil {
+		if kind == "" {
+			panic("can't create without kind")
+		}
+
 		i = &chainBuffer{
-			name:     chainName,
+			kind:     kind,
+			name:     name,
 			buffer:   new(bytes.Buffer),
 			deferred: make([]func(*chainBuffer), 0, 1),
 		}
 		set.data.ReplaceOrInsert(i)
 	}
 
-	return i.(*chainBuffer)
+	cb := i.(*chainBuffer)
+
+	if kind != "" && kind != cb.kind {
+		panic("wrong kind for " + name + ": " + kind + " (got " + cb.kind + ")")
+	}
+
+	return cb
 }
 
 func (set *chainBufferSet) List() (chains []string) {
@@ -133,13 +145,13 @@ func (set *chainBufferSet) List() (chains []string) {
 	return
 }
 
-func (set *chainBufferSet) Deleted() (chains []string) {
-	chains = make([]string, 0, set.data.Len())
+func (set *chainBufferSet) Deleted() (chains []*chainBuffer) {
+	chains = make([]*chainBuffer, 0)
 
 	set.data.Ascend(func(i btree.Item) bool {
 		cb := i.(*chainBuffer)
 		if cb.previousHash != 0 && cb.currentHash == nil {
-			chains = append(chains, cb.name)
+			chains = append(chains, cb)
 		}
 		return true
 	})
