@@ -2,6 +2,8 @@ package client
 
 import (
 	"flag"
+	"os"
+	"runtime/pprof"
 
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 	"k8s.io/klog"
@@ -9,15 +11,31 @@ import (
 
 type HandlerFunc func(items []*localnetv1.ServiceEndpoints)
 
-// Run the client with the standard options
-func Run(handlers ...HandlerFunc) {
+func Default() (*EndpointsClient, bool) {
 	once := flag.Bool("once", false, "only one fetch loop")
+	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
 
 	epc := New(flag.CommandLine)
 
 	flag.Parse()
 
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			klog.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+
 	epc.CancelOnSignals()
+
+	return epc, *once
+}
+
+// Run the client with the standard options
+func Run(handlers ...HandlerFunc) {
+	epc, once := Default()
 
 	for {
 		items, canceled := epc.Next()
@@ -31,7 +49,7 @@ func Run(handlers ...HandlerFunc) {
 			handler(items)
 		}
 
-		if *once {
+		if once {
 			klog.Infof("to resume this watch, use --instance-id %d --rev %d", epc.InstanceID, epc.Rev)
 			return
 		}
@@ -42,13 +60,7 @@ func Run(handlers ...HandlerFunc) {
 // It should consume less memory as the dataset is processed as it's read instead of buffered.
 // The handler MUST check iter.Err to ensure the dataset was fuly retrieved without error.
 func RunWithIterator(handler func(*Iterator)) {
-	once := flag.Bool("once", false, "only one fetch loop")
-
-	epc := New(flag.CommandLine)
-
-	flag.Parse()
-
-	epc.CancelOnSignals()
+	epc, once := Default()
 
 	for {
 		iter := epc.NextIterator()
@@ -64,7 +76,7 @@ func RunWithIterator(handler func(*Iterator)) {
 			klog.Error("recv error: ", iter.RecvErr)
 		}
 
-		if *once {
+		if once {
 			klog.Infof("to resume this watch, use --instance-id %d --rev %d", epc.InstanceID, epc.Rev)
 			return
 		}
