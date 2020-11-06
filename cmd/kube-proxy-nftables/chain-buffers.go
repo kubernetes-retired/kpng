@@ -48,6 +48,18 @@ func (c *chainBuffer) Write(b []byte) (int, error) {
 	return c.buffer.Write(b)
 }
 
+func (c *chainBuffer) WriteString(s string) (n int, err error) {
+	start := c.buffer.Len()
+	n, err = c.buffer.WriteString(s)
+
+	if c.currentHash == nil {
+		c.currentHash = xxhash.New64()
+	}
+	c.currentHash.Write(c.buffer.Bytes()[start:])
+
+	return n, err
+}
+
 func (c *chainBuffer) Len() int {
 	return c.buffer.Len()
 }

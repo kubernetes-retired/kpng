@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,8 +27,11 @@ var (
 	skipComments = flag.Bool("skip-comments", false, "don't comment rules")
 	splitBits    = flag.Int("split-bits", 24, "dispatch services in multiple chains, spliting at the nth bit")
 	splitBits6   = flag.Int("split-bits6", 120, "dispatch services in multiple chains, spliting at the nth bit (for IPv6)")
+	mapsCount    = flag.Uint64("maps-count", 0xff, "number of endpoints maps to use")
 
 	fullResync = true
+
+	hasNFTHashBug = false
 )
 
 // FIXME atomic delete with references are currently buggy, so defer it
@@ -41,6 +45,41 @@ func init() {
 }
 
 func main() {
+	// check the nft bug
+	{
+		nft := exec.Command("nft", "-f", "-")
+		nft.Stdin = bytes.NewBuffer([]byte(`
+table ip k8s_test_hash_bug
+delete table ip k8s_test_hash_bug
+table ip k8s_test_hash_bug {
+  map m1 {
+    typeof numgen random mod 2 : ip daddr
+    elements = { 1 : 10.0.0.1, 2 : 10.0.0.2 }
+  }
+}
+`))
+		if err := nft.Run(); err != nil {
+			klog.Warning("failed to test nft bugs: ", err)
+		}
+
+		nft = exec.Command("nft", "-f", "-")
+		nft.Stdin = bytes.NewBuffer([]byte(`
+list map ip k8s_test_hash_bug m1
+delete table ip k8s_test_hash_bug
+`))
+		output, err := nft.Output()
+		if err != nil {
+			klog.Warning("failed to test nft bugs: ", err)
+		}
+
+		hasNFTHashBug = bytes.Contains(output, []byte("16777216")) || bytes.Contains(output, []byte("0x01000000"))
+
+		if hasNFTHashBug {
+			klog.Info("nft hash bug found, map indices will be affected by the workaround")
+		}
+	}
+
+	// run the client
 	client.RunWithIterator(updateNftables)
 }
 
@@ -66,8 +105,7 @@ func updateNftables(iter *client.Iterator) {
 	chain4Nets := map[string]bool{}
 	chain6Nets := map[string]bool{}
 
-	const mapsCount = 0xff
-	mapOffsets := [mapsCount]uint64{}
+	mapOffsets := make([]uint64, *mapsCount)
 
 	for endpoints := range iter.Ch {
 		// only handle cluster IPs
@@ -75,7 +113,7 @@ func updateNftables(iter *client.Iterator) {
 			continue
 		}
 
-		mapH := xxhash.Sum64String(endpoints.Namespace+"/"+endpoints.Name) % mapsCount
+		mapH := xxhash.Sum64String(endpoints.Namespace+"/"+endpoints.Name) % (*mapsCount)
 		svcOffset := mapOffsets[mapH]
 		mapOffsets[mapH] += uint64(len(endpoints.Endpoints))
 
@@ -130,12 +168,12 @@ func updateNftables(iter *client.Iterator) {
 			epCount += len(endpointIPs)
 
 			// add endpoints to the map
-			{
+			if len(endpointIPs) != 0 {
 				epMap := chainBuffers.Get("map", endpointsMap)
 				if epMap.Len() == 0 {
-					fmt.Fprintln(epMap, "  typeof numgen random mod 1 : ip daddr")
-					fmt.Fprint(epMap, "  elements = {")
-					epMap.Defer(func(m *chainBuffer) { fmt.Fprintln(m, "}") })
+					epMap.WriteString("  typeof numgen random mod 1 : ip daddr\n")
+					epMap.WriteString("  elements = {")
+					epMap.Defer(func(m *chainBuffer) { m.Write([]byte{'}'}) })
 				} else {
 					fmt.Fprint(epMap, ", ")
 				}
@@ -150,14 +188,19 @@ func updateNftables(iter *client.Iterator) {
 						epMap.Write([]byte{',', ' '})
 					}
 					key := svcOffset + uint64(idx)
-					// FIXME woaaa nft is bugged as hell :o 0x01 is converted to 0x01000000... fixing it here but wtf...
-					key = 0 |
-						(key>>0&0xff)<<24 |
-						(key>>8&0xff)<<(24-8) |
-						(key>>16&0xff)<<(24-16) |
-						0
 
-					fmt.Fprintf(epMap, "%d : %s", key, ip)
+					if hasNFTHashBug {
+						// FIXME woaaa nft is bugged as hell :o 0x01 is converted to 0x01000000... fixing it here but wtf...
+						key = 0 |
+							(key>>0&0xff)<<24 |
+							(key>>8&0xff)<<(24-8) |
+							(key>>16&0xff)<<(24-16) |
+							0
+					}
+
+					epMap.WriteString(strconv.FormatUint(key, 10))
+					epMap.WriteString(" : ")
+					epMap.WriteString(ip)
 				}
 			}
 
