@@ -22,7 +22,7 @@ var (
 )
 
 func main() {
-	client.Run(handleEndpoints)
+	client.Run(nil, handleEndpoints)
 }
 
 func handleEndpoints(items []*localnetv1.ServiceEndpoints) {

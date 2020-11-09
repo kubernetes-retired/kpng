@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	client.Run(printState)
+	client.Run(nil, printState)
 }
 
 func printState(items []*localnetv1.ServiceEndpoints) {

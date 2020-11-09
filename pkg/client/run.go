@@ -38,12 +38,12 @@ func Default() (epc *EndpointsClient, once bool, stop func()) {
 }
 
 // Run the client with the standard options
-func Run(handlers ...HandlerFunc) {
+func Run(filter *localnetv1.EndpointConditions, handlers ...HandlerFunc) {
 	epc, once, stop := Default()
 	defer stop()
 
 	for {
-		items, canceled := epc.Next()
+		items, canceled := epc.Next(filter)
 
 		if canceled {
 			klog.Infof("finished")
@@ -64,12 +64,12 @@ func Run(handlers ...HandlerFunc) {
 // RunWithIterator runs the client with the standard options, using the iterated version of Next.
 // It should consume less memory as the dataset is processed as it's read instead of buffered.
 // The handler MUST check iter.Err to ensure the dataset was fuly retrieved without error.
-func RunWithIterator(handler func(*Iterator)) {
+func RunWithIterator(filter *localnetv1.EndpointConditions, handler func(*Iterator)) {
 	epc, once, stop := Default()
 	defer stop()
 
 	for {
-		iter := epc.NextIterator()
+		iter := epc.NextIterator(filter)
 
 		if iter.Canceled {
 			klog.Infof("finished")

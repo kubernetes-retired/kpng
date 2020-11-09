@@ -80,7 +80,10 @@ delete table ip k8s_test_hash_bug
 	}
 
 	// run the client
-	client.RunWithIterator(updateNftables)
+	client.RunWithIterator(&localnetv1.EndpointConditions{
+		Ready:    true,
+		Selected: true,
+	}, updateNftables)
 }
 
 func updateNftables(iter *client.Iterator) {
@@ -377,42 +380,6 @@ func updateNftables(iter *client.Iterator) {
 }
 
 func addDispatchChains(family string, chainBuffers *chainBufferSet) {
-	/* XXX probably useless now
-		chains := chainBuffers.List()
-		for _, prefix := range []string{"dnat_", "filter_"} {
-			chain := chainBuffers.Get("chain", "z_"+prefix+"all")
-
-			others := make([]string, 0)
-			targets := make([]string, 0)
-			for _, target := range chains {
-				if target.kind != "chain" {
-					continue
-				}
-				if !strings.HasPrefix(target.name, prefix) {
-					continue
-				}
-
-				switch {
-				case strings.HasPrefix(target, prefix+"net_"):
-					// net chain, nothing to do
-				case strings.HasPrefix(target, prefix+"svc_"):
-					// svc chain, nothing to do
-				default:
-					// unknown chains in the prefix go to the global dispatch
-					others = append(others, target)
-				}
-			}
-
-			if len(targets) != 0 {
-				fmt.Fprintf(chain, "  %s daddr vmap { \\\n    %s}\n", family, strings.Join(targets, ", \\\n    "))
-			}
-
-			for _, other := range others {
-				fmt.Fprintf(chain, "  goto %s\n", other)
-			}
-		}
-	    //*/
-
 	if chainBuffers.Get("chain", "z_dnat_all").Len() != 0 {
 		fmt.Fprintf(chainBuffers.Get("chain", "hook_nat_prerouting"),
 			"  type nat hook prerouting priority %d;\n  jump z_dnat_all\n", *hookPrio)

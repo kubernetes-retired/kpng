@@ -22,6 +22,8 @@ func (s *Server) Next(filter *localnetv1.NextFilter, res localnetv1.Endpoints_Ne
 		Next: &localnetv1.NextFilter{
 			InstanceID: s.InstanceID,
 			Rev:        rev + 1,
+
+			RequiredEndpointConditions: filter.RequiredEndpointConditions,
 		},
 	})
 
@@ -30,6 +32,18 @@ func (s *Server) Next(filter *localnetv1.NextFilter, res localnetv1.Endpoints_Ne
 	}
 
 	for _, seps := range list {
+		if conds := filter.RequiredEndpointConditions; conds != nil {
+			eps := make([]*localnetv1.Endpoint, 0, len(seps.Endpoints))
+			for _, ep := range seps.Endpoints {
+				if !conds.Accept(ep.Conditions) {
+					continue
+				}
+				eps = append(eps, ep)
+			}
+
+			seps.Endpoints = eps
+		}
+
 		err = res.Send(&localnetv1.NextItem{
 			Endpoints: seps,
 		})

@@ -88,7 +88,9 @@ func (_ endpoints) Next(filter *localnetv1.NextFilter, res localnetv1.Endpoints_
 		}
 
 		for e := 0; e < nEpPerSvc; e++ {
-			ep := &localnetv1.Endpoint{}
+			ep := &localnetv1.Endpoint{
+				Conditions: filter.RequiredEndpointConditions,
+			}
 			ep.AddAddress(epIP.Next().String())
 			seps.Endpoints[e] = ep
 		}

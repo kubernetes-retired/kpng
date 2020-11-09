@@ -70,7 +70,7 @@ func (epc *EndpointsClient) DefaultFlags(flags FlagSet) {
 
 // Next returns the next set of ServiceEndpoints, waiting for a new revision as needed.
 // It's designed to never fail and will always return latest items, unless canceled.
-func (epc *EndpointsClient) Next() (items []*localnetv1.ServiceEndpoints, canceled bool) {
+func (epc *EndpointsClient) Next(filter *localnetv1.EndpointConditions) (items []*localnetv1.ServiceEndpoints, canceled bool) {
 	// prepare items assuming a 10% increase of the number of items
 	expectedCap := epc.prevLen * 110 / 100
 	if expectedCap == 0 {
@@ -80,7 +80,7 @@ func (epc *EndpointsClient) Next() (items []*localnetv1.ServiceEndpoints, cancel
 	items = make([]*localnetv1.ServiceEndpoints, 0, expectedCap)
 
 retry:
-	iter := epc.NextIterator()
+	iter := epc.NextIterator(filter)
 
 	for seps := range iter.Ch {
 		items = append(items, seps)
@@ -98,7 +98,7 @@ retry:
 
 // NextIterator returns the next set of ServiceEndpoints as an iterator, waiting for a new revision as needed.
 // It's designed to never fail and will always return an valid iterator (than may be canceled or end on error)
-func (epc *EndpointsClient) NextIterator() (iter *Iterator) {
+func (epc *EndpointsClient) NextIterator(filter *localnetv1.EndpointConditions) (iter *Iterator) {
 	results := make(chan *localnetv1.ServiceEndpoints, 100)
 
 	iter = &Iterator{
@@ -117,6 +117,8 @@ func (epc *EndpointsClient) NextIterator() (iter *Iterator) {
 		epc.nextFilter = &localnetv1.NextFilter{
 			InstanceID: epc.InstanceID,
 			Rev:        epc.Rev,
+
+			RequiredEndpointConditions: filter,
 		}
 	}
 

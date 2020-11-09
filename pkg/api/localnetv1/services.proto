@@ -14,6 +14,9 @@ message NextFilter {
     uint64 InstanceID = 1;
     // The latest revision we're aware of (0 at first)
     uint64 Rev = 2;
+
+    // Filter endpoints by requiring conditions
+    EndpointConditions RequiredEndpointConditions = 3;
 }
 
 message NextItem {
