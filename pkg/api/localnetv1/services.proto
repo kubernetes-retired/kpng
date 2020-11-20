@@ -6,27 +6,49 @@ option go_package = "github.com/mcluseau/kube-proxy2/pkg/api/localnetv1";
 
 service Endpoints {
     // Returns all the endpoints for this node.
-    rpc Next (NextFilter) returns (stream NextItem);
+    rpc Watch (stream WatchReq) returns (stream OpItem);
 }
 
-message NextFilter {
-    // Unique instance ID to manage proxy restarts
-    uint64 InstanceID = 1;
-    // The latest revision we're aware of (0 at first)
-    uint64 Rev = 2;
+message WatchReq {
+    // NodeName of the requester
+    string NodeName = 1;
 
     // Filter endpoints by requiring conditions
     EndpointConditions RequiredEndpointConditions = 3;
 }
 
-message NextItem {
-    // Filter to use to get the next notification (first item in stream)
-    NextFilter Next = 1;
-    // A service endpoints item (any item after the first)
-    ServiceEndpoints Endpoints = 2;
+message OpItem {
+    oneof Op {
+        // Sync signals that the change set is complete (especially useful to know when the initial state is complete)
+        Sync Sync = 1;
+
+        // Add/update a value in a set
+        Value Set = 2;
+        // Delete a value in a set
+        Ref   Delete = 3;
+    }
 }
 
-message ServiceEndpoints {
+message Sync {
+}
+
+enum Set {
+    UnknownSet = 0;
+    ServicesSet = 1;
+    EndpointsSet = 2;
+}
+
+message Ref {
+    Set    Set = 1;
+    string Path = 2;
+}
+
+message Value {
+    Ref   Ref = 1;
+    bytes Bytes = 2;
+}
+
+message Service {
     string Namespace = 1;
     string Name = 2;
     string Type = 3;
@@ -34,15 +56,12 @@ message ServiceEndpoints {
     ServiceIPs IPs = 4;
 
     // true if the service maps the whole IP, not just individual ports.
-    bool MapAll = 5;
+    bool MapIP = 5;
 
     // Individual ports mapped for the this service
     repeated PortMapping Ports = 6;
 
-    // All possible endpoints for this service
-    repeated Endpoint Endpoints = 7;
-
-    bool ExternalTrafficToLocal = 8;
+    bool ExternalTrafficToLocal = 7;
 }
 
 message ServiceIPs {
@@ -86,4 +105,12 @@ message PortMapping {
     int32    Port       = 3;
     int32    NodePort   = 4;
     int32    TargetPort = 5;
+}
+
+// Useful for client implementation to provide pre-matched entries.
+message ServiceEndpoints {
+    Service Service = 1;
+
+    // All possible endpoints for this service
+    repeated Endpoint Endpoints = 2;
 }

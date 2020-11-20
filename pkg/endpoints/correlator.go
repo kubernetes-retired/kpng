@@ -70,6 +70,25 @@ func (c *Correlator) WaitRev(lastKnownRev uint64) {
 	c.cond.L.Unlock()
 }
 
+func (c *Correlator) NextKVs(lastKnownRev uint64) (results []KV, rev uint64) {
+	c.WaitRev(lastKnownRev)
+
+	c.rwL.RLock()
+	defer c.rwL.RUnlock()
+
+	rev = c.rev
+
+	results = make([]KV, 0, c.endpoints.Len())
+
+	c.endpoints.Ascend(func(i btree.Item) bool {
+		kv := i.(KV)
+		results = append(results, kv)
+		return true
+	})
+
+	return
+}
+
 func (c *Correlator) Next(lastKnownRev uint64) (results []*localnetv1.ServiceEndpoints, rev uint64) {
 	c.WaitRev(lastKnownRev)
 
@@ -81,7 +100,7 @@ func (c *Correlator) Next(lastKnownRev uint64) (results []*localnetv1.ServiceEnd
 	results = make([]*localnetv1.ServiceEndpoints, 0, c.endpoints.Len())
 
 	c.endpoints.Ascend(func(i btree.Item) bool {
-		kv := i.(endpointsKV)
+		kv := i.(KV)
 		results = append(results, kv.Endpoints)
 		return true
 	})
@@ -190,7 +209,7 @@ func (c *Correlator) updateEndpoints(source correlationSource) bool {
 	namespace := source.Service.Namespace
 	name := source.Service.Name
 
-	epKV := endpointsKV{
+	epKV := KV{
 		Namespace: namespace,
 		Name:      name,
 		Endpoints: computeServiceEndpoints(source, c.nodesInfo, *myNodeName),
@@ -223,7 +242,7 @@ func (c *Correlator) updateEndpoints(source correlationSource) bool {
 
 	h := xxhash.Sum64(encoded)
 
-	if item != nil && item.(endpointsKV).EndpointsHash == h {
+	if item != nil && item.(KV).EndpointsHash == h {
 		return false
 	}
 

@@ -11,9 +11,10 @@ import (
 
 type HandlerFunc func(items []*localnetv1.ServiceEndpoints)
 
-func Default() (epc *EndpointsClient, once bool, stop func()) {
+func Default() (epc *EndpointsClient, once bool, nodeName string, stop func()) {
 	onceFlag := flag.Bool("once", false, "only one fetch loop")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
+	flag.StringVar(&nodeName, "node-name", "", "node name to request to the proxy server")
 
 	epc = New(flag.CommandLine)
 
@@ -34,16 +35,31 @@ func Default() (epc *EndpointsClient, once bool, stop func()) {
 
 	epc.CancelOnSignals()
 
+	if nodeName == "" {
+		var err error
+		nodeName, err = os.Hostname()
+		if err != nil {
+			klog.Fatal("no node-name set and hostname request failed: ", err)
+		}
+	}
+
 	return
 }
 
 // Run the client with the standard options
-func Run(filter *localnetv1.EndpointConditions, handlers ...HandlerFunc) {
-	epc, once, stop := Default()
+func Run(req *localnetv1.WatchReq, handlers ...HandlerFunc) {
+	epc, once, nodeName, stop := Default()
 	defer stop()
 
+	if req == nil {
+		req = &localnetv1.WatchReq{}
+	}
+	if req.NodeName == "" {
+		req.NodeName = nodeName
+	}
+
 	for {
-		items, canceled := epc.Next(filter)
+		items, canceled := epc.Next(req)
 
 		if canceled {
 			klog.Infof("finished")
@@ -55,7 +71,6 @@ func Run(filter *localnetv1.EndpointConditions, handlers ...HandlerFunc) {
 		}
 
 		if once {
-			klog.Infof("to resume this watch, use --instance-id %d --rev %d", epc.InstanceID, epc.Rev)
 			return
 		}
 	}
@@ -64,12 +79,19 @@ func Run(filter *localnetv1.EndpointConditions, handlers ...HandlerFunc) {
 // RunWithIterator runs the client with the standard options, using the iterated version of Next.
 // It should consume less memory as the dataset is processed as it's read instead of buffered.
 // The handler MUST check iter.Err to ensure the dataset was fuly retrieved without error.
-func RunWithIterator(filter *localnetv1.EndpointConditions, handler func(*Iterator)) {
-	epc, once, stop := Default()
+func RunWithIterator(req *localnetv1.WatchReq, handler func(*Iterator)) {
+	epc, once, nodeName, stop := Default()
 	defer stop()
 
+	if req == nil {
+		req = &localnetv1.WatchReq{}
+	}
+	if req.NodeName == "" {
+		req.NodeName = nodeName
+	}
+
 	for {
-		iter := epc.NextIterator(filter)
+		iter := epc.NextIterator(req)
 
 		if iter.Canceled {
 			klog.Infof("finished")
@@ -83,7 +105,6 @@ func RunWithIterator(filter *localnetv1.EndpointConditions, handler func(*Iterat
 		}
 
 		if once {
-			klog.Infof("to resume this watch, use --instance-id %d --rev %d", epc.InstanceID, epc.Rev)
 			return
 		}
 	}

@@ -30,12 +30,12 @@ func handleEndpoints(items []*localnetv1.ServiceEndpoints) {
 	filteredItems := make([]*localnetv1.ServiceEndpoints, 0, len(items))
 
 	for _, item := range items {
-		if *extLBsOnly && item.Type != "LoadBalancer" {
+		if *extLBsOnly && item.Service.Type != "LoadBalancer" {
 			// only process LBs
 			continue
 		}
 
-		if len(item.IPs.ExternalIPs.V4) == 0 {
+		if len(item.Service.IPs.ExternalIPs.V4) == 0 {
 			// filter out services without external IPs
 			continue
 		}
@@ -54,10 +54,12 @@ func handleEndpoints(items []*localnetv1.ServiceEndpoints) {
 	fmt.Fprint(ipt, "*filter\n")
 	fmt.Fprint(ipt, ":", forwardChain, " -\n")
 	for _, sep := range filteredItems {
-		key := path.Join(sep.Namespace, sep.Name)
+		svc := sep.Service
+
+		key := path.Join(svc.Namespace, svc.Name)
 		for _, ep := range sep.Endpoints {
 			for _, ip := range ep.IPs.V4 {
-				for _, port := range sep.Ports {
+				for _, port := range svc.Ports {
 					proto := strings.ToLower(port.Protocol.String())
 
 					fmt.Fprintf(ipt, "-A %s -d %s -j ACCEPT -m %s -p %s --dport %d %s\n",
@@ -77,7 +79,9 @@ func handleEndpoints(items []*localnetv1.ServiceEndpoints) {
 
 	// DNAT rules
 	for _, sep := range filteredItems {
-		key := path.Join(sep.Namespace, sep.Name)
+		svc := sep.Service
+
+		key := path.Join(svc.Namespace, svc.Name)
 
 		// compute target IPs
 		targetIPs := make([]string, 0)
@@ -96,11 +100,11 @@ func handleEndpoints(items []*localnetv1.ServiceEndpoints) {
 			continue
 		}
 
-		for _, extIP := range sep.IPs.ExternalIPs.V4 {
+		for _, extIP := range svc.IPs.ExternalIPs.V4 {
 			for i, ip := range targetIPs {
 				rndProba := iptRandom(i, targetCount)
 
-				for _, port := range sep.Ports {
+				for _, port := range svc.Ports {
 					proto := strings.ToLower(port.Protocol.String())
 
 					fmt.Fprintf(ipt, "-A %s -d %s -m %s -p %s --dport %d -j DNAT --to-destination %s:%d %s %s\n",
@@ -121,10 +125,12 @@ func handleEndpoints(items []*localnetv1.ServiceEndpoints) {
 			continue
 		}
 
-		key := path.Join(sep.Namespace, sep.Name)
+		svc := sep.Service
+
+		key := path.Join(svc.Namespace, svc.Name)
 
 		// use the first external IP
-		extIP := sep.IPs.ExternalIPs.V4[0]
+		extIP := svc.IPs.ExternalIPs.V4[0]
 
 		for _, ep := range sep.Endpoints {
 			for _, ip := range ep.IPs.V4 {

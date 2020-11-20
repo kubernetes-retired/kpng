@@ -80,9 +80,11 @@ delete table ip k8s_test_hash_bug
 	}
 
 	// run the client
-	client.RunWithIterator(&localnetv1.EndpointConditions{
-		Ready:    true,
-		Selected: true,
+	client.RunWithIterator(&localnetv1.WatchReq{
+		RequiredEndpointConditions: &localnetv1.EndpointConditions{
+			Ready:    true,
+			Selected: true,
+		},
 	}, updateNftables)
 }
 
@@ -110,15 +112,18 @@ func updateNftables(iter *client.Iterator) {
 
 	mapOffsets := make([]uint64, *mapsCount)
 
-	for endpoints := range iter.Ch {
+	for serviceEndpoints := range iter.Ch {
+		svc := serviceEndpoints.Service
+		endpoints := serviceEndpoints.Endpoints
+
 		// only handle cluster IPs
-		if endpoints.Type != "ClusterIP" {
+		if svc.Type != "ClusterIP" {
 			continue
 		}
 
-		mapH := xxhash.Sum64String(endpoints.Namespace+"/"+endpoints.Name) % (*mapsCount)
+		mapH := xxhash.Sum64String(svc.Namespace+"/"+svc.Name) % (*mapsCount)
 		svcOffset := mapOffsets[mapH]
-		mapOffsets[mapH] += uint64(len(endpoints.Endpoints))
+		mapOffsets[mapH] += uint64(len(endpoints))
 
 		endpointsMap := fmt.Sprintf("endpoints_%04x", mapH)
 
@@ -127,12 +132,12 @@ func updateNftables(iter *client.Iterator) {
 		clusterIP := net.IPv4zero
 		ips := &localnetv1.IPSet{}
 
-		if ip := endpoints.IPs.ClusterIP; ip != "" && ip != "None" {
+		if ip := svc.IPs.ClusterIP; ip != "" && ip != "None" {
 			clusterIP = net.ParseIP(ip)
 			ips.Add(ip)
 		}
 
-		ips.AddSet(endpoints.IPs.ExternalIPs)
+		ips.AddSet(svc.IPs.ExternalIPs)
 
 		for _, set := range []struct {
 			ips []string
@@ -155,8 +160,8 @@ func updateNftables(iter *client.Iterator) {
 			}
 
 			// compute endpoints
-			endpointIPs := make([]string, 0, len(endpoints.Endpoints))
-			for _, ep := range endpoints.Endpoints {
+			endpointIPs := make([]string, 0, len(endpoints))
+			for _, ep := range endpoints {
 				epIPs := ep.IPs.V4
 				if set.v6 {
 					epIPs = ep.IPs.V6
@@ -182,7 +187,7 @@ func updateNftables(iter *client.Iterator) {
 				}
 
 				if !*skipComments {
-					fmt.Fprintf(epMap, "\\\n    # %s/%s", endpoints.Namespace, endpoints.Name)
+					fmt.Fprintf(epMap, "\\\n    # %s/%s", svc.Namespace, svc.Name)
 				}
 
 				fmt.Fprint(epMap, "\\\n    ")
@@ -215,7 +220,7 @@ func updateNftables(iter *client.Iterator) {
 
 			daddrMatch := family + " daddr"
 
-			svc_chain := prefix + strings.Join([]string{"svc", endpoints.Namespace, endpoints.Name}, "_")
+			svc_chain := prefix + strings.Join([]string{"svc", svc.Namespace, svc.Name}, "_")
 
 			hasRules := false
 			for _, protocol := range []localnetv1.Protocol{
@@ -227,10 +232,10 @@ func updateNftables(iter *client.Iterator) {
 
 				// build the rule
 				dnatRule{
-					Namespace:   endpoints.Namespace,
-					Name:        endpoints.Name,
+					Namespace:   svc.Namespace,
+					Name:        svc.Name,
 					Protocol:    protocol,
-					Ports:       endpoints.Ports,
+					Ports:       svc.Ports,
 					EndpointIPs: endpointIPs,
 				}.WriteTo(rule, endpointsMap, svcOffset)
 
@@ -280,9 +285,9 @@ func updateNftables(iter *client.Iterator) {
 			}
 
 			// handle external IPs dispatch
-			extIPs := endpoints.IPs.ExternalIPs.V4
+			extIPs := svc.IPs.ExternalIPs.V4
 			if set.v6 {
-				extIPs = endpoints.IPs.ExternalIPs.V6
+				extIPs = svc.IPs.ExternalIPs.V6
 			}
 
 			if len(extIPs) != 0 {

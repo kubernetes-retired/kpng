@@ -6,7 +6,7 @@ import (
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 )
 
-type endpointsKV struct {
+type KV struct {
 	Namespace string
 	Name      string
 
@@ -14,10 +14,10 @@ type endpointsKV struct {
 	EndpointsHash uint64
 }
 
-var _ btree.Item = endpointsKV{}
+var _ btree.Item = KV{}
 
-func (kv endpointsKV) Less(i btree.Item) bool {
-	kv2 := i.(endpointsKV)
+func (kv KV) Less(i btree.Item) bool {
+	kv2 := i.(KV)
 
 	if kv.Namespace != kv2.Namespace {
 		return kv.Namespace < kv2.Namespace

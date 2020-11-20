@@ -18,7 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type EndpointsClient interface {
 	// Returns all the endpoints for this node.
-	Next(ctx context.Context, in *NextFilter, opts ...grpc.CallOption) (Endpoints_NextClient, error)
+	Watch(ctx context.Context, opts ...grpc.CallOption) (Endpoints_WatchClient, error)
 }
 
 type endpointsClient struct {
@@ -29,37 +29,37 @@ func NewEndpointsClient(cc grpc.ClientConnInterface) EndpointsClient {
 	return &endpointsClient{cc}
 }
 
-var endpointsNextStreamDesc = &grpc.StreamDesc{
-	StreamName:    "Next",
+var endpointsWatchStreamDesc = &grpc.StreamDesc{
+	StreamName:    "Watch",
 	ServerStreams: true,
+	ClientStreams: true,
 }
 
-func (c *endpointsClient) Next(ctx context.Context, in *NextFilter, opts ...grpc.CallOption) (Endpoints_NextClient, error) {
-	stream, err := c.cc.NewStream(ctx, endpointsNextStreamDesc, "/localnetv1.Endpoints/Next", opts...)
+func (c *endpointsClient) Watch(ctx context.Context, opts ...grpc.CallOption) (Endpoints_WatchClient, error) {
+	stream, err := c.cc.NewStream(ctx, endpointsWatchStreamDesc, "/localnetv1.Endpoints/Watch", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &endpointsNextClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
+	x := &endpointsWatchClient{stream}
 	return x, nil
 }
 
-type Endpoints_NextClient interface {
-	Recv() (*NextItem, error)
+type Endpoints_WatchClient interface {
+	Send(*WatchReq) error
+	Recv() (*OpItem, error)
 	grpc.ClientStream
 }
 
-type endpointsNextClient struct {
+type endpointsWatchClient struct {
 	grpc.ClientStream
 }
 
-func (x *endpointsNextClient) Recv() (*NextItem, error) {
-	m := new(NextItem)
+func (x *endpointsWatchClient) Send(m *WatchReq) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *endpointsWatchClient) Recv() (*OpItem, error) {
+	m := new(OpItem)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -72,36 +72,41 @@ func (x *endpointsNextClient) Recv() (*NextItem, error) {
 // handler for that method returning an Unimplemented error.
 type EndpointsService struct {
 	// Returns all the endpoints for this node.
-	Next func(*NextFilter, Endpoints_NextServer) error
+	Watch func(Endpoints_WatchServer) error
 }
 
-func (s *EndpointsService) next(_ interface{}, stream grpc.ServerStream) error {
-	m := new(NextFilter)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return s.Next(m, &endpointsNextServer{stream})
+func (s *EndpointsService) watch(_ interface{}, stream grpc.ServerStream) error {
+	return s.Watch(&endpointsWatchServer{stream})
 }
 
-type Endpoints_NextServer interface {
-	Send(*NextItem) error
+type Endpoints_WatchServer interface {
+	Send(*OpItem) error
+	Recv() (*WatchReq, error)
 	grpc.ServerStream
 }
 
-type endpointsNextServer struct {
+type endpointsWatchServer struct {
 	grpc.ServerStream
 }
 
-func (x *endpointsNextServer) Send(m *NextItem) error {
+func (x *endpointsWatchServer) Send(m *OpItem) error {
 	return x.ServerStream.SendMsg(m)
+}
+
+func (x *endpointsWatchServer) Recv() (*WatchReq, error) {
+	m := new(WatchReq)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // RegisterEndpointsService registers a service implementation with a gRPC server.
 func RegisterEndpointsService(s grpc.ServiceRegistrar, srv *EndpointsService) {
 	srvCopy := *srv
-	if srvCopy.Next == nil {
-		srvCopy.Next = func(*NextFilter, Endpoints_NextServer) error {
-			return status.Errorf(codes.Unimplemented, "method Next not implemented")
+	if srvCopy.Watch == nil {
+		srvCopy.Watch = func(Endpoints_WatchServer) error {
+			return status.Errorf(codes.Unimplemented, "method Watch not implemented")
 		}
 	}
 	sd := grpc.ServiceDesc{
@@ -109,9 +114,10 @@ func RegisterEndpointsService(s grpc.ServiceRegistrar, srv *EndpointsService) {
 		Methods:     []grpc.MethodDesc{},
 		Streams: []grpc.StreamDesc{
 			{
-				StreamName:    "Next",
-				Handler:       srvCopy.next,
+				StreamName:    "Watch",
+				Handler:       srvCopy.watch,
 				ServerStreams: true,
+				ClientStreams: true,
 			},
 		},
 		Metadata: "pkg/api/localnetv1/services.proto",
@@ -129,9 +135,9 @@ func RegisterEndpointsService(s grpc.ServiceRegistrar, srv *EndpointsService) {
 func NewEndpointsService(s interface{}) *EndpointsService {
 	ns := &EndpointsService{}
 	if h, ok := s.(interface {
-		Next(*NextFilter, Endpoints_NextServer) error
+		Watch(Endpoints_WatchServer) error
 	}); ok {
-		ns.Next = h.Next
+		ns.Watch = h.Watch
 	}
 	return ns
 }
@@ -142,5 +148,5 @@ func NewEndpointsService(s interface{}) *EndpointsService {
 // use of this type is not recommended.
 type UnstableEndpointsService interface {
 	// Returns all the endpoints for this node.
-	Next(*NextFilter, Endpoints_NextServer) error
+	Watch(Endpoints_WatchServer) error
 }

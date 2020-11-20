@@ -2,15 +2,16 @@ package client
 
 import (
 	"context"
-	"io"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 	"k8s.io/klog"
 
+	"github.com/google/btree"
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 )
 
@@ -36,21 +37,17 @@ type EndpointsClient struct {
 	// Target is the gRPC dial target
 	Target string
 
-	// InstanceID and Rev are the latest known state (used to resume a watch)
-	InstanceID uint64
-	Rev        uint64
-
 	// ErrorDelay is the delay before retrying after an error.
 	ErrorDelay time.Duration
 
 	// GRPCBuffer is the max size of a gRPC message
 	MaxMsgSize int
 
-	conn       *grpc.ClientConn
-	client     localnetv1.EndpointsClient
-	nextFilter *localnetv1.NextFilter
+	conn     *grpc.ClientConn
+	watch    localnetv1.Endpoints_WatchClient
+	watchReq *localnetv1.WatchReq
 
-	prevLen int
+	data *btree.BTree
 
 	ctx    context.Context
 	cancel func()
@@ -60,9 +57,6 @@ type EndpointsClient struct {
 func (epc *EndpointsClient) DefaultFlags(flags FlagSet) {
 	flags.StringVar(&epc.Target, "target", "127.0.0.1:12090", "local API to reach")
 
-	flags.Uint64Var(&epc.InstanceID, "instance-id", 0, "Instance ID (to resume a watch)")
-	flags.Uint64Var(&epc.Rev, "rev", 0, "Rev (to resume a watch)")
-
 	flags.DurationVar(&epc.ErrorDelay, "error-delay", 1*time.Second, "duration to wait before retrying after errors")
 
 	flags.IntVar(&epc.MaxMsgSize, "max-msg-size", 4<<20, "max gRPC message size")
@@ -70,17 +64,11 @@ func (epc *EndpointsClient) DefaultFlags(flags FlagSet) {
 
 // Next returns the next set of ServiceEndpoints, waiting for a new revision as needed.
 // It's designed to never fail and will always return latest items, unless canceled.
-func (epc *EndpointsClient) Next(filter *localnetv1.EndpointConditions) (items []*localnetv1.ServiceEndpoints, canceled bool) {
-	// prepare items assuming a 10% increase of the number of items
-	expectedCap := epc.prevLen * 110 / 100
-	if expectedCap == 0 {
-		expectedCap = 10
-	}
-
-	items = make([]*localnetv1.ServiceEndpoints, 0, expectedCap)
-
+func (epc *EndpointsClient) Next(req *localnetv1.WatchReq) (items []*localnetv1.ServiceEndpoints, canceled bool) {
 retry:
-	iter := epc.NextIterator(filter)
+	iter := epc.NextIterator(req)
+
+	items = make([]*localnetv1.ServiceEndpoints, 0, epc.data.Len())
 
 	for seps := range iter.Ch {
 		items = append(items, seps)
@@ -98,13 +86,14 @@ retry:
 
 // NextIterator returns the next set of ServiceEndpoints as an iterator, waiting for a new revision as needed.
 // It's designed to never fail and will always return an valid iterator (than may be canceled or end on error)
-func (epc *EndpointsClient) NextIterator(filter *localnetv1.EndpointConditions) (iter *Iterator) {
+func (epc *EndpointsClient) NextIterator(req *localnetv1.WatchReq) (iter *Iterator) {
 	results := make(chan *localnetv1.ServiceEndpoints, 100)
 
 	iter = &Iterator{
 		Ch: results,
 	}
 
+retry:
 	if epc.conn == nil {
 		if canceled := epc.dial(); canceled {
 			iter.Canceled = true
@@ -113,62 +102,81 @@ func (epc *EndpointsClient) NextIterator(filter *localnetv1.EndpointConditions) 
 		}
 	}
 
-	if epc.nextFilter == nil {
-		epc.nextFilter = &localnetv1.NextFilter{
-			InstanceID: epc.InstanceID,
-			Rev:        epc.Rev,
+	// say we're ready
+	err := epc.watch.Send(req)
+	if err != nil {
+		epc.postError()
+		goto retry
+	}
 
-			RequiredEndpointConditions: filter,
+	// apply diff
+diffLoop:
+	for {
+		op, err := epc.watch.Recv()
+
+		if err != nil {
+			klog.Error("watch recv failed: ", err)
+			epc.postError()
+			goto retry
+		}
+
+		switch v := op.Op; v.(type) {
+		case *localnetv1.OpItem_Set:
+			set := op.GetSet()
+
+			var v proto.Message
+			switch set.Ref.Set {
+			case localnetv1.Set_ServicesSet:
+				v = &localnetv1.Service{}
+			case localnetv1.Set_EndpointsSet:
+				v = &localnetv1.Endpoint{}
+
+			default:
+				continue diffLoop // ignore unknown set
+			}
+
+			err = proto.Unmarshal(set.Bytes, v)
+			if err != nil {
+				klog.Error("failed to parse value: ", err)
+				continue diffLoop
+			}
+
+			epc.data.ReplaceOrInsert(kv{set.Ref.Path, v})
+
+		case *localnetv1.OpItem_Delete:
+			epc.data.Delete(kv{Path: op.GetDelete().Path})
+
+		case *localnetv1.OpItem_Sync:
+			break diffLoop // done
 		}
 	}
 
-	ctx := epc.ctx
+	go func() {
+		defer close(results)
 
-	count := 0
+		var seps *localnetv1.ServiceEndpoints
 
-	for {
-		next, err := epc.client.Next(ctx, epc.nextFilter)
-		if err != nil {
-			if epc.ctx.Err() == context.Canceled {
-				iter.Canceled = true
-				close(results)
-				return
-			}
-
-			klog.Error("next failed: ", err)
-			epc.postError()
-			continue
-		}
-
-		nextItem, err := next.Recv()
-		if err != nil {
-			epc.postError()
-			continue
-		}
-
-		nextFilter := nextItem.Next
-
-		go func() {
-			defer close(results)
-			for {
-				nextItem, err := next.Recv()
-
-				if err == io.EOF {
-					break
-				} else if err != nil {
-					iter.RecvErr = err
-					return
+		epc.data.Ascend(func(i btree.Item) bool {
+			switch v := i.(kv).Value.(type) {
+			case *localnetv1.Service:
+				if seps != nil {
+					results <- seps
 				}
 
-				results <- nextItem.Endpoints
-				count++
+				seps = &localnetv1.ServiceEndpoints{Service: v}
+			case *localnetv1.Endpoint:
+				seps.Endpoints = append(seps.Endpoints, v)
 			}
-		}()
 
-		epc.nextFilter = nextFilter
-		epc.prevLen = count
-		return
-	}
+			return true
+		})
+
+		if seps != nil {
+			results <- seps
+		}
+	}()
+
+	return
 }
 
 // Cancel will cancel this client, quickly closing any call to Next.
@@ -210,7 +218,17 @@ retry:
 	}
 
 	epc.conn = conn
-	epc.client = localnetv1.NewEndpointsClient(epc.conn)
+	epc.watch, err = localnetv1.NewEndpointsClient(epc.conn).Watch(epc.ctx)
+
+	if err != nil {
+		conn.Close()
+
+		klog.Info("failed to start watch: ", err)
+		epc.errorSleep()
+		goto retry
+	}
+
+	epc.data = btree.New(2)
 
 	//klog.V(1).Info("connected")
 	return false

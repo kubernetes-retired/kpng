@@ -33,15 +33,17 @@ func computeServiceEndpoints(src correlationSource, nodes map[string]NodeInfo, m
 	svcSpec := src.Service.Spec
 
 	seps = &localnetv1.ServiceEndpoints{
-		Namespace: src.Service.Namespace,
-		Name:      src.Service.Name,
-		Type:      string(svcSpec.Type),
-		IPs: &localnetv1.ServiceIPs{
-			ClusterIP:   svcSpec.ClusterIP,
-			ExternalIPs: localnetv1.NewIPSet(svcSpec.ExternalIPs),
+		Service: &localnetv1.Service{
+			Namespace: src.Service.Namespace,
+			Name:      src.Service.Name,
+			Type:      string(svcSpec.Type),
+			MapIP:     false, // TODO
+			IPs: &localnetv1.ServiceIPs{
+				ClusterIP:   svcSpec.ClusterIP,
+				ExternalIPs: localnetv1.NewIPSet(svcSpec.ExternalIPs),
+			},
+			ExternalTrafficToLocal: src.Service.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal,
 		},
-		MapAll:                 false, // TODO
-		ExternalTrafficToLocal: src.Service.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal,
 	}
 
 	// ports information
@@ -106,7 +108,7 @@ portLoop:
 		ports = append(ports, p)
 	}
 
-	seps.Ports = ports
+	seps.Service.Ports = ports
 
 	// find and normalize endpoints
 	infos := make([]EndpointInfo, 0)

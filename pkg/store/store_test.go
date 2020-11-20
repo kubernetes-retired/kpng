@@ -10,7 +10,7 @@ func TestNext(t *testing.T) {
 	s := New()
 
 	s.Set([]byte("a"), &localnetv1.ServiceEndpoints{
-		Name: "a",
+		Service: &localnetv1.Service{Name: "a"},
 	})
 
 	snap := s.Next(0)
