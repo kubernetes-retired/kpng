@@ -62,7 +62,12 @@ func run(_ *cobra.Command, _ []string) {
 
 	if *bindSpec != "" {
 		lis := server.MustListen(*bindSpec)
-		go klog.Fatal(srv.GRPC.Serve(lis))
+		go func() {
+			err := srv.GRPC.Serve(lis)
+			if err != nil {
+				klog.Fatal(err)
+			}
+		}()
 	}
 
 	// wait and exit

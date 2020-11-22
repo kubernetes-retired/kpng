@@ -94,14 +94,13 @@ func NewServer() (srv *Server, err error) {
 func (s *Server) Stop() {
 	klog.Info("server stopping")
 
+	s.GRPC.Stop()
+
 	if s.traceFile != nil {
-		klog.Info()
 		trace.Stop()
 		s.traceFile.Close()
 		klog.Info("trace closed")
 	}
 
 	close(s.QuitCh)
-
-	s.GRPC.Stop()
 }
