@@ -80,12 +80,7 @@ delete table ip k8s_test_hash_bug
 	}
 
 	// run the client
-	client.RunWithIterator(&localnetv1.WatchReq{
-		RequiredEndpointConditions: &localnetv1.EndpointConditions{
-			Ready:    true,
-			Selected: true,
-		},
-	}, updateNftables)
+	client.RunWithIterator(nil, updateNftables)
 }
 
 func updateNftables(iter *client.Iterator) {

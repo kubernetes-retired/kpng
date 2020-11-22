@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/OneOfOne/xxhash v1.2.8
 	github.com/cespare/xxhash v1.1.0
+	github.com/docker/go-connections v0.4.0
 	github.com/go-logr/logr v0.3.0 // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.4.3

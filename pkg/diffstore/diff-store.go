@@ -1,6 +1,8 @@
 package diffstore
 
 import (
+	"bytes"
+
 	"github.com/google/btree"
 )
 
@@ -16,15 +18,17 @@ func New() *DiffStore {
 }
 
 // Reset the store to clear, marking all entries as deleted (and removing previously deleted ones)
-func (s *DiffStore) Reset() {
+func (s *DiffStore) Reset(state ItemState) {
 	toDelete := make([]*storeKV, 0)
 
 	s.tree.Ascend(func(i btree.Item) bool {
 		v := i.(*storeKV)
-		if v.state == itemDeleted {
+		if v.state == ItemDeleted {
+			// previous deleted items are removed
 			toDelete = append(toDelete, v)
 		} else {
-			v.state = itemDeleted
+			v.state = state
+			v.value = nil
 		}
 		return true
 	})
@@ -42,7 +46,7 @@ func (s *DiffStore) Set(key []byte, hash uint64, value interface{}) {
 			key:   key,
 			hash:  hash,
 			value: value,
-			state: itemSet,
+			state: ItemChanged,
 		})
 		return
 	}
@@ -50,22 +54,37 @@ func (s *DiffStore) Set(key []byte, hash uint64, value interface{}) {
 	v := item.(*storeKV)
 
 	if v.hash == hash {
-		if v.state == itemDeleted {
-			v.state = itemUnchanged
+		if v.state == ItemDeleted {
+			v.value = value
+			v.state = ItemUnchanged
 		}
 		return
 	}
 
 	v.hash = hash
 	v.value = value
-	v.state = itemSet
+	v.state = ItemChanged
+}
+
+func (s *DiffStore) DeleteByPrefix(prefix []byte) {
+	s.tree.AscendGreaterOrEqual(&storeKV{key: prefix}, func(i btree.Item) bool {
+		v := i.(*storeKV)
+
+		if !bytes.HasPrefix(v.key, prefix) {
+			return false
+		}
+
+		v.state = ItemDeleted
+
+		return true
+	})
 }
 
 func (s *DiffStore) Updated() (updated []KV) {
 	s.tree.Ascend(func(i btree.Item) bool {
 		v := i.(*storeKV)
 
-		if v.state == itemSet {
+		if v.state == ItemChanged {
 			updated = append(updated, KV{v.key, v.value})
 		}
 
@@ -78,7 +97,7 @@ func (s *DiffStore) Deleted() (deleted []KV) {
 	s.tree.Descend(func(i btree.Item) bool {
 		v := i.(*storeKV)
 
-		if v.state == itemDeleted {
+		if v.state == ItemDeleted {
 			deleted = append(deleted, KV{v.key, v.value})
 		}
 

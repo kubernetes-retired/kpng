@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/mcluseau/kube-proxy2/pkg/proxystore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 
@@ -42,6 +43,8 @@ type Server struct {
 	InformerFactory informers.SharedInformerFactory
 	QuitCh          chan struct{}
 
+	Store *proxystore.Store
+
 	GRPC *grpc.Server
 }
 
@@ -68,6 +71,7 @@ func NewServer() (srv *Server, err error) {
 		InformerFactory: informers.NewSharedInformerFactory(kubeClient, time.Second*30),
 		QuitCh:          make(chan struct{}, 1),
 		GRPC:            grpc.NewServer(),
+		Store:           proxystore.New(),
 	}
 
 	srv.InformerFactory.Start(srv.QuitCh)

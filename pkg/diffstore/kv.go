@@ -11,19 +11,24 @@ type KV struct {
 	Value interface{}
 }
 
-type itemState int
+func (a *KV) Less(bItem btree.Item) bool {
+	b := bItem.(*KV)
+	return bytes.Compare(a.Key, b.Key) < 0
+}
+
+type ItemState int
 
 const (
-	itemDeleted   itemState = iota
-	itemSet                 = 1
-	itemUnchanged           = 2
+	ItemDeleted   ItemState = iota
+	ItemChanged             = 1
+	ItemUnchanged           = 2
 )
 
 type storeKV struct {
 	key   []byte
 	hash  uint64
 	value interface{}
-	state itemState
+	state ItemState
 }
 
 func (a *storeKV) Less(bItem btree.Item) bool {

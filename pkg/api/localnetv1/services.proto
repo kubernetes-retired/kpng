@@ -12,9 +12,6 @@ service Endpoints {
 message WatchReq {
     // NodeName of the requester
     string NodeName = 1;
-
-    // Filter endpoints by requiring conditions
-    EndpointConditions RequiredEndpointConditions = 3;
 }
 
 message OpItem {
@@ -71,19 +68,12 @@ message ServiceIPs {
 
 message Endpoint {
     string Hostname = 1;
-    EndpointConditions Conditions = 2;
     IPSet  IPs = 3;
 }
 
 message IPSet {
     repeated string V4 = 1;
     repeated string V6 = 2;
-}
-
-message EndpointConditions {
-    bool Ready = 1;
-    bool Selected = 2;
-    bool Local = 3;
 }
 
 message Port {
@@ -105,6 +95,7 @@ message PortMapping {
     int32    Port       = 3;
     int32    NodePort   = 4;
     int32    TargetPort = 5;
+    string   TargetPortName = 6;
 }
 
 // Useful for client implementation to provide pre-matched entries.
@@ -113,4 +104,23 @@ message ServiceEndpoints {
 
     // All possible endpoints for this service
     repeated Endpoint Endpoints = 2;
+}
+
+// internal use
+// TODO document
+
+message EndpointInfo {
+    string Namespace = 1;
+    string SourceName = 2;
+    string ServiceName = 3;
+    string NodeName = 4;
+
+    map<string, string> Topology = 5;
+    Endpoint Endpoint = 6;
+    string EndpointHash = 7;
+    EndpointConditions Conditions = 8;
+}
+
+message EndpointConditions {
+    bool Ready = 1;
 }
