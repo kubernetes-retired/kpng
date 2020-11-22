@@ -50,6 +50,9 @@ message Service {
     string Name = 2;
     string Type = 3;
 
+    map<string, string> Labels = 8;
+    map<string, string> Annotations = 9;
+
     ServiceIPs IPs = 4;
 
     // true if the service maps the whole IP, not just individual ports.
@@ -98,29 +101,39 @@ message PortMapping {
     string   TargetPortName = 6;
 }
 
-// Useful for client implementation to provide pre-matched entries.
-message ServiceEndpoints {
-    Service Service = 1;
-
-    // All possible endpoints for this service
-    repeated Endpoint Endpoints = 2;
-}
-
 // internal use
 // TODO document
 
-message EndpointInfo {
-    string Namespace = 1;
-    string SourceName = 2;
-    string ServiceName = 3;
-    string NodeName = 4;
+message ServiceInfo {
+    uint64 Hash = 1;
 
-    map<string, string> Topology = 5;
+    Service Service = 2;
+    repeated string TopologyKeys = 3;
+}
+
+message EndpointInfo {
+    uint64 Hash = 1;
+
+    string Namespace = 2;
+    string SourceName = 3;
+    string ServiceName = 4;
+    string NodeName = 5;
+
     Endpoint Endpoint = 6;
-    string EndpointHash = 7;
-    EndpointConditions Conditions = 8;
+    EndpointConditions Conditions = 7;
+    map<string, string> Topology = 8;
 }
 
 message EndpointConditions {
     bool Ready = 1;
+}
+
+message NodeInfo {
+    uint64 Hash = 1;
+    Node   Node = 2;
+}
+
+message Node {
+    string Name = 1;
+    map<string, string> Labels = 2;
 }

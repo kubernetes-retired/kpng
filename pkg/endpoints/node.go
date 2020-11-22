@@ -5,7 +5,7 @@ import (
 	"github.com/mcluseau/kube-proxy2/pkg/proxystore"
 )
 
-func ForNode(tx *proxystore.Tx, svc *localnetv1.Service, topologyKeys []string, nodeName string) (selection []*localnetv1.Endpoint) {
+func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (selection []*localnetv1.EndpointInfo) {
 	node := tx.GetNode(nodeName)
 
 	var labels map[string]string
@@ -16,9 +16,17 @@ func ForNode(tx *proxystore.Tx, svc *localnetv1.Service, topologyKeys []string, 
 		labels = node.Labels
 	}
 
+	topologyKeys := si.TopologyKeys
 	if len(topologyKeys) == 0 {
 		topologyKeys = []string{"*"}
 	}
+
+	svc := si.Service
+
+	infos := make([]*localnetv1.EndpointInfo, 0)
+	tx.EachEndpointOfService(svc.Namespace, svc.Name, func(info *localnetv1.EndpointInfo) {
+		infos = append(infos, info)
+	})
 
 	for _, topoKey := range topologyKeys {
 		ref := ""
@@ -32,11 +40,11 @@ func ForNode(tx *proxystore.Tx, svc *localnetv1.Service, topologyKeys []string, 
 			}
 		}
 
-		tx.EachEndpointOfService(svc.Namespace, svc.Name, func(info *localnetv1.EndpointInfo) {
+		for _, info := range infos {
 			if info.Conditions.Ready && (topoKey == "*" || (info.Topology != nil && info.Topology[topoKey] == ref)) {
-				selection = append(selection, info.Endpoint)
+				selection = append(selection, info)
 			}
-		})
+		}
 
 		if len(selection) != 0 {
 			return

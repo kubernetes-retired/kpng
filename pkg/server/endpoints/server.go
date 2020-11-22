@@ -1,9 +1,10 @@
 package endpoints
 
 import (
+	"context"
+	"runtime/trace"
 	"strconv"
 
-	"github.com/cespare/xxhash"
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -23,9 +24,14 @@ type Server struct {
 var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
 
 func (s *Server) Watch(res localnetv1.Endpoints_WatchServer) error {
-	remote, _ := peer.FromContext(res.Context())
-	klog.Info("new connection from ", remote.Addr)
-	defer klog.Info("connection from ", remote.Addr, " closed")
+	remote := ""
+	{
+		ctxPeer, _ := peer.FromContext(res.Context())
+		remote = ctxPeer.Addr.String()
+	}
+
+	klog.Info("new connection from ", remote)
+	defer klog.Info("connection from ", remote, " closed")
 
 	w := NewWatchState(res)
 
@@ -42,7 +48,6 @@ func (s *Server) Watch(res localnetv1.Endpoints_WatchServer) error {
 		updated := false
 		for !updated {
 			rev = s.Store.View(rev, func(tx *proxystore.Tx) {
-				klog.V(1).Info("sending update to ", remote)
 				w.Update(tx, req.NodeName)
 			})
 
@@ -75,7 +80,7 @@ func NewWatchState(res localnetv1.Endpoints_WatchServer) *WatchState {
 		res:  res,
 		Svcs: diffstore.New(),
 		Seps: diffstore.New(),
-		pb:   proto.NewBuffer(nil),
+		pb:   proto.NewBuffer(make([]byte, 0)),
 	}
 }
 
@@ -113,38 +118,37 @@ func (w *WatchState) sendDelete(set localnetv1.Set, path string) {
 	})
 }
 
-func (w *WatchState) HashOf(m proto.Message) uint64 {
-	w.pb.Reset()
-	if err := w.pb.Marshal(m); err != nil {
-		panic("protobuf Marshal failed: " + err.Error())
-	}
-
-	return xxhash.Sum64(w.pb.Bytes())
-}
-
 func (w *WatchState) Update(tx *proxystore.Tx, nodeName string) {
 	if !tx.AllSynced() {
 		return
 	}
 
+	ctx, task := trace.NewTask(context.Background(), "WatchState.Update")
+	defer task.End()
+
 	// set all new values
 	tx.Each(proxystore.Services, func(kv *proxystore.KV) bool {
 		key := []byte(kv.Namespace + "/" + kv.Name)
 
-		w.Svcs.Set(key, w.HashOf(kv.Service), kv.Service)
+		if trace.IsEnabled() {
+			trace.Log(ctx, "service", string(key))
+		}
+		w.Svcs.Set(key, kv.Service.Hash, kv.Service.Service)
 
 		// filter endpoints for this node
-		endpoints := endpoints.ForNode(tx, kv.Service, kv.TopologyKeys, nodeName)
+		endpointInfos := endpoints.ForNode(tx, kv.Service, nodeName)
 
-		for _, ep := range endpoints {
+		for _, ei := range endpointInfos {
 			// key is service key + endpoint hash (64 bits, in hex)
 			key := append(make([]byte, 0, len(key)+1+64/8*2), key...)
 			key = append(key, '/')
+			key = strconv.AppendUint(key, ei.Hash, 16)
 
-			h := w.HashOf(ep)
-			key = strconv.AppendUint(key, h, 16)
+			if trace.IsEnabled() {
+				trace.Log(ctx, "endpoint", string(key))
+			}
 
-			w.Seps.Set(key, h, ep)
+			w.Seps.Set(key, ei.Hash, ei.Endpoint)
 		}
 
 		return true
@@ -152,21 +156,28 @@ func (w *WatchState) Update(tx *proxystore.Tx, nodeName string) {
 }
 
 func (w *WatchState) SendDiff() (updated bool) {
+	ctx, task := trace.NewTask(context.Background(), "WatchState.SendDiff")
+	defer task.End()
+
 	for _, kv := range w.Svcs.Updated() {
 		updated = true
 		w.sendSet(localnetv1.Set_ServicesSet, string(kv.Key), kv.Value.(*localnetv1.Service))
+		trace.Log(ctx, "service-set", string(kv.Key))
 	}
 	for _, kv := range w.Seps.Updated() {
 		updated = true
 		w.sendSet(localnetv1.Set_EndpointsSet, string(kv.Key), kv.Value.(*localnetv1.Endpoint))
+		trace.Log(ctx, "endpoint-set", string(kv.Key))
 	}
 	for _, kv := range w.Seps.Deleted() {
 		updated = true
 		w.sendDelete(localnetv1.Set_EndpointsSet, string(kv.Key))
+		trace.Log(ctx, "endpoint-deleted", string(kv.Key))
 	}
 	for _, kv := range w.Svcs.Deleted() {
 		updated = true
 		w.sendDelete(localnetv1.Set_ServicesSet, string(kv.Key))
+		trace.Log(ctx, "service-deleted", string(kv.Key))
 	}
 
 	w.Svcs.Reset(diffstore.ItemDeleted)

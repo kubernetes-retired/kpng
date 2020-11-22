@@ -4,6 +4,7 @@ import (
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 	"github.com/mcluseau/kube-proxy2/pkg/proxystore"
 	discovery "k8s.io/api/discovery/v1beta1"
+	"k8s.io/klog"
 )
 
 const hostNameLabel = "kubernetes.io/hostname"
@@ -61,6 +62,13 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 	h.s.Update(func(tx *proxystore.Tx) {
 		tx.SetEndpointsOfSource(eps.Namespace, eps.Name, infos)
 		h.updateSync(proxystore.Endpoints, tx)
+
+		if log := klog.V(3); log {
+			log.Info("endpoints of ", eps.Namespace, "/", serviceName, ":")
+			tx.EachEndpointOfService(eps.Namespace, serviceName, func(ei *localnetv1.EndpointInfo) {
+				log.Info("- ", ei.Endpoint.IPs, " | topo: ", ei.Topology)
+			})
+		}
 	})
 }
 

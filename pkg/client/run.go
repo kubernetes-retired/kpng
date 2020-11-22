@@ -9,7 +9,8 @@ import (
 	"k8s.io/klog"
 )
 
-type HandlerFunc func(items []*localnetv1.ServiceEndpoints)
+type HandleFunc func(items []*ServiceEndpoints)
+type HandleChFunc func(items <-chan *ServiceEndpoints)
 
 func Default() (epc *EndpointsClient, once bool, nodeName string, stop func()) {
 	onceFlag := flag.Bool("once", false, "only one fetch loop")
@@ -47,7 +48,7 @@ func Default() (epc *EndpointsClient, once bool, nodeName string, stop func()) {
 }
 
 // Run the client with the standard options
-func Run(req *localnetv1.WatchReq, handlers ...HandlerFunc) {
+func Run(req *localnetv1.WatchReq, handlers ...HandleFunc) {
 	epc, once, nodeName, stop := Default()
 	defer stop()
 
@@ -76,10 +77,10 @@ func Run(req *localnetv1.WatchReq, handlers ...HandlerFunc) {
 	}
 }
 
-// RunWithIterator runs the client with the standard options, using the iterated version of Next.
+// RunCh runs the client with the standard options, using the channeled version of Next.
 // It should consume less memory as the dataset is processed as it's read instead of buffered.
 // The handler MUST check iter.Err to ensure the dataset was fuly retrieved without error.
-func RunWithIterator(req *localnetv1.WatchReq, handler func(*Iterator)) {
+func RunCh(req *localnetv1.WatchReq, handler HandleChFunc) {
 	epc, once, nodeName, stop := Default()
 	defer stop()
 
@@ -91,18 +92,14 @@ func RunWithIterator(req *localnetv1.WatchReq, handler func(*Iterator)) {
 	}
 
 	for {
-		iter := epc.NextIterator(req)
+		ch, canceled := epc.NextCh(req)
 
-		if iter.Canceled {
+		if canceled {
 			klog.Infof("finished")
 			return
 		}
 
-		handler(iter)
-
-		if iter.RecvErr != nil {
-			klog.Error("recv error: ", iter.RecvErr)
-		}
+		handler(ch)
 
 		if once {
 			return

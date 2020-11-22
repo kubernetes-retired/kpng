@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 	"github.com/mcluseau/kube-proxy2/pkg/client"
 )
 
@@ -25,9 +24,9 @@ func main() {
 	client.Run(nil, handleEndpoints)
 }
 
-func handleEndpoints(items []*localnetv1.ServiceEndpoints) {
+func handleEndpoints(items []*client.ServiceEndpoints) {
 	// filter endpoints
-	filteredItems := make([]*localnetv1.ServiceEndpoints, 0, len(items))
+	filteredItems := make([]*client.ServiceEndpoints, 0, len(items))
 
 	for _, item := range items {
 		if *extLBsOnly && item.Service.Type != "LoadBalancer" {

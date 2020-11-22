@@ -1,3 +1,5 @@
 .*.sw[po]
 /test-run.*.log
 /dist
+/trace.out
+/cpu.prof

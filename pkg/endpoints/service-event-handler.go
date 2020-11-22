@@ -5,6 +5,7 @@ import (
 	"github.com/mcluseau/kube-proxy2/pkg/proxystore"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/klog"
 )
 
 type serviceEventHandler struct{ eventHandler }
@@ -13,10 +14,12 @@ func (h *serviceEventHandler) OnAdd(obj interface{}) {
 	svc := obj.(*v1.Service)
 
 	service := &localnetv1.Service{
-		Namespace: svc.Namespace,
-		Name:      svc.Name,
-		Type:      string(svc.Spec.Type),
-		MapIP:     false, // TODO for headless? or no ports means all? why am I adding those questions? ;-)
+		Namespace:   svc.Namespace,
+		Name:        svc.Name,
+		Type:        string(svc.Spec.Type),
+		Labels:      svc.Labels,
+		Annotations: svc.Annotations,
+		MapIP:       false, // TODO for headless? or no ports means all? why am I adding those questions? ;-)
 		IPs: &localnetv1.ServiceIPs{
 			ClusterIP:   svc.Spec.ClusterIP,
 			ExternalIPs: localnetv1.NewIPSet(svc.Spec.ExternalIPs),
@@ -72,6 +75,7 @@ func (h *serviceEventHandler) OnAdd(obj interface{}) {
 	}
 
 	h.s.Update(func(tx *proxystore.Tx) {
+		klog.V(3).Info("service ", service.Namespace, "/", service.Name, " topology key: ", svc.Spec.TopologyKeys)
 		tx.SetService(service, svc.Spec.TopologyKeys)
 		h.updateSync(proxystore.Services, tx)
 	})

@@ -5,6 +5,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 	"github.com/mcluseau/kube-proxy2/pkg/proxy"
 	"github.com/mcluseau/kube-proxy2/pkg/proxystore"
 )
@@ -16,14 +17,20 @@ var myNodeName = flag.String("node-name", "", "Node name override")
 func (h nodesEventHandler) OnAdd(obj interface{}) {
 	node := obj.(*v1.Node)
 
+	// remove some fat
+	n := &localnetv1.Node{
+		Name:   node.Name,
+		Labels: node.Labels,
+	}
+
 	h.s.Update(func(tx *proxystore.Tx) {
-		tx.SetNode(node)
+		tx.SetNode(n)
 
 		if !proxy.ManageEndpointSlices {
 			// endpoints => need to update all matching topologies
 			tx.Each(proxystore.Endpoints, func(kv *proxystore.KV) bool {
-				if kv.Endpoint.NodeName == node.Name {
-					kv.Endpoint.Topology = node.Labels
+				if kv.Endpoint.NodeName == n.Name {
+					kv.Endpoint.Topology = n.Labels
 				}
 				return true
 			})
@@ -42,7 +49,7 @@ func (h nodesEventHandler) OnDelete(oldObj interface{}) {
 	node := oldObj.(*v1.Node)
 
 	h.s.Update(func(tx *proxystore.Tx) {
-		tx.DelNode(node)
+		tx.DelNode(node.Name)
 		h.updateSync(proxystore.Nodes, tx)
 	})
 }

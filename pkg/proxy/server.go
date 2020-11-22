@@ -3,14 +3,12 @@ package proxy
 import (
 	"flag"
 	"fmt"
-	"math/rand"
-	"net"
 	"os"
+	"runtime/trace"
 	"time"
 
 	"github.com/mcluseau/kube-proxy2/pkg/proxystore"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/test/bufconn"
 
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -22,10 +20,11 @@ var (
 	kubeconfig string
 	masterURL  string
 	bindSpec   string
+	traceFile  string
 
 	inProcessConnBufferSize int = 32 << 10
 
-	ManageEndpointSlices bool
+	ManageEndpointSlices bool = true
 )
 
 func InitFlags(flagSet *flag.FlagSet) {
@@ -33,12 +32,12 @@ func InitFlags(flagSet *flag.FlagSet) {
 
 	flagSet.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster. Defaults to envvar KUBECONFIG.")
 	flagSet.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	flagSet.IntVar(&inProcessConnBufferSize, "in-process-buffer", inProcessConnBufferSize, "In-process connection buffer")
 	flagSet.BoolVar(&ManageEndpointSlices, "with-endpoint-slices", ManageEndpointSlices, "Enable EndpointSlice")
+
+	flagSet.StringVar(&traceFile, "trace", "", "trace output")
 }
 
 type Server struct {
-	InstanceID      uint64
 	Client          *kubernetes.Clientset
 	InformerFactory informers.SharedInformerFactory
 	QuitCh          chan struct{}
@@ -46,13 +45,34 @@ type Server struct {
 	Store *proxystore.Store
 
 	GRPC *grpc.Server
+
+	traceFile *os.File
 }
 
 func NewServer() (srv *Server, err error) {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-
 	if kubeconfig == "" {
 		kubeconfig = os.Getenv("KUBECONFIG")
+	}
+
+	srv = &Server{
+		QuitCh: make(chan struct{}, 1),
+		GRPC:   grpc.NewServer(),
+		Store:  proxystore.New(),
+	}
+
+	if traceFile != "" {
+		f, err := os.Create(traceFile)
+		if err != nil {
+			klog.Fatal("failed to create requested trace file: ", err)
+		}
+
+		srv.traceFile = f
+
+		if err = trace.Start(f); err != nil {
+			klog.Fatal("failed to start trace: ", err)
+		}
+
+		klog.Info("tracing to ", traceFile)
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
@@ -60,48 +80,28 @@ func NewServer() (srv *Server, err error) {
 		return nil, fmt.Errorf("Error building kubeconfig: %s", err.Error())
 	}
 
-	kubeClient, err := kubernetes.NewForConfig(cfg)
+	srv.Client, err = kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("Error building kubernetes clientset: %s", err.Error())
 	}
 
-	srv = &Server{
-		InstanceID:      rng.Uint64(),
-		Client:          kubeClient,
-		InformerFactory: informers.NewSharedInformerFactory(kubeClient, time.Second*30),
-		QuitCh:          make(chan struct{}, 1),
-		GRPC:            grpc.NewServer(),
-		Store:           proxystore.New(),
-	}
-
+	srv.InformerFactory = informers.NewSharedInformerFactory(srv.Client, time.Second*30)
 	srv.InformerFactory.Start(srv.QuitCh)
 
 	return
 }
 
 func (s *Server) Stop() {
-	s.GRPC.Stop()
+	klog.Info("server stopping")
+
+	if s.traceFile != nil {
+		klog.Info()
+		trace.Stop()
+		s.traceFile.Close()
+		klog.Info("trace closed")
+	}
 
 	close(s.QuitCh)
-}
 
-func (s *Server) InProcessClient(onServeFail ...func(error)) (conn *grpc.ClientConn, err error) {
-	lsnr := bufconn.Listen(inProcessConnBufferSize)
-
-	go func() {
-		err := s.GRPC.Serve(lsnr)
-		if err != nil {
-			for _, f := range onServeFail {
-				f(err)
-			}
-		}
-	}()
-
-	conn, err = grpc.Dial("",
-		grpc.WithInsecure(),
-		grpc.WithDialer(func(_ string, _ time.Duration) (net.Conn, error) {
-			return lsnr.Dial()
-		}))
-
-	return
+	s.GRPC.Stop()
 }

@@ -12,6 +12,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	"github.com/cespare/xxhash"
+	"github.com/gogo/protobuf/proto"
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 	"github.com/mcluseau/kube-proxy2/pkg/server"
 	serverendpoints "github.com/mcluseau/kube-proxy2/pkg/server/endpoints"
@@ -91,6 +93,14 @@ func injectState(rev uint64, w *serverendpoints.WatchState) {
 	svcIP := ipGen(net.ParseIP("10.0.0.0"))
 	epIP := ipGen(net.ParseIP("10.128.0.0"))
 
+	pb := proto.NewBuffer(make([]byte, 0))
+	hashOf := func(m proto.Message) uint64 {
+		pb.Marshal(m)
+		h := xxhash.Sum64(pb.Bytes())
+		pb.Reset()
+		return h
+	}
+
 	for s := 0; s < nSvc; s++ {
 		svc := &localnetv1.Service{
 			Namespace: "default",
@@ -109,12 +119,13 @@ func injectState(rev uint64, w *serverendpoints.WatchState) {
 			},
 		}
 
-		w.Svcs.Set([]byte(svc.Namespace+"/"+svc.Name), w.HashOf(svc), svc)
+		w.Svcs.Set([]byte(svc.Namespace+"/"+svc.Name), hashOf(svc), svc)
 
 		for e := 0; e < nEpPerSvc; e++ {
 			ep := &localnetv1.Endpoint{}
 			ep.AddAddress(epIP.Next().String())
-			h := w.HashOf(ep)
+
+			h := hashOf(ep)
 			w.Seps.Set([]byte(svc.Namespace+"/"+svc.Name+"/"+strconv.FormatUint(h, 16)), h, ep)
 		}
 	}

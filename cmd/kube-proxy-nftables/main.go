@@ -80,10 +80,10 @@ delete table ip k8s_test_hash_bug
 	}
 
 	// run the client
-	client.RunWithIterator(nil, updateNftables)
+	client.RunCh(nil, updateNftables)
 }
 
-func updateNftables(iter *client.Iterator) {
+func updateNftables(ch <-chan *client.ServiceEndpoints) {
 	svcCount := 0
 	epCount := 0
 
@@ -107,7 +107,7 @@ func updateNftables(iter *client.Iterator) {
 
 	mapOffsets := make([]uint64, *mapsCount)
 
-	for serviceEndpoints := range iter.Ch {
+	for serviceEndpoints := range ch {
 		svc := serviceEndpoints.Service
 		endpoints := serviceEndpoints.Endpoints
 
@@ -293,11 +293,6 @@ func updateNftables(iter *client.Iterator) {
 				}
 			}
 		}
-	}
-
-	if iter.RecvErr != nil {
-		fullResync = true // recv error, fully resync on next call
-		return
 	}
 
 	// run deferred actions

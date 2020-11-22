@@ -1,6 +1,7 @@
 package proxystore
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 
@@ -33,6 +34,10 @@ const (
 	Nodes
 )
 
+type Hashed interface {
+	GetHash() uint64
+}
+
 type KV struct {
 	Sync      *bool
 	Set       Set
@@ -41,11 +46,21 @@ type KV struct {
 	Source    string
 	Key       string
 
-	Service      *localnetv1.Service
-	TopologyKeys []string
-
+	Service  *localnetv1.ServiceInfo
 	Endpoint *localnetv1.EndpointInfo
-	Node     *v1.Node
+	Node     *localnetv1.NodeInfo
+}
+
+func (kv *KV) Value() Hashed {
+	switch kv.Set {
+	case Services:
+		return kv.Service
+	case Endpoints:
+		return kv.Endpoint
+	case Nodes:
+		return kv.Node
+	}
+	panic(fmt.Errorf("unknown set: %d", kv.Set)) // should not happen
 }
 
 func (a *KV) Less(i btree.Item) bool {
@@ -76,11 +91,25 @@ func New() *Store {
 	}
 }
 
+func (s *Store) hashOf(m proto.Message) (h uint64) {
+	if err := s.pb.Marshal(m); err != nil {
+		panic(err) // should not happen
+	}
+	h = xxhash.Sum64(s.pb.Bytes())
+	s.pb.Reset()
+	return h
+}
+
 func (s *Store) Update(update func(tx *Tx)) {
 	s.Lock()
 	defer s.Unlock()
 
-	update(&Tx{s, false})
+	tx := &Tx{s: s}
+	update(tx)
+
+	if tx.changes == 0 {
+		return // nothing changed
+	}
 
 	// TODO check if the update really updated something
 	s.c.L.Lock()
@@ -110,14 +139,15 @@ func (s *Store) View(afterRev uint64, view func(tx *Tx)) uint64 {
 	s.RLock()
 	defer s.RUnlock()
 
-	view(&Tx{s, true})
+	view(&Tx{s: s, ro: true})
 
 	return s.rev
 }
 
 type Tx struct {
-	s  *Store
-	ro bool
+	s       *Store
+	ro      bool
+	changes uint
 }
 
 func (tx *Tx) roPanic() {
@@ -139,6 +169,26 @@ func (tx *Tx) Each(set Set, callback func(*KV) bool) {
 	})
 }
 
+func (tx *Tx) set(kv *KV) {
+	tx.roPanic()
+	prev := tx.s.tree.Get(kv)
+
+	if prev != nil && prev.(*KV).Value().GetHash() == kv.Value().GetHash() {
+		return // not changed
+	}
+
+	tx.s.tree.ReplaceOrInsert(kv)
+	tx.changes++
+}
+
+func (tx *Tx) del(kv *KV) {
+	tx.roPanic()
+	i := tx.s.tree.Delete(kv)
+	if i != nil {
+		tx.changes++
+	}
+}
+
 // sync funcs
 func (tx *Tx) AllSynced() bool {
 	for _, set := range []Set{Services, Endpoints, Nodes} {
@@ -153,25 +203,32 @@ func (tx *Tx) IsSynced(set Set) bool {
 }
 func (tx *Tx) SetSync(set Set) {
 	tx.roPanic()
-	tx.s.sync[set] = true
+
+	if !tx.s.sync[set] {
+		tx.s.sync[set] = true
+		tx.changes++
+	}
 }
 
 // Services funcs
 
 func (tx *Tx) SetService(s *localnetv1.Service, topologyKeys []string) {
-	tx.roPanic()
-	tx.s.tree.ReplaceOrInsert(&KV{
-		Set:          Services,
-		Namespace:    s.Namespace,
-		Name:         s.Name,
+	si := &localnetv1.ServiceInfo{
 		Service:      s,
 		TopologyKeys: topologyKeys,
+		Hash:         tx.s.hashOf(s),
+	}
+
+	tx.set(&KV{
+		Set:       Services,
+		Namespace: s.Namespace,
+		Name:      s.Name,
+		Service:   si,
 	})
 }
 
 func (tx *Tx) DelService(s *v1.Service) {
-	tx.roPanic()
-	tx.s.tree.Delete(&KV{
+	tx.del(&KV{
 		Set:       Services,
 		Namespace: s.Namespace,
 		Name:      s.Name,
@@ -202,7 +259,7 @@ func (tx *Tx) EachEndpointOfService(namespace, serviceName string, callback func
 func (tx *Tx) SetEndpointsOfSource(namespace, sourceName string, eis []*localnetv1.EndpointInfo) {
 	tx.roPanic()
 
-	seen := map[string]bool{}
+	seen := map[uint64]bool{}
 
 	for _, ei := range eis {
 		if ei.Namespace != namespace {
@@ -211,15 +268,9 @@ func (tx *Tx) SetEndpointsOfSource(namespace, sourceName string, eis []*localnet
 		if ei.SourceName != sourceName {
 			panic("inconsistent source: " + sourceName + " != " + ei.SourceName)
 		}
-		if ei.EndpointHash == "" {
-			if err := tx.s.pb.Marshal(ei.Endpoint); err != nil {
-				panic(err) // should not happen
-			}
 
-			ei.EndpointHash = strconv.FormatUint(xxhash.Sum64(tx.s.pb.Bytes()), 16)
-		}
-
-		seen[ei.EndpointHash] = true
+		ei.Hash = tx.s.hashOf(ei.Endpoint)
+		seen[ei.Hash] = true
 	}
 
 	// delete unseen endpoints
@@ -235,49 +286,59 @@ func (tx *Tx) SetEndpointsOfSource(namespace, sourceName string, eis []*localnet
 			return false
 		}
 
-		if !seen[kv.Key] {
+		if !seen[kv.Endpoint.Hash] {
 			ei := kv.Endpoint
-			toDel = append(toDel, kv, &KV{
-				Set:       Endpoints,
-				Namespace: ei.Namespace,
-				Name:      ei.ServiceName,
-				Source:    ei.SourceName,
-				Key:       ei.EndpointHash,
-			})
+			toDel = append(toDel,
+				kv,
+				&KV{ // also remove the reference in the service
+					Set:       Endpoints,
+					Namespace: ei.Namespace,
+					Name:      ei.ServiceName,
+					Source:    ei.SourceName,
+					Key:       kv.Key,
+				})
 		}
 
 		return true
 	})
 
 	for _, toDel := range toDel {
-		tx.s.tree.Delete(toDel)
+		tx.del(toDel)
 	}
 
 	// add/update known endpoints
 	for _, ei := range eis {
-		seen[ei.EndpointHash] = true
+		key := strconv.FormatUint(ei.Hash, 16)
 
-		tx.s.tree.ReplaceOrInsert(&KV{
+		kv := &KV{
 			Set:       Endpoints,
 			Namespace: ei.Namespace,
 			Name:      ei.ServiceName,
 			Source:    ei.SourceName,
-			Key:       ei.EndpointHash,
+			Key:       key,
 			Endpoint:  ei,
-		})
+		}
+
+		if tx.s.tree.Has(kv) {
+			continue
+		}
+
+		tx.set(kv)
 
 		// also index by source only
-		tx.s.tree.ReplaceOrInsert(&KV{
+		tx.set(&KV{
 			Set:       Endpoints,
 			Namespace: ei.Namespace,
 			Source:    ei.SourceName,
-			Key:       ei.EndpointHash,
+			Key:       key,
 			Endpoint:  ei,
 		})
 	}
 }
 
 func (tx *Tx) DelEndpointsOfSource(namespace, sourceName string) {
+	tx.roPanic()
+
 	toDel := make([]*KV, 0)
 
 	tx.s.tree.AscendGreaterOrEqual(&KV{
@@ -304,35 +365,38 @@ func (tx *Tx) DelEndpointsOfSource(namespace, sourceName string) {
 	})
 
 	for _, toDel := range toDel {
-		tx.s.tree.Delete(toDel)
+		tx.del(toDel)
 	}
 }
 
 // Nodes funcs
 
-func (tx *Tx) GetNode(name string) *v1.Node {
+func (tx *Tx) GetNode(name string) *localnetv1.Node {
 	i := tx.s.tree.Get(&KV{Set: Nodes, Name: name})
 
 	if i == nil {
 		return nil
 	}
 
-	return i.(*KV).Node
+	return i.(*KV).Node.Node
 }
 
-func (tx *Tx) SetNode(n *v1.Node) {
-	tx.roPanic()
-	tx.s.tree.ReplaceOrInsert(&KV{
+func (tx *Tx) SetNode(n *localnetv1.Node) {
+	ni := &localnetv1.NodeInfo{
+		Node: n,
+		Hash: tx.s.hashOf(n),
+	}
+
+	tx.set(&KV{
 		Set:  Nodes,
 		Name: n.Name,
-		Node: n,
+		Node: ni,
 	})
 }
 
-func (tx *Tx) DelNode(n *v1.Node) {
-	tx.roPanic()
-	tx.s.tree.Delete(&KV{
+func (tx *Tx) DelNode(name string) {
+	tx.del(&KV{
 		Set:  Nodes,
-		Name: n.Name,
+		Name: name,
 	})
 }
