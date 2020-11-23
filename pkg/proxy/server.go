@@ -1,19 +1,23 @@
 package proxy
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"os"
 	"runtime/trace"
 	"time"
 
-	"github.com/mcluseau/kube-proxy2/pkg/proxystore"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
+
+	"github.com/mcluseau/kube-proxy2/pkg/proxystore"
+	"github.com/mcluseau/kube-proxy2/pkg/tlsflags"
 )
 
 var (
@@ -25,10 +29,14 @@ var (
 	inProcessConnBufferSize int = 32 << 10
 
 	ManageEndpointSlices bool = true
+
+	tlsFlags *tlsflags.Flags
 )
 
 func InitFlags(flagSet *flag.FlagSet) {
 	klog.InitFlags(flagSet)
+
+	tlsFlags = tlsflags.Bind(flagSet)
 
 	flagSet.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster. Defaults to envvar KUBECONFIG.")
 	flagSet.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
@@ -56,7 +64,6 @@ func NewServer() (srv *Server, err error) {
 
 	srv = &Server{
 		QuitCh: make(chan struct{}, 1),
-		GRPC:   grpc.NewServer(),
 		Store:  proxystore.New(),
 	}
 
@@ -83,6 +90,16 @@ func NewServer() (srv *Server, err error) {
 	srv.Client, err = kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("Error building kubernetes clientset: %s", err.Error())
+	}
+
+	if tlsCfg := tlsFlags.Config(); tlsCfg == nil {
+		srv.GRPC = grpc.NewServer()
+	} else {
+		tlsCfg.ClientAuth = tls.RequireAndVerifyClientCert
+		tlsCfg.ClientCAs = tlsCfg.RootCAs
+
+		creds := credentials.NewTLS(tlsCfg)
+		srv.GRPC = grpc.NewServer(grpc.Creds(creds))
 	}
 
 	srv.InformerFactory = informers.NewSharedInformerFactory(srv.Client, time.Second*30)

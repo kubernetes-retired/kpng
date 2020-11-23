@@ -7,12 +7,18 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/btree"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/proto"
+
+	// allow multi gRPC URLs
+	_ "github.com/Jille/grpc-multi-resolver"
+
 	"k8s.io/klog"
 
-	"github.com/google/btree"
 	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
+	"github.com/mcluseau/kube-proxy2/pkg/tlsflags"
 )
 
 type ServiceEndpoints struct {
@@ -20,18 +26,14 @@ type ServiceEndpoints struct {
 	Endpoints []*localnetv1.Endpoint
 }
 
-// FlagSet matches flag.FlagSet and pflag.FlagSet
-type FlagSet interface {
-	DurationVar(varPtr *time.Duration, name string, value time.Duration, doc string)
-	IntVar(varPtr *int, name string, value int, doc string)
-	StringVar(varPtr *string, name, value, doc string)
-	Uint64Var(varPtr *uint64, name string, value uint64, doc string)
-}
+type FlagSet = tlsflags.FlagSet
 
 // New returns a new EndpointsClient with values bound to the given flag-set for command-line tools.
 // Other needs can use `&EndpointsClient{...}` directly.
 func New(flags FlagSet) (epc *EndpointsClient) {
-	epc = &EndpointsClient{}
+	epc = &EndpointsClient{
+		TLS: &tlsflags.Flags{},
+	}
 	epc.ctx, epc.cancel = context.WithCancel(context.Background())
 	epc.DefaultFlags(flags)
 	return
@@ -41,6 +43,8 @@ func New(flags FlagSet) (epc *EndpointsClient) {
 type EndpointsClient struct {
 	// Target is the gRPC dial target
 	Target string
+
+	TLS *tlsflags.Flags
 
 	// ErrorDelay is the delay before retrying after an error.
 	ErrorDelay time.Duration
@@ -60,11 +64,13 @@ type EndpointsClient struct {
 
 // DefaultFlags registers this client's values to the standard flags.
 func (epc *EndpointsClient) DefaultFlags(flags FlagSet) {
-	flags.StringVar(&epc.Target, "target", "127.0.0.1:12090", "local API to reach")
+	flags.StringVar(&epc.Target, "target", "127.0.0.1:12090", "API to reach (can use multi:///1.0.0.1:1234,1.0.0.2:1234)")
 
 	flags.DurationVar(&epc.ErrorDelay, "error-delay", 1*time.Second, "duration to wait before retrying after errors")
 
 	flags.IntVar(&epc.MaxMsgSize, "max-msg-size", 4<<20, "max gRPC message size")
+
+	epc.TLS.Bind(flags)
 }
 
 // Next returns the next set of ServiceEndpoints, waiting for a new revision as needed.
@@ -212,7 +218,19 @@ retry:
 
 	klog.Info("connecting to ", epc.Target)
 
-	conn, err := grpc.DialContext(epc.ctx, epc.Target, grpc.WithInsecure(), grpc.WithMaxMsgSize(epc.MaxMsgSize))
+	opts := append(
+		make([]grpc.DialOption, 0),
+		grpc.WithMaxMsgSize(epc.MaxMsgSize),
+	)
+
+	tlsCfg := epc.TLS.Config()
+	if tlsCfg == nil {
+		opts = append(opts, grpc.WithInsecure())
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
+	}
+
+	conn, err := grpc.DialContext(epc.ctx, epc.Target, opts...)
 
 	if err != nil {
 		klog.Info("failed to connect: ", err)

@@ -3,6 +3,7 @@ module github.com/mcluseau/kube-proxy2
 go 1.13
 
 require (
+	github.com/Jille/grpc-multi-resolver v1.0.0
 	github.com/OneOfOne/xxhash v1.2.8
 	github.com/cespare/xxhash v1.1.0
 	github.com/docker/go-connections v0.4.0
