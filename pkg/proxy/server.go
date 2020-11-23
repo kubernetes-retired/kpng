@@ -67,6 +67,7 @@ func NewServer() (srv *Server, err error) {
 		Store:  proxystore.New(),
 	}
 
+	// setup tracing
 	if traceFile != "" {
 		f, err := os.Create(traceFile)
 		if err != nil {
@@ -82,6 +83,7 @@ func NewServer() (srv *Server, err error) {
 		klog.Info("tracing to ", traceFile)
 	}
 
+	// setup kubernetes client
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
 		return nil, fmt.Errorf("Error building kubeconfig: %s", err.Error())
@@ -92,6 +94,7 @@ func NewServer() (srv *Server, err error) {
 		return nil, fmt.Errorf("Error building kubernetes clientset: %s", err.Error())
 	}
 
+	// setup gRPC server
 	if tlsCfg := tlsFlags.Config(); tlsCfg == nil {
 		srv.GRPC = grpc.NewServer()
 	} else {
@@ -102,6 +105,7 @@ func NewServer() (srv *Server, err error) {
 		srv.GRPC = grpc.NewServer(grpc.Creds(creds))
 	}
 
+	// start informers
 	srv.InformerFactory = informers.NewSharedInformerFactory(srv.Client, time.Second*30)
 	srv.InformerFactory.Start(srv.QuitCh)
 
