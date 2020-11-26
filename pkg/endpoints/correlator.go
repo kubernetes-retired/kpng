@@ -36,14 +36,14 @@ func (c *Correlator) Run(stopCh chan struct{}) {
 	coreFactory := factory.Core().V1()
 
 	{
-		svcInformer := coreFactory.Services().Informer()
-		svcInformer.AddEventHandler(&serviceEventHandler{
+		servicesInformer := coreFactory.Services().Informer()
+		servicesInformer.AddEventHandler(&serviceEventHandler{
 			eventHandler: eventHandler{
 				s:        c.store,
 				informer: svcInformer,
 			},
 		})
-		go svcInformer.Run(stopCh)
+		go servicesInformer.Run(stopCh)
 
 		nodesInformer := coreFactory.Nodes().Informer()
 		nodesInformer.AddEventHandler(&nodeEventHandler{c.eventHandler(nodesInformer)})
@@ -51,14 +51,14 @@ func (c *Correlator) Run(stopCh chan struct{}) {
 	}
 
 	if proxy.ManageEndpointSlices {
-		sliceInformer := factory.Discovery().V1beta1().EndpointSlices().Informer()
-		sliceInformer.AddEventHandler(&sliceEventHandler{c.eventHandler(sliceInformer)})
-		go sliceInformer.Run(stopCh)
+		slicesInformer := factory.Discovery().V1beta1().EndpointSlices().Informer()
+		slicesInformer.AddEventHandler(&sliceEventHandler{c.eventHandler(sliceInformer)})
+		go slicesInformer.Run(stopCh)
 
 	} else {
-		epInformer := coreFactory.Endpoints().Informer()
-		epInformer.AddEventHandler(&endpointsEventHandler{c.eventHandler(epInformer)})
-		go epInformer.Run(stopCh)
+		endpointsInformer := coreFactory.Endpoints().Informer()
+		endpointsInformer.AddEventHandler(&endpointsEventHandler{c.eventHandler(epInformer)})
+		go endpointsInformer.Run(stopCh)
 	}
 
 	go c.logStats()
