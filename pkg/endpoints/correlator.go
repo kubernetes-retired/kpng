@@ -1,11 +1,6 @@
 package endpoints
 
 import (
-	"fmt"
-	"runtime"
-	"syscall"
-	"time"
-
 	"k8s.io/client-go/tools/cache"
 
 	"m.cluseau.fr/kube-proxy2/pkg/proxy"
@@ -59,53 +54,5 @@ func (c *Correlator) Run(stopCh chan struct{}) {
 		endpointsInformer := coreFactory.Endpoints().Informer()
 		endpointsInformer.AddEventHandler(&endpointsEventHandler{c.eventHandler(epInformer)})
 		go endpointsInformer.Run(stopCh)
-	}
-
-	go c.logStats()
-}
-
-func (c *Correlator) logStats() {
-	rusage := &syscall.Rusage{}
-	memStats := &runtime.MemStats{}
-
-	syscall.Getrusage(syscall.RUSAGE_SELF, rusage)
-	prevSys := rusage.Stime.Nano()
-	prevUsr := rusage.Utime.Nano()
-
-	t0 := time.Now()
-	prevTime := time.Time{}
-
-	tick := time.Tick(time.Second)
-	fmt.Println("stats:\ttime\tusr cpu\tsys cpu\ttot cpu\tmem")
-	fmt.Println("stats:\tms\tms\tms\t%\tMiB")
-	for {
-		syscall.Getrusage(syscall.RUSAGE_SELF, rusage)
-		runtime.ReadMemStats(memStats)
-
-		now := time.Now()
-
-		sys := rusage.Stime.Nano()
-		usr := rusage.Utime.Nano()
-		sysD := sys - prevSys
-		usrD := usr - prevUsr
-
-		var elapsed int64
-		if !prevTime.IsZero() {
-			elapsed = now.Sub(prevTime).Nanoseconds()
-		}
-
-		fmt.Printf("stats:\t%d\t%d\t%d\t%.3f\t%.2f\n",
-			time.Since(t0).Milliseconds(),
-			usrD/1e6,
-			sysD/1e6,
-			float64(sysD+usrD)*100/float64(elapsed),
-			float64(memStats.Alloc)/(2<<20),
-		)
-
-		prevTime = now
-		prevSys = sys
-		prevUsr = usr
-
-		<-tick
 	}
 }
