@@ -9,14 +9,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/cespare/xxhash"
+	"github.com/gogo/protobuf/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"github.com/cespare/xxhash"
-	"github.com/gogo/protobuf/proto"
-	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
-	"github.com/mcluseau/kube-proxy2/pkg/server"
-	serverendpoints "github.com/mcluseau/kube-proxy2/pkg/server/endpoints"
+	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
+	"m.cluseau.fr/kube-proxy2/pkg/server"
+	serverendpoints "m.cluseau.fr/kube-proxy2/pkg/server/endpoints"
 )
 
 var (

@@ -3,7 +3,7 @@ package endpoints
 import (
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/mcluseau/kube-proxy2/pkg/proxystore"
+	"m.cluseau.fr/kube-proxy2/pkg/proxystore"
 )
 
 type eventHandler struct {

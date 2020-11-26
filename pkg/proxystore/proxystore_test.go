@@ -3,7 +3,7 @@ package proxystore
 import (
 	"fmt"
 
-	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
+	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
 )
 
 func Example() {

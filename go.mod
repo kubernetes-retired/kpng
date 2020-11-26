@@ -1,4 +1,4 @@
-module github.com/mcluseau/kube-proxy2
+module m.cluseau.fr/kube-proxy2
 
 go 1.13
 

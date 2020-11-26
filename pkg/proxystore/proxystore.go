@@ -11,7 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 
-	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
+	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
 )
 
 type Store struct {

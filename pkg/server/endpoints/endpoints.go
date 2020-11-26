@@ -1,9 +1,9 @@
 package endpoints
 
 import (
-	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
-	"github.com/mcluseau/kube-proxy2/pkg/endpoints"
-	"github.com/mcluseau/kube-proxy2/pkg/proxy"
+	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
+	"m.cluseau.fr/kube-proxy2/pkg/endpoints"
+	"m.cluseau.fr/kube-proxy2/pkg/proxy"
 )
 
 func Setup(srv *proxy.Server) {

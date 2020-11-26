@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mcluseau/kube-proxy2/pkg/client"
+	"m.cluseau.fr/kube-proxy2/pkg/client"
 )
 
 var (

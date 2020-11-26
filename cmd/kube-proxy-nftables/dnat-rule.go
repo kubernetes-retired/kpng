@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"strconv"
 
-	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
 	"k8s.io/klog"
+
+	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
 )
 
 type dnatRule struct {

@@ -1,8 +1,8 @@
 package endpoints
 
 import (
-	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
-	"github.com/mcluseau/kube-proxy2/pkg/proxystore"
+	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
+	"m.cluseau.fr/kube-proxy2/pkg/proxystore"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"

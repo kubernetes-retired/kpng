@@ -16,9 +16,10 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash"
-	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
-	"github.com/mcluseau/kube-proxy2/pkg/client"
 	"k8s.io/klog"
+
+	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
+	"m.cluseau.fr/kube-proxy2/pkg/client"
 )
 
 var (

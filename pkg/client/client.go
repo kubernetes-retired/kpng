@@ -17,8 +17,8 @@ import (
 
 	"k8s.io/klog"
 
-	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
-	"github.com/mcluseau/kube-proxy2/pkg/tlsflags"
+	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
+	"m.cluseau.fr/kube-proxy2/pkg/tlsflags"
 )
 
 type ServiceEndpoints struct {

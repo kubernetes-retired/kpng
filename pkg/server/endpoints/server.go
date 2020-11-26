@@ -11,10 +11,10 @@ import (
 	"google.golang.org/grpc/peer"
 	"k8s.io/klog"
 
-	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
-	"github.com/mcluseau/kube-proxy2/pkg/diffstore"
-	"github.com/mcluseau/kube-proxy2/pkg/endpoints"
-	"github.com/mcluseau/kube-proxy2/pkg/proxystore"
+	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
+	"m.cluseau.fr/kube-proxy2/pkg/diffstore"
+	"m.cluseau.fr/kube-proxy2/pkg/endpoints"
+	"m.cluseau.fr/kube-proxy2/pkg/proxystore"
 )
 
 type Server struct {

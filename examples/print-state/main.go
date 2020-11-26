@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/mcluseau/kube-proxy2/pkg/client"
+	"m.cluseau.fr/kube-proxy2/pkg/client"
 )
 
 func main() {

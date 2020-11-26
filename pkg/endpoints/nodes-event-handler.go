@@ -5,9 +5,9 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/mcluseau/kube-proxy2/pkg/api/localnetv1"
-	"github.com/mcluseau/kube-proxy2/pkg/proxy"
-	"github.com/mcluseau/kube-proxy2/pkg/proxystore"
+	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
+	"m.cluseau.fr/kube-proxy2/pkg/proxy"
+	"m.cluseau.fr/kube-proxy2/pkg/proxystore"
 )
 
 type nodesEventHandler struct{ eventHandler }

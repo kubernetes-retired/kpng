@@ -9,9 +9,9 @@ import (
 
 	"k8s.io/klog"
 
-	"github.com/mcluseau/kube-proxy2/pkg/proxy"
-	"github.com/mcluseau/kube-proxy2/pkg/server"
-	srvendpoints "github.com/mcluseau/kube-proxy2/pkg/server/endpoints"
+	"m.cluseau.fr/kube-proxy2/pkg/proxy"
+	"m.cluseau.fr/kube-proxy2/pkg/server"
+	srvendpoints "m.cluseau.fr/kube-proxy2/pkg/server/endpoints"
 )
 
 var (
