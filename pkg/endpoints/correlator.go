@@ -46,7 +46,7 @@ func (c *Correlator) Run(stopCh chan struct{}) {
 		go svcInformer.Run(stopCh)
 
 		nodesInformer := coreFactory.Nodes().Informer()
-		nodesInformer.AddEventHandler(&nodesEventHandler{c.eventHandler(nodesInformer)})
+		nodesInformer.AddEventHandler(&nodeEventHandler{c.eventHandler(nodesInformer)})
 		go nodesInformer.Run(stopCh)
 	}
 
