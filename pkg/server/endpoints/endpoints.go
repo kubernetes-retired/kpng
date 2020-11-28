@@ -8,7 +8,7 @@ import (
 
 func Setup(srv *proxy.Server) {
 	endpointsCorrelator := endpoints.NewCorrelator(srv)
-	go endpointsCorrelator.Run(srv.QuitCh)
+	endpointsCorrelator.Start(srv.QuitCh)
 
 	localnetv1.RegisterEndpointsService(srv.GRPC, localnetv1.NewEndpointsService(localnetv1.UnstableEndpointsService(&Server{
 		Store: srv.Store,

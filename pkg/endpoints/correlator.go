@@ -26,18 +26,13 @@ func (c *Correlator) eventHandler(informer cache.SharedIndexInformer) eventHandl
 	}
 }
 
-func (c *Correlator) Run(stopCh chan struct{}) {
+func (c *Correlator) Start(stopCh chan struct{}) {
 	factory := c.proxy.InformerFactory
 	coreFactory := factory.Core().V1()
 
 	{
 		servicesInformer := coreFactory.Services().Informer()
-		servicesInformer.AddEventHandler(&serviceEventHandler{
-			eventHandler: eventHandler{
-				s:        c.store,
-				informer: svcInformer,
-			},
-		})
+		servicesInformer.AddEventHandler(&serviceEventHandler{c.eventHandler(servicesInformer)})
 		go servicesInformer.Run(stopCh)
 
 		nodesInformer := coreFactory.Nodes().Informer()
@@ -47,12 +42,12 @@ func (c *Correlator) Run(stopCh chan struct{}) {
 
 	if proxy.ManageEndpointSlices {
 		slicesInformer := factory.Discovery().V1beta1().EndpointSlices().Informer()
-		slicesInformer.AddEventHandler(&sliceEventHandler{c.eventHandler(sliceInformer)})
+		slicesInformer.AddEventHandler(&sliceEventHandler{c.eventHandler(slicesInformer)})
 		go slicesInformer.Run(stopCh)
 
 	} else {
 		endpointsInformer := coreFactory.Endpoints().Informer()
-		endpointsInformer.AddEventHandler(&endpointsEventHandler{c.eventHandler(epInformer)})
+		endpointsInformer.AddEventHandler(&endpointsEventHandler{c.eventHandler(endpointsInformer)})
 		go endpointsInformer.Run(stopCh)
 	}
 }
