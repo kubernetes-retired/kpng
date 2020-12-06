@@ -46,13 +46,13 @@ func init() {
 }
 
 func main() {
-	// check the nft bug
+	// check the nft vmap bug (0.9.5 but protect against the whole class)
 	{
 		nft := exec.Command("nft", "-f", "-")
 		nft.Stdin = bytes.NewBuffer([]byte(`
-table ip k8s_test_hash_bug
-delete table ip k8s_test_hash_bug
-table ip k8s_test_hash_bug {
+table ip k8s_test_vmap_bug
+delete table ip k8s_test_vmap_bug
+table ip k8s_test_vmap_bug {
   map m1 {
     typeof numgen random mod 2 : ip daddr
     elements = { 1 : 10.0.0.1, 2 : 10.0.0.2 }
@@ -65,8 +65,8 @@ table ip k8s_test_hash_bug {
 
 		nft = exec.Command("nft", "-f", "-")
 		nft.Stdin = bytes.NewBuffer([]byte(`
-list map ip k8s_test_hash_bug m1
-delete table ip k8s_test_hash_bug
+list map ip k8s_test_vmap_bug m1
+delete table ip k8s_test_vmap_bug
 `))
 		output, err := nft.Output()
 		if err != nil {
@@ -76,7 +76,7 @@ delete table ip k8s_test_hash_bug
 		hasNFTHashBug = bytes.Contains(output, []byte("16777216")) || bytes.Contains(output, []byte("0x01000000"))
 
 		if hasNFTHashBug {
-			klog.Info("nft hash bug found, map indices will be affected by the workaround")
+			klog.Info("nft vmap bug found, map indices will be affected by the workaround (0x01 will become 0x01000000)")
 		}
 	}
 
