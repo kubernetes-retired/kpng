@@ -194,7 +194,6 @@ func updateNftables(ch <-chan *client.ServiceEndpoints) {
 					key := svcOffset + uint64(idx)
 
 					if hasNFTHashBug {
-						// FIXME woaaa nft is bugged as hell :o 0x01 is converted to 0x01000000... fixing it here but wtf...
 						key = 0 |
 							(key>>0&0xff)<<24 |
 							(key>>8&0xff)<<(24-8) |
