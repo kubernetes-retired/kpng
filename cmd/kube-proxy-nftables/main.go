@@ -292,6 +292,7 @@ func updateNftables(ch <-chan *client.ServiceEndpoints) {
 					vmapAdd(extChain, daddrMatch, extIP+": jump "+svc_chain)
 				}
 			}
+
 		}
 	}
 
@@ -375,6 +376,9 @@ func updateNftables(ch <-chan *client.ServiceEndpoints) {
 }
 
 func addDispatchChains(family string, chainBuffers *chainBufferSet) {
+	if chainBuffers.Get("chain", "dnat_external").Len() != 0 {
+		fmt.Fprint(chainBuffers.Get("chain", "z_dnat_all"), "  jump dnat_external\n")
+	}
 	if chainBuffers.Get("chain", "z_dnat_all").Len() != 0 {
 		fmt.Fprintf(chainBuffers.Get("chain", "hook_nat_prerouting"),
 			"  type nat hook prerouting priority %d;\n  jump z_dnat_all\n", *hookPrio)
@@ -382,6 +386,9 @@ func addDispatchChains(family string, chainBuffers *chainBufferSet) {
 			"  type nat hook output priority %d;\n  jump z_dnat_all\n", *hookPrio)
 	}
 
+	if chainBuffers.Get("chain", "filter_external").Len() != 0 {
+		fmt.Fprint(chainBuffers.Get("chain", "z_filter_all"), "  jump filter_external\n")
+	}
 	if chainBuffers.Get("chain", "z_filter_all").Len() != 0 {
 		fmt.Fprintf(chainBuffers.Get("chain", "hook_filter_forward"),
 			"  type filter hook forward priority %d;\n  jump z_filter_all\n", *hookPrio)
