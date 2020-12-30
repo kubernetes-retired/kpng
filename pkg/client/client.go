@@ -210,12 +210,11 @@ func (epc *EndpointsClient) CancelOn(signals ...os.Signal) {
 	}()
 }
 
-func (epc *EndpointsClient) dial() (canceled bool) {
-retry:
-	if epc.ctx.Err() == context.Canceled {
-		return true
-	}
+func (epc *EndpointsClient) Context() context.Context {
+	return epc.ctx
+}
 
+func (epc *EndpointsClient) DialContext(ctx context.Context) (conn *grpc.ClientConn, err error) {
 	klog.Info("connecting to ", epc.Target)
 
 	opts := append(
@@ -230,9 +229,25 @@ retry:
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
 	}
 
-	conn, err := grpc.DialContext(epc.ctx, epc.Target, opts...)
+	return grpc.DialContext(epc.ctx, epc.Target, opts...)
+}
 
-	if err != nil {
+func (epc *EndpointsClient) Dial() (conn *grpc.ClientConn, err error) {
+	if ctxErr := epc.ctx.Err(); ctxErr == context.Canceled {
+		err = ctxErr
+		return
+	}
+
+	return epc.DialContext(epc.ctx)
+}
+
+func (epc *EndpointsClient) dial() (canceled bool) {
+retry:
+	conn, err := epc.Dial()
+
+	if err == context.Canceled {
+		return true
+	} else if err != nil {
 		klog.Info("failed to connect: ", err)
 		epc.errorSleep()
 		goto retry

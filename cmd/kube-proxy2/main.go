@@ -12,6 +12,7 @@ import (
 	"m.cluseau.fr/kube-proxy2/pkg/proxy"
 	"m.cluseau.fr/kube-proxy2/pkg/server"
 	srvendpoints "m.cluseau.fr/kube-proxy2/pkg/server/endpoints"
+	srvglobal "m.cluseau.fr/kube-proxy2/pkg/server/global"
 )
 
 var (
@@ -53,6 +54,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	// setup correlator
 	srvendpoints.Setup(srv)
+	srvglobal.Setup(srv)
 
 	// handle exit signals
 	go func() {

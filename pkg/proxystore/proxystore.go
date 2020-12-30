@@ -1,7 +1,6 @@
 package proxystore
 
 import (
-	"fmt"
 	"strconv"
 	"sync"
 
@@ -26,13 +25,15 @@ type Store struct {
 	pb *proto.Buffer
 }
 
-type Set int
+type Set = localnetv1.Set
 
 const (
-	Services Set = iota
-	Endpoints
-	Nodes
+	Services  = localnetv1.Set_GlobalServiceInfos
+	Endpoints = localnetv1.Set_GlobalEndpointInfos
+	Nodes     = localnetv1.Set_GlobalNodeInfos
 )
+
+var AllSets = []Set{Services, Endpoints, Nodes}
 
 type Hashed interface {
 	GetHash() uint64
@@ -46,21 +47,11 @@ type KV struct {
 	Source    string
 	Key       string
 
+	Value Hashed
+
 	Service  *localnetv1.ServiceInfo
 	Endpoint *localnetv1.EndpointInfo
 	Node     *localnetv1.NodeInfo
-}
-
-func (kv *KV) Value() Hashed {
-	switch kv.Set {
-	case Services:
-		return kv.Service
-	case Endpoints:
-		return kv.Endpoint
-	case Nodes:
-		return kv.Node
-	}
-	panic(fmt.Errorf("unknown set: %d", kv.Set)) // should not happen
 }
 
 func (a *KV) Less(i btree.Item) bool {
@@ -173,7 +164,7 @@ func (tx *Tx) set(kv *KV) {
 	tx.roPanic()
 	prev := tx.s.tree.Get(kv)
 
-	if prev != nil && prev.(*KV).Value().GetHash() == kv.Value().GetHash() {
+	if prev != nil && prev.(*KV).Value.GetHash() == kv.Value.GetHash() {
 		return // not changed
 	}
 
@@ -216,13 +207,17 @@ func (tx *Tx) SetService(s *localnetv1.Service, topologyKeys []string) {
 	si := &localnetv1.ServiceInfo{
 		Service:      s,
 		TopologyKeys: topologyKeys,
-		Hash:         tx.s.hashOf(s),
+		Hash: tx.s.hashOf(&localnetv1.ServiceInfo{
+			Service:      s,
+			TopologyKeys: topologyKeys,
+		}),
 	}
 
 	tx.set(&KV{
 		Set:       Services,
 		Namespace: s.Namespace,
 		Name:      s.Name,
+		Value:     si,
 		Service:   si,
 	})
 }
@@ -269,11 +264,15 @@ func (tx *Tx) SetEndpointsOfSource(namespace, sourceName string, eis []*localnet
 			panic("inconsistent source: " + sourceName + " != " + ei.SourceName)
 		}
 
-		ei.Hash = tx.s.hashOf(ei.Endpoint)
+		ei.Hash = tx.s.hashOf(&localnetv1.EndpointInfo{
+			Endpoint:   ei.Endpoint,
+			Conditions: ei.Conditions,
+			Topology:   ei.Topology,
+		})
 		seen[ei.Hash] = true
 	}
 
-	// delete unseen endpoints
+	// to delete unseen endpoints
 	toDel := make([]*KV, 0)
 
 	tx.s.tree.AscendGreaterOrEqual(&KV{
@@ -316,6 +315,7 @@ func (tx *Tx) SetEndpointsOfSource(namespace, sourceName string, eis []*localnet
 			Name:      ei.ServiceName,
 			Source:    ei.SourceName,
 			Key:       key,
+			Value:     ei,
 			Endpoint:  ei,
 		}
 
@@ -331,6 +331,7 @@ func (tx *Tx) SetEndpointsOfSource(namespace, sourceName string, eis []*localnet
 			Namespace: ei.Namespace,
 			Source:    ei.SourceName,
 			Key:       key,
+			Value:     ei,
 			Endpoint:  ei,
 		})
 	}
@@ -388,9 +389,10 @@ func (tx *Tx) SetNode(n *localnetv1.Node) {
 	}
 
 	tx.set(&KV{
-		Set:  Nodes,
-		Name: n.Name,
-		Node: ni,
+		Set:   Nodes,
+		Name:  n.Name,
+		Node:  ni,
+		Value: ni,
 	})
 }
 

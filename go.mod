@@ -6,6 +6,7 @@ require (
 	github.com/Jille/grpc-multi-resolver v1.0.0
 	github.com/OneOfOne/xxhash v1.2.8
 	github.com/cespare/xxhash v1.1.0
+	github.com/docker/docker v20.10.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0
 	github.com/go-logr/logr v0.3.0 // indirect
 	github.com/gogo/protobuf v1.3.1
@@ -28,6 +29,7 @@ require (
 	google.golang.org/genproto v0.0.0-20201119123407-9b1e624d6bc4 // indirect
 	google.golang.org/grpc v1.33.2
 	google.golang.org/protobuf v1.25.0
+	gotest.tools/v3 v3.0.3 // indirect
 	k8s.io/api v0.19.4
 	k8s.io/apimachinery v0.19.4
 	k8s.io/client-go v1.5.1

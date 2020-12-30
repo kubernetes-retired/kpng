@@ -150,3 +150,138 @@ type UnstableEndpointsService interface {
 	// Returns all the endpoints for this node.
 	Watch(Endpoints_WatchServer) error
 }
+
+// GlobalClient is the client API for Global service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type GlobalClient interface {
+	Watch(ctx context.Context, opts ...grpc.CallOption) (Global_WatchClient, error)
+}
+
+type globalClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewGlobalClient(cc grpc.ClientConnInterface) GlobalClient {
+	return &globalClient{cc}
+}
+
+var globalWatchStreamDesc = &grpc.StreamDesc{
+	StreamName:    "Watch",
+	ServerStreams: true,
+	ClientStreams: true,
+}
+
+func (c *globalClient) Watch(ctx context.Context, opts ...grpc.CallOption) (Global_WatchClient, error) {
+	stream, err := c.cc.NewStream(ctx, globalWatchStreamDesc, "/localnetv1.Global/Watch", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &globalWatchClient{stream}
+	return x, nil
+}
+
+type Global_WatchClient interface {
+	Send(*GlobalWatchReq) error
+	Recv() (*OpItem, error)
+	grpc.ClientStream
+}
+
+type globalWatchClient struct {
+	grpc.ClientStream
+}
+
+func (x *globalWatchClient) Send(m *GlobalWatchReq) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *globalWatchClient) Recv() (*OpItem, error) {
+	m := new(OpItem)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// GlobalService is the service API for Global service.
+// Fields should be assigned to their respective handler implementations only before
+// RegisterGlobalService is called.  Any unassigned fields will result in the
+// handler for that method returning an Unimplemented error.
+type GlobalService struct {
+	Watch func(Global_WatchServer) error
+}
+
+func (s *GlobalService) watch(_ interface{}, stream grpc.ServerStream) error {
+	return s.Watch(&globalWatchServer{stream})
+}
+
+type Global_WatchServer interface {
+	Send(*OpItem) error
+	Recv() (*GlobalWatchReq, error)
+	grpc.ServerStream
+}
+
+type globalWatchServer struct {
+	grpc.ServerStream
+}
+
+func (x *globalWatchServer) Send(m *OpItem) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *globalWatchServer) Recv() (*GlobalWatchReq, error) {
+	m := new(GlobalWatchReq)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// RegisterGlobalService registers a service implementation with a gRPC server.
+func RegisterGlobalService(s grpc.ServiceRegistrar, srv *GlobalService) {
+	srvCopy := *srv
+	if srvCopy.Watch == nil {
+		srvCopy.Watch = func(Global_WatchServer) error {
+			return status.Errorf(codes.Unimplemented, "method Watch not implemented")
+		}
+	}
+	sd := grpc.ServiceDesc{
+		ServiceName: "localnetv1.Global",
+		Methods:     []grpc.MethodDesc{},
+		Streams: []grpc.StreamDesc{
+			{
+				StreamName:    "Watch",
+				Handler:       srvCopy.watch,
+				ServerStreams: true,
+				ClientStreams: true,
+			},
+		},
+		Metadata: "pkg/api/localnetv1/services.proto",
+	}
+
+	s.RegisterService(&sd, nil)
+}
+
+// NewGlobalService creates a new GlobalService containing the
+// implemented methods of the Global service in s.  Any unimplemented
+// methods will result in the gRPC server returning an UNIMPLEMENTED status to the client.
+// This includes situations where the method handler is misspelled or has the wrong
+// signature.  For this reason, this function should be used with great care and
+// is not recommended to be used by most users.
+func NewGlobalService(s interface{}) *GlobalService {
+	ns := &GlobalService{}
+	if h, ok := s.(interface {
+		Watch(Global_WatchServer) error
+	}); ok {
+		ns.Watch = h.Watch
+	}
+	return ns
+}
+
+// UnstableGlobalService is the service API for Global service.
+// New methods may be added to this interface if they are added to the service
+// definition, which is not a backward-compatible change.  For this reason,
+// use of this type is not recommended.
+type UnstableGlobalService interface {
+	Watch(Global_WatchServer) error
+}

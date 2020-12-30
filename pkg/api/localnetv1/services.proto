@@ -33,6 +33,10 @@ enum Set {
     UnknownSet = 0;
     ServicesSet = 1;
     EndpointsSet = 2;
+
+    GlobalServiceInfos = 10;
+    GlobalEndpointInfos = 11;
+    GlobalNodeInfos = 12;
 }
 
 message Ref {
@@ -137,3 +141,9 @@ message Node {
     string Name = 1;
     map<string, string> Labels = 2;
 }
+
+service Global {
+    rpc Watch(stream GlobalWatchReq) returns (stream OpItem);
+}
+
+message GlobalWatchReq {}
