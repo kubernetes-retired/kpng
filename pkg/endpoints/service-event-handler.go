@@ -99,7 +99,7 @@ func (h *serviceEventHandler) OnDelete(oldObj interface{}) {
 	svc := oldObj.(*v1.Service)
 
 	h.s.Update(func(tx *proxystore.Tx) {
-		tx.DelService(svc)
+		tx.DelService(svc.Namespace, svc.Name)
 		h.updateSync(proxystore.Services, tx)
 	})
 }

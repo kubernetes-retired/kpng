@@ -2,12 +2,12 @@ package proxystore
 
 import (
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/cespare/xxhash"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/btree"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 
 	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
@@ -52,6 +52,15 @@ type KV struct {
 	Service  *localnetv1.ServiceInfo
 	Endpoint *localnetv1.EndpointInfo
 	Node     *localnetv1.NodeInfo
+}
+
+func (a *KV) Path() string {
+	return strings.Join([]string{a.Namespace, a.Name, a.Source, a.Key}, "|")
+}
+
+func (a *KV) SetPath(path string) {
+	p := strings.Split(path, "|")
+	a.Namespace, a.Name, a.Source, a.Key = p[0], p[1], p[2], p[3]
 }
 
 func (a *KV) Less(i btree.Item) bool {
@@ -222,11 +231,11 @@ func (tx *Tx) SetService(s *localnetv1.Service, topologyKeys []string) {
 	})
 }
 
-func (tx *Tx) DelService(s *v1.Service) {
+func (tx *Tx) DelService(namespace, name string) {
 	tx.del(&KV{
 		Set:       Services,
-		Namespace: s.Namespace,
-		Name:      s.Name,
+		Namespace: namespace,
+		Name:      name,
 	})
 }
 

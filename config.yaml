@@ -1,0 +1,14 @@
+nodes:
+- name: n1
+- name: n2
+
+services:
+- service:
+    name: s1
+    ips:
+      clusterip: "1.0.0.1"
+      externalips: { v4: [ "2.0.2.1" ] }
+  endpoints:
+  - endpoint: { ips: { v4: ["1.1.0.1"] } }
+  - endpoint: { ips: { v4: ["1.2.0.1"] } }
+
