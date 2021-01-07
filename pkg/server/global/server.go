@@ -21,10 +21,7 @@ var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
 func (s *Server) Watch(res localnetv1.Global_WatchServer) error {
 	var rev uint64
 
-	diffs := make([]*diffstore.DiffStore, len(proxystore.AllSets))
-	for idx, _ := range proxystore.AllSets {
-		diffs[idx] = diffstore.New()
-	}
+	w := NewWatchState(res, proxystore.AllSets)
 
 	for {
 		if _, err := res.Recv(); err != nil {
@@ -36,8 +33,9 @@ func (s *Server) Watch(res localnetv1.Global_WatchServer) error {
 				return
 			}
 
-			for idx, set := range proxystore.AllSets {
-				diff := diffs[idx]
+			// sync all stores
+			for _, set := range proxystore.AllSets {
+				diff := w.StoreFor(set)
 				tx.Each(set, func(kv *proxystore.KV) bool {
 					h := kv.Value.GetHash()
 					diff.Set([]byte(kv.Key), h, kv.Value)
@@ -46,10 +44,18 @@ func (s *Server) Watch(res localnetv1.Global_WatchServer) error {
 			}
 		})
 
+		w.SendUpdates(localnetv1.Set_GlobalServiceInfos)
+		w.SendUpdates(localnetv1.Set_GlobalNodeInfos)
+		w.SendUpdates(localnetv1.Set_GlobalEndpointInfos)
+
+		w.SendDeletes(localnetv1.Set_GlobalEndpointInfos)
+		w.SendDeletes(localnetv1.Set_GlobalNodeInfos)
+		w.SendDeletes(localnetv1.Set_GlobalServiceInfos)
+
 		res.Send(syncItem)
 
-		for idx, _ := range proxystore.AllSets {
-			diffs[idx].Reset(diffstore.ItemDeleted)
+		for _, set := range proxystore.AllSets {
+			w.StoreFor(set).Reset(diffstore.ItemDeleted)
 		}
 	}
 }
