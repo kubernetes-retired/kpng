@@ -140,6 +140,7 @@ message NodeInfo {
 message Node {
     string Name = 1;
     map<string, string> Labels = 2;
+    map<string, string> Annotations = 3;
 }
 
 service Global {

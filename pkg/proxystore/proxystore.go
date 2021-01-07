@@ -370,6 +370,63 @@ func (tx *Tx) DelEndpointsOfSource(namespace, sourceName string) {
 	}
 }
 
+func (tx *Tx) SetEndpoint(ei *localnetv1.EndpointInfo) {
+	tx.roPanic()
+
+	newHash := tx.s.hashOf(&localnetv1.EndpointInfo{
+		Endpoint:   ei.Endpoint,
+		Conditions: ei.Conditions,
+		Topology:   ei.Topology,
+	})
+
+	if ei.Hash == newHash {
+		return // not changed
+	}
+
+	prevKey := strconv.FormatUint(ei.Hash, 16)
+
+	tx.del(&KV{
+		Set:       Endpoints,
+		Namespace: ei.Namespace,
+		Name:      ei.ServiceName,
+		Source:    ei.SourceName,
+		Key:       prevKey,
+	})
+
+	// also delete by source only
+	tx.del(&KV{
+		Set:       Endpoints,
+		Namespace: ei.Namespace,
+		Source:    ei.SourceName,
+		Key:       prevKey,
+	})
+
+	// update key
+	ei.Hash = newHash
+	key := strconv.FormatUint(ei.Hash, 16)
+
+	tx.set(&KV{
+		Set:       Endpoints,
+		Namespace: ei.Namespace,
+		Name:      ei.ServiceName,
+		Source:    ei.SourceName,
+		Key:       key,
+		Value:     ei,
+		Endpoint:  ei,
+	})
+
+	// also index by source only
+	tx.set(&KV{
+		Set:       Endpoints,
+		Namespace: ei.Namespace,
+		Source:    ei.SourceName,
+		Key:       key,
+		Value:     ei,
+		Endpoint:  ei,
+	})
+
+}
+
 // Nodes funcs
 
 func (tx *Tx) GetNode(name string) *localnetv1.Node {

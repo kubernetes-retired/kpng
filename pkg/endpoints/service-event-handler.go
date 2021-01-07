@@ -1,11 +1,20 @@
 package endpoints
 
 import (
-	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
-	"m.cluseau.fr/kube-proxy2/pkg/proxystore"
+	"flag"
+	"strings"
+
+	"github.com/gobwas/glob"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"
+	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
+	"m.cluseau.fr/kube-proxy2/pkg/proxystore"
+)
+
+var (
+	serviceLabelGlobs      = flag.String("with-service-labels", "", "service labels to include")
+	serviceAnnonationGlobs = flag.String("with-service-annotations", "", "service annotations to include")
 )
 
 type serviceEventHandler struct{ eventHandler }
@@ -17,8 +26,8 @@ func (h *serviceEventHandler) OnAdd(obj interface{}) {
 		Namespace:   svc.Namespace,
 		Name:        svc.Name,
 		Type:        string(svc.Spec.Type),
-		Labels:      svc.Labels,
-		Annotations: svc.Annotations,
+		Labels:      globsFilter(svc.Labels, *serviceLabelGlobs),
+		Annotations: globsFilter(svc.Annotations, *serviceAnnonationGlobs),
 		MapIP:       false, // TODO for headless? or no ports means all? why am I adding those questions? ;-)
 		IPs: &localnetv1.ServiceIPs{
 			ClusterIP:   svc.Spec.ClusterIP,
@@ -93,4 +102,33 @@ func (h *serviceEventHandler) OnDelete(oldObj interface{}) {
 		tx.DelService(svc)
 		h.updateSync(proxystore.Services, tx)
 	})
+}
+
+// FIXME move to a common place
+func globsFilter(src map[string]string, globsFlag string) (dst map[string]string) {
+	if len(globsFlag) == 0 {
+		return
+	}
+
+	globsS := strings.Split(globsFlag, ",")
+
+	globs := make([]glob.Glob, len(globsS))
+
+	for i, globS := range globsS {
+		globs[i] = glob.MustCompile(globS)
+	}
+
+	dst = make(map[string]string)
+
+srcLoop:
+	for k, v := range src {
+		for _, g := range globs {
+			if g.Match(k) {
+				dst[k] = v
+				continue srcLoop
+			}
+		}
+	}
+
+	return
 }

@@ -9,6 +9,7 @@ require (
 	github.com/docker/docker v20.10.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0
 	github.com/go-logr/logr v0.3.0 // indirect
+	github.com/gobwas/glob v0.2.3
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.4.3
 	github.com/google/btree v1.0.0

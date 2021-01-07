@@ -12,15 +12,21 @@ import (
 
 type nodeEventHandler struct{ eventHandler }
 
-var myNodeName = flag.String("node-name", "", "Node name override")
+var (
+	myNodeName = flag.String("node-name", "", "Node name override")
+
+	nodeLabelGlobs      = flag.String("with-node-labels", "", "node labels to include")
+	nodeAnnotationGlobs = flag.String("with-node-annotations", "", "node annotations to include")
+)
 
 func (h nodeEventHandler) OnAdd(obj interface{}) {
 	node := obj.(*v1.Node)
 
 	// keep only what we want
 	n := &localnetv1.Node{
-		Name:   node.Name,
-		Labels: node.Labels,
+		Name:        node.Name,
+		Labels:      globsFilter(node.Labels, *nodeLabelGlobs),
+		Annotations: globsFilter(node.Annotations, *nodeAnnotationGlobs),
 	}
 
 	h.s.Update(func(tx *proxystore.Tx) {
@@ -28,12 +34,18 @@ func (h nodeEventHandler) OnAdd(obj interface{}) {
 
 		if !proxy.ManageEndpointSlices {
 			// endpoints => need to update all matching topologies
+			toSet := make([]*localnetv1.EndpointInfo, 0)
 			tx.Each(proxystore.Endpoints, func(kv *proxystore.KV) bool {
 				if kv.Endpoint.NodeName == n.Name {
 					kv.Endpoint.Topology = n.Labels
+					toSet = append(toSet, kv.Endpoint)
 				}
 				return true
 			})
+
+			for _, ei := range toSet {
+				tx.SetEndpoint(ei)
+			}
 		}
 
 		h.updateSync(proxystore.Nodes, tx)
