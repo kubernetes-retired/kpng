@@ -147,6 +147,10 @@ func pollConfig(configPath string, store *proxystore.Store) {
 					ep.SourceName = svc.Name
 					ep.ServiceName = svc.Name
 
+					if ep.Conditions == nil {
+						ep.Conditions = &localnetv1.EndpointConditions{Ready: true}
+					}
+
 					ba, _ := proto.Marshal(ep)
 					h.Write(ba)
 				}
