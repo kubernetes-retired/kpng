@@ -105,8 +105,7 @@ message PortMapping {
     string   TargetPortName = 6;
 }
 
-// internal use
-// TODO document
+// global sync support
 
 message ServiceInfo {
     uint64 Hash = 1;
