@@ -1,16 +1,16 @@
-# Kubernetes Template Project
+# Kubernetes Proxy NG
 
-The Kubernetes Template Project is a template for starting new projects in the GitHub organizations owned by Kubernetes. All Kubernetes projects, at minimum, must have the following files:
+The Kubernetes Proxy NG a new design of kube-proxy aimed at
 
-- a `README.md` outlining the project goals, sponsoring sig, and community contact information
-- an `OWNERS` with the project leads listed as approvers ([docs on `OWNERS` files][owners])
-- a `CONTRIBUTING.md` outlining how to contribute to the project
-- an unmodified copy of `code-of-conduct.md` from this repo, which outlines community behavior and the consequences of breaking the code
-- a `LICENSE` which must be Apache 2.0 for code projects, or [Creative Commons 4.0] for documentation repositories, without any custom content
-- a `SECURITY_CONTACTS` with the contact points for the Product Security Team 
-  to reach out to for triaging and handling of incoming issues. They must agree to abide by the
-  [Embargo Policy](https://git.k8s.io/security/private-distributors-list.md#embargo-policy)
-  and will be removed and replaced if they violate that agreement.
+- allowing Kubernetes business logic to evolve with minimal to no impact on backend implementations,
+- improving scalability,
+- improving the ability of integrate 3rd party environments,
+- being library-oriented to allow packaging logic at distributor's will,
+- provide gRPC endpoints for lean integration, extensibility and observability.
+
+The project will provide multiple components, with the core being the API watcher that will serve the global and node-specific sets of objects.
+
+More context can be found in the project's [KEP](https://github.com/kubernetes/enhancements/issues/2104).
 
 ## Community, discussion, contribution, and support
 
