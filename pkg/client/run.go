@@ -21,7 +21,7 @@ import (
 	"os"
 	"runtime/pprof"
 
-	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
+	"m.cluseau.fr/kpng/pkg/api/localnetv1"
 	"k8s.io/klog"
 )
 

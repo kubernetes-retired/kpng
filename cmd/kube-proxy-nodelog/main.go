@@ -27,8 +27,8 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/protobuf/proto"
 
-	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
-	"m.cluseau.fr/kube-proxy2/pkg/client"
+	"m.cluseau.fr/kpng/pkg/api/localnetv1"
+	"m.cluseau.fr/kpng/pkg/client"
 )
 
 func main() {

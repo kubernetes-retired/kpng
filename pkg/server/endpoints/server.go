@@ -27,10 +27,10 @@ import (
 	"google.golang.org/grpc/peer"
 	"k8s.io/klog"
 
-	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
-	"m.cluseau.fr/kube-proxy2/pkg/diffstore"
-	"m.cluseau.fr/kube-proxy2/pkg/endpoints"
-	"m.cluseau.fr/kube-proxy2/pkg/proxystore"
+	"m.cluseau.fr/kpng/pkg/api/localnetv1"
+	"m.cluseau.fr/kpng/pkg/diffstore"
+	"m.cluseau.fr/kpng/pkg/endpoints"
+	"m.cluseau.fr/kpng/pkg/proxystore"
 )
 
 type Server struct {

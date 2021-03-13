@@ -1,4 +1,4 @@
-module m.cluseau.fr/kube-proxy2
+module m.cluseau.fr/kpng
 
 go 1.13
 

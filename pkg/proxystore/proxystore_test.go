@@ -19,7 +19,7 @@ package proxystore
 import (
 	"fmt"
 
-	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
+	"m.cluseau.fr/kpng/pkg/api/localnetv1"
 )
 
 func Example() {

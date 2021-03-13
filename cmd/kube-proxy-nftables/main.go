@@ -34,8 +34,8 @@ import (
 	"github.com/cespare/xxhash"
 	"k8s.io/klog"
 
-	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
-	"m.cluseau.fr/kube-proxy2/pkg/client"
+	"m.cluseau.fr/kpng/pkg/api/localnetv1"
+	"m.cluseau.fr/kpng/pkg/client"
 )
 
 var (

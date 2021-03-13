@@ -21,7 +21,7 @@ import (
 	"os"
 	"time"
 
-	"m.cluseau.fr/kube-proxy2/pkg/client"
+	"m.cluseau.fr/kpng/pkg/client"
 )
 
 func main() {

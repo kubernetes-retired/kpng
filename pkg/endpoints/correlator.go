@@ -19,8 +19,8 @@ package endpoints
 import (
 	"k8s.io/client-go/tools/cache"
 
-	"m.cluseau.fr/kube-proxy2/pkg/proxy"
-	"m.cluseau.fr/kube-proxy2/pkg/proxystore"
+	"m.cluseau.fr/kpng/pkg/proxy"
+	"m.cluseau.fr/kpng/pkg/proxystore"
 )
 
 type Correlator struct {

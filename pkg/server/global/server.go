@@ -17,10 +17,10 @@ limitations under the License.
 package global
 
 import (
-	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
-	"m.cluseau.fr/kube-proxy2/pkg/diffstore"
-	"m.cluseau.fr/kube-proxy2/pkg/proxystore"
-	"m.cluseau.fr/kube-proxy2/pkg/server/watchstate"
+	"m.cluseau.fr/kpng/pkg/api/localnetv1"
+	"m.cluseau.fr/kpng/pkg/diffstore"
+	"m.cluseau.fr/kpng/pkg/proxystore"
+	"m.cluseau.fr/kpng/pkg/server/watchstate"
 )
 
 type Server struct {

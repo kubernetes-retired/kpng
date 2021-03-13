@@ -17,8 +17,8 @@ limitations under the License.
 package endpoints
 
 import (
-	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
-	"m.cluseau.fr/kube-proxy2/pkg/proxystore"
+	"m.cluseau.fr/kpng/pkg/api/localnetv1"
+	"m.cluseau.fr/kpng/pkg/proxystore"
 	v1 "k8s.io/api/core/v1"
 )
 

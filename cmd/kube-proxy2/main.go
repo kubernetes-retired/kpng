@@ -25,10 +25,10 @@ import (
 
 	"k8s.io/klog"
 
-	"m.cluseau.fr/kube-proxy2/pkg/proxy"
-	"m.cluseau.fr/kube-proxy2/pkg/server"
-	srvendpoints "m.cluseau.fr/kube-proxy2/pkg/server/endpoints"
-	srvglobal "m.cluseau.fr/kube-proxy2/pkg/server/global"
+	"m.cluseau.fr/kpng/pkg/proxy"
+	"m.cluseau.fr/kpng/pkg/server"
+	srvendpoints "m.cluseau.fr/kpng/pkg/server/endpoints"
+	srvglobal "m.cluseau.fr/kpng/pkg/server/global"
 )
 
 var (

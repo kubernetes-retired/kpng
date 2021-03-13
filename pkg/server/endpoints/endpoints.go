@@ -17,9 +17,9 @@ limitations under the License.
 package endpoints
 
 import (
-	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
-	"m.cluseau.fr/kube-proxy2/pkg/endpoints"
-	"m.cluseau.fr/kube-proxy2/pkg/proxy"
+	"m.cluseau.fr/kpng/pkg/api/localnetv1"
+	"m.cluseau.fr/kpng/pkg/endpoints"
+	"m.cluseau.fr/kpng/pkg/proxy"
 )
 
 func Setup(srv *proxy.Server) {

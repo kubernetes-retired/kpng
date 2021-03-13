@@ -21,9 +21,9 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
-	"m.cluseau.fr/kube-proxy2/pkg/proxy"
-	"m.cluseau.fr/kube-proxy2/pkg/proxystore"
+	"m.cluseau.fr/kpng/pkg/api/localnetv1"
+	"m.cluseau.fr/kpng/pkg/proxy"
+	"m.cluseau.fr/kpng/pkg/proxystore"
 )
 
 type nodeEventHandler struct{ eventHandler }

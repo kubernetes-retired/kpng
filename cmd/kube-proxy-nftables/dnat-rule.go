@@ -22,7 +22,7 @@ import (
 
 	"k8s.io/klog"
 
-	"m.cluseau.fr/kube-proxy2/pkg/api/localnetv1"
+	"m.cluseau.fr/kpng/pkg/api/localnetv1"
 )
 
 type dnatRule struct {
