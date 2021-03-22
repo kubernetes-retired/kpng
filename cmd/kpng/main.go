@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 	"runtime/pprof"
@@ -25,6 +26,7 @@ import (
 
 	"k8s.io/klog"
 
+	"m.cluseau.fr/kpng/jobs/kube2store"
 	"m.cluseau.fr/kpng/pkg/proxy"
 	"m.cluseau.fr/kpng/pkg/server"
 	srvendpoints "m.cluseau.fr/kpng/pkg/server/endpoints"
@@ -34,6 +36,8 @@ import (
 var (
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 	bindSpec   = flag.String("listen", "tcp://127.0.0.1:12090", "local API listen spec formatted as protocol://address")
+
+	k2sCfg = &kube2store.Config{}
 )
 
 func main() {
@@ -43,6 +47,8 @@ func main() {
 		Use: "proxy",
 		Run: run,
 	}
+
+	k2sCfg.BindFlags(cmd.Flags())
 
 	cmd.Flags().AddGoFlagSet(flag.CommandLine)
 
@@ -68,7 +74,16 @@ func run(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// setup correlator
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// start kube2store
+	kube2store.Job{
+		Kube:   srv.Client,
+		Store:  srv.Store,
+		Config: k2sCfg,
+	}.Run(ctx)
+
+	// setup server
 	srvendpoints.Setup(srv.GRPC, srv.Store)
 	srvglobal.Setup(srv.GRPC, srv.Store)
 
@@ -76,6 +91,7 @@ func run(_ *cobra.Command, _ []string) {
 	go func() {
 		proxy.WaitForTermSignal()
 		srv.Stop()
+		cancel()
 	}()
 
 	if *bindSpec != "" {

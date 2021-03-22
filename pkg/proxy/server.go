@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"os"
 	"runtime/trace"
-	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -120,10 +119,6 @@ func NewServer() (srv *Server, err error) {
 		creds := credentials.NewTLS(tlsCfg)
 		srv.GRPC = grpc.NewServer(grpc.Creds(creds))
 	}
-
-	// start informers
-	srv.InformerFactory = informers.NewSharedInformerFactory(srv.Client, time.Second*30)
-	srv.InformerFactory.Start(srv.QuitCh)
 
 	return
 }
