@@ -14,27 +14,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package endpoints
+package kube2store
 
 import (
-	"k8s.io/client-go/tools/cache"
-
-	"m.cluseau.fr/kpng/pkg/proxystore"
+	"github.com/gobwas/glob"
 )
 
-type eventHandler struct {
-	s        *proxystore.Store
-	syncSet  bool
-	informer cache.SharedIndexInformer
-}
-
-func (h *eventHandler) updateSync(set proxystore.Set, tx *proxystore.Tx) {
-	if h.syncSet {
+func globsFilter(src map[string]string, globsStr []string) (dst map[string]string) {
+	if len(globsStr) == 0 {
 		return
 	}
 
-	if h.informer.HasSynced() {
-		tx.SetSync(set)
-		h.syncSet = true
+	globs := make([]glob.Glob, len(globsStr))
+
+	for i, globStr := range globsStr {
+		globs[i] = glob.MustCompile(globStr)
 	}
+
+	dst = make(map[string]string)
+
+srcLoop:
+	for k, v := range src {
+		for _, g := range globs {
+			if g.Match(k) {
+				dst[k] = v
+				continue srcLoop
+			}
+		}
+	}
+
+	return
 }

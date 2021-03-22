@@ -14,41 +14,31 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package endpoints
+package kube2store
 
 import (
-	"flag"
-
 	v1 "k8s.io/api/core/v1"
 
 	"m.cluseau.fr/kpng/pkg/api/localnetv1"
-	"m.cluseau.fr/kpng/pkg/proxy"
 	"m.cluseau.fr/kpng/pkg/proxystore"
 )
 
 type nodeEventHandler struct{ eventHandler }
 
-var (
-	myNodeName = flag.String("node-name", "", "Node name override")
-
-	nodeLabelGlobs      = flag.String("with-node-labels", "", "node labels to include")
-	nodeAnnotationGlobs = flag.String("with-node-annotations", "", "node annotations to include")
-)
-
-func (h nodeEventHandler) OnAdd(obj interface{}) {
+func (h *nodeEventHandler) OnAdd(obj interface{}) {
 	node := obj.(*v1.Node)
 
 	// keep only what we want
 	n := &localnetv1.Node{
 		Name:        node.Name,
-		Labels:      globsFilter(node.Labels, *nodeLabelGlobs),
-		Annotations: globsFilter(node.Annotations, *nodeAnnotationGlobs),
+		Labels:      globsFilter(node.Labels, h.config.NodeLabelGlobs),
+		Annotations: globsFilter(node.Annotations, h.config.NodeAnnotationGlobs),
 	}
 
 	h.s.Update(func(tx *proxystore.Tx) {
 		tx.SetNode(n)
 
-		if !proxy.ManageEndpointSlices {
+		if !h.config.UseSlices {
 			// endpoints => need to update all matching topologies
 			toSet := make([]*localnetv1.EndpointInfo, 0)
 			tx.Each(proxystore.Endpoints, func(kv *proxystore.KV) bool {
@@ -68,12 +58,12 @@ func (h nodeEventHandler) OnAdd(obj interface{}) {
 	})
 }
 
-func (h nodeEventHandler) OnUpdate(oldObj, newObj interface{}) {
+func (h *nodeEventHandler) OnUpdate(oldObj, newObj interface{}) {
 	// same as adding
 	h.OnAdd(newObj)
 }
 
-func (h nodeEventHandler) OnDelete(oldObj interface{}) {
+func (h *nodeEventHandler) OnDelete(oldObj interface{}) {
 	node := oldObj.(*v1.Node)
 
 	h.s.Update(func(tx *proxystore.Tx) {

@@ -17,16 +17,14 @@ limitations under the License.
 package endpoints
 
 import (
+	"google.golang.org/grpc"
+
 	"m.cluseau.fr/kpng/pkg/api/localnetv1"
-	"m.cluseau.fr/kpng/pkg/endpoints"
-	"m.cluseau.fr/kpng/pkg/proxy"
+	"m.cluseau.fr/kpng/pkg/proxystore"
 )
 
-func Setup(srv *proxy.Server) {
-	endpointsCorrelator := endpoints.NewCorrelator(srv)
-	endpointsCorrelator.Start(srv.QuitCh)
-
-	localnetv1.RegisterEndpointsService(srv.GRPC, localnetv1.NewEndpointsService(localnetv1.UnstableEndpointsService(&Server{
-		Store: srv.Store,
+func Setup(s grpc.ServiceRegistrar, store *proxystore.Store) {
+	localnetv1.RegisterEndpointsService(s, localnetv1.NewEndpointsService(localnetv1.UnstableEndpointsService(&Server{
+		Store: store,
 	})))
 }

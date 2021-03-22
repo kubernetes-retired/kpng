@@ -69,8 +69,8 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	// setup correlator
-	srvendpoints.Setup(srv)
-	srvglobal.Setup(srv)
+	srvendpoints.Setup(srv.GRPC, srv.Store)
+	srvglobal.Setup(srv.GRPC, srv.Store)
 
 	// handle exit signals
 	go func() {

@@ -31,8 +31,9 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"m.cluseau.fr/kpng/pkg/api/localnetv1"
+	"m.cluseau.fr/kpng/pkg/diffstore"
 	"m.cluseau.fr/kpng/pkg/server"
-	serverendpoints "m.cluseau.fr/kpng/pkg/server/endpoints"
+	"m.cluseau.fr/kpng/pkg/server/watchstate"
 )
 
 var (
@@ -61,7 +62,7 @@ var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
 type watchSrv struct{}
 
 func (s watchSrv) Watch(res localnetv1.Endpoints_WatchServer) error {
-	w := serverendpoints.NewWatchState(res)
+	w := watchstate.New(res, []localnetv1.Set{localnetv1.Set_ServicesSet, localnetv1.Set_EndpointsSet})
 
 	var i uint64
 	for {
@@ -74,10 +75,16 @@ func (s watchSrv) Watch(res localnetv1.Endpoints_WatchServer) error {
 		injectState(i, w)
 		i++
 
-		w.SendDiff()
+		// send diff
+		w.SendUpdates(localnetv1.Set_ServicesSet)
+		w.SendUpdates(localnetv1.Set_EndpointsSet)
+		w.SendDeletes(localnetv1.Set_EndpointsSet)
+		w.SendDeletes(localnetv1.Set_ServicesSet)
+
+		w.Reset(diffstore.ItemDeleted)
 
 		// change set sent
-		w.Send(syncItem)
+		w.SendSync()
 
 		if w.Err != nil {
 			return w.Err
@@ -85,8 +92,11 @@ func (s watchSrv) Watch(res localnetv1.Endpoints_WatchServer) error {
 	}
 }
 
-func injectState(rev uint64, w *serverendpoints.WatchState) {
+func injectState(rev uint64, w *watchstate.WatchState) {
 	time.Sleep(*sleepFlag)
+
+	svcs := w.StoreFor(localnetv1.Set_ServicesSet)
+	seps := w.StoreFor(localnetv1.Set_EndpointsSet)
 
 	args := flag.Args()
 
@@ -135,14 +145,14 @@ func injectState(rev uint64, w *serverendpoints.WatchState) {
 			},
 		}
 
-		w.Svcs.Set([]byte(svc.Namespace+"/"+svc.Name), hashOf(svc), svc)
+		svcs.Set([]byte(svc.Namespace+"/"+svc.Name), hashOf(svc), svc)
 
 		for e := 0; e < nEpPerSvc; e++ {
 			ep := &localnetv1.Endpoint{}
 			ep.AddAddress(epIP.Next().String())
 
 			h := hashOf(ep)
-			w.Seps.Set([]byte(svc.Namespace+"/"+svc.Name+"/"+strconv.FormatUint(h, 16)), h, ep)
+			seps.Set([]byte(svc.Namespace+"/"+svc.Name+"/"+strconv.FormatUint(h, 16)), h, ep)
 		}
 	}
 }

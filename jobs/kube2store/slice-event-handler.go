@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package endpoints
+package kube2store
 
 import (
 	"m.cluseau.fr/kpng/pkg/api/localnetv1"

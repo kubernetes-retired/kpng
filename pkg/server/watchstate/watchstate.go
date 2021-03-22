@@ -27,19 +27,19 @@ import (
 	"m.cluseau.fr/kpng/pkg/diffstore"
 )
 
-type OpConsumer interface {
+type OpSink interface {
 	Send(op *localnetv1.OpItem) error
 }
 
 type WatchState struct {
-	res   OpConsumer
+	res   OpSink
 	sets  []localnetv1.Set
 	diffs []*diffstore.DiffStore
 	pb    *proto.Buffer
 	Err   error
 }
 
-func New(res OpConsumer, sets []localnetv1.Set) *WatchState {
+func New(res OpSink, sets []localnetv1.Set) *WatchState {
 	diffs := make([]*diffstore.DiffStore, len(sets))
 	for i := range sets {
 		diffs[i] = diffstore.New()
@@ -126,4 +126,16 @@ func (w *WatchState) sendDelete(set localnetv1.Set, path string) {
 			Delete: &localnetv1.Ref{Set: set, Path: path},
 		},
 	})
+}
+
+func (w *WatchState) Reset(state diffstore.ItemState) {
+	for _, s := range w.diffs {
+		s.Reset(state)
+	}
+}
+
+var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
+
+func (w *WatchState) SendSync() {
+	w.send(syncItem)
 }

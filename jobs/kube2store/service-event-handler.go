@@ -14,23 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package endpoints
+package kube2store
 
 import (
-	"flag"
-	"strings"
-
-	"github.com/gobwas/glob"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"
+
 	"m.cluseau.fr/kpng/pkg/api/localnetv1"
 	"m.cluseau.fr/kpng/pkg/proxystore"
-)
-
-var (
-	serviceLabelGlobs      = flag.String("with-service-labels", "", "service labels to include")
-	serviceAnnonationGlobs = flag.String("with-service-annotations", "", "service annotations to include")
 )
 
 type serviceEventHandler struct{ eventHandler }
@@ -42,9 +34,9 @@ func (h *serviceEventHandler) OnAdd(obj interface{}) {
 		Namespace:   svc.Namespace,
 		Name:        svc.Name,
 		Type:        string(svc.Spec.Type),
-		Labels:      globsFilter(svc.Labels, *serviceLabelGlobs),
-		Annotations: globsFilter(svc.Annotations, *serviceAnnonationGlobs),
-		MapIP:       false, // TODO for headless? or no ports means all? why am I adding those questions? ;-)
+		Labels:      globsFilter(svc.Labels, h.config.ServiceLabelGlobs),
+		Annotations: globsFilter(svc.Annotations, h.config.ServiceAnnonationGlobs),
+		// MapIP: false, // TODO could be useful for L3 managed things
 		IPs: &localnetv1.ServiceIPs{
 			ClusterIP:   svc.Spec.ClusterIP,
 			ExternalIPs: localnetv1.NewIPSet(svc.Spec.ExternalIPs),
@@ -118,33 +110,4 @@ func (h *serviceEventHandler) OnDelete(oldObj interface{}) {
 		tx.DelService(svc.Namespace, svc.Name)
 		h.updateSync(proxystore.Services, tx)
 	})
-}
-
-// FIXME move to a common place
-func globsFilter(src map[string]string, globsFlag string) (dst map[string]string) {
-	if len(globsFlag) == 0 {
-		return
-	}
-
-	globsS := strings.Split(globsFlag, ",")
-
-	globs := make([]glob.Glob, len(globsS))
-
-	for i, globS := range globsS {
-		globs[i] = glob.MustCompile(globS)
-	}
-
-	dst = make(map[string]string)
-
-srcLoop:
-	for k, v := range src {
-		for _, g := range globs {
-			if g.Match(k) {
-				dst[k] = v
-				continue srcLoop
-			}
-		}
-	}
-
-	return
 }

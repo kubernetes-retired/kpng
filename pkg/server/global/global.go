@@ -17,12 +17,13 @@ limitations under the License.
 package global
 
 import (
+	"google.golang.org/grpc"
 	"m.cluseau.fr/kpng/pkg/api/localnetv1"
-	"m.cluseau.fr/kpng/pkg/proxy"
+	"m.cluseau.fr/kpng/pkg/proxystore"
 )
 
-func Setup(srv *proxy.Server) {
-	localnetv1.RegisterGlobalService(srv.GRPC, localnetv1.NewGlobalService(localnetv1.UnstableGlobalService(&Server{
-		Store: srv.Store,
+func Setup(s grpc.ServiceRegistrar, store *proxystore.Store) {
+	localnetv1.RegisterGlobalService(s, localnetv1.NewGlobalService(localnetv1.UnstableGlobalService(&Server{
+		Store: store,
 	})))
 }

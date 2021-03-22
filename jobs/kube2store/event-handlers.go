@@ -14,19 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package endpoints
+package kube2store
 
 import (
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/api/discovery/v1beta1"
+	"k8s.io/client-go/tools/cache"
+
+	"m.cluseau.fr/kpng/pkg/proxystore"
 )
 
-type correlationSource struct {
-	Service   *v1.Service
-	Endpoints *v1.Endpoints
-	Slices    []*v1beta1.EndpointSlice
+type eventHandler struct {
+	config   *Config
+	s        *proxystore.Store
+	informer cache.SharedIndexInformer
+	syncSet  bool
 }
 
-func (cs correlationSource) IsEmpty() bool {
-	return cs.Service == nil && cs.Endpoints == nil && len(cs.Slices) == 0
+func (h *eventHandler) updateSync(set proxystore.Set, tx *proxystore.Tx) {
+	if h.syncSet {
+		return
+	}
+
+	if h.informer.HasSynced() {
+		tx.SetSync(set)
+		h.syncSet = true
+	}
 }
