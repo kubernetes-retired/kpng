@@ -25,7 +25,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 
-	"m.cluseau.fr/kpng/pkg/proxystore"
+	"sigs.k8s.io/kpng/pkg/proxystore"
 )
 
 type Config struct {
@@ -84,6 +84,9 @@ func (j Job) Run(ctx context.Context) {
 		endpointsInformer.AddEventHandler(&endpointsEventHandler{j.eventHandler(endpointsInformer)})
 		go endpointsInformer.Run(stopCh)
 	}
+
+	_, _ = <-stopCh
+	j.Store.Close()
 }
 
 func (j Job) eventHandler(informer cache.SharedIndexInformer) eventHandler {

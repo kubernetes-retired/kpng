@@ -21,7 +21,7 @@ import (
 	"os"
 	"time"
 
-	"m.cluseau.fr/kpng/pkg/client"
+	"sigs.k8s.io/kpng/pkg/client"
 )
 
 func main() {

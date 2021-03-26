@@ -4,11 +4,11 @@ import (
 	"context"
 	"runtime/trace"
 
-	"m.cluseau.fr/kpng/jobs/store2diff"
-	"m.cluseau.fr/kpng/pkg/api/localnetv1"
-	"m.cluseau.fr/kpng/pkg/diffstore"
-	"m.cluseau.fr/kpng/pkg/proxystore"
-	"m.cluseau.fr/kpng/pkg/server/watchstate"
+	"sigs.k8s.io/kpng/jobs/store2diff"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	"sigs.k8s.io/kpng/pkg/diffstore"
+	"sigs.k8s.io/kpng/pkg/proxystore"
+	"sigs.k8s.io/kpng/pkg/server/watchstate"
 )
 
 type Sink interface {
@@ -27,14 +27,14 @@ var sets = []localnetv1.Set{
 	localnetv1.Set_GlobalEndpointInfos,
 }
 
-func (j *Job) Run() error {
+func (j *Job) Run(ctx context.Context) error {
 	job := &store2diff.Job{
 		Store: j.Store,
 		Sets:  sets,
 		Sink:  j,
 	}
 
-	return job.Run()
+	return job.Run(ctx)
 }
 
 func (j *Job) Wait() (err error) {

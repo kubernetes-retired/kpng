@@ -18,8 +18,8 @@ package global
 
 import (
 	"google.golang.org/grpc"
-	"m.cluseau.fr/kpng/pkg/api/localnetv1"
-	"m.cluseau.fr/kpng/pkg/proxystore"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	"sigs.k8s.io/kpng/pkg/proxystore"
 )
 
 func Setup(s grpc.ServiceRegistrar, store *proxystore.Store) {

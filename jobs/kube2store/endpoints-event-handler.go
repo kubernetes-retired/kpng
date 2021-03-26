@@ -17,8 +17,8 @@ limitations under the License.
 package kube2store
 
 import (
-	"m.cluseau.fr/kpng/pkg/api/localnetv1"
-	"m.cluseau.fr/kpng/pkg/proxystore"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	"sigs.k8s.io/kpng/pkg/proxystore"
 	v1 "k8s.io/api/core/v1"
 )
 

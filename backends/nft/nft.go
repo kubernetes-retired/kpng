@@ -14,13 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package nft
 
 import (
 	"bufio"
 	"bytes"
 	"encoding/hex"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -32,6 +31,7 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash"
+	"github.com/spf13/pflag"
 	"k8s.io/klog"
 
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
@@ -39,6 +39,8 @@ import (
 )
 
 var (
+	flag = &pflag.FlagSet{}
+
 	dryRun       = flag.Bool("dry-run", false, "dry run (do not apply rules)")
 	hookPrio     = flag.Int("hook-priority", 0, "nftable hooks priority")
 	skipComments = flag.Bool("skip-comments", false, "don't comment rules")
@@ -51,21 +53,20 @@ var (
 	hasNFTHashBug = false
 )
 
+func BindFlags(flags *pflag.FlagSet) {
+	flags.AddFlagSet(flag)
+}
+
 // FIXME atomic delete with references are currently buggy, so defer it
 const deferDelete = true
 
 // FIXME defer delete also is buggy; having to wait ~1s which is not acceptable...
 const canDeleteChains = false
 
-func init() {
-	klog.InitFlags(flag.CommandLine)
-}
-
-func main() {
+func PreRun() {
 	// check the nft vmap bug (0.9.5 but protect against the whole class)
-	{
-		nft := exec.Command("nft", "-f", "-")
-		nft.Stdin = bytes.NewBuffer([]byte(`
+	nft := exec.Command("nft", "-f", "-")
+	nft.Stdin = bytes.NewBuffer([]byte(`
 table ip k8s_test_vmap_bug
 delete table ip k8s_test_vmap_bug
 table ip k8s_test_vmap_bug {
@@ -75,32 +76,28 @@ table ip k8s_test_vmap_bug {
   }
 }
 `))
-		if err := nft.Run(); err != nil {
-			klog.Warning("failed to test nft bugs: ", err)
-		}
+	if err := nft.Run(); err != nil {
+		klog.Warning("failed to test nft bugs: ", err)
+	}
 
-		nft = exec.Command("nft", "-f", "-")
-		nft.Stdin = bytes.NewBuffer([]byte(`
+	nft = exec.Command("nft", "-f", "-")
+	nft.Stdin = bytes.NewBuffer([]byte(`
 list map ip k8s_test_vmap_bug m1
 delete table ip k8s_test_vmap_bug
 `))
-		output, err := nft.Output()
-		if err != nil {
-			klog.Warning("failed to test nft bugs: ", err)
-		}
-
-		hasNFTHashBug = bytes.Contains(output, []byte("16777216")) || bytes.Contains(output, []byte("0x01000000"))
-
-		if hasNFTHashBug {
-			klog.Info("nft vmap bug found, map indices will be affected by the workaround (0x01 will become 0x01000000)")
-		}
+	output, err := nft.Output()
+	if err != nil {
+		klog.Warning("failed to test nft bugs: ", err)
 	}
 
-	// run the client
-	client.RunCh(nil, updateNftables)
+	hasNFTHashBug = bytes.Contains(output, []byte("16777216")) || bytes.Contains(output, []byte("0x01000000"))
+
+	if hasNFTHashBug {
+		klog.Info("nft vmap bug found, map indices will be affected by the workaround (0x01 will become 0x01000000)")
+	}
 }
 
-func updateNftables(ch <-chan *client.ServiceEndpoints) {
+func Callback(ch <-chan *client.ServiceEndpoints) {
 	svcCount := 0
 	epCount := 0
 

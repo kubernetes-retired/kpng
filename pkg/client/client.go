@@ -33,14 +33,12 @@ import (
 
 	"k8s.io/klog"
 
-	"m.cluseau.fr/kpng/pkg/api/localnetv1"
-	"m.cluseau.fr/kpng/pkg/tlsflags"
+	"sigs.k8s.io/kpng/localsinks/backendsink"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	"sigs.k8s.io/kpng/pkg/tlsflags"
 )
 
-type ServiceEndpoints struct {
-	Service   *localnetv1.Service
-	Endpoints []*localnetv1.Endpoint
-}
+type ServiceEndpoints = backendsink.ServiceEndpoints
 
 type FlagSet = tlsflags.FlagSet
 
@@ -86,7 +84,7 @@ func (epc *EndpointsClient) DefaultFlags(flags FlagSet) {
 
 	flags.IntVar(&epc.MaxMsgSize, "max-msg-size", 4<<20, "max gRPC message size")
 
-	epc.TLS.Bind(flags)
+	epc.TLS.Bind(flags, "")
 }
 
 // Next returns the next set of ServiceEndpoints, waiting for a new revision as needed.

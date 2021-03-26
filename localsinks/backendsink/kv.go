@@ -14,36 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package global
+package backendsink
 
 import (
-	"sigs.k8s.io/kpng/jobs/store2globaldiff"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
-	"sigs.k8s.io/kpng/pkg/proxystore"
+	"github.com/google/btree"
+	"google.golang.org/protobuf/proto"
 )
 
-type Server struct {
-	Store *proxystore.Store
+type kv struct {
+	Path  string
+	Value proto.Message
 }
 
-var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
-
-func (s *Server) Watch(res localnetv1.Global_WatchServer) error {
-	w := resWrap{res}
-
-	job := &store2globaldiff.Job{
-		Store: s.Store,
-		Sink:  w,
-	}
-
-	return job.Run(res.Context())
-}
-
-type resWrap struct {
-	localnetv1.Global_WatchServer
-}
-
-func (w resWrap) Wait() error {
-	_, err := w.Recv()
-	return err
+func (kv1 kv) Less(i btree.Item) bool {
+	return kv1.Path < i.(kv).Path
 }

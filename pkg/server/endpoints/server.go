@@ -22,9 +22,9 @@ import (
 	"google.golang.org/grpc/peer"
 	"k8s.io/klog"
 
-	"m.cluseau.fr/kpng/jobs/store2localdiff"
-	"m.cluseau.fr/kpng/pkg/api/localnetv1"
-	"m.cluseau.fr/kpng/pkg/proxystore"
+	"sigs.k8s.io/kpng/jobs/store2localdiff"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	"sigs.k8s.io/kpng/pkg/proxystore"
 )
 
 type Server struct {
@@ -48,7 +48,7 @@ func (s *Server) Watch(res localnetv1.Endpoints_WatchServer) error {
 		Sink:  serverSink{res, remote},
 	}
 
-	return job.Run()
+	return job.Run(res.Context())
 }
 
 type serverSink struct {

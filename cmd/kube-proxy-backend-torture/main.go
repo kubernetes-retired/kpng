@@ -30,10 +30,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"m.cluseau.fr/kpng/pkg/api/localnetv1"
-	"m.cluseau.fr/kpng/pkg/diffstore"
-	"m.cluseau.fr/kpng/pkg/server"
-	"m.cluseau.fr/kpng/pkg/server/watchstate"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	"sigs.k8s.io/kpng/pkg/diffstore"
+	"sigs.k8s.io/kpng/pkg/server"
+	"sigs.k8s.io/kpng/pkg/server/watchstate"
 )
 
 var (

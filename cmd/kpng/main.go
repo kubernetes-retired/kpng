@@ -19,45 +19,71 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"runtime/pprof"
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 
-	"m.cluseau.fr/kpng/jobs/kube2store"
-	"m.cluseau.fr/kpng/pkg/proxy"
-	"m.cluseau.fr/kpng/pkg/server"
-	srvendpoints "m.cluseau.fr/kpng/pkg/server/endpoints"
-	srvglobal "m.cluseau.fr/kpng/pkg/server/global"
+	"sigs.k8s.io/kpng/jobs/kube2store"
+	"sigs.k8s.io/kpng/pkg/cmd/storecmds"
+	"sigs.k8s.io/kpng/pkg/proxy"
+	"sigs.k8s.io/kpng/pkg/proxystore"
 )
 
 var (
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
-	bindSpec   = flag.String("listen", "tcp://127.0.0.1:12090", "local API listen spec formatted as protocol://address")
+
+	kubeConfig string
+	kubeMaster string
 
 	k2sCfg = &kube2store.Config{}
 )
 
 func main() {
-	proxy.InitFlags(flag.CommandLine)
+	klog.InitFlags(flag.CommandLine)
 
 	cmd := cobra.Command{
 		Use: "proxy",
-		Run: run,
 	}
 
-	k2sCfg.BindFlags(cmd.Flags())
+	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 
-	cmd.Flags().AddGoFlagSet(flag.CommandLine)
+	k2sCmd := &cobra.Command{
+		Use: "kube",
+	}
+
+	flags := k2sCmd.PersistentFlags()
+	flags.StringVar(&kubeConfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster. Defaults to envvar KUBECONFIG.")
+	flags.StringVar(&kubeMaster, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+
+	k2sCfg.BindFlags(k2sCmd.PersistentFlags())
+	k2sCmd.AddCommand(storecmds.Commands(setupKube2store)...)
+
+	cmd.AddCommand(k2sCmd)
 
 	if err := cmd.Execute(); err != nil {
 		klog.Fatal(err)
 	}
 }
 
-func run(_ *cobra.Command, _ []string) {
+func setupGlobal() (ctx context.Context) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// handle exit signals
+	go func() {
+		proxy.WaitForTermSignal()
+		cancel()
+
+		proxy.WaitForTermSignal()
+		klog.Fatal("forced exit after second term signal")
+		os.Exit(1)
+	}()
+
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
@@ -67,43 +93,38 @@ func run(_ *cobra.Command, _ []string) {
 		defer pprof.StopCPUProfile()
 	}
 
-	srv, err := proxy.NewServer()
+	return
+}
 
-	if err != nil {
-		klog.Error(err)
-		os.Exit(1)
+func setupKube2store() (ctx context.Context, store *proxystore.Store, err error) {
+	ctx = setupGlobal()
+
+	// setup k8s client
+	if kubeConfig == "" {
+		kubeConfig = os.Getenv("KUBECONFIG")
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	cfg, err := clientcmd.BuildConfigFromFlags(kubeMaster, kubeConfig)
+	if err != nil {
+		err = fmt.Errorf("Error building kubeconfig: %w", err)
+		return
+	}
+
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		err = fmt.Errorf("Error building kubernetes clientset: %w", err)
+		return
+	}
+
+	// create the store
+	store = proxystore.New()
 
 	// start kube2store
-	kube2store.Job{
-		Kube:   srv.Client,
-		Store:  srv.Store,
+	go kube2store.Job{
+		Kube:   kubeClient,
+		Store:  store,
 		Config: k2sCfg,
 	}.Run(ctx)
 
-	// setup server
-	srvendpoints.Setup(srv.GRPC, srv.Store)
-	srvglobal.Setup(srv.GRPC, srv.Store)
-
-	// handle exit signals
-	go func() {
-		proxy.WaitForTermSignal()
-		srv.Stop()
-		cancel()
-	}()
-
-	if *bindSpec != "" {
-		lis := server.MustListen(*bindSpec)
-		go func() {
-			err := srv.GRPC.Serve(lis)
-			if err != nil {
-				klog.Fatal(err)
-			}
-		}()
-	}
-
-	// wait and exit
-	_, _ = <-srv.QuitCh
+	return
 }

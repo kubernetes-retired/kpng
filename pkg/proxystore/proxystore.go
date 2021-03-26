@@ -26,14 +26,15 @@ import (
 	"github.com/google/btree"
 	"k8s.io/klog"
 
-	"m.cluseau.fr/kpng/pkg/api/localnetv1"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
 
 type Store struct {
 	sync.RWMutex
-	c    *sync.Cond
-	rev  uint64
-	tree *btree.BTree
+	c      *sync.Cond
+	rev    uint64
+	closed bool
+	tree   *btree.BTree
 
 	// set sync info
 	sync map[Set]bool
@@ -116,6 +117,13 @@ func (s *Store) hashOf(m proto.Message) (h uint64) {
 	return h
 }
 
+func (s *Store) Close() {
+	s.c.L.Lock()
+	s.closed = true
+	s.c.Broadcast()
+	s.c.L.Unlock()
+}
+
 func (s *Store) Update(update func(tx *Tx)) {
 	s.Lock()
 	defer s.Unlock()
@@ -145,9 +153,9 @@ func (s *Store) Update(update func(tx *Tx)) {
 	}
 }
 
-func (s *Store) View(afterRev uint64, view func(tx *Tx)) uint64 {
+func (s *Store) View(afterRev uint64, view func(tx *Tx)) (rev uint64, closed bool) {
 	s.c.L.Lock()
-	for s.rev <= afterRev {
+	for s.rev <= afterRev && !s.closed {
 		s.c.Wait()
 	}
 	s.c.L.Unlock()
@@ -155,9 +163,13 @@ func (s *Store) View(afterRev uint64, view func(tx *Tx)) uint64 {
 	s.RLock()
 	defer s.RUnlock()
 
+	if s.closed {
+		return 0, s.closed
+	}
+
 	view(&Tx{s: s, ro: true})
 
-	return s.rev
+	return s.rev, s.closed
 }
 
 type Tx struct {

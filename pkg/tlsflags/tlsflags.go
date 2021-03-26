@@ -27,7 +27,7 @@ import (
 
 func Bind(flags FlagSet) (f *Flags) {
 	f = &Flags{}
-	f.Bind(flags)
+	f.Bind(flags, "")
 	return
 }
 
@@ -45,10 +45,10 @@ type FlagSet interface {
 	Uint64Var(varPtr *uint64, name string, value uint64, doc string)
 }
 
-func (f *Flags) Bind(flags FlagSet) {
-	flags.StringVar(&f.KeyFile, "tls-key", "", "TLS key file")
-	flags.StringVar(&f.CertFile, "tls-crt", "", "TLS certificate file")
-	flags.StringVar(&f.CAFile, "tls-ca", "", "TLS CA certificate file")
+func (f *Flags) Bind(flags FlagSet, prefix string) {
+	flags.StringVar(&f.KeyFile, prefix+"tls-key", "", "TLS key file")
+	flags.StringVar(&f.CertFile, prefix+"tls-crt", "", "TLS certificate file")
+	flags.StringVar(&f.CAFile, prefix+"tls-ca", "", "TLS CA certificate file")
 }
 
 func (f *Flags) Config() (cfg *tls.Config) {

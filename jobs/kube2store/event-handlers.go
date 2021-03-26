@@ -19,7 +19,7 @@ package kube2store
 import (
 	"k8s.io/client-go/tools/cache"
 
-	"m.cluseau.fr/kpng/pkg/proxystore"
+	"sigs.k8s.io/kpng/pkg/proxystore"
 )
 
 type eventHandler struct {

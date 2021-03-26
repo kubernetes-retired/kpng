@@ -14,36 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package global
+package nft
 
-import (
-	"sigs.k8s.io/kpng/jobs/store2globaldiff"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
-	"sigs.k8s.io/kpng/pkg/proxystore"
-)
+import "fmt"
 
-type Server struct {
-	Store *proxystore.Store
-}
-
-var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
-
-func (s *Server) Watch(res localnetv1.Global_WatchServer) error {
-	w := resWrap{res}
-
-	job := &store2globaldiff.Job{
-		Store: s.Store,
-		Sink:  w,
+func vmapAdd(chain *chainBuffer, match string, kv string) {
+	if chain.Len() == 0 {
+		fmt.Fprintf(chain, "  %s vmap { ", match)
+		chain.Defer(func(c *chainBuffer) {
+			fmt.Fprintln(c, "}")
+		})
+	} else {
+		chain.Write([]byte(", "))
 	}
-
-	return job.Run(res.Context())
-}
-
-type resWrap struct {
-	localnetv1.Global_WatchServer
-}
-
-func (w resWrap) Wait() error {
-	_, err := w.Recv()
-	return err
+	fmt.Fprint(chain, kv)
 }

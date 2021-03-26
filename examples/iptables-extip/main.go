@@ -27,7 +27,7 @@ import (
 	"sort"
 	"strings"
 
-	"m.cluseau.fr/kpng/pkg/client"
+	"sigs.k8s.io/kpng/pkg/client"
 )
 
 var (

@@ -1,0 +1,123 @@
+package backendsink
+
+import (
+	"sync"
+
+	"github.com/google/btree"
+	"google.golang.org/protobuf/proto"
+
+	"sigs.k8s.io/kpng/jobs/store2localdiff"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+)
+
+type ServiceEndpoints struct {
+	Service   *localnetv1.Service
+	Endpoints []*localnetv1.Endpoint
+}
+
+type Callback func(<-chan *ServiceEndpoints)
+
+// EndpointsClient is a simple client to kube-proxy's Endpoints API.
+type Sink struct {
+	Config   *store2localdiff.Config
+	Callback Callback
+
+	data *btree.BTree
+	wg   sync.WaitGroup
+}
+
+func New(config *store2localdiff.Config) *Sink {
+	return &Sink{
+		Config: config,
+		data:   btree.New(2),
+	}
+}
+
+var _ store2localdiff.Sink = &Sink{}
+
+// Next returns the next set of ServiceEndpoints, waiting for a new revision as needed.
+// It's designed to never fail and will always return latest items, unless canceled.
+func ToArrayCallback(callback func([]*ServiceEndpoints)) Callback {
+	items := make([]*ServiceEndpoints, 0)
+
+	return func(ch <-chan *ServiceEndpoints) {
+		items = items[:0]
+
+		for seps := range ch {
+			items = append(items, seps)
+		}
+
+		callback(items)
+
+		return
+	}
+}
+
+func (s *Sink) WaitRequest() (nodeName string, err error) {
+	s.wg.Wait()
+	return s.Config.NodeName, nil
+}
+
+func (s *Sink) Send(op *localnetv1.OpItem) (err error) {
+	switch v := op.Op; v.(type) {
+	case *localnetv1.OpItem_Set:
+		set := op.GetSet()
+
+		var v proto.Message
+		switch set.Ref.Set {
+		case localnetv1.Set_ServicesSet:
+			v = &localnetv1.Service{}
+		case localnetv1.Set_EndpointsSet:
+			v = &localnetv1.Endpoint{}
+
+		default:
+			return
+		}
+
+		err = proto.Unmarshal(set.Bytes, v)
+		if err != nil {
+			return
+		}
+
+		s.data.ReplaceOrInsert(kv{set.Ref.Path, v})
+
+	case *localnetv1.OpItem_Delete:
+		s.data.Delete(kv{Path: op.GetDelete().Path})
+
+	case *localnetv1.OpItem_Sync:
+		results := make(chan *ServiceEndpoints, 1)
+
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			s.Callback(results)
+		}()
+
+		go func() {
+			defer close(results)
+
+			var seps *ServiceEndpoints
+
+			s.data.Ascend(func(i btree.Item) bool {
+				switch v := i.(kv).Value.(type) {
+				case *localnetv1.Service:
+					if seps != nil {
+						results <- seps
+					}
+
+					seps = &ServiceEndpoints{Service: v}
+				case *localnetv1.Endpoint:
+					seps.Endpoints = append(seps.Endpoints, v)
+				}
+
+				return true
+			})
+
+			if seps != nil {
+				results <- seps
+			}
+		}()
+	}
+
+	return
+}

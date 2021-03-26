@@ -29,14 +29,14 @@ import (
 	"gopkg.in/yaml.v2"
 	"k8s.io/klog"
 
-	"m.cluseau.fr/kpng/pkg/api/localnetv1"
-	"m.cluseau.fr/kpng/pkg/diffstore"
-	"m.cluseau.fr/kpng/pkg/proxy"
-	"m.cluseau.fr/kpng/pkg/proxystore"
-	"m.cluseau.fr/kpng/pkg/server"
-	"m.cluseau.fr/kpng/pkg/server/endpoints"
-	"m.cluseau.fr/kpng/pkg/server/global"
-	"m.cluseau.fr/kpng/pkg/server/watchstate"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	"sigs.k8s.io/kpng/pkg/diffstore"
+	"sigs.k8s.io/kpng/pkg/proxy"
+	"sigs.k8s.io/kpng/pkg/proxystore"
+	"sigs.k8s.io/kpng/pkg/server"
+	"sigs.k8s.io/kpng/pkg/server/endpoints"
+	"sigs.k8s.io/kpng/pkg/server/global"
+	"sigs.k8s.io/kpng/pkg/server/watchstate"
 )
 
 func main() {

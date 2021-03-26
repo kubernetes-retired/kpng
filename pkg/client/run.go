@@ -21,7 +21,7 @@ import (
 	"os"
 	"runtime/pprof"
 
-	"m.cluseau.fr/kpng/pkg/api/localnetv1"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 	"k8s.io/klog"
 )
 

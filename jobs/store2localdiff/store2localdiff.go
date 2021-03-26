@@ -7,12 +7,12 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"m.cluseau.fr/kpng/jobs/store2diff"
-	"m.cluseau.fr/kpng/pkg/api/localnetv1"
-	"m.cluseau.fr/kpng/pkg/diffstore"
-	"m.cluseau.fr/kpng/pkg/endpoints"
-	"m.cluseau.fr/kpng/pkg/proxystore"
-	"m.cluseau.fr/kpng/pkg/server/watchstate"
+	"sigs.k8s.io/kpng/jobs/store2diff"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	"sigs.k8s.io/kpng/pkg/diffstore"
+	"sigs.k8s.io/kpng/pkg/endpoints"
+	"sigs.k8s.io/kpng/pkg/proxystore"
+	"sigs.k8s.io/kpng/pkg/server/watchstate"
 )
 
 type Config struct {
@@ -35,7 +35,7 @@ type Job struct {
 	Sink  Sink
 }
 
-func (j *Job) Run() error {
+func (j *Job) Run(ctx context.Context) error {
 	run := &jobRun{Sink: j.Sink}
 
 	job := &store2diff.Job{
@@ -47,7 +47,7 @@ func (j *Job) Run() error {
 		Sink: run,
 	}
 
-	return job.Run()
+	return job.Run(ctx)
 }
 
 type jobRun struct {

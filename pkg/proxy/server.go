@@ -31,8 +31,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 
-	"m.cluseau.fr/kpng/pkg/proxystore"
-	"m.cluseau.fr/kpng/pkg/tlsflags"
+	"sigs.k8s.io/kpng/pkg/proxystore"
+	"sigs.k8s.io/kpng/pkg/tlsflags"
 )
 
 var (

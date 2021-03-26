@@ -1,6 +1,6 @@
-module m.cluseau.fr/kpng
+module sigs.k8s.io/kpng
 
-go 1.13
+go 1.16
 
 require (
 	github.com/Jille/grpc-multi-resolver v1.0.0
