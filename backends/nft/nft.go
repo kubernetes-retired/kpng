@@ -64,6 +64,10 @@ const deferDelete = true
 const canDeleteChains = false
 
 func PreRun() {
+	checkMapIndexBug()
+}
+
+func checkMapIndexBug() {
 	// check the nft vmap bug (0.9.5 but protect against the whole class)
 	nft := exec.Command("nft", "-f", "-")
 	nft.Stdin = bytes.NewBuffer([]byte(`
@@ -80,14 +84,29 @@ table ip k8s_test_vmap_bug {
 		klog.Warning("failed to test nft bugs: ", err)
 	}
 
+	// cleanup on return
+	defer func() {
+		nft = exec.Command("nft", "-f", "-")
+		nft.Stdin = bytes.NewBuffer([]byte(`
+delete table ip k8s_test_vmap_bug
+`))
+		nft.Stdout = os.Stdout
+		nft.Stderr = os.Stderr
+		err := nft.Run()
+		if err != nil {
+			klog.Warning("failed to delete test table k8s_test_vmap_bug: ", err)
+		}
+	}()
+
+	// get the recorded map
 	nft = exec.Command("nft", "-f", "-")
 	nft.Stdin = bytes.NewBuffer([]byte(`
 list map ip k8s_test_vmap_bug m1
-delete table ip k8s_test_vmap_bug
 `))
 	output, err := nft.Output()
 	if err != nil {
 		klog.Warning("failed to test nft bugs: ", err)
+		return
 	}
 
 	hasNFTHashBug = bytes.Contains(output, []byte("16777216")) || bytes.Contains(output, []byte("0x01000000"))
