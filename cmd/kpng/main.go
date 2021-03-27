@@ -53,6 +53,7 @@ func main() {
 
 	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 
+	// kube to * command
 	k2sCmd := &cobra.Command{
 		Use: "kube",
 	}
@@ -65,6 +66,13 @@ func main() {
 	k2sCmd.AddCommand(storecmds.Commands(setupKube2store)...)
 
 	cmd.AddCommand(k2sCmd)
+
+	// api to * command
+	// TODO
+	// apiCmd := &cobra.Command{
+	//     Use: "api",
+	// }
+	// apiCmd.AddCommand(storecmds.Commands(setupAPI2store)...)
 
 	if err := cmd.Execute(); err != nil {
 		klog.Fatal(err)

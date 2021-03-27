@@ -33,7 +33,7 @@ import (
 
 	"k8s.io/klog"
 
-	"sigs.k8s.io/kpng/localsinks/backendsink"
+	"sigs.k8s.io/kpng/localsink/backendsink"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 	"sigs.k8s.io/kpng/pkg/tlsflags"
 )

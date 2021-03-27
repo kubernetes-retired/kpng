@@ -8,8 +8,9 @@ import (
 
 	"sigs.k8s.io/kpng/backends/nft"
 	"sigs.k8s.io/kpng/jobs/store2api"
+	"sigs.k8s.io/kpng/jobs/store2file"
 	"sigs.k8s.io/kpng/jobs/store2localdiff"
-	"sigs.k8s.io/kpng/localsinks/backendsink"
+	"sigs.k8s.io/kpng/localsink/backendsink"
 	"sigs.k8s.io/kpng/pkg/proxystore"
 )
 
@@ -18,6 +19,7 @@ type SetupFunc func() (ctx context.Context, store *proxystore.Store, err error)
 func Commands(setup SetupFunc) []*cobra.Command {
 	return []*cobra.Command{
 		setup.ToAPICmd(),
+		setup.ToFileCmd(),
 		setup.ToLocalCmd(),
 	}
 }
@@ -37,6 +39,31 @@ func (c SetupFunc) ToAPICmd() *cobra.Command {
 		}
 
 		j := &store2api.Job{
+			Store:  store,
+			Config: cfg,
+		}
+		return j.Run(ctx)
+	}
+
+	return cmd
+}
+
+func (c SetupFunc) ToFileCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "to-file",
+		Short: "dump global state to a yaml db file",
+	}
+
+	cfg := &store2file.Config{}
+	cfg.BindFlags(cmd.Flags())
+
+	cmd.RunE = func(_ *cobra.Command, _ []string) (err error) {
+		ctx, store, err := c()
+		if err != nil {
+			return
+		}
+
+		j := &store2file.Job{
 			Store:  store,
 			Config: cfg,
 		}
