@@ -17,154 +17,95 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/connectivity"
+	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 
+	"sigs.k8s.io/kpng/jobs/store2localdiff"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 	"sigs.k8s.io/kpng/pkg/client"
 )
 
+var (
+	cfg = &store2localdiff.Config{}
+)
+
 func main() {
-	epc, once, nodeName, _ := client.Default()
+	r := &client.Runner{}
 
-	for {
-		if canceled := run(epc, once, nodeName); canceled {
-			break
-		}
-
-		if once {
-			break
-		}
+	cmd := &cobra.Command{
+		Run: func(_ *cobra.Command, _ []string) {
+			r.RunSink(&sink{})
+		},
 	}
+
+	flags := cmd.Flags()
+	r.BindFlags(flags)
+	cfg.BindFlags(flags)
+
+	cmd.Execute()
 }
 
-var conn *grpc.ClientConn
+type sink struct {
+	start time.Time
+}
 
-func run(epc *client.EndpointsClient, once bool, nodeName string) (canceled bool) {
-	if conn != nil {
-		switch conn.GetState() {
-		case connectivity.Shutdown:
-			conn.Close()
-			conn = nil
-		}
-	}
+func (s *sink) Reset() {}
 
-	if conn == nil {
-		c, err := epc.Dial()
-		if isCanceled(err) {
-			return true
-		} else if err != nil {
-			log.Print("failed to connect: ", err)
-			time.Sleep(time.Second)
-			return
-		}
-
-		conn = c
-	}
-
-	ctx := epc.Context()
-
-	cli := localnetv1.NewEndpointsClient(conn)
-
-	w, err := cli.Watch(ctx)
-	if isCanceled(err) {
-		return true
-	} else if err != nil {
-		log.Print("failed to start the watch: ", err)
-		time.Sleep(time.Second)
-		return
-	}
-
-	for {
-		err = watchReq(w, nodeName)
-		if isCanceled(err) {
-			return true
-		} else if err != nil {
-			log.Print("watch request failed: ", err)
-			time.Sleep(time.Second)
-			return
-		}
-
-		if once {
-			break
-		}
-	}
-
-	return
+func (s *sink) WaitRequest() (nodeName string, err error) {
+	fmt.Println("< req", cfg.NodeName, "at", time.Now())
+	return cfg.NodeName, nil
 }
 
 var prevs = map[string]proto.Message{}
 
-func watchReq(w localnetv1.Endpoints_WatchClient, nodeName string) error {
-	fmt.Println("< req", nodeName, "at", time.Now())
-	if err := w.Send(&localnetv1.WatchReq{NodeName: nodeName}); err != nil {
-		return err
+func (s *sink) Send(op *localnetv1.OpItem) (err error) {
+	if s.start.IsZero() {
+		s.start = time.Now()
+		fmt.Println("< recv at", s.start)
 	}
 
-	start := time.Time{}
+	switch v := op.Op; v.(type) {
+	case *localnetv1.OpItem_Set:
+		set := op.GetSet()
 
-loop:
-	for {
-		op, err := w.Recv()
-		if err != nil {
-			return err
+		var v proto.Message
+		switch set.Ref.Set {
+		case localnetv1.Set_ServicesSet:
+			v = &localnetv1.Service{}
+		case localnetv1.Set_EndpointsSet:
+			v = &localnetv1.Endpoint{}
 		}
 
-		if start.IsZero() {
-			start = time.Now()
-			fmt.Println("< recv at", start)
+		if v != nil {
+			err = proto.Unmarshal(set.Bytes, v)
+			if err != nil {
+				log.Print("failed to parse value: ", err)
+				v = nil
+			}
 		}
 
-		switch v := op.Op; v.(type) {
-		case *localnetv1.OpItem_Set:
-			set := op.GetSet()
-
-			var v proto.Message
-			switch set.Ref.Set {
-			case localnetv1.Set_ServicesSet:
-				v = &localnetv1.Service{}
-			case localnetv1.Set_EndpointsSet:
-				v = &localnetv1.Endpoint{}
-			}
-
-			if v != nil {
-				err = proto.Unmarshal(set.Bytes, v)
-				if err != nil {
-					log.Print("failed to parse value: ", err)
-					v = nil
-				}
-			}
-
-			refStr := set.Ref.String()
-			if prev, ok := prevs[refStr]; ok {
-				fmt.Println("-", refStr, "->", prev)
-			}
-			fmt.Println("+", refStr, "->", v)
-
-			prevs[refStr] = v
-		case *localnetv1.OpItem_Delete:
-			refStr := op.GetDelete().String()
-			prev := prevs[refStr]
-
+		refStr := set.Ref.String()
+		if prev, ok := prevs[refStr]; ok {
 			fmt.Println("-", refStr, "->", prev)
-			delete(prevs, refStr)
-
-		case *localnetv1.OpItem_Sync:
-			fmt.Println("> sync after", time.Since(start))
-			break loop // done
 		}
+		fmt.Println("+", refStr, "->", v)
+
+		prevs[refStr] = v
+	case *localnetv1.OpItem_Delete:
+		refStr := op.GetDelete().String()
+		prev := prevs[refStr]
+
+		fmt.Println("-", refStr, "->", prev)
+		delete(prevs, refStr)
+
+	case *localnetv1.OpItem_Sync:
+		fmt.Println("> sync after", time.Since(s.start))
+		s.start = time.Time{}
 	}
 
-	return nil
-}
-
-func isCanceled(err error) bool {
-	return err == context.Canceled || grpc.Code(err) == codes.Canceled
+	return
 }

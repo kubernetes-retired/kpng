@@ -25,12 +25,13 @@ import (
 )
 
 func main() {
-	client.Run(nil, printState)
+	client.Run(printState)
 }
 
 func printState(items []*client.ServiceEndpoints) {
-	fmt.Print("\033[H\033[2J\033[3J")
+	fmt.Println("# ------------------------------------------------------------------------")
 	fmt.Println("#", time.Now())
+	fmt.Println("#")
 	for _, item := range items {
 		fmt.Fprintln(os.Stdout, item)
 	}

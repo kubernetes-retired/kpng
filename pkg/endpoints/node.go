@@ -44,6 +44,8 @@ func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (se
 		infos = append(infos, info)
 	})
 
+	selection = make([]*localnetv1.EndpointInfo, 0, len(infos))
+
 	for _, topoKey := range topologyKeys {
 		ref := ""
 
@@ -57,9 +59,14 @@ func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (se
 		}
 
 		for _, info := range infos {
-			if info.Conditions.Ready && (topoKey == "*" || (info.Topology != nil && info.Topology[topoKey] == ref)) {
-				selection = append(selection, info)
+			if !info.Conditions.Ready {
+				continue
 			}
+			if topoKey != "*" && (info.Topology == nil || info.Topology[topoKey] != ref) {
+				continue
+			}
+
+			selection = append(selection, info)
 		}
 
 		if len(selection) != 0 {

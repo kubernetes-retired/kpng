@@ -15,7 +15,7 @@ type ServiceEndpoints struct {
 	Endpoints []*localnetv1.Endpoint
 }
 
-type Callback func(<-chan *ServiceEndpoints)
+type Callback func(item <-chan *ServiceEndpoints)
 
 // EndpointsClient is a simple client to kube-proxy's Endpoints API.
 type Sink struct {
@@ -56,6 +56,10 @@ func ToArrayCallback(callback func([]*ServiceEndpoints)) Callback {
 func (s *Sink) WaitRequest() (nodeName string, err error) {
 	s.wg.Wait()
 	return s.Config.NodeName, nil
+}
+
+func (s *Sink) Reset() {
+	s.data.Clear(false)
 }
 
 func (s *Sink) Send(op *localnetv1.OpItem) (err error) {

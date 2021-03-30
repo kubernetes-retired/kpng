@@ -18,6 +18,7 @@ package proxystore
 
 import (
 	"fmt"
+	"sort"
 
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
@@ -53,17 +54,24 @@ func Example() {
 		})
 
 		fmt.Println("two ready:", twoReady)
+		infos := make([]*localnetv1.EndpointInfo, 0)
 		s.View(0, func(tx *Tx) {
 			tx.EachEndpointOfService("default", "svc0", func(info *localnetv1.EndpointInfo) {
-				fmt.Println("-", info.Endpoint, "[", info.Conditions, "]")
+				infos = append(infos, info)
 			})
 		})
+
+		sort.Slice(infos, func(i, j int) bool { return infos[i].Endpoint.String() < infos[j].Endpoint.String() })
+
+		for _, info := range infos {
+			fmt.Println("-", info.Endpoint, "[", info.Conditions, "]")
+		}
 	}
 
 	// Output:
 	// two ready: true
-	// - IPs:{V4:"10.0.0.2"} [ Ready:true ]
 	// - IPs:{V4:"10.0.0.1"} [  ]
+	// - IPs:{V4:"10.0.0.2"} [ Ready:true ]
 	// two ready: false
 	// - IPs:{V4:"10.0.0.1"} [  ]
 	// - IPs:{V4:"10.0.0.2"} [  ]

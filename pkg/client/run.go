@@ -21,103 +21,108 @@ import (
 	"os"
 	"runtime/pprof"
 
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"k8s.io/klog"
+	"sigs.k8s.io/kpng/jobs/store2localdiff"
+	"sigs.k8s.io/kpng/localsink"
+	"sigs.k8s.io/kpng/localsink/backendsink"
 )
 
 type HandleFunc func(items []*ServiceEndpoints)
-type HandleChFunc func(items <-chan *ServiceEndpoints)
+type HandleChFunc = backendsink.Callback
 
-func Default() (epc *EndpointsClient, once bool, nodeName string, stop func()) {
-	onceFlag := flag.Bool("once", false, "only one fetch loop")
-	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
-	flag.StringVar(&nodeName, "node-name", "", "node name to request to the proxy server")
-
-	epc = New(flag.CommandLine)
-
-	flag.Parse()
-
-	once = *onceFlag
-
-	if *cpuprofile == "" {
-		stop = func() {}
-	} else {
-		f, err := os.Create(*cpuprofile)
-		if err != nil {
-			klog.Fatal(err)
-		}
-		pprof.StartCPUProfile(f)
-		stop = pprof.StopCPUProfile
-	}
-
-	epc.CancelOnSignals()
-
-	if nodeName == "" {
-		var err error
-		nodeName, err = os.Hostname()
-		if err != nil {
-			klog.Fatal("no node-name set and hostname request failed: ", err)
-		}
-	}
-
-	return
+func Run(handler HandleFunc, extraBindFlags ...func(*pflag.FlagSet)) {
+	RunCh(ArrayBackend(handler), extraBindFlags...)
 }
 
-// Run the client with the standard options
-func Run(req *localnetv1.WatchReq, handlers ...HandleFunc) {
-	epc, once, nodeName, stop := Default()
-	defer stop()
+func RunCh(backend backendsink.Callback, extraBindFlags ...func(*pflag.FlagSet)) {
+	r := &Runner{}
 
-	if req == nil {
-		req = &localnetv1.WatchReq{}
-	}
-	if req.NodeName == "" {
-		req.NodeName = nodeName
+	cmd := &cobra.Command{
+		Run: func(_ *cobra.Command, _ []string) { r.RunBackend(backend) },
 	}
 
-	for {
-		items, canceled := epc.Next(req)
+	flags := cmd.Flags()
+	r.BindFlags(flags)
 
-		if canceled {
-			klog.Infof("finished")
-			return
-		}
+	for _, bindFlags := range extraBindFlags {
+		bindFlags(flags)
+	}
 
+	cmd.Execute()
+}
+
+type Runner struct {
+	once       bool
+	cpuprofile string
+	nodeName   string
+
+	epc *EndpointsClient
+}
+
+func (r *Runner) BindFlags(flags *pflag.FlagSet) {
+	goflags := &flag.FlagSet{}
+	klog.InitFlags(goflags)
+	flags.AddGoFlagSet(goflags)
+
+	flag.BoolVar(&r.once, "once", false, "only one fetch loop")
+	flag.StringVar(&r.cpuprofile, "cpuprofile", "", "write cpu profile to file")
+	flag.StringVar(&r.nodeName, "node-name", "", "node name to request to the proxy server")
+
+	r.epc = New(flags)
+}
+
+// ArrayBackend creates a Callback from the given array handlers
+func ArrayBackend(handlers ...HandleFunc) backendsink.Callback {
+	return backendsink.ToArrayCallback(func(items []*backendsink.ServiceEndpoints) {
 		for _, handler := range handlers {
 			handler(items)
 		}
-
-		if once {
-			return
-		}
-	}
+	})
 }
 
 // RunCh runs the client with the standard options, using the channeled version of Next.
 // It should consume less memory as the dataset is processed as it's read instead of buffered.
 // The handler MUST check iter.Err to ensure the dataset was fuly retrieved without error.
-func RunCh(req *localnetv1.WatchReq, handler HandleChFunc) {
-	epc, once, nodeName, stop := Default()
-	defer stop()
+func (r *Runner) RunBackend(handler backendsink.Callback) {
+	if r.nodeName == "" {
+		var err error
+		r.nodeName, err = os.Hostname()
+		if err != nil {
+			klog.Fatal("no node-name set and hostname request failed: ", err)
+		}
+	}
 
-	if req == nil {
-		req = &localnetv1.WatchReq{}
+	sink := backendsink.New(&store2localdiff.Config{NodeName: r.nodeName})
+	sink.Callback = handler
+
+	r.RunSink(sink)
+}
+
+func (r *Runner) RunSink(sink localsink.Sink) {
+	r.epc.Sink = sink
+
+	if r.cpuprofile != "" {
+		f, err := os.Create(r.cpuprofile)
+		if err != nil {
+			klog.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
 	}
-	if req.NodeName == "" {
-		req.NodeName = nodeName
-	}
+
+	r.epc.CancelOnSignals()
 
 	for {
-		ch, canceled := epc.NextCh(req)
+		canceled := r.epc.Next()
 
 		if canceled {
 			klog.Infof("finished")
 			return
 		}
 
-		handler(ch)
-
-		if once {
+		if r.once {
 			return
 		}
 	}

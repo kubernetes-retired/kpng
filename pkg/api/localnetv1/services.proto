@@ -16,9 +16,9 @@ syntax = "proto3";
 
 package localnetv1;
 
-option go_package = "github.com/mcluseau/kube-proxy2/pkg/api/localnetv1";
+option go_package = "sigs.k8s.io/kpng/pkg/api/localnetv1";
 
-service Endpoints {
+service Endpoints { // FIXME rename to Local
     // Returns all the endpoints for this node.
     rpc Watch (stream WatchReq) returns (stream OpItem);
 }
@@ -89,7 +89,7 @@ message ServiceIPs {
 
 message Endpoint {
     string Hostname = 1;
-    IPSet  IPs = 3;
+    IPSet  IPs = 2;
 }
 
 message IPSet {

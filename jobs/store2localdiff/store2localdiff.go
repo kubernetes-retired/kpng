@@ -2,12 +2,14 @@ package store2localdiff
 
 import (
 	"context"
+	"os"
 	"runtime/trace"
 	"strconv"
 
 	"github.com/spf13/pflag"
 
 	"sigs.k8s.io/kpng/jobs/store2diff"
+	"sigs.k8s.io/kpng/localsink"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 	"sigs.k8s.io/kpng/pkg/diffstore"
 	"sigs.k8s.io/kpng/pkg/endpoints"
@@ -20,15 +22,13 @@ type Config struct {
 }
 
 func (c *Config) BindFlags(flags *pflag.FlagSet) {
-	flags.StringVar(&c.NodeName, "node-name", "", "Node name override")
+	flags.StringVar(&c.NodeName, "node-name", func() string {
+		s, _ := os.Hostname()
+		return s
+	}(), "Node name override")
 }
 
-type Sink interface {
-	// WaitRequest waits for the next diff request, returning the requested node name. If an error is returned, it will cancel the job.
-	WaitRequest() (nodeName string, err error)
-
-	watchstate.OpSink
-}
+type Sink = localsink.Sink
 
 type Job struct {
 	Store *proxystore.Store

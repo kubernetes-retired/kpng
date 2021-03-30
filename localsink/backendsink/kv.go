@@ -27,5 +27,36 @@ type kv struct {
 }
 
 func (kv1 kv) Less(i btree.Item) bool {
-	return kv1.Path < i.(kv).Path
+	// path separator aware less
+
+	kv2 := i.(kv)
+
+	p1 := kv1.Path
+	p2 := kv2.Path
+
+	minLen := len(p1)
+	lessIfShort := true
+
+	if l := len(p2); l < minLen {
+		minLen = l
+		lessIfShort = false
+	}
+
+	for i := 0; i < minLen; i++ {
+		r1, r2 := p1[i], p2[i]
+
+		if r1 == r2 {
+			continue
+		}
+
+		if r1 == '/' {
+			return true
+		} else if r2 == '/' {
+			return false
+		} else {
+			return r1 < r2
+		}
+	}
+
+	return lessIfShort
 }

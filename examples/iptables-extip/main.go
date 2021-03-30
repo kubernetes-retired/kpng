@@ -37,7 +37,7 @@ var (
 )
 
 func main() {
-	client.Run(nil, handleEndpoints)
+	client.Run(handleEndpoints)
 }
 
 func handleEndpoints(items []*client.ServiceEndpoints) {

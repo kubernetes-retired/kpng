@@ -69,3 +69,5 @@ func (s serverSink) WaitRequest() (nodeName string, err error) {
 	nodeName = req.NodeName
 	return
 }
+
+func (s serverSink) Reset() {}

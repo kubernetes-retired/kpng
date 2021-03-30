@@ -14,49 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package client
+package backendsink
 
-import (
-	"github.com/google/btree"
-	"google.golang.org/protobuf/proto"
-)
+import "testing"
 
-type kv struct {
-	Path  string
-	Value proto.Message
-}
-
-func (kv1 kv) Less(i btree.Item) bool {
-	// path separator aware less
-
-	kv2 := i.(kv)
-
-	p1 := kv1.Path
-	p2 := kv2.Path
-
-	minLen := len(p1)
-	lessIfShort := true
-
-	if l := len(p2); l < minLen {
-		minLen = l
-		lessIfShort = false
+func TestLess(t *testing.T) {
+	kvs := []kv{
+		kv{"ns/aaa", nil},
+		kv{"ns/aaa/0", nil},
+		kv{"ns/aaa-udp", nil},
+		kv{"ns/aaa-udp/0", nil},
+		kv{"ns/bbb", nil},
+		kv{"ns/ccc/0", nil},
 	}
 
-	for i := 0; i < minLen; i++ {
-		r1, r2 := p1[i], p2[i]
-
-		if r1 == r2 {
-			continue
+	for i := 1; i < len(kvs); i++ {
+		if !kvs[i-1].Less(kvs[i]) {
+			t.Errorf("expected [%d] %s < [%d] %s", i-1, kvs[i-1].Path, i, kvs[i].Path)
 		}
-
-		if r1 == '/' {
-			return true
-		} else if r2 == '/' {
-			return false
-		} else {
-			return r1 < r2
+		if kvs[i].Less(kvs[i-1]) {
+			t.Errorf("expected [%d] %s > [%d] %s", i, kvs[i].Path, i-1, kvs[i-1].Path)
 		}
 	}
-
-	return lessIfShort
 }

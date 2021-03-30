@@ -23,16 +23,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/btree"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/protobuf/proto"
 
 	// allow multi gRPC URLs
 	_ "github.com/Jille/grpc-multi-resolver"
 
 	"k8s.io/klog"
 
+	"sigs.k8s.io/kpng/localsink"
 	"sigs.k8s.io/kpng/localsink/backendsink"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 	"sigs.k8s.io/kpng/pkg/tlsflags"
@@ -66,11 +65,11 @@ type EndpointsClient struct {
 	// GRPCBuffer is the max size of a gRPC message
 	MaxMsgSize int
 
+	Sink localsink.Sink
+
 	conn     *grpc.ClientConn
 	watch    localnetv1.Endpoints_WatchClient
 	watchReq *localnetv1.WatchReq
-
-	data *btree.BTree
 
 	ctx    context.Context
 	cancel func()
@@ -87,29 +86,9 @@ func (epc *EndpointsClient) DefaultFlags(flags FlagSet) {
 	epc.TLS.Bind(flags, "")
 }
 
-// Next returns the next set of ServiceEndpoints, waiting for a new revision as needed.
-// It's designed to never fail and will always return latest items, unless canceled.
-func (epc *EndpointsClient) Next(req *localnetv1.WatchReq) (items []*ServiceEndpoints, canceled bool) {
-	ch, canceled := epc.NextCh(req)
-
-	if canceled {
-		return
-	}
-
-	items = make([]*ServiceEndpoints, 0, epc.data.Len())
-
-	for seps := range ch {
-		items = append(items, seps)
-	}
-
-	return
-}
-
-// NextCh returns the next set of ServiceEndpoints as a channel, waiting for a new revision as needed.
-// It's designed to never fail and will always return an valid channel, unless canceled.
-func (epc *EndpointsClient) NextCh(req *localnetv1.WatchReq) (results chan *ServiceEndpoints, canceled bool) {
-	results = make(chan *ServiceEndpoints, 100)
-
+// Next sends the next diff to the sink, waiting for a new revision as needed.
+// It's designed to never fail, unless canceled.
+func (epc *EndpointsClient) Next() (canceled bool) {
 	if epc.watch == nil {
 		epc.dial()
 	}
@@ -117,19 +96,24 @@ func (epc *EndpointsClient) NextCh(req *localnetv1.WatchReq) (results chan *Serv
 retry:
 	if epc.ctx.Err() != nil {
 		canceled = true
-		close(results)
 		return
 	}
 
 	// say we're ready
-	err := epc.watch.Send(req)
+	nodeName, err := epc.Sink.WaitRequest()
+	if err != nil { // errors are considered as cancel
+		canceled = true
+		return
+	}
+
+	err = epc.watch.Send(&localnetv1.WatchReq{
+		NodeName: nodeName,
+	})
 	if err != nil {
 		epc.postError()
 		goto retry
 	}
 
-	// apply diff
-apply:
 	for {
 		op, err := epc.watch.Recv()
 
@@ -139,63 +123,15 @@ apply:
 			goto retry
 		}
 
+		// pass the op to the sync
+		epc.Sink.Send(op)
+
+		// break on sync
 		switch v := op.Op; v.(type) {
-		case *localnetv1.OpItem_Set:
-			set := op.GetSet()
-
-			var v proto.Message
-			switch set.Ref.Set {
-			case localnetv1.Set_ServicesSet:
-				v = &localnetv1.Service{}
-			case localnetv1.Set_EndpointsSet:
-				v = &localnetv1.Endpoint{}
-
-			default:
-				continue apply // ignore unknown set
-			}
-
-			err = proto.Unmarshal(set.Bytes, v)
-			if err != nil {
-				klog.Error("failed to parse value: ", err)
-				continue apply
-			}
-
-			epc.data.ReplaceOrInsert(kv{set.Ref.Path, v})
-
-		case *localnetv1.OpItem_Delete:
-			epc.data.Delete(kv{Path: op.GetDelete().Path})
-
 		case *localnetv1.OpItem_Sync:
-			break apply // done
+			return
 		}
 	}
-
-	go func() {
-		defer close(results)
-
-		var seps *ServiceEndpoints
-
-		epc.data.Ascend(func(i btree.Item) bool {
-			switch v := i.(kv).Value.(type) {
-			case *localnetv1.Service:
-				if seps != nil {
-					results <- seps
-				}
-
-				seps = &ServiceEndpoints{Service: v}
-			case *localnetv1.Endpoint:
-				seps.Endpoints = append(seps.Endpoints, v)
-			}
-
-			return true
-		})
-
-		if seps != nil {
-			results <- seps
-		}
-	}()
-
-	return
 }
 
 // Cancel will cancel this client, quickly closing any call to Next.
@@ -278,7 +214,7 @@ retry:
 		goto retry
 	}
 
-	epc.data = btree.New(2)
+	epc.Sink.Reset()
 
 	//klog.V(1).Info("connected")
 	return false

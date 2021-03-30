@@ -22,6 +22,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
@@ -32,22 +33,26 @@ import (
 )
 
 func main() {
-	epc, once, nodeName, _ := client.Default()
-
-	for {
-		if canceled := run(epc, once, nodeName); canceled {
-			break
-		}
-
-		if once {
-			break
-		}
+	cmd := &cobra.Command{
+		Run: func(_ *cobra.Command, _ []string) {
+			run()
+		},
 	}
+
+	flags := cmd.Flags()
+	flags.BoolVar(&once, "once", false, "run only one loop")
+	epc = client.New(flags)
+
+	cmd.Execute()
 }
 
-var conn *grpc.ClientConn
+var (
+	epc  *client.EndpointsClient
+	conn *grpc.ClientConn
+	once bool
+)
 
-func run(epc *client.EndpointsClient, once bool, nodeName string) (canceled bool) {
+func run() {
 	if conn != nil {
 		switch conn.GetState() {
 		case connectivity.Shutdown:
@@ -59,7 +64,7 @@ func run(epc *client.EndpointsClient, once bool, nodeName string) (canceled bool
 	if conn == nil {
 		c, err := epc.Dial()
 		if isCanceled(err) {
-			return true
+			return
 		} else if err != nil {
 			log.Print("failed to connect: ", err)
 			time.Sleep(time.Second)
@@ -75,7 +80,7 @@ func run(epc *client.EndpointsClient, once bool, nodeName string) (canceled bool
 
 	w, err := cli.Watch(ctx)
 	if isCanceled(err) {
-		return true
+		return
 	} else if err != nil {
 		log.Print("failed to start the watch: ", err)
 		time.Sleep(time.Second)
@@ -83,9 +88,9 @@ func run(epc *client.EndpointsClient, once bool, nodeName string) (canceled bool
 	}
 
 	for {
-		err = watchReq(w, nodeName)
+		err = watchReq(w)
 		if isCanceled(err) {
-			return true
+			return
 		} else if err != nil {
 			log.Print("watch request failed: ", err)
 			time.Sleep(time.Second)
@@ -102,7 +107,7 @@ func run(epc *client.EndpointsClient, once bool, nodeName string) (canceled bool
 
 var prevs = map[string]proto.Message{}
 
-func watchReq(w localnetv1.Global_WatchClient, nodeName string) error {
+func watchReq(w localnetv1.Global_WatchClient) error {
 	fmt.Println("< req (global) at", time.Now())
 	if err := w.Send(&localnetv1.GlobalWatchReq{}); err != nil {
 		return err
