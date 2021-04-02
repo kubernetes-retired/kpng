@@ -8,8 +8,6 @@ import (
 	"sigs.k8s.io/kpng/pkg/server/watchstate"
 )
 
-var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
-
 type Job struct {
 	Store *proxystore.Store
 	Sets  []localnetv1.Set
@@ -42,6 +40,10 @@ func (j *Job) Run(ctx context.Context) (err error) {
 		err = j.Sink.Wait()
 		if err != nil {
 			return
+		}
+
+		if rev == 0 {
+			w.SendReset()
 		}
 
 		updated := false

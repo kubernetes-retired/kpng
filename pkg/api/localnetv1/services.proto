@@ -31,7 +31,9 @@ message WatchReq {
 message OpItem {
     oneof Op {
         // Sync signals that the change set is complete (especially useful to know when the initial state is complete)
-        Sync Sync = 1;
+        EmptyOp Sync = 1;
+        // Reset signals that the whole data set will be sent next
+        EmptyOp Reset = 4;
 
         // Add/update a value in a set
         Value Set = 2;
@@ -40,7 +42,7 @@ message OpItem {
     }
 }
 
-message Sync {
+message EmptyOp {
 }
 
 enum Set {

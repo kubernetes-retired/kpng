@@ -53,7 +53,9 @@ type sink struct {
 	start time.Time
 }
 
-func (s *sink) Reset() {}
+func (s *sink) Reset() {
+	s.start = time.Time{}
+}
 
 func (s *sink) WaitRequest() (nodeName string, err error) {
 	fmt.Println("< req", cfg.NodeName, "at", time.Now())
@@ -78,6 +80,16 @@ func (s *sink) Send(op *localnetv1.OpItem) (err error) {
 			v = &localnetv1.Service{}
 		case localnetv1.Set_EndpointsSet:
 			v = &localnetv1.Endpoint{}
+
+		case localnetv1.Set_GlobalEndpointInfos:
+			v = &localnetv1.EndpointInfo{}
+		case localnetv1.Set_GlobalNodeInfos:
+			v = &localnetv1.NodeInfo{}
+		case localnetv1.Set_GlobalServiceInfos:
+			v = &localnetv1.ServiceInfo{}
+
+		default:
+			log.Print("unknown set: ", set.Ref.Set)
 		}
 
 		if v != nil {

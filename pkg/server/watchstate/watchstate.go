@@ -139,3 +139,9 @@ var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
 func (w *WatchState) SendSync() {
 	w.send(syncItem)
 }
+
+var resetItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Reset_{}}
+
+func (w *WatchState) SendReset() {
+	w.send(resetItem)
+}
