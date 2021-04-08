@@ -17,7 +17,7 @@ var (
 func api2storeCmd() *cobra.Command {
 	// API to * command
 	cmd := &cobra.Command{
-		Use:   "kube",
+		Use:   "api",
 		Short: "watch Kubernetes API to the global state",
 	}
 
