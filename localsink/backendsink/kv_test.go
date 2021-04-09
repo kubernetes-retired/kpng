@@ -37,3 +37,15 @@ func TestLess(t *testing.T) {
 		}
 	}
 }
+
+func TestEqual(t *testing.T) {
+	k1 := kv{"ns/aaa", nil}
+	k2 := kv{"ns/aaa", nil}
+
+	if k1.Less(k2) {
+		t.Error("k1 < k2")
+	}
+	if k2.Less(k1) {
+		t.Error("k2 < k1")
+	}
+}

@@ -37,7 +37,7 @@ func (kv1 kv) Less(i btree.Item) bool {
 	minLen := len(p1)
 	lessIfShort := true
 
-	if l := len(p2); l < minLen {
+	if l := len(p2); l <= minLen {
 		minLen = l
 		lessIfShort = false
 	}

@@ -1,8 +1,6 @@
 package backendsink
 
 import (
-	"sync"
-
 	"github.com/google/btree"
 	"google.golang.org/protobuf/proto"
 
@@ -23,7 +21,6 @@ type Sink struct {
 	Callback Callback
 
 	data *btree.BTree
-	wg   sync.WaitGroup
 }
 
 func New(config *store2localdiff.Config) *Sink {
@@ -54,7 +51,6 @@ func ToArrayCallback(callback func([]*ServiceEndpoints)) Callback {
 }
 
 func (s *Sink) WaitRequest() (nodeName string, err error) {
-	s.wg.Wait()
 	return s.Config.NodeName, nil
 }
 
@@ -91,12 +87,6 @@ func (s *Sink) Send(op *localnetv1.OpItem) (err error) {
 	case *localnetv1.OpItem_Sync:
 		results := make(chan *ServiceEndpoints, 1)
 
-		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
-			s.Callback(results)
-		}()
-
 		go func() {
 			defer close(results)
 
@@ -121,6 +111,8 @@ func (s *Sink) Send(op *localnetv1.OpItem) (err error) {
 				results <- seps
 			}
 		}()
+
+		s.Callback(results)
 	}
 
 	return
