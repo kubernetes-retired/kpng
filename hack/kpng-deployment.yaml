@@ -1,0 +1,22 @@
+# This runs a local kpng server in a pod on host-network
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kpng-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blah
+  template:
+    metadata:
+      labels:
+        app: blah
+    spec:
+      containers:
+      - name: kpng-server
+        image: jayunit100/kpng-server:latest
+        command: ["kpng"]
+        args: ["kube","to-api"] #,"--kubeconfig","mykubeconfig.conf"]
+        imagePullPolicy: Always
+      hostNetwork: true
