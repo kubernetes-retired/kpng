@@ -9,27 +9,28 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: kube-proxy2
+      app: kpng
   template:
     metadata:
       labels:
-        app: kube-proxy2
+        app: kpng
     spec:
       nodeSelector:
         kube-proxy: v2
       serviceAccountName: kube-proxy
       hostNetwork: true
       containers:
-      - image: mcluseau/kube-proxy2
-        name: kube-proxy2
+      - image: mcluseau/kpng
+        name: kpng
         volumeMounts:
         - name: empty
           mountPath: /k8s
         args:
-        - --listen
-        - unix:///k8s/proxy.sock
-      - image: mcluseau/kube-proxy2
-        name: kube-proxy-nftables
+        - kube
+        - to-api
+        - --listen=unix:///k8s/proxy.sock
+      - image: mcluseau/kpng
+        name: kpng-nftables
         securityContext:
           capabilities:
            add:
@@ -42,8 +43,7 @@ spec:
           readOnly: true
         command:
         - kube-proxy-nftables
-        - --target
-        - unix:///k8s/proxy.sock
+        - --target=unix:///k8s/proxy.sock
         #- --v=2
         #- --dry-run
       volumes:
