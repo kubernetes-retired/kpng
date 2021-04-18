@@ -1,5 +1,5 @@
-from mcluseau/golang-builder:1.15.6 as build
-from alpine:3.12
-entrypoint ["/bin/kube-proxy2"]
+from mcluseau/golang-builder:1.16.2 as build
+from alpine:3.13
+entrypoint ["/bin/kpng"]
 run apk add --update iptables iproute2 nftables
 copy --from=build /go/bin/ /bin/
