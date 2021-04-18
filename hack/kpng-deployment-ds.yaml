@@ -20,7 +20,7 @@ spec:
       serviceAccountName: kube-proxy
       hostNetwork: true
       containers:
-      - image: mcluseau/kpng
+      - image: jayunit100/kpng-server:latest
         name: kpng
         volumeMounts:
         - name: empty
