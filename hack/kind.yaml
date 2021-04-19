@@ -8,10 +8,11 @@ nodes:
   - role: control-plane
     kubeadmConfigPatches:
       - |
-        kind: JoinConfiguration
+        kind: InitConfiguration
         nodeRegistration:
           kubeletExtraArgs:
             node-labels: "kube-proxy=v2"
+            authorization-mode: "AlwaysAllow"
   - role: worker
     kubeadmConfigPatches:
       - |
