@@ -37,7 +37,7 @@ import (
 
 var (
 	kubeconfig string
-	masterURL  string
+	serverURL  string
 	bindSpec   string
 	traceFile  string
 
@@ -54,7 +54,7 @@ func InitFlags(flagSet *flag.FlagSet) {
 	tlsFlags = tlsflags.Bind(flagSet)
 
 	flagSet.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster. Defaults to envvar KUBECONFIG.")
-	flagSet.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flagSet.StringVar(&serverURL, "server", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flagSet.BoolVar(&ManageEndpointSlices, "with-endpoint-slices", ManageEndpointSlices, "Enable EndpointSlice")
 
 	flagSet.StringVar(&traceFile, "trace", "", "trace output")
@@ -99,7 +99,7 @@ func NewServer() (srv *Server, err error) {
 	}
 
 	// setup kubernetes client
-	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
+	cfg, err := clientcmd.BuildConfigFromFlags(serverURL, kubeconfig)
 	if err != nil {
 		return nil, fmt.Errorf("Error building kubeconfig: %s", err.Error())
 	}
