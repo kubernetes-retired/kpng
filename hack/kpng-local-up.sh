@@ -29,6 +29,7 @@ function build {
 function install {
 	# substitute it with your changes...
 	cat kpng-deployment-ds.yaml.tmpl | sed "s,KPNG_IMAGE,$IMAGE," > kpng-deployment-ds.yaml
+	kubectl create sa kube-proxy -n kube-system
 	kubectl delete -f kpng-deployment-ds.yaml
 	kubectl create -f kpng-deployment-ds.yaml
 }

@@ -19,7 +19,12 @@ spec:
         kube-proxy: v2
       serviceAccountName: kube-proxy
       hostNetwork: true
+      # so that kpng always runs on the controlplane nodes...
+      tolerations:
+      - operator: "Exists"
+        effect: "NoSchedule"
       containers:
+      # We'll sed-replace this with a valid kpng image at creat time
       - image: KPNG_IMAGE
         name: kpng
         volumeMounts:
