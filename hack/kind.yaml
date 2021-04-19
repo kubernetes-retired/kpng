@@ -1,0 +1,28 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: kpng-proxy
+networking:
+  kubeProxyMode: "none"
+  apiServerAddress: "0.0.0.0"
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: JoinConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "kube-proxy=v2"
+  - role: worker
+    kubeadmConfigPatches:
+      - |
+        kind: JoinConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "kube-proxy=v2"
+  - role: worker
+    kubeadmConfigPatches:
+      - |
+        kind: JoinConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "kube-proxy=v2"
