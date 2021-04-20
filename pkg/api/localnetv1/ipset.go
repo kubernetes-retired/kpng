@@ -34,7 +34,7 @@ func (set *IPSet) Add(s string) (ip net.IP) {
 		return
 	}
 
-	if ip.To4() == nil {
+	if len(ip) == net.IPv6len {
 		insertString(&set.V6, s)
 	} else {
 		insertString(&set.V4, s)
