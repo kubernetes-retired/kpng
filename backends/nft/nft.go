@@ -279,7 +279,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			}
 
 			// dispatch group chain (ie: dnat_net_0a002700 for 10.0.39.x and a /24 mask)
-			if set.v6 == (clusterIP.To4() == nil) {
+			if set.v6 == (len(clusterIP) == net.IPv6len) {
 				// this family owns the cluster IP => build the dispatch chain
 				mask := ipv4Mask
 				if set.v6 {
