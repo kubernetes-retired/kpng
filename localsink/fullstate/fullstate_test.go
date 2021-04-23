@@ -1,4 +1,4 @@
-package backendsink
+package fullstate
 
 import (
 	"testing"
@@ -13,7 +13,7 @@ func TestAddRemoveService(t *testing.T) {
 	var latestSeps []*ServiceEndpoints
 
 	sink := New(nil)
-	sink.Callback = ToArrayCallback(func(seps []*ServiceEndpoints) {
+	sink.Callback = ArrayCallback(func(seps []*ServiceEndpoints) {
 		t.Logf("callback received %d seps: ", len(seps))
 		for _, sep := range seps {
 			t.Log("- ", sep)

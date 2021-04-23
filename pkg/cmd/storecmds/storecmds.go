@@ -10,7 +10,7 @@ import (
 	"sigs.k8s.io/kpng/jobs/store2api"
 	"sigs.k8s.io/kpng/jobs/store2file"
 	"sigs.k8s.io/kpng/jobs/store2localdiff"
-	"sigs.k8s.io/kpng/localsink/backendsink"
+	"sigs.k8s.io/kpng/localsink/fullstate"
 	"sigs.k8s.io/kpng/pkg/proxystore"
 )
 
@@ -81,7 +81,7 @@ func (c SetupFunc) ToLocalCmd() *cobra.Command {
 	cfg := &store2localdiff.Config{}
 	cfg.BindFlags(cmd.PersistentFlags())
 
-	sink := backendsink.New(cfg)
+	sink := fullstate.New(cfg)
 
 	job := &store2localdiff.Job{
 		Sink: sink,
@@ -113,7 +113,7 @@ func unimplemented(_ *cobra.Command, _ []string) error {
 	return errors.New("not implemented")
 }
 
-func nftCommand(sink *backendsink.Sink, run func() error) *cobra.Command {
+func nftCommand(sink *fullstate.Sink, run func() error) *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "to-nft",
 	}

@@ -26,17 +26,17 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/kpng/jobs/store2localdiff"
 	"sigs.k8s.io/kpng/localsink"
-	"sigs.k8s.io/kpng/localsink/backendsink"
+	"sigs.k8s.io/kpng/localsink/fullstate"
 )
 
 type HandleFunc func(items []*ServiceEndpoints)
-type HandleChFunc = backendsink.Callback
+type HandleChFunc = fullstate.Callback
 
 func Run(handler HandleFunc, extraBindFlags ...func(*pflag.FlagSet)) {
 	RunCh(ArrayBackend(handler), extraBindFlags...)
 }
 
-func RunCh(backend backendsink.Callback, extraBindFlags ...func(*pflag.FlagSet)) {
+func RunCh(backend fullstate.Callback, extraBindFlags ...func(*pflag.FlagSet)) {
 	r := &Runner{}
 
 	cmd := &cobra.Command{
@@ -74,18 +74,17 @@ func (r *Runner) BindFlags(flags *pflag.FlagSet) {
 }
 
 // ArrayBackend creates a Callback from the given array handlers
-func ArrayBackend(handlers ...HandleFunc) backendsink.Callback {
-	return backendsink.ToArrayCallback(func(items []*backendsink.ServiceEndpoints) {
+func ArrayBackend(handlers ...HandleFunc) fullstate.Callback {
+	return fullstate.ArrayCallback(func(items []*fullstate.ServiceEndpoints) {
 		for _, handler := range handlers {
 			handler(items)
 		}
 	})
 }
 
-// RunCh runs the client with the standard options, using the channeled version of Next.
+// RunBackend runs the client with the standard options, using the channeled backend.
 // It should consume less memory as the dataset is processed as it's read instead of buffered.
-// The handler MUST check iter.Err to ensure the dataset was fuly retrieved without error.
-func (r *Runner) RunBackend(handler backendsink.Callback) {
+func (r *Runner) RunBackend(handler fullstate.Callback) {
 	if r.nodeName == "" {
 		var err error
 		r.nodeName, err = os.Hostname()
@@ -94,7 +93,7 @@ func (r *Runner) RunBackend(handler backendsink.Callback) {
 		}
 	}
 
-	sink := backendsink.New(&store2localdiff.Config{NodeName: r.nodeName})
+	sink := fullstate.New(&store2localdiff.Config{NodeName: r.nodeName})
 	sink.Callback = handler
 
 	r.RunSink(sink)
