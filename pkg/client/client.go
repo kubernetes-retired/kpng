@@ -32,12 +32,12 @@ import (
 	"k8s.io/klog"
 
 	"sigs.k8s.io/kpng/localsink"
-	"sigs.k8s.io/kpng/localsink/backendsink"
+	"sigs.k8s.io/kpng/localsink/fullstate"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 	"sigs.k8s.io/kpng/pkg/tlsflags"
 )
 
-type ServiceEndpoints = backendsink.ServiceEndpoints
+type ServiceEndpoints = fullstate.ServiceEndpoints
 
 type FlagSet = tlsflags.FlagSet
 

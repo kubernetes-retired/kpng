@@ -1,4 +1,4 @@
-package backendsink
+package fullstate
 
 import (
 	"github.com/google/btree"
@@ -32,9 +32,8 @@ func New(config *store2localdiff.Config) *Sink {
 
 var _ store2localdiff.Sink = &Sink{}
 
-// Next returns the next set of ServiceEndpoints, waiting for a new revision as needed.
-// It's designed to never fail and will always return latest items, unless canceled.
-func ToArrayCallback(callback func([]*ServiceEndpoints)) Callback {
+// ArrayCallback wraps a array callback
+func ArrayCallback(callback func([]*ServiceEndpoints)) Callback {
 	items := make([]*ServiceEndpoints, 0)
 
 	return func(ch <-chan *ServiceEndpoints) {
