@@ -23,7 +23,7 @@ type Config struct {
 }
 
 func (c *Config) BindFlags(flags *pflag.FlagSet) {
-	flags.StringVar(&c.BindSpec, "server", "tcp://:12090", "serve global API")
+	flags.StringVar(&c.BindSpec, "listen", "tcp://:12090", "serve global API")
 	flags.BoolVar(&c.GlobalAPI, "global-api", true, "serve global API")
 	flags.BoolVar(&c.LocalAPI, "local-api", true, "serve local API")
 
@@ -31,7 +31,7 @@ func (c *Config) BindFlags(flags *pflag.FlagSet) {
 		c.TLS = &tlsflags.Flags{}
 	}
 
-	c.TLS.Bind(flags, "server-")
+	c.TLS.Bind(flags, "listen-")
 }
 
 type Job struct {
