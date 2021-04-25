@@ -33,7 +33,7 @@ spec:
         args:
         - kube
         - to-api
-        - --server=unix:///k8s/proxy.sock
+        - --listen=unix:///k8s/proxy.sock
       - image: mcluseau/kpng
         name: kpng-nftables
         securityContext:
