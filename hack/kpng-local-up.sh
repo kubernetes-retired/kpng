@@ -20,6 +20,7 @@ function setup_k8s {
 	kind create cluster --config kind.yaml
 	kubectl delete -f clusterrole.yaml
 	kubectl create -f clusterrole.yaml
+	kubectl create -f kpng-kube-proxy-cm.yaml -n kube-system
 	echo "****************************************************"
 }
 
