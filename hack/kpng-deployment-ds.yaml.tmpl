@@ -15,8 +15,10 @@ spec:
       labels:
         app: kpng
     spec:
-      nodeSelector:
-        kube-proxy: v2
+      # to enable progressive deployment on existing cluster you can use node labels:
+      #nodeSelector:
+
+      #  kube-proxy: v2
       serviceAccountName: kube-proxy
       hostNetwork: true
       # so that kpng always runs on the controlplane nodes...
@@ -30,17 +32,13 @@ spec:
         volumeMounts:
         - name: empty
           mountPath: /k8s
-        - name: host
-          mountPath: /host-etc/
-        - name: kubelet
-          mountPath: /var/lib/kubelet/
+        - mountPath: /var/lib/kube-proxy
+          name: kube-proxy-config
         args:
         - kube
+        - --kubeconfig=/var/lib/kube-proxy/kubeconfig.conf
         - to-api
         - --listen=unix:///k8s/proxy.sock
-        env:
-        - name: KUBECONFIG
-          value: /host-etc/kubernetes/kubelet.conf
       - image: mcluseau/kpng
         name: kpng-nftables
         securityContext:
@@ -68,9 +66,7 @@ spec:
       - name: modules
         hostPath:
           path: /lib/modules
-      - name: host
-        hostPath:
-          path: /etc/
-      - name: kubelet
-        hostPath:
-          path: /var/lib/kubelet/
+      - name: kube-proxy-config
+        configMap:
+          name: kube-proxy
+
