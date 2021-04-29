@@ -15,6 +15,7 @@ However it cant use a vanilla kind recipe because:
 - we need to add labels for kpng to know where its running its kube-proxy containers
 - we need to add a kube-proxy service account 
 - we also need to tolerate the controlplane node so that kpng runs there
+- theres a bug in older kinds wrt kubeproxy mode = none
 
 thus the recipe has separate 'functions' for each phase of running KPNG.
 
