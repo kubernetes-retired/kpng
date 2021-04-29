@@ -18,6 +18,8 @@ function setup_k8s {
 	echo "****************************************************"
 	kind delete cluster --name kpng-proxy
 	kind create cluster --config kind.yaml
+	kubectl delete -f clusterrole.yaml
+	kubectl create -f clusterrole.yaml
 	echo "****************************************************"
 }
 
