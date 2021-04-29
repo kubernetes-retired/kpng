@@ -20,3 +20,33 @@ subjects:
 - apiGroup: rbac.authorization.k8s.io
   kind: User
   name: system:node:kpng-proxy-worker
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: system:node:kpng-proxy-worker2
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: system:node:kpng-proxy-worker3
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: system:node:kpng-proxy-worker4
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: system:node:kpng-proxy-worker5
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: system:node:kpng-proxy-worker6
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: system:node:kpng-proxy-worker7
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: system:node:kpng-proxy-worker8
+
+
+
+
+
+
+
+
+
