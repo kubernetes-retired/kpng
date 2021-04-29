@@ -14,7 +14,11 @@ function setup_k8s {
 		cp $GOPATH/bin/kind /usr/local/bin/kind
 	fi
 	kind version
+
+	echo "****************************************************"
+	kind delete cluster --name kpng-proxy
 	kind create cluster --config kind.yaml
+	echo "****************************************************"
 }
 
 function build {
@@ -35,6 +39,6 @@ function install {
 }
 
 # Comment out build if you just want to install the default, i.e. for quickly getting up and running.
-#setup_k8s
-# build
+setup_k8s
+#build
 install
