@@ -5,7 +5,7 @@ IMAGE="jayunit100/kpng-server:latest"
 
 function setup_k8s {
     # make a gopath if not one existing...
-    if "$GOPATH" == "" ; then
+    if [ "$GOPATH" == "" ] ; then
         mkdir -p $HOME/go/
         export GOPATH=$HOME/go
         # need kind 0.11 bc 0.10 has a bug w/ kubeproxy=none
