@@ -30,10 +30,17 @@ spec:
         volumeMounts:
         - name: empty
           mountPath: /k8s
+        - name: host
+          mountPath: /host-etc/
+        - name: kubelet
+          mountPath: /var/lib/kubelet/
         args:
         - kube
         - to-api
         - --listen=unix:///k8s/proxy.sock
+        env:
+        - name: KUBECONFIG
+          value: /host-etc/kubernetes/kubelet.conf
       - image: mcluseau/kpng
         name: kpng-nftables
         securityContext:
@@ -46,6 +53,10 @@ spec:
         - name: modules
           mountPath: /lib/modules
           readOnly: true
+        - name: host
+          mountPath: /host-etc/
+        - name: kubelet
+          mountPath: /var/lib/kubelet/
         command:
         - kube-proxy-nftables
         - --target=unix:///k8s/proxy.sock
@@ -57,3 +68,9 @@ spec:
       - name: modules
         hostPath:
           path: /lib/modules
+      - name: host
+        hostPath:
+          path: /etc/
+      - name: kubelet
+        hostPath:
+          path: /var/lib/kubelet/
