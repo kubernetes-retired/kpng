@@ -33,7 +33,8 @@ function build {
 function install {
 	# substitute it with your changes...
 	cat kpng-deployment-ds.yaml.tmpl | sed "s,KPNG_IMAGE,$IMAGE," > kpng-deployment-ds.yaml
-	kubectl create sa kube-proxy -n kube-system
+	kubectl -n kube-system create sa kube-proxy
+    kubectl create clusterrolebinding kube-proxy --clusterrole=system:node-proxier --serviceaccount=kube-system:kube-proxy
 	kubectl delete -f kpng-deployment-ds.yaml
 	kubectl create -f kpng-deployment-ds.yaml
 }
