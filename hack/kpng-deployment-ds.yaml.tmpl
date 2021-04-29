@@ -51,10 +51,6 @@ spec:
         - name: modules
           mountPath: /lib/modules
           readOnly: true
-        - name: host
-          mountPath: /host-etc/
-        - name: kubelet
-          mountPath: /var/lib/kubelet/
         command:
         - kube-proxy-nftables
         - --target=unix:///k8s/proxy.sock
