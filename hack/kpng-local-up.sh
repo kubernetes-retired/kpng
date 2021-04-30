@@ -34,9 +34,9 @@ function install {
     # substitute it with your changes...
     cat kpng-deployment-ds.yaml.tmpl | sed "s,KPNG_IMAGE,$IMAGE," > kpng-deployment-ds.yaml
 
-    kubectl -n kube-system create sa kube-proxy
-    kubectl create clusterrolebinding kube-proxy --clusterrole=system:node-proxier --serviceaccount=kube-system:kube-proxy
-    kubectl -n kube-system create cm kube-proxy --from-file kubeconfig.conf
+    kubectl -n kube-system create sa kpng
+    kubectl create clusterrolebinding kpng --clusterrole=system:node-proxier --serviceaccount=kube-system:kpng
+    kubectl -n kube-system create cm kpng --from-file kubeconfig.conf
 
     kubectl delete -f kpng-deployment-ds.yaml
     kubectl create -f kpng-deployment-ds.yaml

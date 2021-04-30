@@ -17,9 +17,9 @@ spec:
     spec:
       # to enable progressive deployment on existing cluster you can use node labels:
       #nodeSelector:
-      #  kube-proxy: v2
+      #  kpng: kpng
 
-      serviceAccountName: kube-proxy
+      serviceAccountName: kpng
       hostNetwork: true
       # so that kpng always runs on the controlplane nodes...
       tolerations:
@@ -32,11 +32,11 @@ spec:
         volumeMounts:
         - name: empty
           mountPath: /k8s
-        - mountPath: /var/lib/kube-proxy
-          name: kube-proxy-config
+        - mountPath: /var/lib/kpng
+          name: kpng-config
         args:
         - kube
-        - --kubeconfig=/var/lib/kube-proxy/kubeconfig.conf
+        - --kubeconfig=/var/lib/kpng/kubeconfig.conf
         - to-api
         - --listen=unix:///k8s/proxy.sock
       - image: mcluseau/kpng
@@ -52,7 +52,7 @@ spec:
           mountPath: /lib/modules
           readOnly: true
         command:
-        - kube-proxy-nftables
+        - kpng-nftables
         - --target=unix:///k8s/proxy.sock
         #- --v=2
         #- --dry-run
@@ -62,7 +62,7 @@ spec:
       - name: modules
         hostPath:
           path: /lib/modules
-      - name: kube-proxy-config
+      - name: kpng-config
         configMap:
-          name: kube-proxy
+          name: kpng
 
