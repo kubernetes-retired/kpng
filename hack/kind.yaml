@@ -11,7 +11,7 @@ nodes:
         kind: InitConfiguration
         nodeRegistration:
           kubeletExtraArgs:
-            node-labels: "kube-proxy=v2"
+            node-labels: "kube-proxy=kpng"
             authorization-mode: "AlwaysAllow"
   - role: worker
     kubeadmConfigPatches:
@@ -19,11 +19,11 @@ nodes:
         kind: JoinConfiguration
         nodeRegistration:
           kubeletExtraArgs:
-            node-labels: "kube-proxy=v2"
+            node-labels: "kube-proxy=kpng"
   - role: worker
     kubeadmConfigPatches:
       - |
         kind: JoinConfiguration
         nodeRegistration:
           kubeletExtraArgs:
-            node-labels: "kube-proxy=v2"
+            node-labels: "kube-proxy=kpng"
