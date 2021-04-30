@@ -1,7 +1,7 @@
 #!/bin/bash
 # build the kpng image...
 
-IMAGE="jayunit100/kpng-server:latest"
+: ${IMAGE:="jayunit100/kpng-server:latest"}
 
 function setup_k8s {
     # make a gopath if not one existing...
@@ -32,6 +32,7 @@ function build {
 
 function install {
     # substitute it with your changes...
+    echo "Applying template with KPNG_IMAGE=$IMAGE"
     cat kpng-deployment-ds.yaml.tmpl | sed "s,KPNG_IMAGE,$IMAGE," > kpng-deployment-ds.yaml
 
     kubectl -n kube-system create sa kpng

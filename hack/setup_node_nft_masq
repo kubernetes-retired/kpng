@@ -1,0 +1,21 @@
+#! /bin/sh
+# this script sets a basic masquerading for pods to reach the outside
+
+set -ex
+apt update
+apt install -y nftables
+
+nft -f - <<EOF
+table ip filter {
+  chain postrouting {
+    type nat hook postrouting priority 0; policy accept;
+    oif "eth0" masquerade
+  }
+}
+table ip6 filter6 {
+  chain postrouting {
+    type nat hook postrouting priority 0; policy accept;
+    oif "eth0" masquerade
+  }
+}
+EOF
