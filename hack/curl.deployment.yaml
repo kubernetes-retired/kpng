@@ -16,3 +16,4 @@ spec:
       - image: curlimages/curl
         name: curl
         stdin: true
+        command: [ "/bin/sh" ]
