@@ -1,20 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    app: alpine
-  name: alpine
+  name: curl
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: alpine
+      app: curl
   template:
     metadata:
       labels:
-        app: alpine
+        app: curl
     spec:
       containers:
-      - image: alpine:3.13
-        name: alpine
+      - image: curlimage/curl
+        name: curl
         stdin: true
