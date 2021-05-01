@@ -13,6 +13,6 @@ spec:
         app: curl
     spec:
       containers:
-      - image: curlimage/curl
+      - image: curlimages/curl
         name: curl
         stdin: true
