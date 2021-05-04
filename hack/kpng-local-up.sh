@@ -3,6 +3,12 @@
 
 : ${IMAGE:="jayunit100/kpng-server:latest"}
 
+function install_calico {
+    kubectl apply -f https://raw.githubusercontent.com/jayunit100/k8sprototypes/master/kind/calico.yaml
+    kubectl -n kube-system set env daemonset/calico-node FELIX_IGNORELOOSERPF=true
+    kubectl -n kube-system set env daemonset/calico-node FELIX_XDPENABLED=false
+}
+
 function setup_k8s {
     # make a gopath if not one existing...
     if [ "$GOPATH" == "" ] ; then
@@ -18,6 +24,7 @@ function setup_k8s {
     echo "****************************************************"
     kind delete cluster --name kpng-proxy
     kind create cluster --config kind.yaml
+    install_calico
     echo "****************************************************"
 }
 
