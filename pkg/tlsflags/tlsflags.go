@@ -78,6 +78,7 @@ func (f *Flags) Config() (cfg *tls.Config) {
 			klog.Fatal("failed to parse CA certificate")
 		}
 
+		cfg.ClientCAs = pool
 		cfg.RootCAs = pool
 	}
 
