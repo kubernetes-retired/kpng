@@ -27,7 +27,7 @@ import (
 	"sort"
 	"strings"
 
-	"sigs.k8s.io/kpng/pkg/client"
+	"sigs.k8s.io/kpng/client"
 )
 
 var (

@@ -18,7 +18,7 @@ package main
 
 import (
 	"sigs.k8s.io/kpng/backends/nft"
-	"sigs.k8s.io/kpng/pkg/client"
+	"sigs.k8s.io/kpng/client"
 )
 
 func main() {
