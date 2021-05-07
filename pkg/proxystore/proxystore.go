@@ -17,8 +17,8 @@ limitations under the License.
 package proxystore
 
 import (
+	"fmt"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/cespare/xxhash"
@@ -54,49 +54,6 @@ var AllSets = []Set{Services, Endpoints, Nodes}
 
 type Hashed interface {
 	GetHash() uint64
-}
-
-type KV struct {
-	Sync      *bool
-	Set       Set
-	Namespace string
-	Name      string
-	Source    string
-	Key       string
-
-	Value Hashed
-
-	Service  *localnetv1.ServiceInfo
-	Endpoint *localnetv1.EndpointInfo
-	Node     *localnetv1.NodeInfo
-}
-
-func (a *KV) Path() string {
-	return strings.Join([]string{a.Namespace, a.Name, a.Source, a.Key}, "|")
-}
-
-func (a *KV) SetPath(path string) {
-	p := strings.Split(path, "|")
-	a.Namespace, a.Name, a.Source, a.Key = p[0], p[1], p[2], p[3]
-}
-
-func (a *KV) Less(i btree.Item) bool {
-	b := i.(*KV)
-
-	if a.Set != b.Set {
-		return a.Set < b.Set
-	}
-	if a.Namespace != b.Namespace {
-		return a.Namespace < b.Namespace
-	}
-	if a.Name != b.Name {
-		return a.Name < b.Name
-	}
-	if a.Source != b.Source {
-		return a.Source < b.Source
-	}
-
-	return a.Key < b.Key
 }
 
 func New() *Store {
@@ -197,6 +154,23 @@ func (tx *Tx) Each(set Set, callback func(*KV) bool) {
 	})
 }
 
+// Reset clears the store data
+func (tx *Tx) Reset() {
+	tx.roPanic()
+
+	if tx.s.tree.Len() != 0 {
+		tx.s.tree.Clear(false)
+		tx.changes++
+	}
+
+	for set, isSync := range tx.s.sync {
+		if isSync {
+			tx.s.sync[set] = false
+			tx.changes++
+		}
+	}
+}
+
 func (tx *Tx) set(kv *KV) {
 	tx.roPanic()
 	prev := tx.s.tree.Get(kv)
@@ -215,6 +189,55 @@ func (tx *Tx) del(kv *KV) {
 	if i != nil {
 		tx.changes++
 	}
+}
+
+func (tx *Tx) SetRaw(set Set, path string, value Hashed) {
+	kv := &KV{}
+	kv.Set = set
+	kv.SetPath(path)
+
+	kv.Value = value
+
+	switch v := value.(type) {
+	case *localnetv1.NodeInfo:
+		kv.Node = v
+		tx.set(kv)
+
+	case *localnetv1.ServiceInfo:
+		kv.Service = v
+		tx.set(kv)
+
+	case *localnetv1.EndpointInfo:
+		kv.Endpoint = v
+
+		tx.set(kv)
+		// also index by source only
+		//tx.set(&KV{
+		//	Set:       Endpoints,
+		//	Namespace: kv.Namespace,
+		//	Source:    kv.Source,
+		//	Key:       kv.Key,
+		//	Value:     v,
+		//	Endpoint:  v,
+		//})
+
+	default:
+		panic(fmt.Errorf("unknown value type: %t", v))
+	}
+}
+
+func (tx *Tx) DelRaw(set Set, path string) {
+	kv := &KV{}
+	kv.Set = set
+	kv.SetPath(path)
+
+	tx.del(kv)
+
+	//if kv.Set == Endpoints {
+	//	// also delete by source only
+	//	kv.Name = ""
+	//	tx.del(kv)
+	//}
 }
 
 // sync funcs

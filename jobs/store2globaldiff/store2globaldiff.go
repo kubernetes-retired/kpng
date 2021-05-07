@@ -65,12 +65,12 @@ func (_ *Job) SendDiff(w *watchstate.WatchState) (updated bool) {
 	defer task.End()
 
 	count := 0
-	count += w.SendUpdates(localnetv1.Set_GlobalServiceInfos)
 	count += w.SendUpdates(localnetv1.Set_GlobalNodeInfos)
+	count += w.SendUpdates(localnetv1.Set_GlobalServiceInfos)
 	count += w.SendUpdates(localnetv1.Set_GlobalEndpointInfos)
 	count += w.SendDeletes(localnetv1.Set_GlobalEndpointInfos)
-	count += w.SendDeletes(localnetv1.Set_GlobalNodeInfos)
 	count += w.SendDeletes(localnetv1.Set_GlobalServiceInfos)
+	count += w.SendDeletes(localnetv1.Set_GlobalNodeInfos)
 
 	w.Reset(diffstore.ItemDeleted)
 

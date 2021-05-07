@@ -45,14 +45,8 @@ func main() {
 	cmd.AddCommand(
 		kube2storeCmd(),
 		file2storeCmd(),
+		api2storeCmd(),
 	)
-
-	// api to * command
-	// TODO
-	// apiCmd := &cobra.Command{
-	//     Use: "api",
-	// }
-	// apiCmd.AddCommand(storecmds.Commands(setupAPI2store)...)
 
 	if err := cmd.Execute(); err != nil {
 		klog.Fatal(err)
