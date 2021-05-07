@@ -37,7 +37,7 @@ func main() {
 	klog.InitFlags(flag.CommandLine)
 
 	cmd := cobra.Command{
-		Use: "proxy",
+		Use: "kpng",
 	}
 
 	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
