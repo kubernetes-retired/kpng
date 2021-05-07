@@ -24,9 +24,9 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 
+	"sigs.k8s.io/kpng/client"
 	"sigs.k8s.io/kpng/jobs/store2localdiff"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
-	"sigs.k8s.io/kpng/pkg/client"
 )
 
 var (

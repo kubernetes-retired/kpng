@@ -28,8 +28,8 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/protobuf/proto"
 
+	"sigs.k8s.io/kpng/client"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
-	"sigs.k8s.io/kpng/pkg/client"
 )
 
 func main() {

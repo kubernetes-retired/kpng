@@ -34,8 +34,8 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/klog"
 
+	"sigs.k8s.io/kpng/client"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
-	"sigs.k8s.io/kpng/pkg/client"
 )
 
 var (
