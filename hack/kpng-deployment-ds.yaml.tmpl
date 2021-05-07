@@ -39,7 +39,7 @@ spec:
         - --kubeconfig=/var/lib/kpng/kubeconfig.conf
         - to-api
         - --listen=unix:///k8s/proxy.sock
-      - image: mcluseau/kpng
+      - image: KPNG_IMAGE
         name: kpng-nftables
         securityContext:
           capabilities:
