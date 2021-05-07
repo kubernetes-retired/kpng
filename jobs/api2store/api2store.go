@@ -41,11 +41,10 @@ func (j *Job) Run(ctx context.Context) {
 func (j *Job) run(ctx context.Context) (err error) {
 	opts := []grpc.DialOption{}
 
-	if j.TLSFlags != nil && j.TLSFlags.KeyFile != "" {
-		tlsConfig := j.TLSFlags.Config()
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
-	} else {
+	if cfg := j.TLSFlags.Config(); cfg == nil {
 		opts = append(opts, grpc.WithInsecure())
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(cfg)))
 	}
 
 	conn, err := grpc.Dial(j.Server, opts...)
