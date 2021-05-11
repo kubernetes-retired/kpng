@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"runtime/pprof"
 
@@ -31,6 +32,7 @@ import (
 
 var (
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+	version    = "(unknown)"
 )
 
 func main() {
@@ -46,6 +48,7 @@ func main() {
 		kube2storeCmd(),
 		file2storeCmd(),
 		api2storeCmd(),
+		versionCmd(),
 	)
 
 	if err := cmd.Execute(); err != nil {
@@ -76,4 +79,14 @@ func setupGlobal() (ctx context.Context) {
 	}
 
 	return
+}
+
+func versionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "print the version and quit",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println(version)
+		},
+	}
 }
