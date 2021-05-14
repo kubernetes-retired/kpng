@@ -15,9 +15,8 @@ function setup_k8s {
         mkdir -p $HOME/go/
         export GOPATH=$HOME/go
         # need kind 0.11 bc 0.10 has a bug w/ kubeproxy=none
-        GO111MODULE="on" go get sigs.k8s.io/kind@master
-        chmod 755 $GOPATH/bin/kind
-        cp $GOPATH/bin/kind /usr/local/bin/kind
+        GO111MODULE="on" go get sigs.k8s.io/kind@main
+        export PATH="$(go env GOPATH)/bin:${PATH}"
     fi
     kind version
 
