@@ -209,17 +209,7 @@ func (tx *Tx) SetRaw(set Set, path string, value Hashed) {
 
 	case *localnetv1.EndpointInfo:
 		kv.Endpoint = v
-
 		tx.set(kv)
-		// also index by source only
-		//tx.set(&KV{
-		//	Set:       Endpoints,
-		//	Namespace: kv.Namespace,
-		//	Source:    kv.Source,
-		//	Key:       kv.Key,
-		//	Value:     v,
-		//	Endpoint:  v,
-		//})
 
 	default:
 		panic(fmt.Errorf("unknown value type: %t", v))
@@ -232,12 +222,6 @@ func (tx *Tx) DelRaw(set Set, path string) {
 	kv.SetPath(path)
 
 	tx.del(kv)
-
-	//if kv.Set == Endpoints {
-	//	// also delete by source only
-	//	kv.Name = ""
-	//	tx.del(kv)
-	//}
 }
 
 // sync funcs
