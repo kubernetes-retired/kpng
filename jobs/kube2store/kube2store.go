@@ -44,7 +44,9 @@ func (c *Config) BindFlags(flags *pflag.FlagSet) {
 	flags.StringSliceVar(&c.ServiceLabelGlobs, "with-service-labels", nil, "service labels to include")
 	flags.StringSliceVar(&c.ServiceAnnonationGlobs, "with-service-annotations", nil, "service annotations to include")
 
-	flags.StringSliceVar(&c.NodeLabelGlobs, "with-node-labels", nil, "node labels to include")
+	flags.StringSliceVar(&c.NodeLabelGlobs, "with-node-labels", []string{
+		"kubernetes.io/hostname", "topology.kubernetes.io/zone", "topology.kubernetes.io/region",
+	}, "node labels to include")
 	flags.StringSliceVar(&c.NodeAnnotationGlobs, "with-node-annotations", nil, "node annotations to include")
 }
 
