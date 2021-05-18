@@ -21,15 +21,23 @@ import (
 	"sigs.k8s.io/kpng/pkg/proxystore"
 )
 
+const hostnameLabel = "kubernetes.io/hostname"
+
 func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (selection []*localnetv1.EndpointInfo) {
 	node := tx.GetNode(nodeName)
 
 	var labels map[string]string
 
-	if node == nil || node.Labels == nil {
+	if node == nil || len(node.Labels) == 0 {
+		// node is unknown or has no labels, simulate basic node label
 		labels = map[string]string{}
 	} else {
 		labels = node.Labels
+	}
+
+	if labels[hostnameLabel] == "" {
+		// ensure we have the hostname even if it's filtered
+		labels[hostnameLabel] = nodeName
 	}
 
 	topologyKeys := si.TopologyKeys
