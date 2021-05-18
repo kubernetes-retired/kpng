@@ -41,12 +41,13 @@ import (
 var (
 	flag = &pflag.FlagSet{}
 
-	dryRun       = flag.Bool("dry-run", false, "dry run (do not apply rules)")
-	hookPrio     = flag.Int("hook-priority", 0, "nftable hooks priority")
-	skipComments = flag.Bool("skip-comments", false, "don't comment rules")
-	splitBits    = flag.Int("split-bits", 24, "dispatch services in multiple chains, spliting at the nth bit")
-	splitBits6   = flag.Int("split-bits6", 120, "dispatch services in multiple chains, spliting at the nth bit (for IPv6)")
-	mapsCount    = flag.Uint64("maps-count", 0xff, "number of endpoints maps to use")
+	dryRun          = flag.Bool("dry-run", false, "dry run (do not apply rules)")
+	hookPrio        = flag.Int("hook-priority", 0, "nftable hooks priority")
+	skipComments    = flag.Bool("skip-comments", false, "don't comment rules")
+	splitBits       = flag.Int("split-bits", 24, "dispatch services in multiple chains, spliting at the nth bit")
+	splitBits6      = flag.Int("split-bits6", 120, "dispatch services in multiple chains, spliting at the nth bit (for IPv6)")
+	mapsCount       = flag.Uint64("maps-count", 0xff, "number of endpoints maps to use")
+	forceNFTHashBug = flag.Bool("force-nft-hash-workaround", false, "bypass auto-detection of NFT hash bug (necessary when nft is blind)")
 
 	fullResync = true
 
@@ -68,6 +69,13 @@ func PreRun() {
 }
 
 func checkMapIndexBug() {
+	if *forceNFTHashBug {
+		hasNFTHashBug = true
+		return
+	}
+
+	klog.Info("checking for NFT hash bug")
+
 	// check the nft vmap bug (0.9.5 but protect against the whole class)
 	nft := exec.Command("nft", "-f", "-")
 	nft.Stdin = bytes.NewBuffer([]byte(`
@@ -99,14 +107,32 @@ delete table ip k8s_test_vmap_bug
 	}()
 
 	// get the recorded map
-	nft = exec.Command("nft", "-f", "-")
-	nft.Stdin = bytes.NewBuffer([]byte(`
-list map ip k8s_test_vmap_bug m1
-`))
+	nft = exec.Command("nft", "list", "map", "ip", "k8s_test_vmap_bug", "m1")
 	output, err := nft.Output()
 	if err != nil {
 		klog.Warning("failed to test nft bugs: ", err)
 		return
+	}
+
+	if len(bytes.TrimSpace(output)) == 0 {
+		klog.Warning(`!!! WARNING !!! NFT is blind, can't auto-detect hash bug; to manually check:
+-> run in this container:
+# nft -f - <<EOF
+table ip k8s_test_vmap_bug
+delete table ip k8s_test_vmap_bug
+table ip k8s_test_vmap_bug {
+  map m1 {
+    typeof numgen random mod 2 : ip daddr
+    elements = { 1 : 10.0.0.1, 2 : 10.0.0.2 }
+  }
+}
+EOF
+
+-> run on your system:
+# nft list map ip k8s_test_vmap_bug m1
+
+-> if the output map is { 16777216 : 10.0.0.1, 33554432 : 10.0.0.2 }
+   then add --force-nft-hash-workaround=true here`)
 	}
 
 	hasNFTHashBug = bytes.Contains(output, []byte("16777216")) || bytes.Contains(output, []byte("0x01000000"))

@@ -22,5 +22,6 @@ import (
 )
 
 func main() {
+	nft.PreRun()
 	client.RunCh(nft.Callback, nft.BindFlags)
 }
