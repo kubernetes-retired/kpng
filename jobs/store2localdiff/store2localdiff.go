@@ -2,11 +2,11 @@ package store2localdiff
 
 import (
 	"context"
-	"os"
 	"runtime/trace"
 	"strconv"
 
-	"github.com/spf13/pflag"
+	"github.com/cespare/xxhash"
+	"github.com/golang/protobuf/proto"
 
 	"sigs.k8s.io/kpng/jobs/store2diff"
 	"sigs.k8s.io/kpng/localsink"
@@ -17,17 +17,6 @@ import (
 	"sigs.k8s.io/kpng/pkg/server/watchstate"
 )
 
-type Config struct {
-	NodeName string
-}
-
-func (c *Config) BindFlags(flags *pflag.FlagSet) {
-	flags.StringVar(&c.NodeName, "node-name", func() string {
-		s, _ := os.Hostname()
-		return s
-	}(), "Node name override")
-}
-
 type Sink = localsink.Sink
 
 type Job struct {
@@ -36,7 +25,10 @@ type Job struct {
 }
 
 func (j *Job) Run(ctx context.Context) error {
-	run := &jobRun{Sink: j.Sink}
+	run := &jobRun{
+		Sink: j.Sink,
+		buf:  proto.NewBuffer(make([]byte, 0, 256)),
+	}
 
 	job := &store2diff.Job{
 		Store: j.Store,
@@ -53,6 +45,7 @@ func (j *Job) Run(ctx context.Context) error {
 type jobRun struct {
 	Sink
 	nodeName string
+	buf      *proto.Buffer
 }
 
 func (s *jobRun) Wait() (err error) {
@@ -86,16 +79,21 @@ func (s *jobRun) Update(tx *proxystore.Tx, w *watchstate.WatchState) {
 		endpointInfos := endpoints.ForNode(tx, kv.Service, nodeName)
 
 		for _, ei := range endpointInfos {
+			// hash only the endpoint
+			s.buf.Marshal(ei.Endpoint)
+			hash := xxhash.Sum64(s.buf.Bytes())
+			s.buf.Reset()
+
 			// key is service key + endpoint hash (64 bits, in hex)
 			key := append(make([]byte, 0, len(key)+1+64/8*2), key...)
 			key = append(key, '/')
-			key = strconv.AppendUint(key, ei.Hash, 16)
+			key = strconv.AppendUint(key, hash, 16)
 
 			if trace.IsEnabled() {
 				trace.Log(ctx, "endpoint", string(key))
 			}
 
-			seps.Set(key, ei.Hash, ei.Endpoint)
+			seps.Set(key, hash, ei.Endpoint)
 		}
 
 		return true

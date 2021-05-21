@@ -1,6 +1,12 @@
 package localsink
 
-import "sigs.k8s.io/kpng/pkg/server/watchstate"
+import (
+	"os"
+
+	"github.com/spf13/pflag"
+
+	"sigs.k8s.io/kpng/pkg/server/watchstate"
+)
 
 type Sink interface {
 	// WaitRequest waits for the next diff request, returning the requested node name. If an error is returned, it will cancel the job.
@@ -10,4 +16,15 @@ type Sink interface {
 	Reset()
 
 	watchstate.OpSink
+}
+
+type Config struct {
+	NodeName string
+}
+
+func (c *Config) BindFlags(flags *pflag.FlagSet) {
+	flags.StringVar(&c.NodeName, "node-name", func() string {
+		s, _ := os.Hostname()
+		return s
+	}(), "Node name override")
 }

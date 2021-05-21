@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/kpng/jobs/store2api"
 	"sigs.k8s.io/kpng/jobs/store2file"
 	"sigs.k8s.io/kpng/jobs/store2localdiff"
+	"sigs.k8s.io/kpng/localsink"
 	"sigs.k8s.io/kpng/localsink/fullstate"
 	"sigs.k8s.io/kpng/pkg/proxystore"
 )
@@ -79,7 +80,7 @@ func (c SetupFunc) ToLocalCmd() *cobra.Command {
 		Use: "to-local",
 	}
 
-	cfg := &store2localdiff.Config{}
+	cfg := &localsink.Config{}
 	cfg.BindFlags(cmd.PersistentFlags())
 
 	sink := fullstate.New(cfg)
@@ -95,16 +96,17 @@ func (c SetupFunc) ToLocalCmd() *cobra.Command {
 		return
 	}
 
-	cmd.AddCommand(
-		&cobra.Command{
-			Use:  "to-iptables",
-			RunE: unimplemented,
-		},
-		ipvsCommand(sink, func() error { return job.Run(ctx) }),
-		nftCommand(sink, func() error { return job.Run(ctx) }),
-	)
+	cmd.AddCommand(BackendCmds(sink, func() error { return job.Run(ctx) })...)
 
 	return cmd
+}
+
+func BackendCmds(sink *fullstate.Sink, run func() error) []*cobra.Command {
+	return []*cobra.Command{
+		{Use: "to-iptables", RunE: unimplemented},
+		ipvsCommand(sink, run),
+		nftCommand(sink, run),
+	}
 }
 
 func unimplemented(_ *cobra.Command, _ []string) error {
