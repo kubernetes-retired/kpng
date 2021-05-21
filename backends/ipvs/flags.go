@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,7 @@ package ipvs
 
 import (
 	"net"
+	"os/exec"
 
 	"github.com/spf13/pflag"
 )
@@ -26,7 +27,7 @@ var (
 	flag = &pflag.FlagSet{}
 
 	OnlyOutput  = flag.Bool("only-output", false, "Only output the ipvsadm-restore file instead of calling ipvsadm-restore")
-	IPVSAdmPath = flag.String("ipvsadm", "/usr/sbin/ipvsadm", "Defines the path of ipvsadm-restore command")
+	IPVSAdmPath = flag.String("ipvsadm", func() string { s, _ := exec.LookPath("ipvsadm"); return s }(), "Defines the path of ipvsadm-restore command")
 	NodeAddress = flag.StringSlice("nodeport-address", interfaceAddresses(), "A comma-separated list of IPs to associate when using NodePort type. Defaults to all the Node addresses")
 	// TODO: Not used yet
 	IPVSExcludeCIDRS = flag.StringSlice("ipvs-exclude-cidrs", nil, "A comma-separated list of CIDR's which the ipvs proxier should not touch when cleaning up IPVS rules.")
