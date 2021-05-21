@@ -6,20 +6,18 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/proto"
 
 	"k8s.io/klog"
 
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	"sigs.k8s.io/kpng/pkg/apiwatch"
 	"sigs.k8s.io/kpng/pkg/proxystore"
-	"sigs.k8s.io/kpng/pkg/tlsflags"
 )
 
 type Job struct {
-	Server   string
-	TLSFlags *tlsflags.Flags
-	Store    *proxystore.Store
+	apiwatch.Watch
+	Store *proxystore.Store
 }
 
 func (j *Job) Run(ctx context.Context) {
@@ -40,19 +38,10 @@ func (j *Job) Run(ctx context.Context) {
 
 func (j *Job) run(ctx context.Context) (err error) {
 	// connect to API
-	opts := []grpc.DialOption{}
-
-	if cfg := j.TLSFlags.Config(); cfg == nil {
-		opts = append(opts, grpc.WithInsecure())
-	} else {
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(cfg)))
-	}
-
-	conn, err := grpc.Dial(j.Server, opts...)
+	conn, err := j.Dial()
 	if err != nil {
 		return
 	}
-
 	defer conn.Close()
 
 	// watch global state

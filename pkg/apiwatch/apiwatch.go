@@ -16,7 +16,6 @@ type Watch struct {
 func (w *Watch) BindFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&w.Server, "api", "127.0.0.1:12090", "Remote API server to query")
 	w.TLSFlags.Bind(flags, "api-client-")
-
 }
 
 func (w *Watch) Dial() (conn *grpc.ClientConn, err error) {

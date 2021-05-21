@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"sigs.k8s.io/kpng/jobs/api2store"
+	"sigs.k8s.io/kpng/pkg/apiwatch"
 	"sigs.k8s.io/kpng/pkg/cmd/storecmds"
 	"sigs.k8s.io/kpng/pkg/proxystore"
 	"sigs.k8s.io/kpng/pkg/tlsflags"
@@ -13,7 +14,7 @@ import (
 
 var (
 	api2storeJob = &api2store.Job{
-		TLSFlags: &tlsflags.Flags{},
+		Watch: apiwatch.Watch{TLSFlags: &tlsflags.Flags{}},
 	}
 )
 
@@ -25,9 +26,7 @@ func api2storeCmd() *cobra.Command {
 	}
 
 	flags := cmd.PersistentFlags()
-	flags.StringVar(&api2storeJob.Server, "api", "127.0.0.1:12090", "Remote API server to query")
-
-	api2storeJob.TLSFlags.Bind(flags, "api-client-")
+	api2storeJob.BindFlags(flags)
 
 	cmd.AddCommand(storecmds.Commands(setupAPI2store)...)
 
