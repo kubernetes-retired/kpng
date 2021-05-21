@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"sigs.k8s.io/kpng/backends/ipvs"
 	"sigs.k8s.io/kpng/backends/nft"
 	"sigs.k8s.io/kpng/jobs/store2api"
 	"sigs.k8s.io/kpng/jobs/store2file"
@@ -99,10 +100,7 @@ func (c SetupFunc) ToLocalCmd() *cobra.Command {
 			Use:  "to-iptables",
 			RunE: unimplemented,
 		},
-		&cobra.Command{
-			Use:  "to-ipvs",
-			RunE: unimplemented,
-		},
+		ipvsCommand(sink, func() error { return job.Run(ctx) }),
 		nftCommand(sink, func() error { return job.Run(ctx) }),
 	)
 
@@ -123,6 +121,22 @@ func nftCommand(sink *fullstate.Sink, run func() error) *cobra.Command {
 	cmd.RunE = func(_ *cobra.Command, _ []string) error {
 		nft.PreRun()
 		sink.Callback = nft.Callback
+		return run()
+	}
+
+	return cmd
+}
+
+func ipvsCommand(sink *fullstate.Sink, run func() error) *cobra.Command {
+	cmd := &cobra.Command{
+		Use: "to-ipvs",
+	}
+
+	ipvs.BindFlags(cmd.Flags())
+
+	cmd.RunE = func(_ *cobra.Command, _ []string) error {
+		ipvs.PreRun()
+		sink.Callback = ipvs.Callback
 		return run()
 	}
 
