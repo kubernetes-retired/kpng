@@ -28,6 +28,7 @@ spec:
       containers:
       # We'll sed-replace this with a valid kpng image at creat time
       - image: KPNG_IMAGE
+        imagePullPolicy: KPNG_PULL
         name: kpng
         volumeMounts:
         - name: empty
@@ -40,6 +41,7 @@ spec:
         - to-api
         - --listen=unix:///k8s/proxy.sock
       - image: KPNG_IMAGE
+        imagePullPoliy: KPNG_PULL
         name: kpng-nftables
         securityContext:
           capabilities:
@@ -51,9 +53,7 @@ spec:
         - name: modules
           mountPath: /lib/modules
           readOnly: true
-        command:
-        - kpng-nftables
-        - --target=unix:///k8s/proxy.sock
+        args: [ "local", "--api=unix:///k8s/proxy.sock", "to-ipvs" ]
         #- --v=2
         #- --dry-run
       volumes:

@@ -1,8 +1,10 @@
 #!/bin/bash
 # build the kpng image...
 
-: ${IMAGE:="jayunit100/kpng-server:latest"}
-
+: ${IMAGE:="jayunit100/kpng:ipvs"}
+echo $IMAGE
+echo $PULL
+read x
 function install_calico {
     kubectl apply -f https://raw.githubusercontent.com/jayunit100/k8sprototypes/master/kind/calico.yaml
     kubectl -n kube-system set env daemonset/calico-node FELIX_IGNORELOOSERPF=true
