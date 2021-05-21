@@ -92,6 +92,7 @@ message ServiceIPs {
 message Endpoint {
     string Hostname = 1;
     IPSet  IPs = 2;
+    bool   Local = 3;
 }
 
 message IPSet {

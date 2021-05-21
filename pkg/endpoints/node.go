@@ -17,6 +17,8 @@ limitations under the License.
 package endpoints
 
 import (
+	"google.golang.org/protobuf/proto"
+
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 	"sigs.k8s.io/kpng/pkg/proxystore"
 )
@@ -49,6 +51,10 @@ func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (se
 
 	infos := make([]*localnetv1.EndpointInfo, 0)
 	tx.EachEndpointOfService(svc.Namespace, svc.Name, func(info *localnetv1.EndpointInfo) {
+		info = proto.Clone(info).(*localnetv1.EndpointInfo)
+
+		info.Endpoint.Local = info.NodeName == nodeName
+
 		infos = append(infos, info)
 	})
 

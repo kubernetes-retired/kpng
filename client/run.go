@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"k8s.io/klog"
-	"sigs.k8s.io/kpng/jobs/store2localdiff"
 	"sigs.k8s.io/kpng/localsink"
 	"sigs.k8s.io/kpng/localsink/fullstate"
 )
@@ -93,7 +92,7 @@ func (r *Runner) RunBackend(handler fullstate.Callback) {
 		}
 	}
 
-	sink := fullstate.New(&store2localdiff.Config{NodeName: r.nodeName})
+	sink := fullstate.New(&localsink.Config{NodeName: r.nodeName})
 	sink.Callback = handler
 
 	r.RunSink(sink)

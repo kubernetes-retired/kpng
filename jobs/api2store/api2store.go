@@ -39,6 +39,7 @@ func (j *Job) Run(ctx context.Context) {
 }
 
 func (j *Job) run(ctx context.Context) (err error) {
+	// connect to API
 	opts := []grpc.DialOption{}
 
 	if cfg := j.TLSFlags.Config(); cfg == nil {
@@ -54,6 +55,7 @@ func (j *Job) run(ctx context.Context) (err error) {
 
 	defer conn.Close()
 
+	// watch global state
 	global := localnetv1.NewGlobalClient(conn)
 
 	watch, err := global.Watch(ctx)

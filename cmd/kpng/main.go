@@ -48,6 +48,7 @@ func main() {
 		kube2storeCmd(),
 		file2storeCmd(),
 		api2storeCmd(),
+		local2sinkCmd(),
 		versionCmd(),
 	)
 

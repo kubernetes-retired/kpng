@@ -5,6 +5,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"sigs.k8s.io/kpng/jobs/store2localdiff"
+	"sigs.k8s.io/kpng/localsink"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
 
@@ -17,13 +18,13 @@ type Callback func(item <-chan *ServiceEndpoints)
 
 // EndpointsClient is a simple client to kube-proxy's Endpoints API.
 type Sink struct {
-	Config   *store2localdiff.Config
+	Config   *localsink.Config
 	Callback Callback
 
 	data *btree.BTree
 }
 
-func New(config *store2localdiff.Config) *Sink {
+func New(config *localsink.Config) *Sink {
 	return &Sink{
 		Config: config,
 		data:   btree.New(2),
