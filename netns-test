@@ -1,0 +1,6 @@
+#! /bin/sh
+
+set -x
+
+ip netns add kpng-$1
+exec ip netns exec kpng-$1 dist/kpng local --api unix:///tmp/kpng.sock to-$1
