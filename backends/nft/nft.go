@@ -168,7 +168,7 @@ EOF
 func Callback(ch <-chan *client.ServiceEndpoints) {
 	svcCount := 0
 	epCount := 0
-	skipComments := !*skipComments && bool(klog.V(1))
+	doComments := !*skipComments && bool(klog.V(1))
 
 	{
 		start := time.Now()
@@ -278,7 +278,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 					epMap.WriteString(", ")
 				}
 
-				if !skipComments {
+				if doComments {
 					fmt.Fprintf(epMap, "\\\n    # %s/%s", svc.Namespace, svc.Name)
 				}
 
