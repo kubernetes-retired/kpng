@@ -64,6 +64,10 @@ func (c *chainBuffer) Write(b []byte) (int, error) {
 	return c.buffer.Write(b)
 }
 
+func (c *chainBuffer) Writeln() (n int, err error) {
+	return c.Write([]byte{'\n'})
+}
+
 func (c *chainBuffer) WriteString(s string) (n int, err error) {
 	start := c.buffer.Len()
 	n, err = c.buffer.WriteString(s)

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -49,6 +50,10 @@ var (
 	mapsCount       = flag.Uint64("maps-count", 0xff, "number of endpoints maps to use")
 	forceNFTHashBug = flag.Bool("force-nft-hash-workaround", false, "bypass auto-detection of NFT hash bug (necessary when nft is blind)")
 
+	clusterCIDRsFlag = flag.StringSlice("cluster-cidrs", []string{"0.0.0.0/0"}, "cluster IPs CIDR that shoud not be masqueraded")
+	clusterCIDRsV4   []string
+	clusterCIDRsV6   []string
+
 	fullResync = true
 
 	hasNFTHashBug = false
@@ -66,6 +71,24 @@ const canDeleteChains = false
 
 func PreRun() {
 	checkMapIndexBug()
+
+	// parse cluster CIDRs
+	clusterCIDRsV4 = make([]string, 0)
+	clusterCIDRsV6 = make([]string, 0)
+	for _, cidr := range *clusterCIDRsFlag {
+		ip, ipNet, err := net.ParseCIDR(cidr)
+		if err != nil {
+			log.Fatalf("bad CIDR given: %q: %v", cidr, err)
+		}
+
+		if ip.To4() == nil {
+			clusterCIDRsV6 = append(clusterCIDRsV6, ipNet.String())
+		} else {
+			clusterCIDRsV4 = append(clusterCIDRsV4, ipNet.String())
+		}
+	}
+	log.Print("cluster CIDRs V4: ", clusterCIDRsV4)
+	log.Print("cluster CIDRs V6: ", clusterCIDRsV6)
 }
 
 func checkMapIndexBug() {
@@ -145,6 +168,7 @@ EOF
 func Callback(ch <-chan *client.ServiceEndpoints) {
 	svcCount := 0
 	epCount := 0
+	skipComments := !*skipComments && bool(klog.V(1))
 
 	{
 		start := time.Now()
@@ -165,6 +189,10 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	chain6Nets := map[string]bool{}
 
 	mapOffsets := make([]uint64, *mapsCount)
+
+	epSeen := map[string]bool{}
+	localEndpointIPsV4 := make([]string, 0, 256)
+	localEndpointIPsV6 := make([]string, 0, 256)
 
 	for serviceEndpoints := range ch {
 		svc := serviceEndpoints.Service
@@ -194,11 +222,12 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 		ips.AddSet(svc.IPs.ExternalIPs)
 
 		for _, set := range []struct {
-			ips []string
-			v6  bool
+			ips              []string
+			v6               bool
+			localEndpointIPs *[]string
 		}{
-			{ips.V4, false},
-			{ips.V6, true},
+			{ips.V4, false, &localEndpointIPsV4},
+			{ips.V6, true, &localEndpointIPsV6},
 		} {
 			ips := set.ips
 
@@ -226,6 +255,15 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 				}
 
 				endpointIPs = append(endpointIPs, epIPs[0])
+
+				if ep.Local {
+					for _, ip := range epIPs {
+						if !epSeen[ip] {
+							epSeen[ip] = true
+							*set.localEndpointIPs = append(*set.localEndpointIPs, ip)
+						}
+					}
+				}
 			}
 			epCount += len(endpointIPs)
 
@@ -235,12 +273,12 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 				if epMap.Len() == 0 {
 					epMap.WriteString("  typeof numgen random mod 1 : ip daddr\n")
 					epMap.WriteString("  elements = {")
-					epMap.Defer(func(m *chainBuffer) { m.Write([]byte{'}'}) })
+					epMap.Defer(func(m *chainBuffer) { m.WriteString("}\n") })
 				} else {
-					fmt.Fprint(epMap, ", ")
+					epMap.WriteString(", ")
 				}
 
-				if !*skipComments {
+				if !skipComments {
 					fmt.Fprintf(epMap, "\\\n    # %s/%s", svc.Namespace, svc.Name)
 				}
 
@@ -362,6 +400,10 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	addDispatchChains("ip", chainBuffers4)
 	addDispatchChains("ip6", chainBuffers6)
 
+	// postrouting chains
+	addPostroutingChain(chainBuffers4, clusterCIDRsV4, localEndpointIPsV4)
+	addPostroutingChain(chainBuffers6, clusterCIDRsV6, localEndpointIPsV6)
+
 	// check if we have changes to apply
 	if !fullResync && !chainBuffers4.Changed() && !chainBuffers6.Changed() {
 		klog.V(1).Info("no changes to apply")
@@ -434,6 +476,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 }
 
 func addDispatchChains(family string, chainBuffers *chainBufferSet) {
+	// DNAT
 	if chainBuffers.Get("chain", "dnat_external").Len() != 0 {
 		fmt.Fprint(chainBuffers.Get("chain", "z_dnat_all"), "  jump dnat_external\n")
 	}
@@ -444,6 +487,7 @@ func addDispatchChains(family string, chainBuffers *chainBufferSet) {
 			"  type nat hook output priority %d;\n  jump z_dnat_all\n", *hookPrio)
 	}
 
+	// filtering
 	if chainBuffers.Get("chain", "filter_external").Len() != 0 {
 		fmt.Fprint(chainBuffers.Get("chain", "z_filter_all"), "  jump filter_external\n")
 	}
@@ -452,6 +496,38 @@ func addDispatchChains(family string, chainBuffers *chainBufferSet) {
 			"  type filter hook forward priority %d;\n  jump z_filter_all\n", *hookPrio)
 		fmt.Fprintf(chainBuffers.Get("chain", "hook_filter_output"),
 			"  type filter hook output priority %d;\n  jump z_filter_all\n", *hookPrio)
+	}
+}
+
+func addPostroutingChain(chainBuffers *chainBufferSet, clusterCIDRs []string, localEndpointIPs []string) {
+	hasCIDRs := len(clusterCIDRs) != 0
+	hasLocalEPs := len(localEndpointIPs) != 0
+
+	if !hasCIDRs && !hasLocalEPs {
+		return
+	}
+
+	chain := chainBuffers.Get("chain", "hook_nat_postrouting")
+	fmt.Fprintf(chain, "  type nat hook postrouting priority %d;\n", *hookPrio)
+	if hasCIDRs {
+		chain.Writeln()
+		fmt.Fprint(chain, "  ip saddr != { ", strings.Join(clusterCIDRs, ", "), " } \\\n")
+		if hasLocalEPs {
+			fmt.Fprint(chain, "  ip daddr != { ", strings.Join(localEndpointIPs, ", "), " } \\\n")
+		}
+		fmt.Fprint(chain, "  masquerade\n")
+	}
+
+	if hasLocalEPs {
+		chain.Writeln()
+		chain.WriteString("  ip saddr . ip daddr { ")
+		for i, ip := range localEndpointIPs {
+			if i != 0 {
+				chain.WriteString(", ")
+			}
+			chain.WriteString(ip + " . " + ip)
+		}
+		chain.WriteString(" } masquerade\n")
 	}
 }
 
