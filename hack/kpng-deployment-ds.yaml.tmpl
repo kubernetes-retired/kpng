@@ -27,8 +27,8 @@ spec:
         effect: "NoSchedule"
       containers:
       # We'll sed-replace this with a valid kpng image at creat time
-      - image: KPNG_IMAGE
-        imagePullPolicy: PULL
+      - image: ${IMAGE}
+        imagePullPolicy: ${PULL}
         name: kpng
         volumeMounts:
         - name: empty
@@ -40,8 +40,8 @@ spec:
         - --kubeconfig=/var/lib/kpng/kubeconfig.conf
         - to-api
         - --listen=unix:///k8s/proxy.sock
-      - image: IMAGE
-        imagePullPoliy: PULL
+      - image: ${IMAGE}
+        imagePullPoliy: ${PULL}
         name: kpng-nftables
         securityContext:
           capabilities:
@@ -53,7 +53,7 @@ spec:
         - name: modules
           mountPath: /lib/modules
           readOnly: true
-        args: [ "local", "--api=unix:///k8s/proxy.sock", "to-BACKEND" ]
+        args: [ "local", "--api=unix:///k8s/proxy.sock", "to-${BACKEND}" ]
         #- --v=2
         #- --dry-run
       volumes:
