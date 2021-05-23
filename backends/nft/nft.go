@@ -375,6 +375,16 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 				}
 			}
 
+			// handle node ports
+			for _, port := range svc.Ports {
+				if port.NodePort == 0 {
+					continue
+				}
+
+				chain := chainBuffers.Get("chain", "nodeports")
+				fmt.Fprintf(chain, "  "+protoMatch(port.Protocol)+" %d jump %s\n", port.NodePort, svc_chain)
+			}
+
 			// handle external IPs dispatch
 			extIPs := svc.IPs.ExternalIPs.V4
 			if set.v6 {
@@ -480,11 +490,19 @@ func addDispatchChains(family string, chainBuffers *chainBufferSet) {
 	if chainBuffers.Get("chain", "dnat_external").Len() != 0 {
 		fmt.Fprint(chainBuffers.Get("chain", "z_dnat_all"), "  jump dnat_external\n")
 	}
+
+	chain := chainBuffers.Get("chain", "hook_nat_prerouting")
+	fmt.Fprintf(chain, "  type nat hook prerouting priority %d;\n", *hookPrio)
+
 	if chainBuffers.Get("chain", "z_dnat_all").Len() != 0 {
-		fmt.Fprintf(chainBuffers.Get("chain", "hook_nat_prerouting"),
-			"  type nat hook prerouting priority %d;\n  jump z_dnat_all\n", *hookPrio)
+		chain.WriteString("  jump z_dnat_all\n")
 		fmt.Fprintf(chainBuffers.Get("chain", "hook_nat_output"),
 			"  type nat hook output priority %d;\n  jump z_dnat_all\n", *hookPrio)
+	}
+
+	if chainBuffers.Get("chain", "nodeports").Len() != 0 {
+		// nodeports has a fib match valid only in prerouting
+		chain.WriteString("  fib daddr . iif type local jump nodeports\n")
 	}
 
 	// filtering
