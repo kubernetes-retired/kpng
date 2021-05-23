@@ -22,7 +22,7 @@ However it cant use a vanilla kind recipe because:
 To run kpng from source, you can run
 ```
 docker build -t myname/kpng:ipvs ./
-KPNG_IMAGE=myname/kpng:ipvs KPNG_PULL=Never ./kpng-local-up.sh
+IMAGE=myname/kpng:ipvs PULL=Never IMAGE=myname:kpng:ipvs BACKEND=ipvs ./kpng-local-up.sh
 kind load docker-image myname/kpng:ipvs --name=kpng-proxy
 ```
 

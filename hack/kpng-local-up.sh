@@ -2,9 +2,11 @@
 # build the kpng image...
 
 : ${IMAGE:="jayunit100/kpng:ipvs"}
-echo $IMAGE
-echo $PULL
-read x
+: ${PULL:=IfNotPresent}
+: ${BACKEND:=nft}
+
+echo -n "this will deploy kpng with docker image $IMAGE, pull policy $PULL and the $BACKEND backend. Press enter to confirm, C-c to cancel"
+
 function install_calico {
     kubectl apply -f https://raw.githubusercontent.com/jayunit100/k8sprototypes/master/kind/calico.yaml
     kubectl -n kube-system set env daemonset/calico-node FELIX_IGNORELOOSERPF=true
@@ -41,7 +43,9 @@ function build {
 function install {
     # substitute it with your changes...
     echo "Applying template with KPNG_IMAGE=$IMAGE"
-    cat kpng-deployment-ds.yaml.tmpl | sed "s,KPNG_IMAGE,$IMAGE," > kpng-deployment-ds.yaml
+    cat kpng-deployment-ds.yaml.tmpl | sed "s,IMAGE,$IMAGE," > kpng-deployment-ds.yaml.1
+    cat kpng-deployment-ds.yaml.1 | sed "s,PULL,$PULL," > kpng-deployment-ds.yaml.2
+    cat kpng-deployment-ds.yaml.2 | sed "s,BACKEND,BACKEND," > kpng-deployment-ds.yaml
 
     kubectl -n kube-system create sa kpng
     kubectl create clusterrolebinding kpng --clusterrole=system:node-proxier --serviceaccount=kube-system:kpng
