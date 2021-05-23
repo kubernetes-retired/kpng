@@ -17,6 +17,19 @@ However it cant use a vanilla kind recipe because:
 - we also need to tolerate the controlplane node so that kpng runs there
 - theres a bug in older kinds wrt kubeproxy mode = none
 
+# Run from source
+
+To run kpng from source, you can run
+```
+docker build -t myname/kpng:ipvs ./
+IMAGE=myname/kpng:ipvs PULL=Never IMAGE=myname:kpng:ipvs BACKEND=ipvs ./kpng-local-up.sh
+kind load docker-image myname/kpng:ipvs --name=kpng-proxy
+```
+
+# Details
+
+After a few moments, youll see the kpng containers coming up...
+
 thus the recipe has separate 'functions' for each phase of running KPNG.
 
 - setup: setup kind and install it, gopath stuff
