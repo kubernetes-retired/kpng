@@ -45,16 +45,8 @@ func writeUint64(w *bytes.Buffer, v uint64) (int, error) {
 }
 
 func (d dnatRule) WriteTo(rule *bytes.Buffer, endpointsMap string, endpointsOffset uint64) {
-	var protoMatch string
-	switch d.Protocol {
-	case localnetv1.Protocol_TCP:
-		protoMatch = "tcp dport"
-	case localnetv1.Protocol_UDP:
-		protoMatch = "udp dport"
-	case localnetv1.Protocol_SCTP:
-		protoMatch = "sctp dport"
-	default:
-		klog.Errorf("unknown protocol: %v", d.Protocol)
+	protoMatch := protoMatch(d.Protocol)
+	if protoMatch == "" {
 		return
 	}
 
@@ -71,13 +63,21 @@ func (d dnatRule) WriteTo(rule *bytes.Buffer, endpointsMap string, endpointsOffs
 		return
 	}
 
-	// printf is nice but take 50% on CPU time so... optimize!
+	// printf is nice but takes 50% on CPU time so... optimize!
 	for _, port := range ports {
 		rule.WriteString("  ")
 		rule.WriteString(protoMatch)
 
-		rule.WriteByte(' ')
-		writeInt32(rule, port.Port)
+		if port.NodePort == 0 {
+			rule.WriteByte(' ')
+			writeInt32(rule, port.Port)
+		} else {
+			rule.WriteString(" { ")
+			writeInt32(rule, port.Port)
+			rule.WriteString(", ")
+			writeInt32(rule, port.NodePort)
+			rule.WriteByte('}')
+		}
 
 		// handle reject case
 		if len(d.EndpointIPs) == 0 {
@@ -101,7 +101,7 @@ func (d dnatRule) WriteTo(rule *bytes.Buffer, endpointsMap string, endpointsOffs
 			rule.WriteString(endpointsMap)
 		}
 
-		if port.Port != port.TargetPort {
+		if port.Port != port.TargetPort || port.Port != port.NodePort {
 			rule.WriteByte(':')
 			writeInt32(rule, port.TargetPort)
 		}
@@ -110,4 +110,18 @@ func (d dnatRule) WriteTo(rule *bytes.Buffer, endpointsMap string, endpointsOffs
 	}
 
 	return
+}
+
+func protoMatch(protocol localnetv1.Protocol) string {
+	switch protocol {
+	case localnetv1.Protocol_TCP:
+		return "tcp dport"
+	case localnetv1.Protocol_UDP:
+		return "udp dport"
+	case localnetv1.Protocol_SCTP:
+		return "sctp dport"
+	default:
+		klog.Errorf("unknown protocol: %v", protocol)
+		return ""
+	}
 }
