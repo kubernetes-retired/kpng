@@ -322,13 +322,14 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 				rule.Reset()
 
 				// build the rule
-				dnatRule{
+				ruleSpec := dnatRule{
 					Namespace:   svc.Namespace,
 					Name:        svc.Name,
 					Protocol:    protocol,
 					Ports:       svc.Ports,
 					EndpointIPs: endpointIPs,
-				}.WriteTo(rule, endpointsMap, svcOffset)
+				}
+				ruleSpec.WriteTo(rule, false, endpointsMap, svcOffset)
 
 				if rule.Len() == 0 {
 					continue
@@ -336,6 +337,16 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 
 				rule.WriteTo(chainBuffers.Get("chain", svc_chain))
 				hasRules = true
+
+				// hande node ports
+				rule.Reset()
+				ruleSpec.WriteTo(rule, true, endpointsMap, svcOffset)
+
+				if rule.Len() == 0 {
+					continue
+				}
+
+				rule.WriteTo(chainBuffers.Get("chain", "nodeports"))
 			}
 
 			if !hasRules {
@@ -373,16 +384,6 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 						chain4Nets[chain] = true
 					}
 				}
-			}
-
-			// handle node ports
-			for _, port := range svc.Ports {
-				if port.NodePort == 0 {
-					continue
-				}
-
-				chain := chainBuffers.Get("chain", "nodeports")
-				fmt.Fprintf(chain, "  "+protoMatch(port.Protocol)+" %d jump %s\n", port.NodePort, svc_chain)
 			}
 
 			// handle external IPs dispatch

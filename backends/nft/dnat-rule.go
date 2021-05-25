@@ -44,7 +44,7 @@ func writeUint64(w *bytes.Buffer, v uint64) (int, error) {
 	return w.WriteString(strconv.FormatUint(v, 10))
 }
 
-func (d dnatRule) WriteTo(rule *bytes.Buffer, endpointsMap string, endpointsOffset uint64) {
+func (d dnatRule) WriteTo(rule *bytes.Buffer, nodePorts bool, endpointsMap string, endpointsOffset uint64) {
 	protoMatch := protoMatch(d.Protocol)
 	if protoMatch == "" {
 		return
@@ -65,19 +65,19 @@ func (d dnatRule) WriteTo(rule *bytes.Buffer, endpointsMap string, endpointsOffs
 
 	// printf is nice but takes 50% on CPU time so... optimize!
 	for _, port := range ports {
+		srcPort := port.Port
+		if nodePorts {
+			srcPort = port.NodePort
+		}
+		if srcPort == 0 {
+			continue
+		}
+
 		rule.WriteString("  ")
 		rule.WriteString(protoMatch)
 
-		if port.NodePort == 0 {
-			rule.WriteByte(' ')
-			writeInt32(rule, port.Port)
-		} else {
-			rule.WriteString(" { ")
-			writeInt32(rule, port.Port)
-			rule.WriteString(", ")
-			writeInt32(rule, port.NodePort)
-			rule.WriteByte('}')
-		}
+		rule.WriteByte(' ')
+		writeInt32(rule, srcPort)
 
 		// handle reject case
 		if len(d.EndpointIPs) == 0 {
@@ -101,7 +101,7 @@ func (d dnatRule) WriteTo(rule *bytes.Buffer, endpointsMap string, endpointsOffs
 			rule.WriteString(endpointsMap)
 		}
 
-		if port.Port != port.TargetPort || port.Port != port.NodePort {
+		if srcPort != port.TargetPort {
 			rule.WriteByte(':')
 			writeInt32(rule, port.TargetPort)
 		}
