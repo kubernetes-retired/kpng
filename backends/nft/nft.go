@@ -215,8 +215,8 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 		svc := serviceEndpoints.Service
 		endpoints := serviceEndpoints.Endpoints
 
-		// only handle cluster IPs and load balancers
-		if svc.Type != "ClusterIP" && svc.Type != "LoadBalancer" {
+		// types we don't handle
+		if svc.Type == "ExternalName" {
 			continue
 		}
 
