@@ -41,7 +41,7 @@ spec:
         - to-api
         - --listen=unix:///k8s/proxy.sock
       - image: ${IMAGE}
-        imagePullPoliy: ${PULL}
+        imagePullPolicy: ${PULL}
         name: kpng-nftables
         securityContext:
           capabilities:
