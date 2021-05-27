@@ -94,12 +94,12 @@ func PreRun() {
 }
 
 func checkIPTableVersion() {
-	cmdArr := [2] string{"ip6tables", "iptables"}
+	cmdArr := [2]string{"ip6tables", "iptables"}
 	for _, value := range cmdArr {
 		cmd := exec.Command(value, "-V")
 		stdout, err := cmd.Output()
 		if err != nil && errors.Unwrap(err) != exec.ErrNotFound {
-			klog.Warning("cmd (%v) throws error: %v", cmd, err)
+			klog.Warningf("cmd (%v) throws error: %v", cmd, err)
 			continue
 		}
 		if bytes.Contains(stdout, []byte("legacy")) {
