@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -70,6 +71,7 @@ const deferDelete = true
 const canDeleteChains = false
 
 func PreRun() {
+	checkIPTableVersion()
 	checkMapIndexBug()
 
 	// parse cluster CIDRs
@@ -89,6 +91,21 @@ func PreRun() {
 	}
 	log.Print("cluster CIDRs V4: ", clusterCIDRsV4)
 	log.Print("cluster CIDRs V6: ", clusterCIDRsV6)
+}
+
+func checkIPTableVersion() {
+	cmdArr := [2] string{"ip6tables", "iptables"}
+	for _, value := range cmdArr {
+		cmd := exec.Command(value, "-V")
+		stdout, err := cmd.Output()
+		if err != nil && errors.Unwrap(err) != exec.ErrNotFound {
+			klog.Warning("cmd (%v) throws error: %v", cmd, err)
+			continue
+		}
+		if bytes.Contains(stdout, []byte("legacy")) {
+			klog.Warning("legacy ", value, " found")
+		}
+	}
 }
 
 func checkMapIndexBug() {
