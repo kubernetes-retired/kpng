@@ -27,7 +27,7 @@ import (
 
 type serviceEventHandler struct{ eventHandler }
 
-func (h *serviceEventHandler) OnAdd(obj interface{}) {
+func (h *serviceEventHandler) onChange(obj interface{}) {
 	svc := obj.(*v1.Service)
 
 	service := &localnetv1.Service{
@@ -98,9 +98,12 @@ func (h *serviceEventHandler) OnAdd(obj interface{}) {
 	})
 }
 
+func (h *serviceEventHandler) OnAdd(obj interface{}) {
+	h.onChange(obj)
+}
+
 func (h *serviceEventHandler) OnUpdate(oldObj, newObj interface{}) {
-	// same as adding
-	h.OnAdd(newObj)
+	h.onChange(newObj)
 }
 
 func (h *serviceEventHandler) OnDelete(oldObj interface{}) {
