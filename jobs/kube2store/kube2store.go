@@ -21,9 +21,14 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/klog"
 
 	"sigs.k8s.io/kpng/pkg/proxystore"
 )
@@ -37,6 +42,13 @@ type Config struct {
 	NodeLabelGlobs      []string
 	NodeAnnotationGlobs []string
 }
+
+//TODO: need to find a better home for this
+const (
+	// LabelServiceProxyName indicates that an alternative service
+	// proxy will implement this Service.
+	LabelServiceProxyName = "service.kubernetes.io/service-proxy-name"
+)
 
 func (c *Config) BindFlags(flags *pflag.FlagSet) {
 	flags.BoolVar(&c.UseSlices, "use-slices", true, "use EndpointsSlice (not Endpoints)")
@@ -60,7 +72,10 @@ func (j Job) Run(ctx context.Context) {
 	stopCh := ctx.Done()
 
 	// start informers
-	factory := informers.NewSharedInformerFactory(j.Kube, time.Second*30)
+	factory := informers.NewSharedInformerFactoryWithOptions(j.Kube, time.Second*30,
+		informers.WithTweakListOptions(func(options *metav1.ListOptions) {
+			options.LabelSelector = j.getLabelSelector().String()
+		}))
 	factory.Start(stopCh)
 
 	// start watches
@@ -97,4 +112,20 @@ func (j Job) eventHandler(informer cache.SharedIndexInformer) eventHandler {
 		s:        j.Store,
 		informer: informer,
 	}
+}
+
+func (j Job) getLabelSelector() labels.Selector {
+	noProxyName, err := labels.NewRequirement(LabelServiceProxyName, selection.DoesNotExist, nil)
+	if err != nil {
+		klog.Exit(err)
+	}
+
+	noHeadlessEndpoints, err := labels.NewRequirement(v1.IsHeadlessService, selection.DoesNotExist, nil)
+	if err != nil {
+		klog.Exit(err)
+	}
+
+	labelSelector := labels.NewSelector()
+	labelSelector = labelSelector.Add(*noProxyName, *noHeadlessEndpoints)
+	return labelSelector
 }
