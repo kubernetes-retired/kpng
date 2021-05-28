@@ -27,7 +27,7 @@ import (
 
 type serviceEventHandler struct{ eventHandler }
 
-func (h *serviceEventHandler) onChange(obj interface{}) {
+func (h *serviceEventHandler) OnChange(obj interface{}) {
 	svc := obj.(*v1.Service)
 
 	service := &localnetv1.Service{
@@ -98,14 +98,19 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 	})
 }
 
-func (h *serviceEventHandler) OnAdd(obj interface{}) {
-	h.onChange(obj)
+// OnAdd leverages the OnChange, which unifies logic for service changes.
+func (h *serviceEventHandler) OnAdd(oldObj, newObj interface{}) {
+	// same as adding
+	h.OnChange(newObj)
 }
 
+// OnUpdate leverages the OnChange, which unifies logic for service changes.
 func (h *serviceEventHandler) OnUpdate(oldObj, newObj interface{}) {
-	h.onChange(newObj)
+	// same as adding
+	h.OnChange(newObj)
 }
 
+// OnDelete removes KPNG services.
 func (h *serviceEventHandler) OnDelete(oldObj interface{}) {
 	svc := oldObj.(*v1.Service)
 
