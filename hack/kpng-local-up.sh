@@ -17,19 +17,15 @@ function install_calico {
 }
 
 function setup_k8s {
-    # make a gopath if not one existing...
-    if [ "$GOPATH" == "" ] ; then
-        mkdir -p $HOME/go/
-        export GOPATH=$HOME/go
-        # need kind 0.11 bc 0.10 has a bug w/ kubeproxy=none
-        GO111MODULE="on" go get sigs.k8s.io/kind@main
-        export PATH="$(go env GOPATH)/bin:${PATH}"
+    if [ ! -x kind ]; then
+        curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.0/kind-linux-amd64
+        chmod +x ./kind
     fi
-    kind version
+    ./kind version
 
     echo "****************************************************"
-    kind delete cluster --name kpng-proxy
-    kind create cluster --config kind.yaml
+    ./kind delete cluster --name kpng-proxy
+    ./kind create cluster --config kind.yaml
     install_calico
     echo "****************************************************"
 }
