@@ -44,6 +44,8 @@ function install {
     echo "Applying template"
     envsubst <kpng-deployment-ds.yaml.tmpl >kpng-deployment-ds.yaml
 
+    ./kind load docker-image $IMAGE --name kpng-proxy
+
     kubectl -n kube-system create sa kpng
     kubectl create clusterrolebinding kpng --clusterrole=system:node-proxier --serviceaccount=kube-system:kpng
     kubectl -n kube-system create cm kpng --from-file kubeconfig.conf
