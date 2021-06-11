@@ -50,6 +50,7 @@ var (
 	splitBits6      = flag.Int("split-bits6", 120, "dispatch services in multiple chains, spliting at the nth bit (for IPv6)")
 	mapsCount       = flag.Uint64("maps-count", 0xff, "number of endpoints maps to use")
 	forceNFTHashBug = flag.Bool("force-nft-hash-workaround", false, "bypass auto-detection of NFT hash bug (necessary when nft is blind)")
+	withTrace       = flag.Bool("trace", false, "enable nft trace")
 
 	clusterCIDRsFlag = flag.StringSlice("cluster-cidrs", []string{"0.0.0.0/0"}, "cluster IPs CIDR that shoud not be masqueraded")
 	clusterCIDRsV4   []string
@@ -504,23 +505,27 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 }
 
 func addDispatchChains(family string, chainBuffers *chainBufferSet) {
+	dnatAll := chainBuffers.Get("chain", "z_dnat_all")
+	if *withTrace {
+		dnatAll.WriteString("  meta nftrace set 1\n")
+	}
+
 	// DNAT
 	if chainBuffers.Get("chain", "dnat_external").Len() != 0 {
-		fmt.Fprint(chainBuffers.Get("chain", "z_dnat_all"), "  jump dnat_external\n")
+		fmt.Fprint(dnatAll, "  jump dnat_external\n")
 	}
 
 	chain := chainBuffers.Get("chain", "hook_nat_prerouting")
-	fmt.Fprintf(chain, "  type nat hook prerouting priority %d;\n", *hookPrio)
+	fmt.Fprintf(chain, "  type nat hook prerouting priority %d;\n  counter\n", *hookPrio)
 
-	if chainBuffers.Get("chain", "z_dnat_all").Len() != 0 {
+	if chainBuffers.Get("chain", "nodeports").Len() != 0 {
+		dnatAll.WriteString("  fib daddr type local jump nodeports\n")
+	}
+
+	if dnatAll.Len() != 0 {
 		chain.WriteString("  jump z_dnat_all\n")
 		fmt.Fprintf(chainBuffers.Get("chain", "hook_nat_output"),
 			"  type nat hook output priority %d;\n  jump z_dnat_all\n", *hookPrio)
-	}
-
-	if chainBuffers.Get("chain", "nodeports").Len() != 0 {
-		// nodeports has a fib match valid only in prerouting
-		chain.WriteString("  fib daddr . iif type local jump nodeports\n")
 	}
 
 	// filtering
