@@ -154,18 +154,18 @@ func buildClusterIP(svc *localnetv1.Service, eps []*localnetv1.Endpoint, nodePor
 		if tgtPort < 1 {
 			tgtPort = port.GetPort()
 		}
-		ipPortAlgo := fmt.Sprintf("-A %s %s:%d -s %s\n", proto, svc.GetIPs().ClusterIP, tgtPort, DefaultAlgo)
+		ipPortAlgo := fmt.Sprintf("-A %s %s:%d -s %s\n", proto, svc.IPs.ClusterIP, port.Port, DefaultAlgo)
 		svcString.WriteString(ipPortAlgo)
 
-		endpoints := buildEndponts(svc.GetIPs().ClusterIP, proto, tgtPort, port.GetPort(), eps)
+		endpoints := buildEndponts(svc.GetIPs().ClusterIP, proto, port.Port, port.TargetPort, eps)
 		svcString.WriteString(endpoints)
 
 		if nodePort {
 			for _, address := range *NodeAddress {
-				ipPortAlgo := fmt.Sprintf("-A %s %s:%d -s %s\n", proto, address, port.GetNodePort(), DefaultAlgo)
+				ipPortAlgo := fmt.Sprintf("-A %s %s:%d -s %s\n", proto, address, port.NodePort, DefaultAlgo)
 				svcString.WriteString(ipPortAlgo)
 
-				endpoints := buildEndponts(address, proto, port.GetNodePort(), port.GetPort(), eps)
+				endpoints := buildEndponts(address, proto, port.NodePort, port.TargetPort, eps)
 				svcString.WriteString(endpoints)
 
 			}
@@ -174,11 +174,11 @@ func buildClusterIP(svc *localnetv1.Service, eps []*localnetv1.Endpoint, nodePor
 	return svcString.String(), nil
 }
 
-func buildEndponts(VirtualIP, proto string, tgtPort, port int32, endpoints []*localnetv1.Endpoint) string {
+func buildEndponts(VirtualIP, proto string, port, tgtPort int32, endpoints []*localnetv1.Endpoint) string {
 	var strBuilder strings.Builder
 	for _, endpoint := range endpoints {
 		ip := endpoint.GetIPs().V4[0] //TODO:  This is what we call a Gambiarra :D Need to deal better with this thing.
-		ep := fmt.Sprintf("-a %s %s:%d -r %s:%d -m -w %d\n", proto, VirtualIP, tgtPort, ip, port, DefaultWeight)
+		ep := fmt.Sprintf("-a %s %s:%d -r %s:%d -m -w %d\n", proto, VirtualIP, port, ip, tgtPort, DefaultWeight)
 		strBuilder.WriteString(ep)
 	}
 	return strBuilder.String()
