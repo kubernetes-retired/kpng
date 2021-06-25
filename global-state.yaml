@@ -1,0 +1,220 @@
+nodes:
+- name: vm-001
+  labels: {}
+  annotations: {}
+- name: vm-002
+  labels: {}
+  annotations: {}
+- name: vm-003
+  labels: {}
+  annotations: {}
+- name: vm-004
+  labels: {}
+  annotations: {}
+services:
+- service:
+    namespace: default
+    name: kubernetes
+    type: ClusterIP
+    labels: {}
+    annotations: {}
+    ips:
+      clusterip: 12.0.0.1
+      externalips:
+        v4: []
+        v6: []
+    mapip: false
+    ports:
+    - name: https
+      protocol: 1
+      port: 443
+      nodeport: 0
+      targetport: 6443
+      targetportname: ""
+    externaltraffictolocal: false
+  topologykeys: []
+  endpoints:
+  - hash: 1681053355349367657
+    namespace: default
+    sourcename: kubernetes
+    servicename: kubernetes
+    nodename: ""
+    endpoint:
+      hostname: ""
+      ips:
+        v4:
+        - 192.168.1.1
+        v6: []
+    conditions:
+      ready: true
+    topology: {}
+- service:
+    namespace: default
+    name: mserver
+    type: LoadBalancer
+    labels: {}
+    annotations: {}
+    ips:
+      clusterip: 12.0.163.125
+      externalips:
+        v4: []
+        v6: []
+    mapip: false
+    ports:
+    - name: mconnect
+      protocol: 1
+      port: 5001
+      nodeport: 31130
+      targetport: 5001
+      targetportname: ""
+    - name: ctraffic
+      protocol: 1
+      port: 5003
+      nodeport: 31970
+      targetport: 5003
+      targetportname: ""
+    externaltraffictolocal: false
+  topologykeys: []
+  endpoints:
+  - hash: 1277029400937642608
+    namespace: default
+    sourcename: mserver
+    servicename: mserver
+    nodename: vm-001
+    endpoint:
+      hostname: ""
+      ips:
+        v4:
+        - 11.0.1.2
+        v6: []
+    conditions:
+      ready: true
+    topology:
+      kubernetes.io/hostname: vm-001
+  - hash: 10246789542414294807
+    namespace: default
+    sourcename: mserver
+    servicename: mserver
+    nodename: vm-002
+    endpoint:
+      hostname: ""
+      ips:
+        v4:
+        - 11.0.2.2
+        v6: []
+    conditions:
+      ready: true
+    topology:
+      kubernetes.io/hostname: vm-002
+  - hash: 16305222168211550639
+    namespace: default
+    sourcename: mserver
+    servicename: mserver
+    nodename: vm-003
+    endpoint:
+      hostname: ""
+      ips:
+        v4:
+        - 11.0.3.2
+        v6: []
+    conditions:
+      ready: true
+    topology:
+      kubernetes.io/hostname: vm-003
+  - hash: 17628818314489765976
+    namespace: default
+    sourcename: mserver
+    servicename: mserver
+    nodename: vm-004
+    endpoint:
+      hostname: ""
+      ips:
+        v4:
+        - 11.0.4.2
+        v6: []
+    conditions:
+      ready: true
+    topology:
+      kubernetes.io/hostname: vm-004
+- service:
+    namespace: default
+    name: mserver-udp
+    type: LoadBalancer
+    labels: {}
+    annotations: {}
+    ips:
+      clusterip: 12.0.92.107
+      externalips:
+        v4: []
+        v6: []
+    mapip: false
+    ports:
+    - name: mconnect-udp
+      protocol: 2
+      port: 5001
+      nodeport: 32596
+      targetport: 5001
+      targetportname: ""
+    externaltraffictolocal: false
+  topologykeys: []
+  endpoints:
+  - hash: 1277029400937642608
+    namespace: default
+    sourcename: mserver-udp
+    servicename: mserver-udp
+    nodename: vm-001
+    endpoint:
+      hostname: ""
+      ips:
+        v4:
+        - 11.0.1.2
+        v6: []
+    conditions:
+      ready: true
+    topology:
+      kubernetes.io/hostname: vm-001
+  - hash: 10246789542414294807
+    namespace: default
+    sourcename: mserver-udp
+    servicename: mserver-udp
+    nodename: vm-002
+    endpoint:
+      hostname: ""
+      ips:
+        v4:
+        - 11.0.2.2
+        v6: []
+    conditions:
+      ready: true
+    topology:
+      kubernetes.io/hostname: vm-002
+  - hash: 16305222168211550639
+    namespace: default
+    sourcename: mserver-udp
+    servicename: mserver-udp
+    nodename: vm-003
+    endpoint:
+      hostname: ""
+      ips:
+        v4:
+        - 11.0.3.2
+        v6: []
+    conditions:
+      ready: true
+    topology:
+      kubernetes.io/hostname: vm-003
+  - hash: 17628818314489765976
+    namespace: default
+    sourcename: mserver-udp
+    servicename: mserver-udp
+    nodename: vm-004
+    endpoint:
+      hostname: ""
+      ips:
+        v4:
+        - 11.0.4.2
+        v6: []
+    conditions:
+      ready: true
+    topology:
+      kubernetes.io/hostname: vm-004
