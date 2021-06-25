@@ -35,7 +35,6 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 		svc := serviceEndpoints.Service
 		//	endpoints := serviceEndpoints.Endpoints
 
-		fmt.Println(":", svc.Name)
-		continue
+		fmt.Println(fmt.Sprintf("%v", svc))
 	}
 }
