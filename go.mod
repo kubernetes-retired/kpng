@@ -10,6 +10,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	github.com/google/btree v1.0.1
+	github.com/google/cadvisor v0.39.2 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/seesaw v0.0.0-20210205180622-915f447b8ed8
 	github.com/googleapis/gnostic v0.5.5 // indirect
@@ -33,6 +34,7 @@ require (
 	k8s.io/apimachinery v0.21.0
 	k8s.io/client-go v0.21.0
 	k8s.io/klog v1.0.0
+	k8s.io/klog/v2 v2.8.0 // indirect
 	k8s.io/utils v0.0.0-20210305010621-2afb4311ab10 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.1 // indirect
 )
