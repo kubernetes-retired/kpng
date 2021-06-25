@@ -6,9 +6,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"sigs.k8s.io/kpng/backends/iptables"
 	"sigs.k8s.io/kpng/backends/ipvs"
 	ipvssink "sigs.k8s.io/kpng/backends/ipvs-as-sink"
 	"sigs.k8s.io/kpng/backends/nft"
+
 	"sigs.k8s.io/kpng/jobs/store2api"
 	"sigs.k8s.io/kpng/jobs/store2file"
 	"sigs.k8s.io/kpng/jobs/store2localdiff"
@@ -162,6 +164,22 @@ func ipvsCommand(sink *fullstate.Sink, run func() error) *cobra.Command {
 	cmd.RunE = func(_ *cobra.Command, _ []string) error {
 		ipvs.PreRun()
 		sink.Callback = ipvs.Callback
+		return run()
+	}
+
+	return cmd
+}
+
+func iptablesCommand(sink *fullstate.Sink, run func() error) *cobra.Command {
+	cmd := &cobra.Command{
+		Use: "to-iptables",
+	}
+
+	iptables.BindFlags(cmd.Flags())
+
+	cmd.RunE = func(_ *cobra.Command, _ []string) error {
+		iptables.PreRun()
+		sink.Callback = iptables.Callback
 		return run()
 	}
 

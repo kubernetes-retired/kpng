@@ -87,6 +87,10 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	if err != nil {
 		klog.Errorf("failed to get dummy interface addresses: %s", err)
 	}
+
+	// ipvs requires you to attach new service IPs to an interface
+
+	// loop through addresses and clean them if not active anymore
 	for _, v := range addrs {
 		addr, _, err := net.ParseCIDR(v.String())
 		if addr == nil {
@@ -115,6 +119,8 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			}
 		}
 	}
+
+	// add new addresses
 	for clusteraddr, _ := range clusterIPs {
 		addr := net.ParseIP(clusteraddr)
 		if addr == nil {
