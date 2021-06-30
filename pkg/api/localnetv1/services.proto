@@ -86,7 +86,8 @@ message Service {
 
 message ServiceIPs {
     string ClusterIP = 1;
-    IPSet  ExternalIPs = 2;
+    IPSet  ClusterIPs = 2;
+    IPSet  ExternalIPs = 3;
 }
 
 message Endpoint {
