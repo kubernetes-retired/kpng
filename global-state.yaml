@@ -55,7 +55,7 @@ services:
     labels: {}
     annotations: {}
     ips:
-      clusterips: { v4: [ 12.0.163.125 ] }
+      clusterips: { v4: [ 12.0.163.125 ], v6: [ "fd2a::2a" ] }
       externalips:
         v4: []
         v6: []
