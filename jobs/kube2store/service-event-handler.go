@@ -29,7 +29,6 @@ type serviceEventHandler struct{ eventHandler }
 
 func (h *serviceEventHandler) onChange(obj interface{}) {
 	svc := obj.(*v1.Service)
-
 	service := &localnetv1.Service{
 		Namespace:   svc.Namespace,
 		Name:        svc.Name,
@@ -38,7 +37,10 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 		Annotations: globsFilter(svc.Annotations, h.config.ServiceAnnonationGlobs),
 		// MapIP: false, // TODO could be useful for L3 managed things
 		IPs: &localnetv1.ServiceIPs{
+			//TODO: ClusterIP could be removed once ipvs backend is changed to use ClusterIPs
+			//and other places(mostly tests) are made to use ClusterIPs.
 			ClusterIP:   svc.Spec.ClusterIP,
+			ClusterIPs:  localnetv1.NewIPSet(svc.Spec.ClusterIPs),
 			ExternalIPs: localnetv1.NewIPSet(svc.Spec.ExternalIPs),
 		},
 		ExternalTrafficToLocal: svc.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal,

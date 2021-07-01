@@ -229,14 +229,13 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 
 		svcCount++
 
-		clusterIP := net.IPv4zero
+		clusterIPs := &localnetv1.IPSet{}
 		ips := &localnetv1.IPSet{}
 
-		if ip := svc.IPs.ClusterIP; ip != "" && ip != "None" {
-			clusterIP = net.ParseIP(ip)
-			ips.Add(ip)
+		if svc.IPs.ClusterIPs != nil {
+			clusterIPs.AddSet(svc.IPs.ClusterIPs)
+			ips.AddSet(svc.IPs.ClusterIPs)
 		}
-
 		ips.AddSet(svc.IPs.ExternalIPs)
 
 		for _, set := range []struct {
@@ -289,7 +288,9 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			if len(endpointIPs) != 0 {
 				epMap := chainBuffers.Get("map", endpointsMap)
 				if epMap.Len() == 0 {
-					epMap.WriteString("  typeof numgen random mod 1 : ip daddr\n")
+					epMap.WriteString("  typeof numgen random mod 1 : ")
+					epMap.WriteString(family)
+					epMap.WriteString(" daddr\n")
 					epMap.WriteString("  elements = {")
 					epMap.Defer(func(m *chainBuffer) { m.WriteString("}\n") })
 				} else {
@@ -372,20 +373,21 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			}
 
 			// dispatch group chain (ie: dnat_net_0a002700 for 10.0.39.x and a /24 mask)
-			if set.v6 == (clusterIP.To4() == nil) {
+			if (set.v6 && len(clusterIPs.V6) > 0) || (!set.v6 && len(clusterIPs.V4) > 0) {
 				// this family owns the cluster IP => build the dispatch chain
 				mask := ipv4Mask
+				ipStr := clusterIPs.GetV4()[0]
 				if set.v6 {
 					mask = ipv6Mask
+					ipStr = clusterIPs.GetV6()[0]
 				}
-
-				ip := clusterIP.Mask(mask)
+				ip := net.ParseIP(ipStr).Mask(mask)
 
 				// get the dispatch chain
 				chain := prefix + "net_" + hex.EncodeToString(ip)
 
 				// add service chain in dispatch
-				vmapAdd(chainBuffers.Get("chain", chain), family+" daddr", fmt.Sprintf("%s: jump %s", clusterIP, svc_chain))
+				vmapAdd(chainBuffers.Get("chain", chain), family+" daddr", fmt.Sprintf("%s: jump %s", ipStr, svc_chain))
 
 				// reference the dispatch chain from the global dispatch (of not already done) (ie: z_dnat_all)
 				if set.v6 && !chain6Nets[chain] || !set.v6 && !chain4Nets[chain] {
@@ -430,8 +432,8 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	addDispatchChains("ip6", chainBuffers6)
 
 	// postrouting chains
-	addPostroutingChain(chainBuffers4, clusterCIDRsV4, localEndpointIPsV4)
-	addPostroutingChain(chainBuffers6, clusterCIDRsV6, localEndpointIPsV6)
+	addPostroutingChain("ip", chainBuffers4, clusterCIDRsV4, localEndpointIPsV4)
+	addPostroutingChain("ip6", chainBuffers6, clusterCIDRsV6, localEndpointIPsV6)
 
 	// check if we have changes to apply
 	if !fullResync && !chainBuffers4.Changed() && !chainBuffers6.Changed() {
@@ -540,7 +542,7 @@ func addDispatchChains(family string, chainBuffers *chainBufferSet) {
 	}
 }
 
-func addPostroutingChain(chainBuffers *chainBufferSet, clusterCIDRs []string, localEndpointIPs []string) {
+func addPostroutingChain(family string, chainBuffers *chainBufferSet, clusterCIDRs []string, localEndpointIPs []string) {
 	hasCIDRs := len(clusterCIDRs) != 0
 	hasLocalEPs := len(localEndpointIPs) != 0
 
@@ -552,16 +554,20 @@ func addPostroutingChain(chainBuffers *chainBufferSet, clusterCIDRs []string, lo
 	fmt.Fprintf(chain, "  type nat hook postrouting priority %d;\n", *hookPrio)
 	if hasCIDRs {
 		chain.Writeln()
-		fmt.Fprint(chain, "  ip saddr != { ", strings.Join(clusterCIDRs, ", "), " } \\\n")
+		fmt.Fprint(chain, "  ", family, " saddr != { ", strings.Join(clusterCIDRs, ", "), " } \\\n")
 		if hasLocalEPs {
-			fmt.Fprint(chain, "  ip daddr != { ", strings.Join(localEndpointIPs, ", "), " } \\\n")
+			fmt.Fprint(chain, "  ", family, " daddr != { ", strings.Join(localEndpointIPs, ", "), " } \\\n")
 		}
 		fmt.Fprint(chain, "  masquerade\n")
 	}
 
 	if hasLocalEPs {
 		chain.Writeln()
-		chain.WriteString("  ip saddr . ip daddr { ")
+		chain.WriteString("  ")
+		chain.WriteString(family)
+		chain.WriteString(" saddr . ")
+		chain.WriteString(family)
+		chain.WriteString(" daddr { ")
 		for i, ip := range localEndpointIPs {
 			if i != 0 {
 				chain.WriteString(", ")
@@ -630,7 +636,6 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 		// create/update changed chains
 		if len(chains) != 0 {
 			fmt.Fprintf(out, "table %s %s {\n", table.family, table.name)
-
 			for _, chain := range chains {
 				c := table.chains.Get("", chain)
 
