@@ -19,7 +19,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"strconv"
@@ -29,6 +28,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"k8s.io/klog"
 
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 	"sigs.k8s.io/kpng/pkg/diffstore"
@@ -101,7 +101,7 @@ func injectState(rev uint64, w *watchstate.WatchState) {
 	args := flag.Args()
 
 	if int(rev) >= len(args) {
-		log.Print("waiting forever (rev: ", rev, ")")
+		klog.Info("waiting forever (rev: ", rev, ")")
 		select {} // tests finished, sleep forever
 	}
 
@@ -111,10 +111,10 @@ func injectState(rev uint64, w *watchstate.WatchState) {
 
 	_, err := fmt.Sscanf(spec, "%d:%d", &nSvc, &nEpPerSvc)
 	if err != nil {
-		log.Fatal("failed to parse arg: ", spec, ": ", err)
+		klog.Fatal("failed to parse arg: ", spec, ": ", err)
 	}
 
-	log.Print("sending spec ", spec, " (rev: ", rev, ")")
+	klog.Info("sending spec ", spec, " (rev: ", rev, ")")
 
 	svcIP := ipGen(net.ParseIP("10.0.0.0"))
 	epIP := ipGen(net.ParseIP("10.128.0.0"))

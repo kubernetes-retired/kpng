@@ -3,7 +3,6 @@ package file2store
 import (
 	"context"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/cespare/xxhash"
 	"github.com/gogo/protobuf/proto"
 	"gopkg.in/yaml.v2"
+	"k8s.io/klog"
 	"sigs.k8s.io/kpng/jobs/store2file"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 	"sigs.k8s.io/kpng/pkg/diffstore"
@@ -51,7 +51,7 @@ func (j *Job) Run(ctx context.Context) {
 
 		stat, err := os.Stat(configPath)
 		if err != nil {
-			log.Print("failed to stat config: ", err)
+			klog.Info("failed to stat config: ", err)
 			continue
 		}
 
@@ -63,14 +63,14 @@ func (j *Job) Run(ctx context.Context) {
 
 		configBytes, err := ioutil.ReadFile(configPath)
 		if err != nil {
-			log.Print("failed to read config: ", err)
+			klog.Info("failed to read config: ", err)
 			continue
 		}
 
 		state := &store2file.GlobalState{}
 		err = yaml.UnmarshalStrict(configBytes, state)
 		if err != nil {
-			log.Print("failed to parse config: ", err)
+			klog.Info("failed to parse config: ", err)
 			continue
 		}
 
@@ -119,16 +119,16 @@ func (j *Job) Run(ctx context.Context) {
 
 		store.Update(func(tx *proxystore.Tx) {
 			for _, u := range diffNodes.Updated() {
-				log.Print("U node ", string(u.Key))
+				klog.Info("U node ", string(u.Key))
 				tx.SetNode(u.Value.(*localnetv1.Node))
 			}
 			for _, u := range diffSvcs.Updated() {
-				log.Print("U service ", string(u.Key))
+				klog.Info("U service ", string(u.Key))
 				si := u.Value.(*localnetv1.ServiceInfo)
 				tx.SetService(si.Service, si.TopologyKeys)
 			}
 			for _, u := range diffEPs.Updated() {
-				log.Print("U endpoints ", string(u.Key))
+				klog.Info("U endpoints ", string(u.Key))
 				key := string(u.Key)
 				eis := u.Value.([]*localnetv1.EndpointInfo)
 
@@ -136,17 +136,17 @@ func (j *Job) Run(ctx context.Context) {
 			}
 
 			for _, d := range diffEPs.Deleted() {
-				log.Print("D endpoints ", string(d.Key))
+				klog.Info("D endpoints ", string(d.Key))
 				key := string(d.Key)
 				tx.DelEndpointsOfSource(path.Dir(key), path.Base(key))
 			}
 			for _, d := range diffSvcs.Deleted() {
-				log.Print("D service ", string(d.Key))
+				klog.Info("D service ", string(d.Key))
 				key := string(d.Key)
 				tx.DelService(path.Dir(key), path.Base(key))
 			}
 			for _, d := range diffNodes.Deleted() {
-				log.Print("D node ", string(d.Key))
+				klog.Info("D node ", string(d.Key))
 				tx.DelNode(string(d.Key))
 			}
 

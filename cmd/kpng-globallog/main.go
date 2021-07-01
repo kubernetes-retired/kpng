@@ -19,7 +19,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -27,6 +26,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/protobuf/proto"
+	"k8s.io/klog"
 
 	"sigs.k8s.io/kpng/client"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
@@ -66,7 +66,7 @@ func run() {
 		if isCanceled(err) {
 			return
 		} else if err != nil {
-			log.Print("failed to connect: ", err)
+			klog.Info("failed to connect: ", err)
 			time.Sleep(time.Second)
 			return
 		}
@@ -82,7 +82,7 @@ func run() {
 	if isCanceled(err) {
 		return
 	} else if err != nil {
-		log.Print("failed to start the watch: ", err)
+		klog.Info("failed to start the watch: ", err)
 		time.Sleep(time.Second)
 		return
 	}
@@ -92,7 +92,7 @@ func run() {
 		if isCanceled(err) {
 			return
 		} else if err != nil {
-			log.Print("watch request failed: ", err)
+			klog.Info("watch request failed: ", err)
 			time.Sleep(time.Second)
 			return
 		}
@@ -146,14 +146,14 @@ loop:
 				v = &localnetv1.ServiceInfo{}
 
 			default:
-				log.Print("unknown set: ", set.Ref.Set)
+				klog.Info("unknown set: ", set.Ref.Set)
 				continue loop
 			}
 
 			if v != nil {
 				err = proto.Unmarshal(set.Bytes, v)
 				if err != nil {
-					log.Print("failed to parse value: ", err)
+					klog.Info("failed to parse value: ", err)
 					v = nil
 				}
 			}
