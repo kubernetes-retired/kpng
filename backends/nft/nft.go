@@ -195,8 +195,8 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 		}()
 	}
 
-	defer chainBuffers4.Reset()
-	defer chainBuffers6.Reset()
+	defer table4.Reset()
+	defer table6.Reset()
 
 	rule := new(bytes.Buffer)
 
@@ -253,10 +253,10 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			}
 
 			family := "ip"
-			chainBuffers := chainBuffers4
+			chainBuffers := table4
 			if set.v6 {
 				family = "ip6"
-				chainBuffers = chainBuffers6
+				chainBuffers = table6
 			}
 
 			// compute endpoints
@@ -373,35 +373,41 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			}
 
 			// dispatch group chain (ie: dnat_net_0a002700 for 10.0.39.x and a /24 mask)
-			if (set.v6 && len(clusterIPs.V6) > 0) || (!set.v6 && len(clusterIPs.V4) > 0) {
+			familyClusterIPs := clusterIPs.V4
+			if set.v6 {
+				familyClusterIPs = clusterIPs.V6
+			}
+
+			if len(familyClusterIPs) != 0 {
 				// this family owns the cluster IP => build the dispatch chain
 				mask := ipv4Mask
-				ipStr := clusterIPs.GetV4()[0]
 				if set.v6 {
 					mask = ipv6Mask
-					ipStr = clusterIPs.GetV6()[0]
 				}
-				ip := net.ParseIP(ipStr).Mask(mask)
 
-				// get the dispatch chain
-				chain := prefix + "net_" + hex.EncodeToString(ip)
+				for _, ipStr := range familyClusterIPs {
+					ip := net.ParseIP(ipStr).Mask(mask)
 
-				// add service chain in dispatch
-				vmapAdd(chainBuffers.Get("chain", chain), family+" daddr", fmt.Sprintf("%s: jump %s", ipStr, svc_chain))
+					// get the dispatch chain
+					chain := prefix + "net_" + hex.EncodeToString(ip)
 
-				// reference the dispatch chain from the global dispatch (of not already done) (ie: z_dnat_all)
-				if set.v6 && !chain6Nets[chain] || !set.v6 && !chain4Nets[chain] {
-					ipNet := &net.IPNet{
-						IP:   ip,
-						Mask: mask,
-					}
+					// add service chain in dispatch
+					vmapAdd(chainBuffers.Get("chain", chain), family+" daddr", fmt.Sprintf("%s: jump %s", ipStr, svc_chain))
 
-					vmapAdd(chainBuffers.Get("chain", "z_"+prefix+"all"), daddrMatch, ipNet.String()+": jump "+chain)
+					// reference the dispatch chain from the global dispatch (of not already done) (ie: z_dnat_all)
+					if set.v6 && !chain6Nets[chain] || !set.v6 && !chain4Nets[chain] {
+						ipNet := &net.IPNet{
+							IP:   ip,
+							Mask: mask,
+						}
 
-					if set.v6 {
-						chain6Nets[chain] = true
-					} else {
-						chain4Nets[chain] = true
+						vmapAdd(chainBuffers.Get("chain", "z_"+prefix+"all"), daddrMatch, ipNet.String()+": jump "+chain)
+
+						if set.v6 {
+							chain6Nets[chain] = true
+						} else {
+							chain4Nets[chain] = true
+						}
 					}
 				}
 			}
@@ -424,19 +430,19 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	}
 
 	// run deferred actions
-	chainBuffers4.RunDeferred()
-	chainBuffers6.RunDeferred()
+	table4.RunDeferred()
+	table6.RunDeferred()
 
 	// dispatch chains
-	addDispatchChains("ip", chainBuffers4)
-	addDispatchChains("ip6", chainBuffers6)
+	addDispatchChains(table4)
+	addDispatchChains(table6)
 
 	// postrouting chains
-	addPostroutingChain("ip", chainBuffers4, clusterCIDRsV4, localEndpointIPsV4)
-	addPostroutingChain("ip6", chainBuffers6, clusterCIDRsV6, localEndpointIPsV6)
+	addPostroutingChain(table4, clusterCIDRsV4, localEndpointIPsV4)
+	addPostroutingChain(table6, clusterCIDRsV6, localEndpointIPsV6)
 
 	// check if we have changes to apply
-	if !fullResync && !chainBuffers4.Changed() && !chainBuffers6.Changed() {
+	if !fullResync && !table4.Changed() && !table6.Changed() {
 		klog.V(1).Info("no changes to apply")
 		return
 	}
@@ -506,43 +512,41 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	}
 }
 
-func addDispatchChains(family string, chainBuffers *chainBufferSet) {
-	dnatAll := chainBuffers.Get("chain", "z_dnat_all")
+func addDispatchChains(table *nftable) {
+	dnatAll := table.Get("chain", "z_dnat_all")
 	if *withTrace {
 		dnatAll.WriteString("  meta nftrace set 1\n")
 	}
 
 	// DNAT
-	if chainBuffers.Get("chain", "dnat_external").Len() != 0 {
+	if table.Get("chain", "dnat_external").Len() != 0 {
 		fmt.Fprint(dnatAll, "  jump dnat_external\n")
 	}
 
-	chain := chainBuffers.Get("chain", "hook_nat_prerouting")
-	fmt.Fprintf(chain, "  type nat hook prerouting priority %d;\n  counter\n", *hookPrio)
-
-	if chainBuffers.Get("chain", "nodeports").Len() != 0 {
+	if table.Get("chain", "nodeports").Len() != 0 {
 		dnatAll.WriteString("  fib daddr type local jump nodeports\n")
 	}
 
 	if dnatAll.Len() != 0 {
-		chain.WriteString("  jump z_dnat_all\n")
-		fmt.Fprintf(chainBuffers.Get("chain", "hook_nat_output"),
-			"  type nat hook output priority %d;\n  jump z_dnat_all\n", *hookPrio)
+		for _, hook := range []string{"prerouting", "output"} {
+			fmt.Fprintf(table.Get("chain", "hook_nat_"+hook),
+				"  type nat hook "+hook+" priority %d;\n  jump z_dnat_all\n", *hookPrio)
+		}
 	}
 
 	// filtering
-	if chainBuffers.Get("chain", "filter_external").Len() != 0 {
-		fmt.Fprint(chainBuffers.Get("chain", "z_filter_all"), "  jump filter_external\n")
+	if table.Get("chain", "filter_external").Len() != 0 {
+		fmt.Fprint(table.Get("chain", "z_filter_all"), "  jump filter_external\n")
 	}
-	if chainBuffers.Get("chain", "z_filter_all").Len() != 0 {
-		fmt.Fprintf(chainBuffers.Get("chain", "hook_filter_forward"),
+	if table.Get("chain", "z_filter_all").Len() != 0 {
+		fmt.Fprintf(table.Get("chain", "hook_filter_forward"),
 			"  type filter hook forward priority %d;\n  jump z_filter_all\n", *hookPrio)
-		fmt.Fprintf(chainBuffers.Get("chain", "hook_filter_output"),
+		fmt.Fprintf(table.Get("chain", "hook_filter_output"),
 			"  type filter hook output priority %d;\n  jump z_filter_all\n", *hookPrio)
 	}
 }
 
-func addPostroutingChain(family string, chainBuffers *chainBufferSet, clusterCIDRs []string, localEndpointIPs []string) {
+func addPostroutingChain(table *nftable, clusterCIDRs []string, localEndpointIPs []string) {
 	hasCIDRs := len(clusterCIDRs) != 0
 	hasLocalEPs := len(localEndpointIPs) != 0
 
@@ -550,23 +554,29 @@ func addPostroutingChain(family string, chainBuffers *chainBufferSet, clusterCID
 		return
 	}
 
-	chain := chainBuffers.Get("chain", "hook_nat_postrouting")
+	chain := table.Get("chain", "hook_nat_postrouting")
 	fmt.Fprintf(chain, "  type nat hook postrouting priority %d;\n", *hookPrio)
 	if hasCIDRs {
 		chain.Writeln()
-		fmt.Fprint(chain, "  ", family, " saddr != { ", strings.Join(clusterCIDRs, ", "), " } \\\n")
+		if !*skipComments {
+			fmt.Fprint(chain, "  # masquerade non-cluster traffic to non-local endpoints\n")
+		}
+		fmt.Fprint(chain, "  ", table.Family, " saddr != { ", strings.Join(clusterCIDRs, ", "), " } \\\n")
 		if hasLocalEPs {
-			fmt.Fprint(chain, "  ", family, " daddr != { ", strings.Join(localEndpointIPs, ", "), " } \\\n")
+			fmt.Fprint(chain, "  ", table.Family, " daddr != { ", strings.Join(localEndpointIPs, ", "), " } \\\n")
 		}
 		fmt.Fprint(chain, "  masquerade\n")
 	}
 
 	if hasLocalEPs {
 		chain.Writeln()
+		if !*skipComments {
+			fmt.Fprint(chain, "  # masquerade hairpin traffic\n")
+		}
 		chain.WriteString("  ")
-		chain.WriteString(family)
+		chain.WriteString(table.Family)
 		chain.WriteString(" saddr . ")
-		chain.WriteString(family)
+		chain.WriteString(table.Family)
 		chain.WriteString(" daddr { ")
 		for i, ip := range localEndpointIPs {
 			if i != 0 {
@@ -590,27 +600,21 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 
 	out := bufio.NewWriter(io.MultiWriter(outputs...))
 
-	for _, table := range []struct {
-		family, name string
-		chains       *chainBufferSet
-	}{
-		{"ip", "k8s_svc", chainBuffers4},
-		{"ip6", "k8s_svc6", chainBuffers6},
-	} {
-		chains := table.chains.List()
+	for _, table := range []*nftable{table4, table6} {
+		chains := table.List()
 
 		if fullResync {
-			fmt.Fprintf(out, "table %s %s\n", table.family, table.name)
-			fmt.Fprintf(out, "delete table %s %s\n", table.family, table.name)
+			fmt.Fprintf(out, "table %s %s\n", table.Family, table.Name)
+			fmt.Fprintf(out, "delete table %s %s\n", table.Family, table.Name)
 
 		} else {
-			if !table.chains.Changed() {
+			if !table.Changed() {
 				continue
 			}
 
 			// flush deleted elements
-			for _, chain := range table.chains.Deleted() {
-				fmt.Fprintf(out, "flush %s %s %s %s\n", chain.kind, table.family, table.name, chain.name)
+			for _, chain := range table.Deleted() {
+				fmt.Fprintf(out, "flush %s %s %s %s\n", chain.kind, table.Family, table.Name, chain.name)
 			}
 
 			// update only changed rules
@@ -618,13 +622,13 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 
 			// flush changed chains
 			for _, chain := range chains {
-				c := table.chains.Get("", chain)
+				c := table.Get("", chain)
 				if !c.Changed() {
 					continue
 				}
 
 				if !c.Created() {
-					fmt.Fprintf(out, "flush %s %s %s %s\n", c.kind, table.family, table.name, chain)
+					fmt.Fprintf(out, "flush %s %s %s %s\n", c.kind, table.Family, table.Name, chain)
 				}
 
 				changedChains = append(changedChains, chain)
@@ -635,9 +639,9 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 
 		// create/update changed chains
 		if len(chains) != 0 {
-			fmt.Fprintf(out, "table %s %s {\n", table.family, table.name)
+			fmt.Fprintf(out, "table %s %s {\n", table.Family, table.Name)
 			for _, chain := range chains {
-				c := table.chains.Get("", chain)
+				c := table.Get("", chain)
 
 				fmt.Fprintf(out, " %s %s {\n", c.kind, chain)
 				io.Copy(out, c)
@@ -655,8 +659,8 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 				if deferDelete {
 					out = deferred
 				}
-				for _, chain := range table.chains.Deleted() {
-					fmt.Fprintf(out, "delete %s %s %s %s\n", chain.kind, table.family, table.name, chain.name)
+				for _, chain := range table.Deleted() {
+					fmt.Fprintf(out, "delete %s %s %s %s\n", chain.kind, table.Family, table.Name, chain.name)
 				}
 			}
 		}
