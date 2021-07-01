@@ -20,13 +20,13 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path"
 	"sort"
 	"strings"
 
+	"k8s.io/klog"
 	"sigs.k8s.io/kpng/client"
 )
 
@@ -178,11 +178,11 @@ func handleEndpoints(items []*client.ServiceEndpoints) {
 	// 	continue
 	// }
 
-	log.Print("ext-iptables: rules have changed, updating")
+	klog.Info("ext-iptables: rules have changed, updating")
 	rules := ipt.Bytes()
 
 	if *dryRun {
-		log.Printf("would have applied those rules:\n%s", ipt.String())
+		klog.Infof("would have applied those rules:\n%s", ipt.String())
 		return
 	}
 
@@ -195,7 +195,7 @@ func handleEndpoints(items []*client.ServiceEndpoints) {
 
 	err := cmd.Run()
 	if err != nil {
-		log.Print("ext-iptables: failed to restore iptables rules: ", err, "\n", string(rules))
+		klog.Info("ext-iptables: failed to restore iptables rules: ", err, "\n", string(rules))
 	}
 }
 

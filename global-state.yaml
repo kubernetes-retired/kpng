@@ -86,7 +86,7 @@ services:
       ips:
         v4:
         - 11.0.1.2
-        v6: []
+        v6: [ "fd2b::1:2" ]
     conditions:
       ready: true
     topology:
@@ -101,7 +101,7 @@ services:
       ips:
         v4:
         - 11.0.2.2
-        v6: []
+        v6: [ "fd2b::2:2" ]
     conditions:
       ready: true
     topology:
@@ -116,7 +116,7 @@ services:
       ips:
         v4:
         - 11.0.3.2
-        v6: []
+        v6: [ "fd2b::3:2" ]
     conditions:
       ready: true
     topology:

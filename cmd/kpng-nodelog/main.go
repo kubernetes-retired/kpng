@@ -18,11 +18,11 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
+	"k8s.io/klog"
 
 	"sigs.k8s.io/kpng/client"
 	"sigs.k8s.io/kpng/localsink"
@@ -89,13 +89,13 @@ func (s *sink) Send(op *localnetv1.OpItem) (err error) {
 			v = &localnetv1.ServiceInfo{}
 
 		default:
-			log.Print("unknown set: ", set.Ref.Set)
+			klog.Info("unknown set: ", set.Ref.Set)
 		}
 
 		if v != nil {
 			err = proto.Unmarshal(set.Bytes, v)
 			if err != nil {
-				log.Print("failed to parse value: ", err)
+				klog.Info("failed to parse value: ", err)
 				v = nil
 			}
 		}
