@@ -21,7 +21,7 @@ import (
 	"sort"
 )
 
-func NewIPSet(ips []string) (set *IPSet) {
+func NewIPSet(ips ...string) (set *IPSet) {
 	set = &IPSet{}
 	set.AddAll(ips)
 	return
@@ -75,4 +75,11 @@ func insertString(a *[]string, s string) {
 	copy((*a)[idx+1:], (*a)[idx:])
 	(*a)[idx] = s
 	return
+}
+
+func (set *IPSet) All() []string {
+	all := make([]string, 0, len(set.V4)+len(set.V6))
+	all = append(all, set.V4...)
+	all = append(all, set.V6...)
+	return all
 }

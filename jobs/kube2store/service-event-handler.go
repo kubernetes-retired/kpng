@@ -29,21 +29,37 @@ type serviceEventHandler struct{ eventHandler }
 
 func (h *serviceEventHandler) onChange(obj interface{}) {
 	svc := obj.(*v1.Service)
+
+	// build the service
 	service := &localnetv1.Service{
 		Namespace:   svc.Namespace,
 		Name:        svc.Name,
 		Type:        string(svc.Spec.Type),
 		Labels:      globsFilter(svc.Labels, h.config.ServiceLabelGlobs),
 		Annotations: globsFilter(svc.Annotations, h.config.ServiceAnnonationGlobs),
-		// MapIP: false, // TODO could be useful for L3 managed things
 		IPs: &localnetv1.ServiceIPs{
-			//TODO: ClusterIP could be removed once ipvs backend is changed to use ClusterIPs
-			//and other places(mostly tests) are made to use ClusterIPs.
-			ClusterIP:   svc.Spec.ClusterIP,
-			ClusterIPs:  localnetv1.NewIPSet(svc.Spec.ClusterIPs),
-			ExternalIPs: localnetv1.NewIPSet(svc.Spec.ExternalIPs),
+			ClusterIPs:  &localnetv1.IPSet{},
+			ExternalIPs: localnetv1.NewIPSet(svc.Spec.ExternalIPs...),
 		},
 		ExternalTrafficToLocal: svc.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal,
+	}
+
+	// extract cluster IPs with backward compatibility (k8s before ClusterIPs)
+	clusterIPs := []string{}
+	if len(svc.Spec.ClusterIPs) == 0 {
+		if svc.Spec.ClusterIP != "" {
+			clusterIPs = []string{svc.Spec.ClusterIP}
+		}
+	} else {
+		clusterIPs = svc.Spec.ClusterIPs
+	}
+
+	for _, ip := range clusterIPs {
+		if ip == "None" {
+			service.IPs.Headless = true
+		} else {
+			service.IPs.ClusterIPs.Add(ip)
+		}
 	}
 
 	// ports information

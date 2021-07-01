@@ -37,24 +37,24 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 
 		//var svcRule strings.Builder
 		// If this is a ClusterIP non headless
-		if (svc.Type == "ClusterIP" && svc.GetIPs().ClusterIP != "None") || svc.Type == "NodePort" || svc.Type == "LoadBalancer" {
+		if (svc.Type == "ClusterIP" && !svc.IPs.Headless) || svc.Type == "NodePort" || svc.Type == "LoadBalancer" {
 			// TODO: Verify if the IP Address exists on the dummy interface, otherwise it need to be
 			// added
-			if svc.GetIPs().ClusterIP != "" {
-				clusterIPs[svc.GetIPs().ClusterIP] = nil
-			}
+			for _, ip := range svc.IPs.ClusterIPs.All() {
+				clusterIPs[ip] = nil
 
-			// Future art: build some tree as Mikael did in nft, and verify if and where are the differences
-			// to remove unused ClusterIP Addresses
-			var nodePort bool
-			if svc.Type == "NodePort" || svc.Type == "LoadBalancer" {
-				nodePort = true
+				// Future art: build some tree as Mikael did in nft, and verify if and where are the differences
+				// to remove unused ClusterIP Addresses
+				var nodePort bool
+				if svc.Type == "NodePort" || svc.Type == "LoadBalancer" {
+					nodePort = true
+				}
+				cip, err := buildClusterIP(svc, ip, endpoints, nodePort)
+				if err != nil {
+					klog.Warningf("problem creating the service: %s", err)
+				}
+				ipvsCfg.WriteString(cip)
 			}
-			cip, err := buildClusterIP(svc, endpoints, nodePort)
-			if err != nil {
-				klog.Warningf("problem creating the service: %s", err)
-			}
-			ipvsCfg.WriteString(cip)
 		}
 	}
 	fmt.Printf("%s", ipvsCfg.String())
@@ -136,7 +136,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 
 }
 
-func buildClusterIP(svc *localnetv1.Service, eps []*localnetv1.Endpoint, nodePort bool) (string, error) {
+func buildClusterIP(svc *localnetv1.Service, ip string, eps []*localnetv1.Endpoint, nodePort bool) (string, error) {
 	var svcString strings.Builder
 	for _, port := range svc.Ports {
 		var proto string
@@ -154,10 +154,10 @@ func buildClusterIP(svc *localnetv1.Service, eps []*localnetv1.Endpoint, nodePor
 		if tgtPort < 1 {
 			tgtPort = port.GetPort()
 		}
-		ipPortAlgo := fmt.Sprintf("-A %s %s:%d -s %s\n", proto, svc.IPs.ClusterIP, port.Port, DefaultAlgo)
+		ipPortAlgo := fmt.Sprintf("-A %s %s:%d -s %s\n", proto, ip, port.Port, DefaultAlgo)
 		svcString.WriteString(ipPortAlgo)
 
-		endpoints := buildEndponts(svc.GetIPs().ClusterIP, proto, port.Port, port.TargetPort, eps)
+		endpoints := buildEndponts(ip, proto, port.Port, port.TargetPort, eps)
 		svcString.WriteString(endpoints)
 
 		if nodePort {

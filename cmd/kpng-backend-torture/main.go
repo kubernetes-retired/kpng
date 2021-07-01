@@ -133,7 +133,7 @@ func injectState(rev uint64, w *watchstate.WatchState) {
 			Name:      fmt.Sprintf("svc-%d", s),
 			Type:      "ClusterIP",
 			IPs: &localnetv1.ServiceIPs{
-				ClusterIP:   svcIP.Next().String(),
+				ClusterIPs:  localnetv1.NewIPSet(svcIP.Next().String()),
 				ExternalIPs: &localnetv1.IPSet{},
 			},
 			Ports: []*localnetv1.PortMapping{

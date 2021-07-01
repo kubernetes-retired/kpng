@@ -19,7 +19,7 @@ services:
     labels: {}
     annotations: {}
     ips:
-      clusterip: 12.0.0.1
+      clusterips: { v4: [ 12.0.0.1 ] }
       externalips:
         v4: []
         v6: []
@@ -55,7 +55,7 @@ services:
     labels: {}
     annotations: {}
     ips:
-      clusterip: 12.0.163.125
+      clusterips: { v4: [ 12.0.163.125 ] }
       externalips:
         v4: []
         v6: []
@@ -143,7 +143,7 @@ services:
     labels: {}
     annotations: {}
     ips:
-      clusterip: 12.0.92.107
+      clusterips: { v4: [ 12.0.92.107 ] }
       externalips:
         v4: []
         v6: []

@@ -25,12 +25,14 @@ import (
 )
 
 var (
-	chainBuffers4 = &chainBufferSet{btree.New(4)}
-	chainBuffers6 = &chainBufferSet{btree.New(4)}
+	table4 = &nftable{"ip", "k8s_svc", btree.New(4)}
+	table6 = &nftable{"ip6", "k8s_svc6", btree.New(4)}
 )
 
-type chainBufferSet struct {
-	data *btree.BTree
+type nftable struct {
+	Family string
+	Name   string
+	data   *btree.BTree
 }
 
 type chainBuffer struct {
@@ -105,7 +107,7 @@ func (c *chainBuffer) Created() bool {
 	return c.previousHash == 0 && c.currentHash != nil
 }
 
-func (set *chainBufferSet) Reset() {
+func (set *nftable) Reset() {
 	set.data.Ascend(func(i btree.Item) bool {
 		cb := i.(*chainBuffer)
 
@@ -137,7 +139,7 @@ func (set *chainBufferSet) Reset() {
 	})
 }
 
-func (set *chainBufferSet) Get(kind, name string) *chainBuffer {
+func (set *nftable) Get(kind, name string) *chainBuffer {
 	i := set.data.Get(&chainBuffer{name: name})
 
 	if i == nil {
@@ -163,7 +165,7 @@ func (set *chainBufferSet) Get(kind, name string) *chainBuffer {
 	return cb
 }
 
-func (set *chainBufferSet) List() (chains []string) {
+func (set *nftable) List() (chains []string) {
 	chains = make([]string, 0, set.data.Len())
 
 	set.data.Ascend(func(i btree.Item) bool {
@@ -177,7 +179,7 @@ func (set *chainBufferSet) List() (chains []string) {
 	return
 }
 
-func (set *chainBufferSet) Deleted() (chains []*chainBuffer) {
+func (set *nftable) Deleted() (chains []*chainBuffer) {
 	chains = make([]*chainBuffer, 0)
 
 	set.data.Ascend(func(i btree.Item) bool {
@@ -191,7 +193,7 @@ func (set *chainBufferSet) Deleted() (chains []*chainBuffer) {
 	return
 }
 
-func (set *chainBufferSet) Changed() (changed bool) {
+func (set *nftable) Changed() (changed bool) {
 	changed = false
 
 	set.data.Ascend(func(i btree.Item) bool {
@@ -205,7 +207,7 @@ func (set *chainBufferSet) Changed() (changed bool) {
 	return
 }
 
-func (set *chainBufferSet) RunDeferred() {
+func (set *nftable) RunDeferred() {
 	set.data.Ascend(func(i btree.Item) bool {
 		i.(*chainBuffer).RunDeferred()
 		return true
