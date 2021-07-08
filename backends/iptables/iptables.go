@@ -311,6 +311,12 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 		endpointChainsNumber += len(endpointsMap[svcName])
 	}
 
+	localAddrSet := GetLocalAddrSet()
+
+	nodeAddresses, err := GetNodeAddresses(proxier.nodePortAddresses, proxier.networkInterfacer)
+	if err != nil {
+		klog.ErrorS(err, "Failed to get node ip address matching nodeport cidrs, services with nodeport may not work as intended", "CIDRs", proxier.nodePortAddresses)
+	}
 
 
 
