@@ -64,6 +64,8 @@ var endpointChainsNumber int
 
 // Values are as a parameter to select the interfaces where nodeport works.
 var nodePortAddresses []string
+// Inject for test purpose.
+var networkInterfacer     NetworkInterfacer
 
 const (
 	// the services chain
@@ -313,9 +315,9 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 
 	localAddrSet := GetLocalAddrSet()
 
-	nodeAddresses, err := GetNodeAddresses(proxier.nodePortAddresses, proxier.networkInterfacer)
+	nodeAddresses, err := GetNodeAddresses(nodePortAddresses, networkInterfacer)
 	if err != nil {
-		klog.ErrorS(err, "Failed to get node ip address matching nodeport cidrs, services with nodeport may not work as intended", "CIDRs", proxier.nodePortAddresses)
+		klog.ErrorS(err, "Failed to get node ip address matching nodeport cidrs, services with nodeport may not work as intended", "CIDRs", nodePortAddresses)
 	}
 
 
