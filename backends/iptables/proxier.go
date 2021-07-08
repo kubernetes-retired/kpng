@@ -48,10 +48,10 @@ import (
 	"k8s.io/kubernetes/pkg/proxy/metaproxier"
 	"k8s.io/kubernetes/pkg/proxy/metrics"
 	utilproxy "k8s.io/kubernetes/pkg/proxy/util"
-	proxyutiliptables "k8s.io/kubernetes/pkg/proxy/util/iptables"
+	proxy "k8s.io/kubernetes/pkg/proxy/util/iptables"
 	"k8s.io/kubernetes/pkg/util/async"
 	"k8s.io/kubernetes/pkg/util/conntrack"
-	utiliptables "k8s.io/kubernetes/pkg/util/iptables"
+	 "k8s.io/kubernetes/pkg/util/iptables"
 	utilsysctl "k8s.io/kubernetes/pkg/util/sysctl"
 	utilexec "k8s.io/utils/exec"
 	utilnet "k8s.io/utils/net"
@@ -59,28 +59,28 @@ import (
 
 const (
 	// the services chain
-	kubeServicesChain utiliptables.Chain = "KUBE-SERVICES"
+	kubeServicesChain .Chain = "KUBE-SERVICES"
 
 	// the external services chain
-	kubeExternalServicesChain utiliptables.Chain = "KUBE-EXTERNAL-SERVICES"
+	kubeExternalServicesChain .Chain = "KUBE-EXTERNAL-SERVICES"
 
 	// the
-	kubeNodePortsChain utiliptables.Chain = "KUBE-NODEPORTS"
+	kubeNodePortsChain .Chain = "KUBE-NODEPORTS"
 
 	// the kubernetes postrouting chain
-	kubePostroutingChain utiliptables.Chain = "KUBE-POSTROUTING"
+	kubePostroutingChain .Chain = "KUBE-POSTROUTING"
 
 	// KubeMarkMasqChain is the mark-for-masquerade chain
-	KubeMarkMasqChain utiliptables.Chain = "KUBE-MARK-MASQ"
+	KubeMarkMasqChain .Chain = "KUBE-MARK-MASQ"
 
 	// KubeMarkDropChain is the mark-for-drop chain
-	KubeMarkDropChain utiliptables.Chain = "KUBE-MARK-DROP"
+	KubeMarkDropChain .Chain = "KUBE-MARK-DROP"
 
 	// the kubernetes forward chain
-	kubeForwardChain utiliptables.Chain = "KUBE-FORWARD"
+	kubeForwardChain .Chain = "KUBE-FORWARD"
 
 	// kube proxy canary chain is used for monitoring rule reload
-	kubeProxyCanaryChain utiliptables.Chain = "KUBE-PROXY-CANARY"
+	kubeProxyCanaryChain .Chain = "KUBE-PROXY-CANARY"
 )
 
 // KernelCompatTester tests whether the required kernel capabilities are
@@ -119,9 +119,9 @@ type serviceInfo struct {
 	*proxy.BaseServiceInfo
 	// The following fields are computed and stored for performance reasons.
 	serviceNameString        string
-	servicePortChainName     utiliptables.Chain
-	serviceFirewallChainName utiliptables.Chain
-	serviceLBChainName       utiliptables.Chain
+	servicePortChainName     .Chain
+	serviceFirewallChainName .Chain
+	serviceLBChainName       .Chain
 }
 
 // returns a new proxy.ServicePort which abstracts a serviceInfo
@@ -147,7 +147,7 @@ type endpointsInfo struct {
 	// reasons. If the protocol is the same as you expect it to be, then the
 	// chainName can be reused, otherwise it should be recomputed.
 	protocol  string
-	chainName utiliptables.Chain
+	chainName .Chain
 }
 
 // returns a new proxy.Endpoint which abstracts a endpointsInfo
@@ -169,7 +169,7 @@ func (e *endpointsInfo) Equal(other proxy.Endpoint) bool {
 }
 
 // Returns the endpoint chain name for a given endpointsInfo.
-func (e *endpointsInfo) endpointChain(svcNameString, protocol string) utiliptables.Chain {
+func (e *endpointsInfo) endpointChain(svcNameString, protocol string) .Chain {
 	if e.protocol != protocol {
 		e.protocol = protocol
 		e.chainName = servicePortEndpointChainName(svcNameString, protocol, e.Endpoint)
@@ -203,11 +203,11 @@ type Proxier struct {
 	syncPeriod           time.Duration
 
 	// These are effectively const and do not need the mutex to be held.
-	iptables       utiliptables.Interface
+	iptables       .Interface
 	masqueradeAll  bool
 	masqueradeMark string
 	exec           utilexec.Interface
-	localDetector  proxyutiliptables.LocalTrafficDetector
+	localDetector  proxy.LocalTrafficDetector
 	hostname       string
 	nodeIP         net.IP
 	portMapper     utilnet.PortOpener
@@ -251,14 +251,14 @@ var _ proxy.Provider = &Proxier{}
 // An error will be returned if iptables fails to update or acquire the initial lock.
 // Once a proxier is created, it will keep iptables up to date in the background and
 // will not terminate if a particular iptables call fails.
-func NewProxier(ipt utiliptables.Interface,
+func NewProxier(ipt .Interface,
 	sysctl utilsysctl.Interface,
 	exec utilexec.Interface,
 	syncPeriod time.Duration,
 	minSyncPeriod time.Duration,
 	masqueradeAll bool,
 	masqueradeBit int,
-	localDetector proxyutiliptables.LocalTrafficDetector,
+	localDetector proxy.LocalTrafficDetector,
 	hostname string,
 	nodeIP net.IP,
 	recorder record.EventRecorder,
@@ -334,7 +334,7 @@ func NewProxier(ipt utiliptables.Interface,
 	// time.Hour is arbitrary.
 	proxier.syncRunner = async.NewBoundedFrequencyRunner("sync-runner", proxier.syncProxyRules, minSyncPeriod, time.Hour, burstSyncs)
 
-	go ipt.Monitor(kubeProxyCanaryChain, []utiliptables.Table{utiliptables.TableMangle, utiliptables.TableNAT, utiliptables.TableFilter},
+	go ipt.Monitor(kubeProxyCanaryChain, [].Table{.TableMangle, .TableNAT, .TableFilter},
 		proxier.syncProxyRules, syncPeriod, wait.NeverStop)
 
 	if ipt.HasRandomFully() {
@@ -348,14 +348,14 @@ func NewProxier(ipt utiliptables.Interface,
 
 // NewDualStackProxier creates a MetaProxier instance, with IPv4 and IPv6 proxies.
 func NewDualStackProxier(
-	ipt [2]utiliptables.Interface,
+	ipt [2].Interface,
 	sysctl utilsysctl.Interface,
 	exec utilexec.Interface,
 	syncPeriod time.Duration,
 	minSyncPeriod time.Duration,
 	masqueradeAll bool,
 	masqueradeBit int,
-	localDetectors [2]proxyutiliptables.LocalTrafficDetector,
+	localDetectors [2]proxy.LocalTrafficDetector,
 	hostname string,
 	nodeIP [2]net.IP,
 	recorder record.EventRecorder,
@@ -381,40 +381,40 @@ func NewDualStackProxier(
 }
 
 type iptablesJumpChain struct {
-	table     utiliptables.Table
-	dstChain  utiliptables.Chain
-	srcChain  utiliptables.Chain
+	table     .Table
+	dstChain  .Chain
+	srcChain  .Chain
 	comment   string
 	extraArgs []string
 }
 
 var iptablesJumpChains = []iptablesJumpChain{
-	{utiliptables.TableFilter, kubeExternalServicesChain, utiliptables.ChainInput, "kubernetes externally-visible service portals", []string{"-m", "conntrack", "--ctstate", "NEW"}},
-	{utiliptables.TableFilter, kubeExternalServicesChain, utiliptables.ChainForward, "kubernetes externally-visible service portals", []string{"-m", "conntrack", "--ctstate", "NEW"}},
-	{utiliptables.TableFilter, kubeNodePortsChain, utiliptables.ChainInput, "kubernetes health check service ports", nil},
-	{utiliptables.TableFilter, kubeServicesChain, utiliptables.ChainForward, "kubernetes service portals", []string{"-m", "conntrack", "--ctstate", "NEW"}},
-	{utiliptables.TableFilter, kubeServicesChain, utiliptables.ChainOutput, "kubernetes service portals", []string{"-m", "conntrack", "--ctstate", "NEW"}},
-	{utiliptables.TableFilter, kubeForwardChain, utiliptables.ChainForward, "kubernetes forwarding rules", nil},
-	{utiliptables.TableNAT, kubeServicesChain, utiliptables.ChainOutput, "kubernetes service portals", nil},
-	{utiliptables.TableNAT, kubeServicesChain, utiliptables.ChainPrerouting, "kubernetes service portals", nil},
-	{utiliptables.TableNAT, kubePostroutingChain, utiliptables.ChainPostrouting, "kubernetes postrouting rules", nil},
+	{.TableFilter, kubeExternalServicesChain, .ChainInput, "kubernetes externally-visible service portals", []string{"-m", "conntrack", "--ctstate", "NEW"}},
+	{.TableFilter, kubeExternalServicesChain, .ChainForward, "kubernetes externally-visible service portals", []string{"-m", "conntrack", "--ctstate", "NEW"}},
+	{.TableFilter, kubeNodePortsChain, .ChainInput, "kubernetes health check service ports", nil},
+	{.TableFilter, kubeServicesChain, .ChainForward, "kubernetes service portals", []string{"-m", "conntrack", "--ctstate", "NEW"}},
+	{.TableFilter, kubeServicesChain, .ChainOutput, "kubernetes service portals", []string{"-m", "conntrack", "--ctstate", "NEW"}},
+	{.TableFilter, kubeForwardChain, .ChainForward, "kubernetes forwarding rules", nil},
+	{.TableNAT, kubeServicesChain, .ChainOutput, "kubernetes service portals", nil},
+	{.TableNAT, kubeServicesChain, .ChainPrerouting, "kubernetes service portals", nil},
+	{.TableNAT, kubePostroutingChain, .ChainPostrouting, "kubernetes postrouting rules", nil},
 }
 
 var iptablesEnsureChains = []struct {
-	table utiliptables.Table
-	chain utiliptables.Chain
+	table .Table
+	chain .Chain
 }{
-	{utiliptables.TableNAT, KubeMarkDropChain},
+	{.TableNAT, KubeMarkDropChain},
 }
 
 var iptablesCleanupOnlyChains = []iptablesJumpChain{
 	// Present in kube 1.13 - 1.19. Removed by #95252 in favor of adding reject rules for incoming/forwarding packets to kubeExternalServicesChain
-	{utiliptables.TableFilter, kubeServicesChain, utiliptables.ChainInput, "kubernetes service portals", []string{"-m", "conntrack", "--ctstate", "NEW"}},
+	{.TableFilter, kubeServicesChain, .ChainInput, "kubernetes service portals", []string{"-m", "conntrack", "--ctstate", "NEW"}},
 }
 
 // CleanupLeftovers removes all iptables rules and chains created by the Proxier
 // It returns true if an error was encountered. Errors are logged.
-func CleanupLeftovers(ipt utiliptables.Interface) (encounteredError bool) {
+func CleanupLeftovers(ipt .Interface) (encounteredError bool) {
 	// Unlink our chains
 	for _, jump := range append(iptablesJumpChains, iptablesCleanupOnlyChains...) {
 		args := append(jump.extraArgs,
@@ -422,7 +422,7 @@ func CleanupLeftovers(ipt utiliptables.Interface) (encounteredError bool) {
 			"-j", string(jump.dstChain),
 		)
 		if err := ipt.DeleteRule(jump.table, jump.srcChain, args...); err != nil {
-			if !utiliptables.IsNotFoundError(err) {
+			if !.IsNotFoundError(err) {
 				klog.ErrorS(err, "Error removing pure-iptables proxy rule")
 				encounteredError = true
 			}
@@ -431,16 +431,16 @@ func CleanupLeftovers(ipt utiliptables.Interface) (encounteredError bool) {
 
 	// Flush and remove all of our "-t nat" chains.
 	iptablesData := bytes.NewBuffer(nil)
-	if err := ipt.SaveInto(utiliptables.TableNAT, iptablesData); err != nil {
-		klog.ErrorS(err, "Failed to execute iptables-save", "table", utiliptables.TableNAT)
+	if err := ipt.SaveInto(.TableNAT, iptablesData); err != nil {
+		klog.ErrorS(err, "Failed to execute iptables-save", "table", .TableNAT)
 		encounteredError = true
 	} else {
-		existingNATChains := utiliptables.GetChainLines(utiliptables.TableNAT, iptablesData.Bytes())
+		existingNATChains := .GetChainLines(.TableNAT, iptablesData.Bytes())
 		natChains := bytes.NewBuffer(nil)
 		natRules := bytes.NewBuffer(nil)
 		utilproxy.WriteLine(natChains, "*nat")
 		// Start with chains we know we need to remove.
-		for _, chain := range []utiliptables.Chain{kubeServicesChain, kubeNodePortsChain, kubePostroutingChain} {
+		for _, chain := range [].Chain{kubeServicesChain, kubeNodePortsChain, kubePostroutingChain} {
 			if _, found := existingNATChains[chain]; found {
 				chainString := string(chain)
 				utilproxy.WriteBytesLine(natChains, existingNATChains[chain]) // flush
@@ -458,9 +458,9 @@ func CleanupLeftovers(ipt utiliptables.Interface) (encounteredError bool) {
 		utilproxy.WriteLine(natRules, "COMMIT")
 		natLines := append(natChains.Bytes(), natRules.Bytes()...)
 		// Write it.
-		err = ipt.Restore(utiliptables.TableNAT, natLines, utiliptables.NoFlushTables, utiliptables.RestoreCounters)
+		err = ipt.Restore(.TableNAT, natLines, .NoFlushTables, .RestoreCounters)
 		if err != nil {
-			klog.ErrorS(err, "Failed to execute iptables-restore", "table", utiliptables.TableNAT)
+			klog.ErrorS(err, "Failed to execute iptables-restore", "table", .TableNAT)
 			metrics.IptablesRestoreFailuresTotal.Inc()
 			encounteredError = true
 		}
@@ -468,15 +468,15 @@ func CleanupLeftovers(ipt utiliptables.Interface) (encounteredError bool) {
 
 	// Flush and remove all of our "-t filter" chains.
 	iptablesData.Reset()
-	if err := ipt.SaveInto(utiliptables.TableFilter, iptablesData); err != nil {
-		klog.ErrorS(err, "Failed to execute iptables-save", "table", utiliptables.TableFilter)
+	if err := ipt.SaveInto(.TableFilter, iptablesData); err != nil {
+		klog.ErrorS(err, "Failed to execute iptables-save", "table", .TableFilter)
 		encounteredError = true
 	} else {
-		existingFilterChains := utiliptables.GetChainLines(utiliptables.TableFilter, iptablesData.Bytes())
+		existingFilterChains := .GetChainLines(.TableFilter, iptablesData.Bytes())
 		filterChains := bytes.NewBuffer(nil)
 		filterRules := bytes.NewBuffer(nil)
 		utilproxy.WriteLine(filterChains, "*filter")
-		for _, chain := range []utiliptables.Chain{kubeServicesChain, kubeExternalServicesChain, kubeForwardChain, kubeNodePortsChain} {
+		for _, chain := range [].Chain{kubeServicesChain, kubeExternalServicesChain, kubeForwardChain, kubeNodePortsChain} {
 			if _, found := existingFilterChains[chain]; found {
 				chainString := string(chain)
 				utilproxy.WriteBytesLine(filterChains, existingFilterChains[chain])
@@ -486,8 +486,8 @@ func CleanupLeftovers(ipt utiliptables.Interface) (encounteredError bool) {
 		utilproxy.WriteLine(filterRules, "COMMIT")
 		filterLines := append(filterChains.Bytes(), filterRules.Bytes()...)
 		// Write it.
-		if err := ipt.Restore(utiliptables.TableFilter, filterLines, utiliptables.NoFlushTables, utiliptables.RestoreCounters); err != nil {
-			klog.ErrorS(err, "Failed to execute iptables-restore", "table", utiliptables.TableFilter)
+		if err := ipt.Restore(.TableFilter, filterLines, .NoFlushTables, .RestoreCounters); err != nil {
+			klog.ErrorS(err, "Failed to execute iptables-restore", "table", .TableFilter)
 			metrics.IptablesRestoreFailuresTotal.Inc()
 			encounteredError = true
 		}
@@ -736,15 +736,15 @@ func portProtoHash(servicePortName string, protocol string) string {
 // servicePortChainName takes the ServicePortName for a service and
 // returns the associated iptables chain.  This is computed by hashing (sha256)
 // then encoding to base32 and truncating with the prefix "KUBE-SVC-".
-func servicePortChainName(servicePortName string, protocol string) utiliptables.Chain {
-	return utiliptables.Chain("KUBE-SVC-" + portProtoHash(servicePortName, protocol))
+func servicePortChainName(servicePortName string, protocol string) .Chain {
+	return .Chain("KUBE-SVC-" + portProtoHash(servicePortName, protocol))
 }
 
 // serviceFirewallChainName takes the ServicePortName for a service and
 // returns the associated iptables chain.  This is computed by hashing (sha256)
 // then encoding to base32 and truncating with the prefix "KUBE-FW-".
-func serviceFirewallChainName(servicePortName string, protocol string) utiliptables.Chain {
-	return utiliptables.Chain("KUBE-FW-" + portProtoHash(servicePortName, protocol))
+func serviceFirewallChainName(servicePortName string, protocol string) .Chain {
+	return .Chain("KUBE-FW-" + portProtoHash(servicePortName, protocol))
 }
 
 // serviceLBPortChainName takes the ServicePortName for a service and
@@ -752,15 +752,15 @@ func serviceFirewallChainName(servicePortName string, protocol string) utiliptab
 // then encoding to base32 and truncating with the prefix "KUBE-XLB-".  We do
 // this because IPTables Chain Names must be <= 28 chars long, and the longer
 // they are the harder they are to read.
-func serviceLBChainName(servicePortName string, protocol string) utiliptables.Chain {
-	return utiliptables.Chain("KUBE-XLB-" + portProtoHash(servicePortName, protocol))
+func serviceLBChainName(servicePortName string, protocol string) .Chain {
+	return .Chain("KUBE-XLB-" + portProtoHash(servicePortName, protocol))
 }
 
 // This is the same as servicePortChainName but with the endpoint included.
-func servicePortEndpointChainName(servicePortName string, protocol string, endpoint string) utiliptables.Chain {
+func servicePortEndpointChainName(servicePortName string, protocol string, endpoint string) .Chain {
 	hash := sha256.Sum256([]byte(servicePortName + protocol + endpoint))
 	encoded := base32.StdEncoding.EncodeToString(hash[:])
-	return utiliptables.Chain("KUBE-SEP-" + encoded[:16])
+	return .Chain("KUBE-SEP-" + encoded[:16])
 }
 
 // After a UDP or SCTP endpoint has been removed, we must flush any pending conntrack entries to it, or else we
@@ -880,7 +880,7 @@ func (proxier *Proxier) syncProxyRules() {
 			"-m", "comment", "--comment", jump.comment,
 			"-j", string(jump.dstChain),
 		)
-		if _, err := proxier.iptables.EnsureRule(utiliptables.Prepend, jump.table, jump.srcChain, args...); err != nil {
+		if _, err := proxier.iptables.EnsureRule(.Prepend, jump.table, jump.srcChain, args...); err != nil {
 			klog.ErrorS(err, "Failed to ensure chain jumps", "table", jump.table, "srcChain", jump.srcChain, "dstChain", jump.dstChain)
 			return
 		}
@@ -900,23 +900,23 @@ func (proxier *Proxier) syncProxyRules() {
 
 	// Get iptables-save output so we can check for existing chains and rules.
 	// This will be a map of chain name to chain with rules as stored in iptables-save/iptables-restore
-	existingFilterChains := make(map[utiliptables.Chain][]byte)
+	existingFilterChains := make(map[.Chain][]byte)
 	proxier.existingFilterChainsData.Reset()
-	err := proxier.iptables.SaveInto(utiliptables.TableFilter, proxier.existingFilterChainsData)
+	err := proxier.iptables.SaveInto(.TableFilter, proxier.existingFilterChainsData)
 	if err != nil { // if we failed to get any rules
 		klog.ErrorS(err, "Failed to execute iptables-save, syncing all rules")
 	} else { // otherwise parse the output
-		existingFilterChains = utiliptables.GetChainLines(utiliptables.TableFilter, proxier.existingFilterChainsData.Bytes())
+		existingFilterChains = .GetChainLines(.TableFilter, proxier.existingFilterChainsData.Bytes())
 	}
 
 	// IMPORTANT: existingNATChains may share memory with proxier.iptablesData.
-	existingNATChains := make(map[utiliptables.Chain][]byte)
+	existingNATChains := make(map[.Chain][]byte)
 	proxier.iptablesData.Reset()
-	err = proxier.iptables.SaveInto(utiliptables.TableNAT, proxier.iptablesData)
+	err = proxier.iptables.SaveInto(.TableNAT, proxier.iptablesData)
 	if err != nil { // if we failed to get any rules
 		klog.ErrorS(err, "Failed to execute iptables-save, syncing all rules")
 	} else { // otherwise parse the output
-		existingNATChains = utiliptables.GetChainLines(utiliptables.TableNAT, proxier.iptablesData.Bytes())
+		existingNATChains = .GetChainLines(.TableNAT, proxier.iptablesData.Bytes())
 	}
 
 	// Reset all buffers used later.
@@ -932,18 +932,18 @@ func (proxier *Proxier) syncProxyRules() {
 
 	// Make sure we keep stats for the top-level chains, if they existed
 	// (which most should have because we created them above).
-	for _, chainName := range []utiliptables.Chain{kubeServicesChain, kubeExternalServicesChain, kubeForwardChain, kubeNodePortsChain} {
+	for _, chainName := range [].Chain{kubeServicesChain, kubeExternalServicesChain, kubeForwardChain, kubeNodePortsChain} {
 		if chain, ok := existingFilterChains[chainName]; ok {
 			utilproxy.WriteBytesLine(proxier.filterChains, chain)
 		} else {
-			utilproxy.WriteLine(proxier.filterChains, utiliptables.MakeChainLine(chainName))
+			utilproxy.WriteLine(proxier.filterChains, .MakeChainLine(chainName))
 		}
 	}
-	for _, chainName := range []utiliptables.Chain{kubeServicesChain, kubeNodePortsChain, kubePostroutingChain, KubeMarkMasqChain} {
+	for _, chainName := range [].Chain{kubeServicesChain, kubeNodePortsChain, kubePostroutingChain, KubeMarkMasqChain} {
 		if chain, ok := existingNATChains[chainName]; ok {
 			utilproxy.WriteBytesLine(proxier.natChains, chain)
 		} else {
-			utilproxy.WriteLine(proxier.natChains, utiliptables.MakeChainLine(chainName))
+			utilproxy.WriteLine(proxier.natChains, .MakeChainLine(chainName))
 		}
 	}
 
@@ -981,7 +981,7 @@ func (proxier *Proxier) syncProxyRules() {
 	}...)
 
 	// Accumulate NAT chains to keep.
-	activeNATChains := map[utiliptables.Chain]bool{} // use a map as a set
+	activeNATChains := map[.Chain]bool{} // use a map as a set
 
 	// Accumulate the set of local ports that we will be holding open once this update is complete
 	replacementPortsMap := map[utilnet.LocalPort]utilnet.Closeable{}
@@ -993,7 +993,7 @@ func (proxier *Proxier) syncProxyRules() {
 	//   slice = slice[:0] // and then append to it
 	//   slice = append(slice[:0], ...)
 	endpoints := make([]*endpointsInfo, 0)
-	endpointChains := make([]utiliptables.Chain, 0)
+	endpointChains := make([].Chain, 0)
 	// To avoid growing this slice, we arbitrarily set its size to 64,
 	// there is never more than that many arguments for a single line.
 	// Note that even if we go over 64, it will still be correct - it
@@ -1051,7 +1051,7 @@ func (proxier *Proxier) syncProxyRules() {
 			if chain, ok := existingNATChains[svcChain]; ok {
 				utilproxy.WriteBytesLine(proxier.natChains, chain)
 			} else {
-				utilproxy.WriteLine(proxier.natChains, utiliptables.MakeChainLine(svcChain))
+				utilproxy.WriteLine(proxier.natChains, .MakeChainLine(svcChain))
 			}
 			activeNATChains[svcChain] = true
 		}
@@ -1063,7 +1063,7 @@ func (proxier *Proxier) syncProxyRules() {
 			if lbChain, ok := existingNATChains[svcXlbChain]; ok {
 				utilproxy.WriteBytesLine(proxier.natChains, lbChain)
 			} else {
-				utilproxy.WriteLine(proxier.natChains, utiliptables.MakeChainLine(svcXlbChain))
+				utilproxy.WriteLine(proxier.natChains, .MakeChainLine(svcXlbChain))
 			}
 			activeNATChains[svcXlbChain] = true
 		}
@@ -1182,7 +1182,7 @@ func (proxier *Proxier) syncProxyRules() {
 					if chain, ok := existingNATChains[fwChain]; ok {
 						utilproxy.WriteBytesLine(proxier.natChains, chain)
 					} else {
-						utilproxy.WriteLine(proxier.natChains, utiliptables.MakeChainLine(fwChain))
+						utilproxy.WriteLine(proxier.natChains, .MakeChainLine(fwChain))
 					}
 					activeNATChains[fwChain] = true
 					// The service firewall rules are created based on ServiceSpec.loadBalancerSourceRanges field.
@@ -1365,7 +1365,7 @@ func (proxier *Proxier) syncProxyRules() {
 		// These two slices parallel each other - keep in sync
 		endpoints = endpoints[:0]
 		endpointChains = endpointChains[:0]
-		var endpointChain utiliptables.Chain
+		var endpointChain .Chain
 		for _, ep := range readyEndpoints {
 			epInfo, ok := ep.(*endpointsInfo)
 			if !ok {
@@ -1381,7 +1381,7 @@ func (proxier *Proxier) syncProxyRules() {
 			if chain, ok := existingNATChains[endpointChain]; ok {
 				utilproxy.WriteBytesLine(proxier.natChains, chain)
 			} else {
-				utilproxy.WriteLine(proxier.natChains, utiliptables.MakeChainLine(endpointChain))
+				utilproxy.WriteLine(proxier.natChains, .MakeChainLine(endpointChain))
 			}
 			activeNATChains[endpointChain] = true
 		}
@@ -1404,7 +1404,7 @@ func (proxier *Proxier) syncProxyRules() {
 
 		// Now write loadbalancing & DNAT rules.
 		n := len(endpointChains)
-		localEndpointChains := make([]utiliptables.Chain, 0)
+		localEndpointChains := make([].Chain, 0)
 		for i, endpointChain := range endpointChains {
 			// Write ingress loadbalancing & DNAT rules only for services that request OnlyLocal traffic.
 			if svcInfo.NodeLocalExternal() && endpoints[i].IsLocal {
@@ -1617,12 +1617,12 @@ func (proxier *Proxier) syncProxyRules() {
 	proxier.iptablesData.Write(proxier.natRules.Bytes())
 
 	numberFilterIptablesRules := utilproxy.CountBytesLines(proxier.filterRules.Bytes())
-	metrics.IptablesRulesTotal.WithLabelValues(string(utiliptables.TableFilter)).Set(float64(numberFilterIptablesRules))
+	metrics.IptablesRulesTotal.WithLabelValues(string(.TableFilter)).Set(float64(numberFilterIptablesRules))
 	numberNatIptablesRules := utilproxy.CountBytesLines(proxier.natRules.Bytes())
-	metrics.IptablesRulesTotal.WithLabelValues(string(utiliptables.TableNAT)).Set(float64(numberNatIptablesRules))
+	metrics.IptablesRulesTotal.WithLabelValues(string(.TableNAT)).Set(float64(numberNatIptablesRules))
 
 	klog.V(5).InfoS("Restoring iptables", "rules", proxier.iptablesData.Bytes())
-	err = proxier.iptables.RestoreAll(proxier.iptablesData.Bytes(), utiliptables.NoFlushTables, utiliptables.RestoreCounters)
+	err = proxier.iptables.RestoreAll(proxier.iptablesData.Bytes(), .NoFlushTables, .RestoreCounters)
 	if err != nil {
 		klog.ErrorS(err, "Failed to execute iptables-restore")
 		metrics.IptablesRestoreFailuresTotal.Inc()
