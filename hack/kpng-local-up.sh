@@ -56,5 +56,5 @@ function install {
 
 # Comment out build if you just want to install the default, i.e. for quickly getting up and running.
 setup_k8s
-#build
+build
 install

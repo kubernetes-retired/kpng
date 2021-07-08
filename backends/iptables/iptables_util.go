@@ -92,7 +92,8 @@ type Interface interface {
 }
 
 // Protocol defines the ip protocol either ipv4 or ipv6
-type Protocol string
+// declared elsewhere in kpng, so we skip declaring here
+// type Protocol string
 
 const (
 	// ProtocolIPv4 represents ipv4 protocol in iptables

@@ -3,11 +3,14 @@ package iptables
 import (
 	"bytes"
 	"fmt"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/exec"
 	"net"
 	"sigs.k8s.io/kpng/client"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,9 +38,10 @@ var syncPeriod           time.Duration
 var masqueradeAll  bool
 var masqueradeMark string
 var hostname       string
-var nodeIP         net.IP
-var recorder       record.EventRecorder
-
+var nodeIP       net.IP
+var recorder     record.EventRecorder
+var serviceMap   ServiceMap
+var endpointsMap EndpointsMap
 // Since converting probabilities (floats) to strings is expensive
 // and we are using only probabilities in the format of 1/n, we are
 // precomputing some number of those and cache for future reuse.
@@ -95,8 +99,78 @@ func BindFlags(flags *pflag.FlagSet) {
 	flags.AddFlagSet(flag)
 }
 
+
+// internal struct for string service information
+type serviceInfo struct {
+	*BaseServiceInfo
+	// The following fields are computed and stored for performance reasons.
+	serviceNameString        string
+	servicePortChainName     Chain
+	serviceFirewallChainName Chain
+	serviceLBChainName       Chain
+}
+
+// returns a new proxy.ServicePort which abstracts a serviceInfo
+func newServiceInfo(port *v1.ServicePort, service *v1.Service, baseInfo *BaseServiceInfo) ServicePort {
+	info := &serviceInfo{BaseServiceInfo: baseInfo}
+
+	// Store the following for performance reasons.
+	svcName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
+	svcPortName := ServicePortName{
+		svcName,
+		port.Name,
+		info.protocol,
+	}
+	protocol := strings.ToLower(string(info.Protocol()))
+	info.serviceNameString = svcPortName.String()
+	info.servicePortChainName = servicePortChainName(info.serviceNameString, protocol)
+	info.serviceFirewallChainName = serviceFirewallChainName(info.serviceNameString, protocol)
+	info.serviceLBChainName = serviceLBChainName(info.serviceNameString, protocol)
+
+	return info
+}
+
+// internal struct for endpoints information
+type endpointsInfo struct {
+	*BaseEndpointInfo
+	// The following fields we lazily compute and store here for performance
+	// reasons. If the protocol is the same as you expect it to be, then the
+	// chainName can be reused, otherwise it should be recomputed.
+	protocol  string
+	chainName Chain
+}
+
+// returns a new proxy.Endpoint which abstracts a endpointsInfo
+func newEndpointInfo(baseInfo *BaseEndpointInfo) Endpoint {
+	return &endpointsInfo{BaseEndpointInfo: baseInfo}
+}
+
+// Equal overrides the Equal() function implemented by proxy.BaseEndpointInfo.
+func (e *endpointsInfo) Equal(other Endpoint) bool {
+	o, ok := other.(*endpointsInfo)
+	if !ok {
+		klog.ErrorS(nil, "Failed to cast endpointsInfo")
+		return false
+	}
+	return e.Endpoint == o.Endpoint &&
+		e.IsLocal == o.IsLocal &&
+		e.protocol == o.protocol &&
+		e.chainName == o.chainName
+}
+
+// Returns the endpoint chain name for a given endpointsInfo.
+func (e *endpointsInfo) endpointChain(svcNameString, protocol string) Chain {
+	if e.protocol != protocol {
+		e.protocol = protocol
+		e.chainName = servicePortEndpointChainName(svcNameString, protocol, e.Endpoint)
+	}
+	return e.chainName
+}
+
+
 // Callback receives the fullstate every time, so we can make the proxier.go functionality
-// by rebuilding all the state as needed.
+// by rebuilding all the state as needed.  This is a port of the upstream kube proxy logic for iptables,
+// which is very sophisticated.
 func Callback(ch <-chan *client.ServiceEndpoints) {
 	// TODO, move these off for optimization somehow, and look
 	// at making another backend for IPV6/Dual?
@@ -176,6 +250,69 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			WriteLine(natChains, MakeChainLine(chainName))
 		}
 	}
+
+	// Install the kubernetes-specific postrouting rules. We use a whole chain for
+	// this so that it is easier to flush and change, for example if the mark
+	// value should ever change.
+	// NB: THIS MUST MATCH the corresponding code in the kubelet
+	WriteLine(natRules, []string{
+		"-A", string(kubePostroutingChain),
+		"-m", "mark", "!", "--mark", fmt.Sprintf("%s/%s", masqueradeMark, masqueradeMark),
+		"-j", "RETURN",
+	}...)
+	// Clear the mark to avoid re-masquerading if the packet re-traverses the network stack.
+	WriteLine(natRules, []string{
+		"-A", string(kubePostroutingChain),
+		// XOR proxier.masqueradeMark to unset it
+		"-j", "MARK", "--xor-mark", masqueradeMark,
+	}...)
+	masqRule := []string{
+		"-A", string(kubePostroutingChain),
+		"-m", "comment", "--comment", `"kubernetes service traffic requiring SNAT"`,
+		"-j", "MASQUERADE",
+	}
+	// TODO add logic for random-fully and iptables version logic eventually
+	// assume we are on a newer iptables...
+	//if iptables.HasRandomFully() {
+	//	masqRule = append(masqRule, "--random-fully")
+	//}
+	WriteLine(natRules, masqRule...)
+
+	// Install the kubernetes-specific masquerade mark rule. We use a whole chain for
+	// this so that it is easier to flush and change, for example if the mark
+	// value should ever change.
+	WriteLine(natRules, []string{
+		"-A", string(KubeMarkMasqChain),
+		"-j", "MARK", "--or-mark", masqueradeMark,
+	}...)
+
+	// Accumulate NAT chains to keep.
+	activeNATChains := map[Chain]bool{} // use a map as a set
+
+	// Accumulate the set of local ports that we will be holding open once this update is complete
+	replacementPortsMap := map[LocalPort]Closeable{}
+
+	// We are creating those slices ones here to avoid memory reallocations
+	// in every loop. Note that reuse the memory, instead of doing:
+	//   slice = <some new slice>
+	// you should always do one of the below:
+	//   slice = slice[:0] // and then append to it
+	//   slice = append(slice[:0], ...)
+	endpoints := make([]*endpointsInfo, 0)
+	endpointChains := make([]Chain, 0)
+	// To avoid growing this slice, we arbitrarily set its size to 64,
+	// there is never more than that many arguments for a single line.
+	// Note that even if we go over 64, it will still be correct - it
+	// is just for efficiency, not correctness.
+	args := make([]string, 64)
+
+	endpointChainsNumber = 0
+	for svcName := range serviceMap {
+		endpointChainsNumber += len(endpointsMap[svcName])
+	}
+
+
+
 
 
 
