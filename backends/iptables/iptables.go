@@ -329,6 +329,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	// OLD CODE
 	// OLD CODE
 	// OLD CODE
+	//
 	// example of how to cycle through the chains and stuff... slowly being replaced by the logic above...
 	for serviceEndpoints := range ch {
 		fmt.Println()
