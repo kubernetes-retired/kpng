@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/component-base/metrics"
 	utilnet "k8s.io/utils/net"
 )
 
@@ -37,6 +38,8 @@ var supportedEndpointSliceAddressTypes = sets.NewString(
 	string(discovery.AddressTypeIPv4),
 	string(discovery.AddressTypeIPv6),
 )
+
+
 
 // BaseEndpointInfo contains base information that defines an endpoint.
 // This could be used directly by proxier while processing endpoints,
@@ -70,6 +73,28 @@ type BaseEndpointInfo struct {
 }
 
 var _ Endpoint = &BaseEndpointInfo{}
+
+var EndpointChangesPending = metrics.NewGauge(
+        &metrics.GaugeOpts{
+                Subsystem:      kubeProxySubsystem,
+                Name:           "sync_proxy_rules_endpoint_changes_pending",
+                Help:           "Pending proxy rules Endpoint changes",
+                StabilityLevel: metrics.ALPHA,
+        },
+)
+
+// EndpointChangesTotal is the number of endpoint changes that the proxy
+// has seen.
+var EndpointChangesTotal = metrics.NewCounter(
+        &metrics.CounterOpts{
+                Subsystem:      kubeProxySubsystem,
+                Name:           "sync_proxy_rules_endpoint_changes_total",
+                Help:           "Cumulative proxy rules Endpoint changes",
+                StabilityLevel: metrics.ALPHA,
+        },
+)
+
+const kubeProxySubsystem = "kubeproxy"
 
 // String is part of proxy.Endpoint interface.
 func (info *BaseEndpointInfo) String() string {
@@ -204,7 +229,7 @@ func (ect *EndpointChangeTracker) Update(previous, current *v1.Endpoints) bool {
 	if endpoints == nil {
 		return false
 	}
-	metrics.EndpointChangesTotal.Inc()
+	EndpointChangesTotal.Inc()
 	namespacedName := types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}
 
 	ect.lock.Lock()
@@ -241,7 +266,7 @@ func (ect *EndpointChangeTracker) Update(previous, current *v1.Endpoints) bool {
 		}
 	}
 
-	metrics.EndpointChangesPending.Set(float64(len(ect.items)))
+	EndpointChangesPending.Set(float64(len(ect.items)))
 	return len(ect.items) > 0
 }
 
@@ -266,7 +291,7 @@ func (ect *EndpointChangeTracker) EndpointSliceUpdate(endpointSlice *discovery.E
 		return false
 	}
 
-	metrics.EndpointChangesTotal.Inc()
+	EndpointChangesTotal.Inc()
 
 	ect.lock.Lock()
 	defer ect.lock.Unlock()
@@ -274,7 +299,7 @@ func (ect *EndpointChangeTracker) EndpointSliceUpdate(endpointSlice *discovery.E
 	changeNeeded := ect.endpointSliceCache.updatePending(endpointSlice, removeSlice)
 
 	if changeNeeded {
-		metrics.EndpointChangesPending.Inc()
+		EndpointChangesPending.Inc()
 		// In case of Endpoints deletion, the LastChangeTriggerTime annotation is
 		// by-definition coming from the time of last update, which is not what
 		// we want to measure. So we simply ignore it in this cases.
@@ -295,7 +320,7 @@ func (ect *EndpointChangeTracker) checkoutChanges() []*endpointsChange {
 	ect.lock.Lock()
 	defer ect.lock.Unlock()
 
-	metrics.EndpointChangesPending.Set(0)
+	EndpointChangesPending.Set(0)
 
 	if ect.endpointSliceCache != nil {
 		return ect.endpointSliceCache.checkoutChanges()
@@ -430,7 +455,7 @@ func (ect *EndpointChangeTracker) endpointsToEndpointsMap(endpoints *v1.Endpoint
 				if (ect.ipFamily == v1.IPv6Protocol) != utilnet.IsIPv6String(addr.IP) {
 					// Emit event on the corresponding service which had a different
 					// IP version than the endpoint.
-					utilproxy.LogAndEmitIncorrectIPVersionEvent(ect.recorder, "endpoints", addr.IP, endpoints.Namespace, endpoints.Name, "")
+					LogAndEmitIncorrectIPVersionEvent(ect.recorder, "endpoints", addr.IP, endpoints.Namespace, endpoints.Name, "")
 					continue
 				}
 
