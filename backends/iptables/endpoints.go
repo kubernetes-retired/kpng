@@ -39,8 +39,6 @@ var supportedEndpointSliceAddressTypes = sets.NewString(
 	string(discovery.AddressTypeIPv6),
 )
 
-
-
 // BaseEndpointInfo contains base information that defines an endpoint.
 // This could be used directly by proxier while processing endpoints,
 // or can be used for constructing a more specific EndpointInfo struct
@@ -75,23 +73,23 @@ type BaseEndpointInfo struct {
 var _ Endpoint = &BaseEndpointInfo{}
 
 var EndpointChangesPending = metrics.NewGauge(
-        &metrics.GaugeOpts{
-                Subsystem:      kubeProxySubsystem,
-                Name:           "sync_proxy_rules_endpoint_changes_pending",
-                Help:           "Pending proxy rules Endpoint changes",
-                StabilityLevel: metrics.ALPHA,
-        },
+	&metrics.GaugeOpts{
+		Subsystem:      kubeProxySubsystem,
+		Name:           "sync_proxy_rules_endpoint_changes_pending",
+		Help:           "Pending proxy rules Endpoint changes",
+		StabilityLevel: metrics.ALPHA,
+	},
 )
 
 // EndpointChangesTotal is the number of endpoint changes that the proxy
 // has seen.
 var EndpointChangesTotal = metrics.NewCounter(
-        &metrics.CounterOpts{
-                Subsystem:      kubeProxySubsystem,
-                Name:           "sync_proxy_rules_endpoint_changes_total",
-                Help:           "Cumulative proxy rules Endpoint changes",
-                StabilityLevel: metrics.ALPHA,
-        },
+	&metrics.CounterOpts{
+		Subsystem:      kubeProxySubsystem,
+		Name:           "sync_proxy_rules_endpoint_changes_total",
+		Help:           "Cumulative proxy rules Endpoint changes",
+		StabilityLevel: metrics.ALPHA,
+	},
 )
 
 const kubeProxySubsystem = "kubeproxy"
