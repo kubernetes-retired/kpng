@@ -3,16 +3,17 @@ package iptables
 import (
 	"bytes"
 	"fmt"
+	"net"
+	"strings"
+	"sync"
+	"time"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/exec"
-	"net"
 	"sigs.k8s.io/kpng/client"
-	"strings"
-	"sync"
-	"time"
 
 	"github.com/spf13/pflag"
 )
@@ -23,25 +24,27 @@ var (
 	OnlyOutput = flag.Bool("only-output", false, "Only output the ipvsadm-restore file instead of calling ipvsadm-restore")
 )
 
-var mu           sync.Mutex // protects the following fields
-var nodeLabels   map[string]string
+var mu sync.Mutex // protects the following fields
+var nodeLabels map[string]string
+
 // endpointsSynced, endpointSlicesSynced, and servicesSynced are set to true
 // when corresponding objects are synced after startup. This is used to avoid
 // updating iptables with some partial data after kube-proxy restart.
-var endpointsSynced      bool
+var endpointsSynced bool
 var endpointSlicesSynced bool
-var servicesSynced       bool
-var initialized          int32
-var syncPeriod           time.Duration
+var servicesSynced bool
+var initialized int32
+var syncPeriod time.Duration
 
 // These are effectively const and do not need the mutex to be held.
-var masqueradeAll  bool
+var masqueradeAll bool
 var masqueradeMark string
-var hostname       string
-var nodeIP       net.IP
-var recorder     record.EventRecorder
-var serviceMap   ServiceMap
+var hostname string
+var nodeIP net.IP
+var recorder record.EventRecorder
+var serviceMap ServiceMap
 var endpointsMap EndpointsMap
+
 // Since converting probabilities (floats) to strings is expensive
 // and we are using only probabilities in the format of 1/n, we are
 // precomputing some number of those and cache for future reuse.
@@ -49,12 +52,12 @@ var precomputedProbabilities []string
 
 // The following buffers are used to reuse memory and avoid allocations
 // that are significantly impacting performance.
-var iptablesData             *bytes.Buffer
+var iptablesData *bytes.Buffer
 var existingFilterChainsData *bytes.Buffer
-var filterChains             *bytes.Buffer
-var filterRules              *bytes.Buffer
-var natChains                *bytes.Buffer
-var natRules                 *bytes.Buffer
+var filterChains *bytes.Buffer
+var filterRules *bytes.Buffer
+var natChains *bytes.Buffer
+var natRules *bytes.Buffer
 
 // endpointChainsNumber is the total amount of endpointChains across all
 // services that we will generate (it is computed at the beginning of
@@ -64,8 +67,11 @@ var endpointChainsNumber int
 
 // Values are as a parameter to select the interfaces where nodeport works.
 var nodePortAddresses []string
+
 // Inject for test purpose.
-var networkInterfacer     NetworkInterfacer
+var networkInterfacer NetworkInterfacer
+var serviceChanges *ServiceChangeTracker
+var endpointsChanges *EndpointChangeTracker
 
 const (
 	// the services chain
@@ -100,7 +106,6 @@ func PreRun() error {
 func BindFlags(flags *pflag.FlagSet) {
 	flags.AddFlagSet(flag)
 }
-
 
 // internal struct for string service information
 type serviceInfo struct {
@@ -169,7 +174,6 @@ func (e *endpointsInfo) endpointChain(svcNameString, protocol string) Chain {
 	return e.chainName
 }
 
-
 // Callback receives the fullstate every time, so we can make the proxier.go functionality
 // by rebuilding all the state as needed.  This is a port of the upstream kube proxy logic for iptables,
 // which is very sophisticated.
@@ -234,7 +238,6 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	// Write iptables header lines to specific chain indicies...
 	WriteLine(filterChains, "*filter")
 	WriteLine(natChains, "*nat")
-
 
 	// Make sure we keep stats for the top-level chains, if they existed
 	// (which most should have because we created them above).
@@ -320,24 +323,40 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 		klog.ErrorS(err, "Failed to get node ip address matching nodeport cidrs, services with nodeport may not work as intended", "CIDRs", nodePortAddresses)
 	}
 
-
-
-
-
-	// OLD CODE
-	// OLD CODE
-	// OLD CODE
-	// OLD CODE
-	// OLD CODE
-	// OLD CODE
-	// OLD CODE
-	//
-	// example of how to cycle through the chains and stuff... slowly being replaced by the logic above...
+	//////////////////////OLD WAY////////////////////////////////////
+	//TODO : The below code could be the only code in callBack.The syncProxyRules
+	//can be maintained in this file similar to existing kubeproxy.
+	//Also callback could be made to receive only changes than full state by
+	//providing an option in kpng to receive either full state or change(iptable would chose later).
 	for serviceEndpoints := range ch {
-		fmt.Println()
-		svc := serviceEndpoints.Service
-		//	endpoints := serviceEndpoints.Endpoints
-
-		fmt.Println(fmt.Sprintf("%v", svc))
+		svc, err := ConvertToService(serviceEndpoints.Service)
+		if err != nil {
+			klog.Error(err)
+			continue
+		}
+		serviceChanges.Update(nil, svc)
+		v4Slice, v6Slice := ConvertToEPSlices(serviceEndpoints.Service, serviceEndpoints.Endpoints)
+		endpointsChanges.EndpointSliceUpdate(v4Slice, false)
+		endpointsChanges.EndpointSliceUpdate(v6Slice, false)
 	}
+
+	/////////////////////////NEW WAY/////////////////////////////////////
+	// for serviceEndpoints := range ch {
+	// 	svc := serviceEndpoints.Service
+	// 	for _, svcPort := range svc.GetPorts() {
+	// 		endpoints := serviceEndpoints.Endpoints
+	// 		isIPv6 := utilnet.IsIPv6(net.ParseIP(svc.IPs.ClusterIP))
+	// 		localPortIPFamily := utilnet.IPv4
+	// 		if isIPv6 {
+	// 			localPortIPFamily = utilnet.IPv6
+	// 		}
+	// 		protocol := strings.ToLower(svcPort.Protocol.String())
+	// 		svcNameString := svc.Name
+	// 		// serviceEndpoints.Endpoints.
+	// 		allEndpoints := proxier.endpointsMap[svcPort.Name]
+
+	// 	}
+	// }
+	/////////////////////////NEW WAY END/////////////////////////////////////
+
 }

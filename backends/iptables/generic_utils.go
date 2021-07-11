@@ -2,14 +2,18 @@ package iptables
 
 import (
 	"bytes"
+	"fmt"
+	"net"
+
+	v1 "k8s.io/api/core/v1"
+	discovery "k8s.io/api/discovery/v1beta1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	utilnet "k8s.io/utils/net"
-	"k8s.io/client-go/tools/record"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/sets"
-	"net"
-	"fmt"
-	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
 
 const (
@@ -47,8 +51,6 @@ func WriteBytesLine(buf *bytes.Buffer, bytes []byte) {
 	buf.Write(bytes)
 	buf.WriteByte('\n')
 }
-
-
 
 // GetLocalAddrs returns a list of all network addresses on the local system
 func GetLocalAddrs() ([]net.IP, error) {
@@ -168,4 +170,101 @@ func GetNodeAddresses(cidrs []string, nw NetworkInterfacer) (sets.String, error)
 	}
 
 	return uniqueAddressList, nil
+}
+
+func ConvertToEPSlices(svc *localnetv1.Service, endpoints []*localnetv1.Endpoint) (*discovery.EndpointSlice, *discovery.EndpointSlice) {
+	var ePSliceV4 *discovery.EndpointSlice
+	var ePSliceV6 *discovery.EndpointSlice
+	ePSliceV4.AddressType = "IPv4"
+	ePSliceV6.AddressType = "IPv6"
+	for _, ep := range endpoints {
+		var k8sEP *discovery.Endpoint
+		var slice *discovery.EndpointSlice
+		var add string
+		if len(ep.GetIPs().V4) > 0 {
+			slice = ePSliceV4
+			add = ep.GetIPs().V4[0]
+		} else if len(ep.GetIPs().V6) > 0 {
+			slice = ePSliceV6
+			add = ep.GetIPs().V6[0]
+		} else {
+			klog.Errorf("Empty Endpoint")
+			continue
+		}
+		// slice.ClusterName = svc.
+		//TODO when would there be multiple addresses in EP
+		k8sEP.Addresses[0] = add
+		*k8sEP.Hostname = ep.GetHostname()
+		slice.Endpoints = append(slice.Endpoints, *k8sEP)
+	}
+	var k8sPorts []discovery.EndpointPort
+	for _, epPort := range svc.GetPorts() {
+		var k8sPort discovery.EndpointPort
+		*k8sPort.Protocol = v1.Protocol(epPort.Protocol.String())
+		*k8sPort.Name = epPort.Name
+		*k8sPort.Port = epPort.TargetPort
+		k8sPorts = append(k8sPorts, k8sPort)
+	}
+	ePSliceV4.Ports = k8sPorts
+	ePSliceV6.Ports = k8sPorts
+	return ePSliceV4, ePSliceV6
+}
+
+func ConvertToService(svc *localnetv1.Service) (*v1.Service, error) {
+
+	var k8sSvc *v1.Service
+	k8sSvc.Annotations = svc.Annotations
+	if svc.ExternalTrafficToLocal {
+		k8sSvc.Spec.ExternalTrafficPolicy = v1.ServiceExternalTrafficPolicyTypeLocal
+	} else {
+		k8sSvc.Spec.ExternalTrafficPolicy = v1.ServiceExternalTrafficPolicyTypeCluster
+	}
+	k8sSvc.Spec.ClusterIP = svc.IPs.ClusterIP
+	//TODO after rebase set ClusterIps as well
+	k8sSvc.Labels = svc.Labels
+	// k8sSvc.Map=svc.MapIP
+	k8sSvc.Name = svc.Name
+	k8sSvc.Namespace = svc.Namespace
+	k8sSvc.Spec.Ports = ConvertToServicePorts(svc.Ports)
+	var err error
+	k8sSvc.Spec.Type, err = GetSvcType(svc.Type)
+	if err != nil {
+		return nil, err
+	}
+	return k8sSvc, nil
+}
+
+func ConvertToServicePorts(ports []*localnetv1.PortMapping) []v1.ServicePort {
+	var k8sSvcPorts []v1.ServicePort
+	for _, port := range ports {
+		var k8sSvcPort v1.ServicePort
+		k8sSvcPort.Name = port.Name
+		k8sSvcPort.NodePort = port.NodePort
+		k8sSvcPort.Port = port.Port
+		k8sSvcPort.Protocol = v1.Protocol(port.Protocol.String())
+		if port.TargetPortName != "" { //CHECK THE LOGIC
+			k8sSvcPort.TargetPort = intstr.FromString(port.TargetPortName)
+		} else {
+			k8sSvcPort.TargetPort = intstr.FromInt(int(port.TargetPort))
+		}
+		k8sSvcPorts = append(k8sSvcPorts, k8sSvcPort)
+	}
+	return k8sSvcPorts
+}
+
+func GetSvcType(svcType string) (v1.ServiceType, error) {
+	if svcType == "ClusterIP" {
+		return v1.ServiceTypeClusterIP, nil
+	}
+	if svcType == "NodePort" {
+		return v1.ServiceTypeNodePort, nil
+	}
+	if svcType == "LoadBalancer" {
+		return v1.ServiceTypeLoadBalancer, nil
+	}
+
+	if svcType == "ExternalName" {
+		return v1.ServiceTypeExternalName, nil
+	}
+	return "", fmt.Errorf("Invalid service Type: %s", svcType)
 }
