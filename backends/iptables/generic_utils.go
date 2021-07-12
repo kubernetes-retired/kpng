@@ -52,6 +52,30 @@ func WriteBytesLine(buf *bytes.Buffer, bytes []byte) {
 	buf.WriteByte('\n')
 }
 
+// WriteRuleLine prepends the strings "-A" and chainName to the buffer and calls
+// WriteLine to join all the words into the buffer and terminate with newline.
+func WriteRuleLine(buf *bytes.Buffer, chainName string, words ...string) {
+	if len(words) == 0 {
+		return
+	}
+	buf.WriteString("-A ")
+	buf.WriteString(chainName)
+	buf.WriteByte(' ')
+	WriteLine(buf, words...)
+}
+
+// RevertPorts is closing ports in replacementPortsMap but not in originalPortsMap. In other words, it only
+// closes the ports opened in this sync.
+func RevertPorts(replacementPortsMap, originalPortsMap map[utilnet.LocalPort]utilnet.Closeable) {
+	for k, v := range replacementPortsMap {
+		// Only close newly opened local ports - leave ones that were open before this update
+		if originalPortsMap[k] == nil {
+			klog.V(2).Infof("Closing local port %s", k.String())
+			v.Close()
+		}
+	}
+}
+
 // GetLocalAddrs returns a list of all network addresses on the local system
 func GetLocalAddrs() ([]net.IP, error) {
 	var localAddrs []net.IP
@@ -219,8 +243,11 @@ func ConvertToService(svc *localnetv1.Service) (*v1.Service, error) {
 	} else {
 		k8sSvc.Spec.ExternalTrafficPolicy = v1.ServiceExternalTrafficPolicyTypeCluster
 	}
-	k8sSvc.Spec.ClusterIP = svc.IPs.ClusterIP
 	//TODO after rebase set ClusterIps as well
+	k8sSvc.Spec.ClusterIP = svc.IPs.ClusterIP
+	var extIps []string
+	//TODO any order to maintain
+	k8sSvc.Spec.ExternalIPs = append(append(extIps, svc.IPs.ExternalIPs.V4...), svc.IPs.ExternalIPs.V6...)
 	k8sSvc.Labels = svc.Labels
 	// k8sSvc.Map=svc.MapIP
 	k8sSvc.Name = svc.Name
@@ -267,4 +294,9 @@ func GetSvcType(svcType string) (v1.ServiceType, error) {
 		return v1.ServiceTypeExternalName, nil
 	}
 	return "", fmt.Errorf("Invalid service Type: %s", svcType)
+}
+
+// CountBytesLines counts the number of lines in a bytes slice
+func CountBytesLines(b []byte) int {
+	return bytes.Count(b, []byte{'\n'})
 }
