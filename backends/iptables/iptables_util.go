@@ -262,7 +262,6 @@ func New(exec utilexec.Interface, protocol Protocol) Interface {
 	return newInternal(exec, protocol, "", "")
 }
 
-
 // FlushChain is part of Interface.
 func (runner *runner) FlushChain(table Table, chain Chain) error {
 	fullArgs := makeFullArgs(table, chain)
