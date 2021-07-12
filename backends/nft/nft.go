@@ -46,7 +46,7 @@ var (
 	skipComments    = flag.Bool("skip-comments", false, "don't comment rules")
 	splitBits       = flag.Int("split-bits", 24, "dispatch services in multiple chains, spliting at the nth bit")
 	splitBits6      = flag.Int("split-bits6", 120, "dispatch services in multiple chains, spliting at the nth bit (for IPv6)")
-	mapsCount       = flag.Uint64("maps-count", 0xff, "number of endpoints maps to use")
+	mapsCount       = flag.Uint64("maps-count", 0x100, "number of endpoints maps to use")
 	forceNFTHashBug = flag.Bool("force-nft-hash-workaround", false, "bypass auto-detection of NFT hash bug (necessary when nft is blind)")
 	withTrace       = flag.Bool("trace", false, "enable nft trace")
 
