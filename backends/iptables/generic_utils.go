@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	utilnet "k8s.io/utils/net"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
@@ -113,7 +113,7 @@ func GetLocalAddrSet() utilnet.IPSet {
 }
 
 // LogAndEmitIncorrectIPVersionEvent logs and emits incorrect IP version event.
-func LogAndEmitIncorrectIPVersionEvent(recorder record.EventRecorder, fieldName, fieldValue, svcNamespace, svcName string, svcUID types.UID) {
+func LogAndEmitIncorrectIPVersionEvent(recorder events.EventRecorder, fieldName, fieldValue, svcNamespace, svcName string, svcUID types.UID) {
 	errMsg := fmt.Sprintf("%s in %s has incorrect IP version", fieldValue, fieldName)
 	klog.Errorf("%s (service %s/%s).", errMsg, svcNamespace, svcName)
 	if recorder != nil {
@@ -123,7 +123,7 @@ func LogAndEmitIncorrectIPVersionEvent(recorder record.EventRecorder, fieldName,
 				Name:      svcName,
 				Namespace: svcNamespace,
 				UID:       svcUID,
-			}, v1.EventTypeWarning, "KubeProxyIncorrectIPVersion", errMsg)
+			},nil, v1.EventTypeWarning, "KubeProxyIncorrectIPVersion", "GatherEndpoints", errMsg)
 	}
 }
 
@@ -197,12 +197,12 @@ func GetNodeAddresses(cidrs []string, nw NetworkInterfacer) (sets.String, error)
 }
 
 func ConvertToEPSlices(svc *localnetv1.Service, endpoints []*localnetv1.Endpoint) (*discovery.EndpointSlice, *discovery.EndpointSlice) {
-	var ePSliceV4 *discovery.EndpointSlice
-	var ePSliceV6 *discovery.EndpointSlice
+	ePSliceV4 := &discovery.EndpointSlice{}
+	ePSliceV6 := &discovery.EndpointSlice{}
 	ePSliceV4.AddressType = "IPv4"
 	ePSliceV6.AddressType = "IPv6"
 	for _, ep := range endpoints {
-		var k8sEP *discovery.Endpoint
+		k8sEP := &discovery.Endpoint{}
 		var slice *discovery.EndpointSlice
 		var add string
 		if len(ep.GetIPs().V4) > 0 {
@@ -217,16 +217,20 @@ func ConvertToEPSlices(svc *localnetv1.Service, endpoints []*localnetv1.Endpoint
 		}
 		// slice.ClusterName = svc.
 		//TODO when would there be multiple addresses in EP
-		k8sEP.Addresses[0] = add
-		*k8sEP.Hostname = ep.GetHostname()
+		k8sEP.Addresses = []string{add}
+		k8sEP.Hostname = &ep.Hostname
+		slice.Labels = map[string]string{discovery.LabelServiceName: svc.Name}
+		slice.Name = svc.Name
+		slice.Namespace = svc.Namespace
 		slice.Endpoints = append(slice.Endpoints, *k8sEP)
 	}
 	var k8sPorts []discovery.EndpointPort
 	for _, epPort := range svc.GetPorts() {
 		var k8sPort discovery.EndpointPort
-		*k8sPort.Protocol = v1.Protocol(epPort.Protocol.String())
-		*k8sPort.Name = epPort.Name
-		*k8sPort.Port = epPort.TargetPort
+		protocol := v1.Protocol(epPort.Protocol.String())
+		k8sPort.Protocol = &protocol
+		k8sPort.Name = &epPort.Name
+		k8sPort.Port = &epPort.TargetPort
 		k8sPorts = append(k8sPorts, k8sPort)
 	}
 	ePSliceV4.Ports = k8sPorts
@@ -236,7 +240,7 @@ func ConvertToEPSlices(svc *localnetv1.Service, endpoints []*localnetv1.Endpoint
 
 func ConvertToService(svc *localnetv1.Service) (*v1.Service, error) {
 
-	var k8sSvc *v1.Service
+	k8sSvc := &v1.Service{}
 	k8sSvc.Annotations = svc.Annotations
 	if svc.ExternalTrafficToLocal {
 		k8sSvc.Spec.ExternalTrafficPolicy = v1.ServiceExternalTrafficPolicyTypeLocal

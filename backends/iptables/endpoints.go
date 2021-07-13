@@ -29,7 +29,7 @@ import (
 	discovery "k8s.io/api/discovery/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/component-base/metrics"
 	utilnet "k8s.io/utils/net"
 )
@@ -181,7 +181,7 @@ type EndpointChangeTracker struct {
 	endpointSliceCache *EndpointSliceCache
 	// ipfamily identify the ip family on which the tracker is operating on
 	ipFamily v1.IPFamily
-	recorder record.EventRecorder
+	recorder events.EventRecorder
 	// Map from the Endpoints namespaced-name to the times of the triggers that caused the endpoints
 	// object to change. Used to calculate the network-programming-latency.
 	lastChangeTriggerTimes map[types.NamespacedName][]time.Time
@@ -193,8 +193,8 @@ type EndpointChangeTracker struct {
 }
 
 // NewEndpointChangeTracker initializes an EndpointsChangeMap
-func NewEndpointChangeTracker(hostname string, makeEndpointInfo makeEndpointFunc, ipFamily v1.IPFamily, recorder record.EventRecorder, endpointSlicesEnabled bool, processEndpointsMapChange processEndpointsMapChangeFunc) *EndpointChangeTracker {
-	ect := &EndpointChangeTracker{
+func NewEndpointChangeTracker(hostname string, makeEndpointInfo makeEndpointFunc, ipFamily v1.IPFamily, recorder events.EventRecorder, processEndpointsMapChange processEndpointsMapChangeFunc) *EndpointChangeTracker {
+	return &EndpointChangeTracker{
 		hostname:                  hostname,
 		items:                     make(map[types.NamespacedName]*endpointsChange),
 		makeEndpointInfo:          makeEndpointInfo,
@@ -203,11 +203,8 @@ func NewEndpointChangeTracker(hostname string, makeEndpointInfo makeEndpointFunc
 		lastChangeTriggerTimes:    make(map[types.NamespacedName][]time.Time),
 		trackerStartTime:          time.Now(),
 		processEndpointsMapChange: processEndpointsMapChange,
+		endpointSliceCache:        NewEndpointSliceCache(hostname, ipFamily, recorder, makeEndpointInfo),
 	}
-	if endpointSlicesEnabled {
-		ect.endpointSliceCache = NewEndpointSliceCache(hostname, ipFamily, recorder, makeEndpointInfo)
-	}
-	return ect
 }
 
 // Update updates given service's endpoints change map based on the <previous, current> endpoints pair.  It returns true

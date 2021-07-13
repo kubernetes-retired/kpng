@@ -128,7 +128,7 @@ func LocalCmds(run func(sink localsink.Sink) error) (cmds []*cobra.Command) {
 
 func BackendCmds(sink *fullstate.Sink, run func() error) []*cobra.Command {
 	return []*cobra.Command{
-		{Use: "to-iptables", RunE: unimplemented},
+		iptablesCommand(sink, run),
 		ipvsCommand(sink, run),
 		nftCommand(sink, run),
 	}
