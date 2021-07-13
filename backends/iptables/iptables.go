@@ -27,8 +27,8 @@ var (
 	OnlyOutput = flag.Bool("only-output", false, "Only output the ipvsadm-restore file instead of calling ipvsadm-restore")
 )
 
-var mu sync.Mutex // protects the following fields
-var nodeLabels map[string]string
+var mu sync.Mutex                // protects the following fields
+var nodeLabels map[string]string //TODO: looks like can be removed as kpng controller shoujld do the work
 
 // endpointsSynced, endpointSlicesSynced, and servicesSynced are set to true
 // when corresponding objects are synced after startup. This is used to avoid
@@ -45,8 +45,8 @@ var masqueradeMark string
 var hostname string
 var nodeIP net.IP
 var recorder events.EventRecorder
-var serviceMap ServiceMap
-var endpointsMap EndpointsMap
+var serviceMap ServiceMap = make(ServiceMap)
+var endpointsMap EndpointsMap = make(EndpointsMap)
 
 // Since converting probabilities (floats) to strings is expensive
 // and we are using only probabilities in the format of 1/n, we are
@@ -55,12 +55,12 @@ var precomputedProbabilities []string
 
 // The following buffers are used to reuse memory and avoid allocations
 // that are significantly impacting performance.
-var iptablesData *bytes.Buffer
-var existingFilterChainsData *bytes.Buffer
-var filterChains *bytes.Buffer
-var filterRules *bytes.Buffer
-var natChains *bytes.Buffer
-var natRules *bytes.Buffer
+var iptablesData *bytes.Buffer = bytes.NewBuffer(nil)
+var existingFilterChainsData *bytes.Buffer = bytes.NewBuffer(nil)
+var filterChains *bytes.Buffer = bytes.NewBuffer(nil)
+var filterRules *bytes.Buffer = bytes.NewBuffer(nil)
+var natChains *bytes.Buffer = bytes.NewBuffer(nil)
+var natRules *bytes.Buffer = bytes.NewBuffer(nil)
 
 // endpointChainsNumber is the total amount of endpointChains across all
 // services that we will generate (it is computed at the beginning of
@@ -77,7 +77,7 @@ var serviceChanges *ServiceChangeTracker
 var endpointsChanges *EndpointChangeTracker
 var localDetector LocalTrafficDetector
 var portsMap = make(map[utilnet.LocalPort]utilnet.Closeable)
-var portMapper utilnet.PortOpener
+var portMapper = &utilnet.ListenPortOpener
 
 const (
 	// the services chain
@@ -180,16 +180,26 @@ func (e *endpointsInfo) endpointChain(svcNameString, protocol string) Chain {
 	return e.chainName
 }
 
+func init() {
+        masqueradeAll = true
+	masqueradeBit := 14 //TODO: should it be fetched as flag etc?
+	masqueradeValue := 1 << uint(masqueradeBit)
+	masqueradeMark = fmt.Sprintf("%#08x", masqueradeValue)
+	localDetector = NewNoOpLocalDetector()
+	serviceChanges = NewServiceChangeTracker(newServiceInfo, v1.IPv4Protocol, recorder, nil)
+	endpointsChanges = NewEndpointChangeTracker(hostname, newEndpointInfo, v1.IPv4Protocol, recorder, nil)
+	//TODO : needs a better place. config.HostnameOverride is required here?
+	var err error
+	hostname, err = utilnode.GetHostname("")
+	if err != nil {
+		klog.Errorf("Could not get hostname: %s", err)
+	}
+}
+
 // Callback receives the fullstate every time, so we can make the proxier.go functionality
 // by rebuilding all the state as needed.  This is a port of the upstream kube proxy logic for iptables,
 // which is very sophisticated.
 func Callback(ch <-chan *client.ServiceEndpoints) {
-
-	//TODO : needs a better place. config.HostnameOverride is required here?
-	hostname, err := utilnode.GetHostname("")
-	if err != nil {
-		klog.Errorf("Could not get hostname: %s", err)
-	}
 
 	//TODO : The below code could be the only code in callBack.The syncProxyRules
 	//can be maintained in this file similar to existing kubeproxy.
@@ -203,8 +213,12 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 		}
 		serviceChanges.Update(nil, svc)
 		v4Slice, v6Slice := ConvertToEPSlices(serviceEndpoints.Service, serviceEndpoints.Endpoints)
-		endpointsChanges.EndpointSliceUpdate(v4Slice, false)
-		endpointsChanges.EndpointSliceUpdate(v6Slice, false)
+		if len(v4Slice.Endpoints) > 0 {
+			endpointsChanges.EndpointSliceUpdate(v4Slice, false)
+		}
+		if len(v6Slice.Endpoints) > 0 {
+			endpointsChanges.EndpointSliceUpdate(v6Slice, false)
+		}
 	}
 	// We assume that if this was called, we really want to sync them,
 	// even if nothing changed in the meantime. In other words, callers are
@@ -268,7 +282,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	// part of the proxy...
 	preexistingFilterChains := make(map[Chain][]byte)
 	existingFilterChainsData.Reset()
-	err = iptInterface.SaveInto(TableFilter, existingFilterChainsData)
+	err := iptInterface.SaveInto(TableFilter, existingFilterChainsData)
 	if err != nil { // if we failed to get any rules
 		klog.ErrorS(err, "Failed to execute iptables-save, syncing all rules")
 	} else { // otherwise parse the output
@@ -397,8 +411,9 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 		}
 		protocol := strings.ToLower(string(svcInfo.Protocol()))
 		svcNameString := svcInfo.serviceNameString
-
+		klog.Info("CURRENT SVC:", svcNameString)
 		allEndpoints := endpointsMap[svcName]
+		klog.Info("EPS:", allEndpoints)
 
 		//TODO hope below one is not requires ,as per michael its handled in controller
 		// Filtering for topology aware endpoints. This function will only
@@ -433,12 +448,14 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 
 		// Capture the clusterIP.
 		if hasEndpoints {
+
 			args = append(args[:0],
 				"-m", "comment", "--comment", fmt.Sprintf(`"%s cluster IP"`, svcNameString),
 				"-m", protocol, "-p", protocol,
 				"-d", ToCIDR(svcInfo.ClusterIP()),
 				"--dport", strconv.Itoa(svcInfo.Port()),
 			)
+			klog.Info("WRITING RULES FOR CLUSTERIP:", args)
 			if masqueradeAll {
 				WriteRuleLine(natRules, string(svcChain), append(args, "-j", string(KubeMarkMasqChain))...)
 			} else if localDetector.IsImplemented() { //TODO is this required?
@@ -1161,3 +1178,4 @@ func computeProbability(n int) string {
 // 		}
 // 	}
 // }
+
