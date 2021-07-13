@@ -201,7 +201,9 @@ func init() {
 // which is very sophisticated.
 func Callback(ch <-chan *client.ServiceEndpoints) {
 
-	//TODO : The below code could be the only code in callBack.The syncProxyRules
+	// 1) Copy the kpng datamodel into the iptables datamodel of serviceChanges and endpointsChanges.
+	//TODO : The below code could be the only code in callBack.
+	// The syncProxyRules
 	//can be maintained in this file similar to existing kubeproxy.
 	//Also callback could be made to receive only changes than full state by
 	//providing an option in kpng to receive either full state or change(iptable would chose later).
@@ -220,6 +222,10 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			endpointsChanges.EndpointSliceUpdate(v6Slice, false)
 		}
 	}
+	// end 1)
+
+	// This is where the actual kube-proxy legacy logic takes over...
+
 	// We assume that if this was called, we really want to sync them,
 	// even if nothing changed in the meantime. In other words, callers are
 	// responsible for detecting no-op changes and not calling this function.
