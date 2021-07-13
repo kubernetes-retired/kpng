@@ -26,9 +26,11 @@ import (
 var (
 	flag = &pflag.FlagSet{}
 
-	OnlyOutput  = flag.Bool("only-output", false, "Only output the ipvsadm-restore file instead of calling ipvsadm-restore")
-	IPVSAdmPath = flag.String("ipvsadm", func() string { s, _ := exec.LookPath("ipvsadm"); return s }(), "Defines the path of ipvsadm-restore command")
-	NodeAddress = flag.StringSlice("nodeport-address", interfaceAddresses(), "A comma-separated list of IPs to associate when using NodePort type. Defaults to all the Node addresses")
+	OnlyOutput       = flag.Bool("only-output", false, "Only output the ipvsadm-restore file instead of calling ipvsadm-restore")
+	IPVSAdmPath      = flag.String("ipvsadm", func() string { s, _ := exec.LookPath("ipvsadm"); return s }(), "Defines the path of ipvsadm-restore command")
+	NodeAddress      = flag.StringSlice("nodeport-address", interfaceAddresses(), "A comma-separated list of IPs to associate when using NodePort type. Defaults to all the Node addresses")
+	SchedulingMethod = flag.String("scheduling-method", "rr", "Algorithm for allocating TCP conn & UDP datagrams to real servers. Values: rr,wrr,lc,wlc,lblc,lblcr,dh,sh,seq,nq")
+	Weight           = flag.Int("weight", 1, "An integer specifying the capacity of server relative to others in the pool")
 	// TODO: Not used yet
 	IPVSExcludeCIDRS = flag.StringSlice("ipvs-exclude-cidrs", nil, "A comma-separated list of CIDR's which the ipvs proxier should not touch when cleaning up IPVS rules.")
 	// TODO: Not used yet
