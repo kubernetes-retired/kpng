@@ -66,3 +66,23 @@ func ExampleIPSetAdd() {
 	// [1.1.1.1 1.1.1.2 1.1.1.3 1.1.1.4]
 	// [::1 ::2 ::3 ::4]
 }
+
+func ExampleIPSetDiff() {
+	s1 := &IPSet{
+		V4: []string{"1.1.1.1", "1.1.1.2"},
+		V6: []string{"::1", "::2"},
+	}
+	s2 := &IPSet{
+		V4: []string{"1.1.1.2", "1.1.1.3"},
+		V6: []string{"::2", "::3"},
+	}
+
+	added, removed := s1.Diff(s2)
+
+	fmt.Println("added:  ", added)
+	fmt.Println("removed:", removed)
+
+	// Output:
+	// added:   V4:"1.1.1.3"  V6:"::3"
+	// removed: V4:"1.1.1.1"  V6:"::1"
+}

@@ -2,6 +2,7 @@ package ipvssink
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"net"
 	"os/exec"
@@ -23,14 +24,22 @@ type Backend struct {
 	setServices    []*localnetv1.Service
 	deletedService []*localnetv1.Service
 
-	lbs map[string]*ipvsLB
+	newLBs     []*ipvsLB
+	removedLBs []*ipvsLB
+
 	buf *bytes.Buffer
 }
 
 type ipvsLB struct {
-	ip        string
-	proto     string
-	endpoints []string
+	ip         string
+	proto      string
+	svcPort    string
+	targetPort string
+	endpoints  []*localnetv1.IPSet
+}
+
+func (lb *ipvsLB) String() string {
+	return fmt.Sprintf("%+v", *lb)
 }
 
 var _ decoder.Interface = &Backend{}
@@ -39,7 +48,8 @@ func New() *Backend {
 	return &Backend{
 		buf:        &bytes.Buffer{},
 		serviceMap: map[string]*localnetv1.Service{},
-		lbs:        map[string]*ipvsLB{},
+		newLBs:     []*ipvsLB{},
+		removedLBs: []*ipvsLB{},
 	}
 }
 
@@ -79,6 +89,8 @@ func (s *Backend) Sync() {
 		log.Fatal("failed to list dummy interface IPs: ", err)
 	}
 
+	//ifaceIPs := localnetv1.NewIPSet(addrs)
+
 	for _, svc := range s.setServices {
 		for _, ip := range svc.IPs.ClusterIPs.V4 {
 			gotAddr := false
@@ -103,10 +115,13 @@ func (s *Backend) Sync() {
 
 	// TODO
 
-	log.Printf("LBs: %+v", s.lbs)
+	log.Printf("New LBs: %+v", s.newLBs)
+	log.Printf("Removed LBs: %+v", s.removedLBs)
 
 	s.setServices = s.setServices[:0]
 	s.deletedService = s.deletedService[:0]
+	s.newLBs = s.newLBs[:0]
+	s.removedLBs = s.removedLBs[:0]
 }
 
 func (s *Backend) SetService(service *localnetv1.Service) {
@@ -126,20 +141,18 @@ func (s *Backend) SetService(service *localnetv1.Service) {
 	s.serviceMap[key] = service
 	s.setServices = append(s.setServices, service)
 
-	for _, newIPv4 := range service.IPs.ClusterIPs.V4 {
-		isNew := true
-		for _, prevIPv4 := range prevSvc.IPs.ClusterIPs.V4 {
-			if prevIPv4 == newIPv4 {
-				isNew = false
-				break
-			}
-		}
+	added, removed := prevSvc.IPs.ClusterIPs.Diff(service.IPs.ClusterIPs)
+	// TODO process the diff
+	for _, newIP := range added.V4 {
+		s.newLBs = append(s.newLBs, &ipvsLB{
+			ip: newIP,
+		})
+	}
 
-		if isNew {
-			s.lbs[key+":"+newIPv4] = &ipvsLB{
-				ip: newIPv4,
-			}
-		}
+	for _, removedIP := range removed.V4 {
+		s.removedLBs = append(s.removedLBs, &ipvsLB{
+			ip: removedIP,
+		})
 	}
 }
 
@@ -152,6 +165,10 @@ func (s *Backend) DeleteService(namespace, name string) {
 	delete(s.serviceMap, key)
 
 	s.deletedService = append(s.deletedService, svc)
+
+	for _, ip := range svc.IPs.ClusterIPs.V4 {
+		s.removedLBs = append(s.removedLBs, &ipvsLB{ip: ip})
+	}
 }
 
 func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint) {
