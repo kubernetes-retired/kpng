@@ -28,3 +28,7 @@ func (c *Config) BindFlags(flags *pflag.FlagSet) {
 		return s
 	}(), "Node name override")
 }
+
+func (c *Config) WaitRequest() (nodeName string, err error) {
+	return c.NodeName, nil
+}
