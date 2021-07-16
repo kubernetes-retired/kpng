@@ -33,7 +33,6 @@ import (
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/proxy/metrics"
-	utilproxy "k8s.io/kubernetes/pkg/proxy/util"
 )
 
 // BaseServiceInfo contains base information that defines a service.
@@ -153,7 +152,7 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *v1.ServicePort, servic
 		stickyMaxAgeSeconds = int(*service.Spec.SessionAffinityConfig.ClientIP.TimeoutSeconds)
 	}
 
-	clusterIP := utilproxy.GetClusterIPByFamily(sct.ipFamily, service)
+	clusterIP := GetClusterIPByFamily(sct.ipFamily, service)
 	info := &BaseServiceInfo{
 		clusterIP:             net.ParseIP(clusterIP),
 		port:                  int(port.Port),
@@ -176,18 +175,18 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *v1.ServicePort, servic
 	// services, this is actually expected. Hence we downgraded from reporting by events
 	// to just log lines with high verbosity
 
-	ipFamilyMap := utilproxy.MapIPsByIPFamily(service.Spec.ExternalIPs)
+	ipFamilyMap := MapIPsByIPFamily(service.Spec.ExternalIPs)
 	info.externalIPs = ipFamilyMap[sct.ipFamily]
 
 	// Log the IPs not matching the ipFamily
-	if ips, ok := ipFamilyMap[utilproxy.OtherIPFamily(sct.ipFamily)]; ok && len(ips) > 0 {
+	if ips, ok := ipFamilyMap[OtherIPFamily(sct.ipFamily)]; ok && len(ips) > 0 {
 		klog.V(4).Infof("service change tracker(%v) ignored the following external IPs(%s) for service %v/%v as they don't match IPFamily", sct.ipFamily, strings.Join(ips, ","), service.Namespace, service.Name)
 	}
 
-	ipFamilyMap = utilproxy.MapCIDRsByIPFamily(loadBalancerSourceRanges)
+	ipFamilyMap = MapCIDRsByIPFamily(loadBalancerSourceRanges)
 	info.loadBalancerSourceRanges = ipFamilyMap[sct.ipFamily]
 	// Log the CIDRs not matching the ipFamily
-	if cidrs, ok := ipFamilyMap[utilproxy.OtherIPFamily(sct.ipFamily)]; ok && len(cidrs) > 0 {
+	if cidrs, ok := ipFamilyMap[OtherIPFamily(sct.ipFamily)]; ok && len(cidrs) > 0 {
 		klog.V(4).Infof("service change tracker(%v) ignored the following load balancer source ranges(%s) for service %v/%v as they don't match IPFamily", sct.ipFamily, strings.Join(cidrs, ","), service.Namespace, service.Name)
 	}
 
@@ -200,9 +199,9 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *v1.ServicePort, servic
 	}
 
 	if len(ips) > 0 {
-		ipFamilyMap = utilproxy.MapIPsByIPFamily(ips)
+		ipFamilyMap = MapIPsByIPFamily(ips)
 
-		if ipList, ok := ipFamilyMap[utilproxy.OtherIPFamily(sct.ipFamily)]; ok && len(ipList) > 0 {
+		if ipList, ok := ipFamilyMap[OtherIPFamily(sct.ipFamily)]; ok && len(ipList) > 0 {
 			klog.V(4).Infof("service change tracker(%v) ignored the following load balancer(%s) ingress ips for service %v/%v as they don't match IPFamily", sct.ipFamily, strings.Join(ipList, ","), service.Namespace, service.Name)
 
 		}
@@ -342,11 +341,11 @@ func (sct *ServiceChangeTracker) serviceToServiceMap(service *v1.Service) Servic
 		return nil
 	}
 
-	if utilproxy.ShouldSkipService(service) {
+	if ShouldSkipService(service) {
 		return nil
 	}
 
-	clusterIP := utilproxy.GetClusterIPByFamily(sct.ipFamily, service)
+	clusterIP := GetClusterIPByFamily(sct.ipFamily, service)
 	if clusterIP == "" {
 		return nil
 	}
