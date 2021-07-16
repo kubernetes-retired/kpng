@@ -83,3 +83,44 @@ func (set *IPSet) All() []string {
 	all = append(all, set.V6...)
 	return all
 }
+
+func (set *IPSet) Diff(other *IPSet) (added, removed *IPSet) {
+	added = &IPSet{}
+	removed = &IPSet{}
+
+	added.V4, removed.V4 = diffStrings(set.V4, other.V4)
+	added.V6, removed.V6 = diffStrings(set.V6, other.V6)
+	return
+}
+
+func diffStrings(from, to []string) (added, removed []string) {
+	for _, s1 := range from {
+		found := false
+		for _, s2 := range to {
+			if s1 == s2 {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			removed = append(removed, s1)
+		}
+	}
+
+	for _, s1 := range to {
+		found := false
+		for _, s2 := range from {
+			if s1 == s2 {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			added = append(added, s1)
+		}
+	}
+
+	return
+}
