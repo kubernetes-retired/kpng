@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"sigs.k8s.io/kpng/backends/ipvs"
+	ipvssink "sigs.k8s.io/kpng/backends/ipvs-as-sink"
 	"sigs.k8s.io/kpng/backends/nft"
 	"sigs.k8s.io/kpng/jobs/store2api"
 	"sigs.k8s.io/kpng/jobs/store2file"
@@ -75,30 +76,52 @@ func (c SetupFunc) ToFileCmd() *cobra.Command {
 	return cmd
 }
 
-func (c SetupFunc) ToLocalCmd() *cobra.Command {
-	cmd := &cobra.Command{
+func (c SetupFunc) ToLocalCmd() (cmd *cobra.Command) {
+	cmd = &cobra.Command{
 		Use: "to-local",
 	}
 
-	cfg := &localsink.Config{}
-	cfg.BindFlags(cmd.PersistentFlags())
-
-	sink := fullstate.New(cfg)
-
-	job := &store2localdiff.Job{
-		Sink: sink,
-	}
-
 	var ctx context.Context
+	job := &store2localdiff.Job{}
 
 	cmd.PersistentPreRunE = func(_ *cobra.Command, _ []string) (err error) {
 		ctx, job.Store, err = c()
 		return
 	}
 
-	cmd.AddCommand(BackendCmds(sink, func() error { return job.Run(ctx) })...)
+	cmd.AddCommand(LocalCmds(func(sink localsink.Sink) error {
+		job.Sink = sink
+		return job.Run(ctx)
+	})...)
 
-	return cmd
+	return
+}
+
+func LocalCmds(run func(sink localsink.Sink) error) (cmds []*cobra.Command) {
+	// classic backends
+	cfg := &localsink.Config{}
+	sink := fullstate.New(cfg)
+
+	for _, cmd := range BackendCmds(sink, func() error { return run(sink) }) {
+		cfg.BindFlags(cmd.Flags())
+		cmds = append(cmds, cmd)
+	}
+
+	// sink backends
+	ipvsBackend := ipvssink.New()
+
+	cmd := &cobra.Command{
+		Use: "to-ipvs2",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return run(ipvsBackend.Sink())
+		},
+	}
+
+	ipvsBackend.BindFlags(cmd.Flags())
+
+	cmds = append(cmds, cmd)
+
+	return
 }
 
 func BackendCmds(sink *fullstate.Sink, run func() error) []*cobra.Command {

@@ -28,7 +28,7 @@ func New(sink localsink.Sink) *Sink {
 }
 
 func (s *Sink) WaitRequest() (nodeName string, err error) {
-	return s.WaitRequest()
+	return s.sink.WaitRequest()
 }
 
 func (s *Sink) Reset() {

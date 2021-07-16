@@ -4,7 +4,6 @@ import (
 	"github.com/google/btree"
 	"google.golang.org/protobuf/proto"
 
-	"sigs.k8s.io/kpng/jobs/store2localdiff"
 	"sigs.k8s.io/kpng/localsink"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
@@ -31,7 +30,7 @@ func New(config *localsink.Config) *Sink {
 	}
 }
 
-var _ store2localdiff.Sink = &Sink{}
+var _ localsink.Sink = &Sink{}
 
 // ArrayCallback wraps a array callback
 func ArrayCallback(callback func([]*ServiceEndpoints)) Callback {

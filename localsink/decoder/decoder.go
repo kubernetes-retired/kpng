@@ -16,6 +16,9 @@ type Interface interface {
 	// Reset see localsink.Sink#Reset
 	Reset()
 
+	// Sync signals an stream sync event
+	Sync()
+
 	// methods handling decoded values
 
 	// SetService is called when a service is added or updated
@@ -34,6 +37,10 @@ type Sink struct {
 }
 
 var _ localsink.Sink = &Sink{}
+
+func New(iface Interface) *Sink {
+	return &Sink{iface}
+}
 
 func (s *Sink) Send(op *localnetv1.OpItem) (err error) {
 	switch v := op.Op; v.(type) {
@@ -82,8 +89,7 @@ func (s *Sink) Send(op *localnetv1.OpItem) (err error) {
 		}
 
 	case *localnetv1.OpItem_Sync:
-		// ignore
-		// XXX anything for the interface here?
+		s.Sync()
 	}
 
 	return
