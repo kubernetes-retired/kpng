@@ -11,6 +11,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/btree v1.0.1
 	github.com/google/gofuzz v1.2.0 // indirect
+	github.com/google/seesaw v0.0.0-20210205180622-915f447b8ed8
 	github.com/googleapis/gnostic v0.5.5 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect

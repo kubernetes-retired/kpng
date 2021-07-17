@@ -9,13 +9,6 @@ import (
 )
 
 type Interface interface {
-	// subset of localsink.Sink
-
-	// WaitRequest see localsink.Sink#WaitRequest
-	WaitRequest() (nodeName string, err error)
-	// Reset see localsink.Sink#Reset
-	Reset()
-
 	// Sync signals an stream sync event
 	Sync()
 
@@ -30,6 +23,18 @@ type Interface interface {
 	SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint)
 	// DeleteEndpoint is called when an endpoint is deleted
 	DeleteEndpoint(namespace, serviceName, key string)
+
+	// subset of localsink.Sink
+
+	// Setup see localsink.Sink#Setup
+	Setup()
+
+	// WaitRequest see localsink.Sink#WaitRequest
+	// XXX is ti really the place? specialized sinks mutating the node name are probably not the target here
+	WaitRequest() (nodeName string, err error)
+
+	// Reset see localsink.Sink#Reset
+	Reset()
 }
 
 type Sink struct {

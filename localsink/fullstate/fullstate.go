@@ -49,6 +49,8 @@ func ArrayCallback(callback func([]*ServiceEndpoints)) Callback {
 	}
 }
 
+func (s *Sink) Setup() { /* noop */ }
+
 func (s *Sink) WaitRequest() (nodeName string, err error) {
 	return s.Config.NodeName, nil
 }

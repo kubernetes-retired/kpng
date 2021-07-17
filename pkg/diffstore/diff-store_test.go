@@ -75,7 +75,7 @@ func ExampleDiffStore() {
 	// -> updated: [{[97] alice2}] deleted: []
 	//
 	// set a to alice3
-	// -> updated: [{[97] alice3}] deleted: [{[98] <nil>}]
+	// -> updated: [{[97] alice3}] deleted: [{[98] bob}]
 	//
 	// set a to alice3
 	// set b to bob

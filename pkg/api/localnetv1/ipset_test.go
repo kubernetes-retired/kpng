@@ -83,6 +83,6 @@ func ExampleIPSetDiff() {
 	fmt.Println("removed:", removed)
 
 	// Output:
-	// added:   V4:"1.1.1.3"  V6:"::3"
-	// removed: V4:"1.1.1.1"  V6:"::1"
+	// added:   V4:"1.1.1.3" V6:"::3"
+	// removed: V4:"1.1.1.1" V6:"::1"
 }
