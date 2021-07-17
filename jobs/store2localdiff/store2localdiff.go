@@ -17,11 +17,9 @@ import (
 	"sigs.k8s.io/kpng/pkg/server/watchstate"
 )
 
-type Sink = localsink.Sink
-
 type Job struct {
 	Store *proxystore.Store
-	Sink  Sink
+	Sink  localsink.Sink
 }
 
 func (j *Job) Run(ctx context.Context) error {
@@ -39,11 +37,13 @@ func (j *Job) Run(ctx context.Context) error {
 		Sink: run,
 	}
 
+	j.Sink.Setup()
+
 	return job.Run(ctx)
 }
 
 type jobRun struct {
-	Sink
+	localsink.Sink
 	nodeName string
 	buf      *proto.Buffer
 }

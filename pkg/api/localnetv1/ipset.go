@@ -84,12 +84,12 @@ func (set *IPSet) All() []string {
 	return all
 }
 
-func (set *IPSet) Diff(other *IPSet) (added, removed *IPSet) {
+func (from *IPSet) Diff(to *IPSet) (added, removed *IPSet) {
 	added = &IPSet{}
 	removed = &IPSet{}
 
-	added.V4, removed.V4 = diffStrings(set.V4, other.V4)
-	added.V6, removed.V6 = diffStrings(set.V6, other.V6)
+	added.V4, removed.V4 = diffStrings(from.V4, to.V4)
+	added.V6, removed.V6 = diffStrings(from.V6, to.V6)
 	return
 }
 

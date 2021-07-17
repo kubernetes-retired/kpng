@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -14,6 +15,22 @@ import (
 	"sigs.k8s.io/kpng/pkg/apiwatch"
 	"sigs.k8s.io/kpng/pkg/tlsflags"
 )
+
+// Config helps building sink with the standard flags (sinks are not required to have a stable node-name, but most will have).
+//
+// Simplest usage:
+//
+//     type MySink struct {
+//         api2local.Config
+//     }
+//
+type Config struct {
+	NodeName string
+}
+
+func (c *Config) BindFlags(flags *pflag.FlagSet) {
+	flags.StringVar(&c.NodeName, "node-name", "", "Node name override")
+}
 
 type Job struct {
 	apiwatch.Watch
@@ -30,6 +47,8 @@ func New(sink localsink.Sink) *Job {
 }
 
 func (j *Job) Run(ctx context.Context) {
+	j.Sink.Setup()
+
 	for {
 		err := j.run(ctx)
 

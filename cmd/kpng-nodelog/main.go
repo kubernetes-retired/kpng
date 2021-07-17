@@ -53,6 +53,8 @@ type sink struct {
 	start time.Time
 }
 
+func (s *sink) Setup() { /* noop */ }
+
 func (s *sink) Reset() {
 	s.start = time.Time{}
 }

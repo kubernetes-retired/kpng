@@ -9,6 +9,9 @@ import (
 )
 
 type Sink interface {
+	// Setup is called once, when the job starts
+	Setup()
+
 	// WaitRequest waits for the next diff request, returning the requested node name. If an error is returned, it will cancel the job.
 	WaitRequest() (nodeName string, err error)
 

@@ -18,8 +18,12 @@ package diffstore
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 
+	"github.com/cespare/xxhash"
 	"github.com/google/btree"
+	"google.golang.org/protobuf/proto"
 )
 
 const DefaultSeparator = '|'
@@ -33,7 +37,7 @@ func New() *DiffStore {
 	return &DiffStore{tree: btree.New(2)}
 }
 
-// Reset the store to clear, marking all entries as deleted (and removing previously deleted ones)
+// Reset the store to clear, marking all entries with the given state (and removing previously deleted ones)
 func (s *DiffStore) Reset(state ItemState) {
 	toDelete := make([]*storeKV, 0)
 
@@ -44,7 +48,7 @@ func (s *DiffStore) Reset(state ItemState) {
 			toDelete = append(toDelete, v)
 		} else {
 			v.state = state
-			v.value = nil
+			// XXX now we have Get*, we can't remove the value anymore // v.value = nil
 		}
 		return true
 	})
@@ -54,6 +58,7 @@ func (s *DiffStore) Reset(state ItemState) {
 	}
 }
 
+// Set insert or update a key/value in the store
 func (s *DiffStore) Set(key []byte, hash uint64, value interface{}) {
 	item := s.tree.Get(&storeKV{key: key})
 
@@ -82,6 +87,35 @@ func (s *DiffStore) Set(key []byte, hash uint64, value interface{}) {
 	v.state = ItemChanged
 }
 
+// SetJSON is a helper that calls Set with hash of the JSON representation of value
+func (s *DiffStore) SetJSON(key []byte, value interface{}) {
+	valueBytes, err := json.Marshal(value)
+	if err != nil {
+		panic(fmt.Errorf("failed to JSON marshal value: %w", err))
+	}
+
+	h := xxhash.Sum64(valueBytes)
+	s.Set(key, h, value)
+}
+
+// SetProto is a helper that calls Set with hash of the protobuf representation of value
+func (s *DiffStore) SetProto(key []byte, value proto.Message) {
+	valueBytes, err := proto.Marshal(value)
+	if err != nil {
+		panic(fmt.Errorf("failed to proto marshal value: %w", err))
+	}
+
+	h := xxhash.Sum64(valueBytes)
+	s.Set(key, h, value)
+}
+
+// Delete an entry from the store
+func (s *DiffStore) Delete(key []byte) {
+	item := s.tree.Get(&storeKV{key: key})
+	item.(*storeKV).state = ItemDeleted
+}
+
+// DeleteByPrefix removes all entries with the given prefix from the store
 func (s *DiffStore) DeleteByPrefix(prefix []byte) {
 	s.tree.AscendGreaterOrEqual(&storeKV{key: prefix}, func(i btree.Item) bool {
 		v := i.(*storeKV)
@@ -96,6 +130,7 @@ func (s *DiffStore) DeleteByPrefix(prefix []byte) {
 	})
 }
 
+// Updated returns all the entries that where updated since the last Reset.
 func (s *DiffStore) Updated() (updated []KV) {
 	s.tree.Ascend(func(i btree.Item) bool {
 		v := i.(*storeKV)
@@ -109,6 +144,7 @@ func (s *DiffStore) Updated() (updated []KV) {
 	return
 }
 
+// Updated returns all the entries that where deleted since the last Reset.
 func (s *DiffStore) Deleted() (deleted []KV) {
 	s.tree.Descend(func(i btree.Item) bool {
 		v := i.(*storeKV)
@@ -119,5 +155,26 @@ func (s *DiffStore) Deleted() (deleted []KV) {
 
 		return true
 	})
+	return
+}
+
+// GetByPrefix returns all the entries with the given prefix.
+func (s *DiffStore) GetByPrefix(prefix []byte) (items []KV) {
+	s.tree.AscendGreaterOrEqual(&storeKV{key: prefix}, func(i btree.Item) bool {
+		v := i.(*storeKV)
+
+		if !bytes.HasPrefix(v.key, prefix) {
+			return false
+		}
+
+		if v.state == ItemDeleted {
+			return true
+		}
+
+		items = append(items, KV{v.key, v.value})
+
+		return true
+	})
+
 	return
 }

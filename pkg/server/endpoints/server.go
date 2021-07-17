@@ -56,6 +56,8 @@ type serverSink struct {
 	remote string
 }
 
+func (s serverSink) Setup() { /* noop */ }
+
 func (s serverSink) WaitRequest() (nodeName string, err error) {
 	req, err := s.Recv()
 
