@@ -1,4 +1,15 @@
-name: 'docker build'
-runs:
-  using: docker
-  image: Dockerfile
+on: [push]
+
+jobs:
+  dockerize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          context: .
+          push: false
+
