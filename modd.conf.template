@@ -6,14 +6,18 @@ modd.conf {}
   prep: go build -trimpath -o dist ./cmd/... ./examples/...
 }
 
+dist/* Dockerfile {
+  prep: docker build .
+}
+
 dist/kpng {
   #daemon: dist/kpng file to-api --listen unix:///tmp/kpng.sock
   #daemon: sudo ./netns-test nft -v=2 --cluster-cidrs=11.0.0.0/8 --node-name vm-001
-  daemon: sudo ./netns-test ipvs2 -v=2 --node-name vm-001
+  #daemon: sudo ./netns-test ipvs2 -v=2 --node-name vm-001
 }
 
 dist/kpng-backend-torture {
-  daemon: ./dist/kpng-backend-torture --listen unix:///tmp/kpng.sock --sleep 1s 1:1 0:0 1:1 1:2 1:1 #1:0 0:0 #5:2 # 1000:100 100000:1 1:100000
+  #daemon: ./dist/kpng-backend-torture --listen unix:///tmp/kpng.sock --sleep 1s 1:1 0:0 1:1 1:2 1:1 #1:0 0:0 #5:2 # 1000:100 100000:1 1:100000
 }
 
 **/*.proto {
