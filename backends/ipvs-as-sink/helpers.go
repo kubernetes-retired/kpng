@@ -29,6 +29,7 @@ func epPortSuffix(port *localnetv1.PortMapping) string {
 	return port.Protocol.String() + ":" + strconv.Itoa(int(port.Port))
 }
 
+// diffInPortMapping TODO, we should support this logic in the diffstore, this is a temporary workaround.
 func diffInPortMapping(previous, current *localnetv1.Service) (added, removed []*localnetv1.PortMapping) {
 	for _, p1 := range previous.Ports {
 		found := false
