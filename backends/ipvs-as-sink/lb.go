@@ -10,9 +10,11 @@ import (
 )
 
 type ipvsLB struct {
-	IP         string
-	ServiceKey string
-	Port       *localnetv1.PortMapping
+	IP               string
+	ServiceKey       string
+	ServiceType      string
+	Port             *localnetv1.PortMapping
+	SchedulingMethod string
 }
 
 func (lb ipvsLB) String() string {
@@ -21,10 +23,17 @@ func (lb ipvsLB) String() string {
 }
 
 func (lb ipvsLB) ToService() ipvs.Service {
+	var port uint16
+	if lb.ServiceType == ClusterIPService {
+		port = uint16(lb.Port.Port)
+	}
+	if lb.ServiceType == NodePortService {
+		port = uint16(lb.Port.NodePort)
+	}
 	s := ipvs.Service{
 		Address:   net.ParseIP(lb.IP),
-		Port:      uint16(lb.Port.Port),
-		Scheduler: "rr",
+		Port:      port,
+		Scheduler: lb.SchedulingMethod,
 	}
 
 	switch lb.Port.Protocol {
@@ -39,11 +48,11 @@ func (lb ipvsLB) ToService() ipvs.Service {
 	return s
 }
 
-func ipvsDestination(targetIP string, port *localnetv1.PortMapping) ipvs.Destination {
+func ipvsDestination(targetIP string, port *localnetv1.PortMapping, epWeight int32) ipvs.Destination {
 	return ipvs.Destination{
 		Address: net.ParseIP(targetIP),
 		Port:    uint16(port.TargetPort),
-		Weight:  1,
+		Weight:  epWeight,
 	}
 }
 
