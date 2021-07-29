@@ -7,13 +7,10 @@ import (
 	"net"
 
 	v1 "k8s.io/api/core/v1"
-	discovery "k8s.io/api/discovery/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
-	helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	utilnet "k8s.io/utils/net"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
@@ -207,43 +204,34 @@ func GetNodeAddresses(cidrs []string, nw NetworkInterfacer) (sets.String, error)
 }
 
 // GetClusterIPByFamily returns a service clusterip by family
-func GetClusterIPByFamily(ipFamily v1.IPFamily, service *v1.Service) string {
-	// allowing skew
-	if len(service.Spec.IPFamilies) == 0 {
-		if len(service.Spec.ClusterIP) == 0 || service.Spec.ClusterIP == v1.ClusterIPNone {
-			return ""
-		}
-
-		IsIPv6Family := (ipFamily == v1.IPv6Protocol)
-		if IsIPv6Family == utilnet.IsIPv6String(service.Spec.ClusterIP) {
-			return service.Spec.ClusterIP
-		}
-
-		return ""
-	}
-
-	for idx, family := range service.Spec.IPFamilies {
-		if family == ipFamily {
-			if idx < len(service.Spec.ClusterIPs) {
-				return service.Spec.ClusterIPs[idx]
-			}
+func GetClusterIPByFamily(ipFamily v1.IPFamily, service *localnetv1.Service) string {
+	if ipFamily == v1.IPv4Protocol {
+		if len(service.IPs.ClusterIPs.V4) > 0 {
+			return service.IPs.ClusterIPs.V4[0]
 		}
 	}
-
+	if ipFamily == v1.IPv6Protocol {
+		if len(service.IPs.ClusterIPs.V6) > 0 {
+			return service.IPs.ClusterIPs.V6[0]
+		}
+	}
 	return ""
 }
 
-// MapIPsByIPFamily maps a slice of IPs to their respective IP families (v4 or v6)
-func MapIPsByIPFamily(ipStrings []string) map[v1.IPFamily][]string {
-	ipFamilyMap := map[v1.IPFamily][]string{}
-	for _, ip := range ipStrings {
-		// Handle only the valid IPs
-		if ipFamily, err := getIPFamilyFromIP(ip); err == nil {
-			ipFamilyMap[ipFamily] = append(ipFamilyMap[ipFamily], ip)
-		} else {
-			klog.Errorf("Skipping invalid IP: %s", ip)
-		}
+// RequestsOnlyLocalTraffic checks if service requests OnlyLocal traffic.
+func RequestsOnlyLocalTraffic(service *localnetv1.Service) bool {
+	if service.Type != string(v1.ServiceTypeLoadBalancer) &&
+		service.Type != string(v1.ServiceTypeNodePort) {
+		return false
 	}
+	return service.ExternalTrafficToLocal
+}
+
+// MapIPsByIPFamily maps a slice of IPs to their respective IP families (v4 or v6)
+func MapIPsByIPFamily(ips *localnetv1.IPSet) map[v1.IPFamily][]string {
+	ipFamilyMap := map[v1.IPFamily][]string{}
+	ipFamilyMap[v1.IPv4Protocol] = append(ipFamilyMap[v1.IPv4Protocol], ips.V4...)
+	ipFamilyMap[v1.IPv6Protocol] = append(ipFamilyMap[v1.IPv6Protocol], ips.V6...)
 	return ipFamilyMap
 }
 
@@ -291,136 +279,6 @@ func getIPFamilyFromCIDR(cidrStr string) (v1.IPFamily, error) {
 		return v1.IPv6Protocol, nil
 	}
 	return v1.IPv4Protocol, nil
-}
-
-// ShouldSkipService checks if a given service should skip proxying
-func ShouldSkipService(service *v1.Service) bool {
-	// if ClusterIP is "None" or empty, skip proxying
-	if !helper.IsServiceIPSet(service) {
-		klog.V(3).Infof("Skipping service %s in namespace %s due to clusterIP = %q", service.Name, service.Namespace, service.Spec.ClusterIP)
-		return true
-	}
-	// Even if ClusterIP is set, ServiceTypeExternalName services don't get proxied
-	if service.Spec.Type == v1.ServiceTypeExternalName {
-		klog.V(3).Infof("Skipping service %s in namespace %s due to Type=ExternalName", service.Name, service.Namespace)
-		return true
-	}
-	return false
-}
-
-func ConvertToEPSlices(svc *localnetv1.Service, endpoints []*localnetv1.Endpoint) (*discovery.EndpointSlice, *discovery.EndpointSlice) {
-	ePSliceV4 := &discovery.EndpointSlice{}
-	ePSliceV6 := &discovery.EndpointSlice{}
-	ePSliceV4.AddressType = "IPv4"
-	ePSliceV6.AddressType = "IPv6"
-	for _, ep := range endpoints {
-		k8sEP := &discovery.Endpoint{}
-		var slice *discovery.EndpointSlice
-		var add string
-		if len(ep.GetIPs().V4) > 0 {
-			slice = ePSliceV4
-			add = ep.GetIPs().V4[0]
-		} else if len(ep.GetIPs().V6) > 0 {
-			slice = ePSliceV6
-			add = ep.GetIPs().V6[0]
-		} else {
-			klog.Errorf("Empty Endpoint")
-			continue
-		}
-		// slice.ClusterName = svc.
-		//TODO when would there be multiple addresses in EP
-		k8sEP.Addresses = []string{add}
-		k8sEP.Hostname = &ep.Hostname
-		slice.Labels = map[string]string{discovery.LabelServiceName: svc.Name}
-		slice.Name = svc.Name
-		slice.Namespace = svc.Namespace
-		slice.Endpoints = append(slice.Endpoints, *k8sEP)
-	}
-	var k8sPorts []discovery.EndpointPort
-	for _, epPort := range svc.GetPorts() {
-		var k8sPort discovery.EndpointPort
-		protocol := v1.Protocol(epPort.Protocol.String())
-		k8sPort.Protocol = &protocol
-		k8sPort.Name = &epPort.Name
-		k8sPort.Port = &epPort.TargetPort
-		k8sPorts = append(k8sPorts, k8sPort)
-	}
-	ePSliceV4.Ports = k8sPorts
-	ePSliceV6.Ports = k8sPorts
-	return ePSliceV4, ePSliceV6
-}
-
-func ConvertToService(svc *localnetv1.Service) (*v1.Service, error) {
-
-	k8sSvc := &v1.Service{}
-	k8sSvc.Annotations = svc.Annotations
-	if svc.ExternalTrafficToLocal {
-		k8sSvc.Spec.ExternalTrafficPolicy = v1.ServiceExternalTrafficPolicyTypeLocal
-	} else {
-		k8sSvc.Spec.ExternalTrafficPolicy = v1.ServiceExternalTrafficPolicyTypeCluster
-	}
-	var ipFamilies []v1.IPFamily
-	//TODO after rebase set ClusterIps as well
-	if len(svc.IPs.ClusterIPs.V4) > 0 {
-		k8sSvc.Spec.ClusterIP = svc.IPs.ClusterIPs.V4[0]
-		ipFamilies = append(ipFamilies, v1.IPv4Protocol)
-	}
-	if len(svc.IPs.ClusterIPs.V6) > 0 {
-		k8sSvc.Spec.ClusterIP = svc.IPs.ClusterIPs.V6[0]
-		ipFamilies = append(ipFamilies, v1.IPv6Protocol)
-	}
-	var clusterIps []string
-	k8sSvc.Spec.ClusterIPs = append(append(clusterIps, svc.IPs.ClusterIPs.V4...), svc.IPs.ClusterIPs.V6...)
-	k8sSvc.Spec.IPFamilies = ipFamilies
-	var extIps []string
-	//TODO any order to maintain
-	k8sSvc.Spec.ExternalIPs = append(append(extIps, svc.IPs.ExternalIPs.V4...), svc.IPs.ExternalIPs.V6...)
-	k8sSvc.Labels = svc.Labels
-	// k8sSvc.Map=svc.MapIP
-	k8sSvc.Name = svc.Name
-	k8sSvc.Namespace = svc.Namespace
-	k8sSvc.Spec.Ports = ConvertToServicePorts(svc.Ports)
-	var err error
-	k8sSvc.Spec.Type, err = GetSvcType(svc.Type)
-	if err != nil {
-		return nil, err
-	}
-	return k8sSvc, nil
-}
-
-func ConvertToServicePorts(ports []*localnetv1.PortMapping) []v1.ServicePort {
-	var k8sSvcPorts []v1.ServicePort
-	for _, port := range ports {
-		var k8sSvcPort v1.ServicePort
-		k8sSvcPort.Name = port.Name
-		k8sSvcPort.NodePort = port.NodePort
-		k8sSvcPort.Port = port.Port
-		k8sSvcPort.Protocol = v1.Protocol(port.Protocol.String())
-		if port.TargetPortName != "" { //CHECK THE LOGIC
-			k8sSvcPort.TargetPort = intstr.FromString(port.TargetPortName)
-		} else {
-			k8sSvcPort.TargetPort = intstr.FromInt(int(port.TargetPort))
-		}
-		k8sSvcPorts = append(k8sSvcPorts, k8sSvcPort)
-	}
-	return k8sSvcPorts
-}
-
-func GetSvcType(svcType string) (v1.ServiceType, error) {
-	if svcType == "ClusterIP" {
-		return v1.ServiceTypeClusterIP, nil
-	}
-	if svcType == "NodePort" {
-		return v1.ServiceTypeNodePort, nil
-	}
-	if svcType == "LoadBalancer" {
-		return v1.ServiceTypeLoadBalancer, nil
-	}
-
-	if svcType == "ExternalName" {
-		return v1.ServiceTypeExternalName, nil
-	}
-	return "", fmt.Errorf("Invalid service Type: %s", svcType)
 }
 
 // CountBytesLines counts the number of lines in a bytes slice
