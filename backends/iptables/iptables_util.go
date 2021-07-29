@@ -258,7 +258,7 @@ func (runner *runner) EnsureChain(table Table, chain Chain) (bool, error) {
 }
 
 // New returns a new Interface which will exec iptables.
-func New(exec utilexec.Interface, protocol Protocol) Interface {
+func NewIPTableExec(exec utilexec.Interface, protocol Protocol) Interface {
 	return newInternal(exec, protocol, "", "")
 }
 

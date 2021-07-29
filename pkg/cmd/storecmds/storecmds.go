@@ -104,7 +104,7 @@ func LocalCmds(run func(sink localsink.Sink) error) (cmds []*cobra.Command) {
 	cfg := &localsink.Config{}
 	sink := fullstate.New(cfg)
 
-	for _, cmd := range BackendCmds(sink, func() error { return run(sink) }) {
+	for _, cmd := range BackendCmds(sink, run) {
 		cfg.BindFlags(cmd.Flags())
 		cmds = append(cmds, cmd)
 	}
@@ -126,7 +126,7 @@ func LocalCmds(run func(sink localsink.Sink) error) (cmds []*cobra.Command) {
 	return
 }
 
-func BackendCmds(sink *fullstate.Sink, run func() error) []*cobra.Command {
+func BackendCmds(sink *fullstate.Sink, run func(sink localsink.Sink) error) []*cobra.Command {
 	return []*cobra.Command{
 		iptablesCommand(sink, run),
 		ipvsCommand(sink, run),
@@ -138,7 +138,7 @@ func unimplemented(_ *cobra.Command, _ []string) error {
 	return errors.New("not implemented")
 }
 
-func nftCommand(sink *fullstate.Sink, run func() error) *cobra.Command {
+func nftCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "to-nft",
 	}
@@ -148,13 +148,13 @@ func nftCommand(sink *fullstate.Sink, run func() error) *cobra.Command {
 	cmd.RunE = func(_ *cobra.Command, _ []string) error {
 		nft.PreRun()
 		sink.Callback = nft.Callback
-		return run()
+		return run(sink)
 	}
 
 	return cmd
 }
 
-func ipvsCommand(sink *fullstate.Sink, run func() error) *cobra.Command {
+func ipvsCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "to-ipvs",
 	}
@@ -164,24 +164,20 @@ func ipvsCommand(sink *fullstate.Sink, run func() error) *cobra.Command {
 	cmd.RunE = func(_ *cobra.Command, _ []string) error {
 		ipvs.PreRun()
 		sink.Callback = ipvs.Callback
-		return run()
+		return run(sink)
 	}
 
 	return cmd
 }
 
-func iptablesCommand(sink *fullstate.Sink, run func() error) *cobra.Command {
+func iptablesCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cobra.Command {
+	iptablesBackend := iptables.New()
 	cmd := &cobra.Command{
 		Use: "to-iptables",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return run(iptablesBackend.Sink())
+		},
 	}
-
-	iptables.BindFlags(cmd.Flags())
-
-	cmd.RunE = func(_ *cobra.Command, _ []string) error {
-		iptables.PreRun()
-		sink.Callback = iptables.Callback
-		return run()
-	}
-
+	iptablesBackend.BindFlags(cmd.Flags())
 	return cmd
 }
