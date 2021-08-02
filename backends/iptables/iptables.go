@@ -25,7 +25,6 @@ var (
 
 type iptables struct {
 	mu         sync.Mutex        // protects the following fields
-	nodeLabels map[string]string //TODO: looks like can be removed as kpng controller shoujld do the work
 
 	// endpointsSynced, endpointSlicesSynced, and servicesSynced are set to true
 	// when corresponding objects are synced after startup. This is used to avoid
