@@ -1,15 +1,67 @@
+/*
+Copyright 2021 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package ipvssink
 
 import (
 	"strconv"
 
+	v1 "k8s.io/api/core/v1"
+	utilipset "sigs.k8s.io/kpng/backends/util/ipvs"
+
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
 
 const (
-	ClusterIPService    = "ClusterIP"
-	NodePortService     = "NodePort"
-	LoadBalancerService = "LoadBalancer"
+	ClusterIPService = "ClusterIP"
+	NodePortService  = "NodePort"
+)
+
+var loopBackIPSetMap = map[v1.IPFamily]string{
+	v1.IPv4Protocol: kubeLoopBackIPv4Set,
+	v1.IPv6Protocol: kubeLoopBackIPv6Set,
+}
+
+var clusterIPSetMap = map[v1.IPFamily]string{
+	v1.IPv4Protocol: kubeClusterIPv4Set,
+	v1.IPv6Protocol: kubeClusterIPv6Set,
+}
+
+var protocolIPSetMap = map[string]map[v1.IPFamily]string{
+	utilipset.ProtocolTCP: {
+		v1.IPv4Protocol: kubeNodePortIPv4SetTCP,
+		v1.IPv6Protocol: kubeNodePortIPv6SetTCP,
+	},
+	utilipset.ProtocolUDP: {
+		v1.IPv4Protocol: kubeNodePortIPv4SetUDP,
+		v1.IPv6Protocol: kubeNodePortIPv6SetUDP,
+	},
+	utilipset.ProtocolSCTP: {
+		v1.IPv4Protocol: kubeNodePortIPv4SetSCTP,
+		v1.IPv6Protocol: kubeNodePortIPv6SetSCTP,
+	},
+}
+
+type Operation int32
+
+const (
+	AddService     Operation = 0
+	DeleteService  Operation = 1
+	AddEndPoint    Operation = 2
+	DeleteEndPoint Operation = 3
 )
 
 func asDummyIPs(set *localnetv1.IPSet) (ips []string) {
