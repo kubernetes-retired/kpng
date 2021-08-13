@@ -17,15 +17,11 @@ function install_calico {
 }
 
 function setup_k8s {
-    if [ ! -x kind ]; then
-        curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.0/kind-linux-amd64
-        chmod +x ./kind
-    fi
-    ./kind version
+    kind version
 
     echo "****************************************************"
-    ./kind delete cluster --name kpng-proxy
-    ./kind create cluster --config kind.yaml
+    kind delete cluster --name kpng-proxy
+    kind create cluster --config kind.yaml
     install_calico
     echo "****************************************************"
 }
@@ -44,7 +40,7 @@ function install {
     echo "Applying template"
     envsubst <kpng-deployment-ds.yaml.tmpl >kpng-deployment-ds.yaml
 
-    ./kind load docker-image $IMAGE --name kpng-proxy
+    kind load docker-image $IMAGE --name kpng-proxy
 
     kubectl -n kube-system create sa kpng
     kubectl create clusterrolebinding kpng --clusterrole=system:node-proxier --serviceaccount=kube-system:kpng
