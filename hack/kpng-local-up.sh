@@ -1,6 +1,9 @@
 #!/bin/bash
 # build the kpng image...
 
+# TODO Replace with 1.22 once we address 
+: ${KIND:="kindest/node:v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6"}
+# : ${KIND:="kindest/node:v1.22.0@sha256:b8bda84bb3a190e6e028b1760d277454a72267a5454b57db34437c34a588d047"}
 : ${IMAGE:="jayunit100/kpng:ipvs"}
 : ${PULL:=IfNotPresent}
 : ${BACKEND:=nft}
@@ -21,7 +24,7 @@ function setup_k8s {
 
     echo "****************************************************"
     kind delete cluster --name kpng-proxy
-    kind create cluster --config kind.yaml
+    kind create cluster --config kind.yaml --image $KIND
     install_calico
     echo "****************************************************"
 }
