@@ -44,7 +44,7 @@ const (
 )
 
 // Interface is an injectable interface for running iptables commands.  Implementations must be goroutine-safe.
-type Interface interface {
+type IptablesInterface interface {
 	// EnsureChain checks if the specified chain exists and, if not, creates it.  If the chain existed, return true.
 	EnsureChain(table Table, chain Chain) (bool, error)
 	// FlushChain clears the specified chain.  If the chain did not exist, return error.

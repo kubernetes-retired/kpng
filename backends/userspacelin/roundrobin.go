@@ -3,7 +3,8 @@ package userspacelin
 import (
 "errors"
 "fmt"
-"net"
+	"k8s.io/kubernetes/pkg/proxy/util"
+	"net"
 "reflect"
 	"sigs.k8s.io/kpng/backends/iptables"
 	"sync"
@@ -13,8 +14,6 @@ v1 "k8s.io/api/core/v1"
 "k8s.io/apimachinery/pkg/types"
 "k8s.io/apimachinery/pkg/util/sets"
 "k8s.io/klog/v2"
-"k8s.io/kubernetes/pkg/proxy"
-"k8s.io/kubernetes/pkg/proxy/util"
 "k8s.io/kubernetes/pkg/util/slice"
 )
 

@@ -144,14 +144,14 @@ type Proxier struct {
 
 	loadBalancer    LoadBalancer
 	mu              sync.Mutex // protects serviceMap
-	serviceMap      map[iptables.ServicePort]*ServiceInfo
+	serviceMap      map[iptables.ServicePortName]*ServiceInfo
 	syncPeriod      time.Duration
 	minSyncPeriod   time.Duration
 	udpIdleTimeout  time.Duration
 	portMapMutex    sync.Mutex
 	portMap         map[portMapKey]*portMapValue
 	listenIP        net.IP
-	iptables        iptablesutil.Interface
+	iptables        Interface
 	hostIP          net.IP
 	localAddrs      netutils.IPSet
 	proxyPorts      PortAllocator
@@ -234,11 +234,15 @@ func NewCustomProxier(loadBalancer LoadBalancer, listenIP net.IP, iptables iptab
 
 	err = setRLimit(64 * 1000)
 	if err != nil {
-		if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.Kube) && libcontaineruserns.RunningInUserNS() {
-			klog.V(2).InfoS("Failed to set open file handler limit to 64000 (running in UserNS, ignoring)", "err", err)
+
+		// TODO @jayunit100 enable this once we bump to 1.22
+		/**
+		if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.KubeletInUserNamespace) && libcontaineruserns.RunningInUserNS() {
 		} else {
 			return nil, fmt.Errorf("failed to set open file handler limit to 64000: %w", err)
 		}
+		*/
+		klog.V(2).InfoS("Failed to set open file handler limit to 64000 (running in UserNS, ignoring)", "err", err)
 	}
 
 	proxyPorts := newPortAllocator(pr)
@@ -248,30 +252,30 @@ func NewCustomProxier(loadBalancer LoadBalancer, listenIP net.IP, iptables iptab
 }
 
 // createProxier makes a userspace proxier.  It does some iptables actions but it doesn't actually run iptables AS the proxy.
-func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptablesInterface iptables.Interface, exec utilexec.Interface, hostIP net.IP, proxyPorts PortAllocator, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, makeProxySocket ProxySocketFunc) (*Proxier, error) {
+func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptablesInterfaceImpl iptables.IptablesInterface, exec utilexec.Interface, hostIP net.IP, proxyPorts PortAllocator, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, makeProxySocket ProxySocketFunc) (*Proxier, error) {
 	// convenient to pass nil for tests..
 	if proxyPorts == nil {
 		proxyPorts = newPortAllocator(utilnet.PortRange{})
 	}
 	// Set up the iptables foundations we need.
-	if err := iptablesInit(iptablesInterface); err != nil {
+	if err := iptablesInit(iptablesInterfaceImpl); err != nil {
 		return nil, fmt.Errorf("failed to initialize iptables: %v", err)
 	}
 	// Flush old iptables rules (since the bound ports will be invalid after a restart).
 	// When OnUpdate() is first called, the rules will be recreated.
-	if err := iptablesFlush(iptablesInterface); err != nil {
+	if err := iptablesFlush(iptablesInterfaceImpl); err != nil {
 		return nil, fmt.Errorf("failed to flush iptables: %v", err)
 	}
 	proxier := &Proxier{
 		loadBalancer:    loadBalancer,
-		serviceMap:      make(map[iptables.ServicePort]*ServiceInfo),
+		serviceMap:      make(map[iptables.ServicePortName]*ServiceInfo),
 		serviceChanges:  make(map[types.NamespacedName]*serviceChange),
 		portMap:         make(map[portMapKey]*portMapValue),
 		syncPeriod:      syncPeriod,
 		minSyncPeriod:   minSyncPeriod,
 		udpIdleTimeout:  udpIdleTimeout,
 		listenIP:        listenIP,
-		iptables:        iptables,
+		iptables:       iptablesInterfaceImpl,
 		hostIP:          hostIP,
 		proxyPorts:      proxyPorts,
 		makeProxySocket: makeProxySocket,
@@ -285,7 +289,7 @@ func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptablesInterface
 
 // CleanupLeftovers removes all iptables rules and chains created by the Proxier
 // It returns true if an error was encountered. Errors are logged.
-func CleanupLeftovers(ipt iptables.Interface) (encounteredError bool) {
+func CleanupLeftovers(ipt iptables.IptablesInterface) (encounteredError bool) {
 	// NOTE: Warning, this needs to be kept in sync with the userspace Proxier,
 	// we want to ensure we remove all of the iptables rules it creates.
 	// Currently they are all in iptablesInit()
@@ -403,7 +407,7 @@ func (proxier *Proxier) syncProxyRules() {
 		proxier.unmergeService(change.previous, existingPorts)
 	}
 
-	proxier.localAddrs = utiliptables.GetLocalAddrSet()
+	proxier.localAddrs = GetLocalAddrSet()
 
 	proxier.ensurePortals()
 	proxier.cleanupStaleStickySessions()
@@ -500,7 +504,7 @@ func (proxier *Proxier) mergeService(service *v1.Service) sets.String {
 	if service == nil {
 		return nil
 	}
-	if utiliptables.ShouldSkipService(service) {
+	if ShouldSkipService(service) {
 		return nil
 	}
 	existingPorts := sets.NewString()
@@ -565,7 +569,7 @@ func (proxier *Proxier) unmergeService(service *v1.Service, existingPorts sets.S
 		return
 	}
 
-	if utiliptables.ShouldSkipService(service) {
+	if ShouldSkipService(service) {
 		return
 	}
 	staleUDPServices := sets.NewString()
@@ -778,7 +782,7 @@ func (proxier *Proxier) openOnePortal(portal portal, protocol v1.Protocol, proxy
 	// Handle traffic from containers.
 	args := proxier.iptablesContainerPortalArgs(portal.ip, portal.isExternal, false, portal.port, protocol, proxyIP, proxyPort, name)
 	portalAddress := net.JoinHostPort(portal.ip.String(), strconv.Itoa(portal.port))
-	existed, err := proxier.iptables.EnsureRule(iptables.Append, iptables.TableNAT, iptablesContainerPortalChain, args...)
+	existed, err := proxier.iptables.EnsureRule(iptablesutil.Append, iptablesutil.TableNAT, iptablesContainerPortalChain, args...)
 	if err != nil {
 		klog.ErrorS(err, "Failed to install iptables rule for service", "chain", iptablesContainerPortalChain, "servicePortName", name, "args", args)
 		return err
@@ -1024,7 +1028,7 @@ var iptablesHostNodePortChain iptables.Chain = "KUBE-NODEPORT-HOST"
 var iptablesNonLocalNodePortChain iptables.Chain = "KUBE-NODEPORT-NON-LOCAL"
 
 // Ensure that the iptables infrastructure we use is set up.  This can safely be called periodically.
-func iptablesInit(ipt iptables.Interface) error {
+func iptablesInit(ipt Interface) error {
 	// TODO: There is almost certainly room for optimization here.  E.g. If
 	// we knew the service-cluster-ip-range CIDR we could fast-track outbound packets not
 	// destined for a service. There's probably more, help wanted.
@@ -1093,7 +1097,7 @@ func iptablesInit(ipt iptables.Interface) error {
 }
 
 // Flush all of our custom iptables rules.
-func iptablesFlush(ipt iptables.Interface) error {
+func iptablesFlush(ipt iptables.IptablesInterface) error {
 	el := []error{}
 	if err := ipt.FlushChain(iptables.TableNAT, iptablesContainerPortalChain); err != nil {
 		el = append(el, err)
@@ -1142,7 +1146,7 @@ func iptablesCommonPortalArgs(destIP net.IP, addPhysicalInterfaceMatch bool, add
 	}
 
 	if destIP != nil {
-		args = append(args, "-d", utiliptables.ToCIDR(destIP))
+		args = append(args, "-d", ToCIDR(destIP))
 	}
 
 	if addPhysicalInterfaceMatch {
