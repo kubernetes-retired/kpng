@@ -20,7 +20,10 @@ import (
 	"fmt"
 	"net"
 	"reflect"
-	"sigs.k8s.io/kpng/client"
+
+
+	k8snet "k8s.io/apimachinery/pkg/util/net"
+
 	"strconv"
 	"strings"
 	"sync"
@@ -172,9 +175,6 @@ type UserspaceLinux struct {
 	stopChan chan struct{}
 }
 
-// assert Proxier is a iptables.Provider
-var _ iptables.Provider = &Proxier{}
-
 // A key for the portMap.  The ip has to be a string because slices can't be map
 // keys.
 type portMapKey struct {
@@ -210,29 +210,21 @@ var (
 // created, it will keep iptables up to date in the background and will not
 // terminate if a particular iptables call fails.
 
-func NewUserspaceLinux(loadBalancer LoadBalancer, listenIP net.IP, iptables iptables.IptablesInterface, exec utilexec.Interface, pr utilnet.PortRange, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, nodePortAddresses []string) (*UserspaceLinux, error) {
-	return NewCustomProxier(loadBalancer, listenIP, iptables, exec, pr, syncPeriod, minSyncPeriod, udpIdleTimeout, nodePortAddresses, newProxySocket)
+func NewUserspaceLinux() (*UserspaceLinux, error) {
+	return NewCustomProxier(newProxySocket)
 }
+
 
 // NewCustomProxier functions similarly to NewProxier, returning a new Proxier
 // for the given LoadBalancer and address.  The new proxier is constructed using
 // the ProxySocket constructor provided, however, instead of constructing the
 // default ProxySockets.
-func NewCustomProxier(loadBalancer LoadBalancer, listenIP net.IP, iptables iptables.IptablesInterface, exec utilexec.Interface, pr utilnet.PortRange, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, nodePortAddresses []string, makeProxySocket ProxySocketFunc) (*UserspaceLinux, error) {
-	if listenIP.Equal(localhostIPv4) || listenIP.Equal(localhostIPv6) {
-		return nil, ErrProxyOnLocalhost
-	}
+func NewCustomProxier(makeProxySocket ProxySocketFunc) (*UserspaceLinux, error) {
 
 	// If listenIP is given, assume that is the intended host IP.  Otherwise
 	// try to find a suitable host IP address from network interfaces.
 	var err error
-	hostIP := listenIP
-	if hostIP.Equal(net.IPv4zero) || hostIP.Equal(net.IPv6zero) {
-		hostIP, err = utilnet.ChooseHostInterface()
-		if err != nil {
-			return nil, fmt.Errorf("failed to select a host interface: %v", err)
-		}
-	}
+	hostIP, err := utilnet.ChooseHostInterface()
 
 	err = setRLimit(64 * 1000)
 	if err != nil {
@@ -247,14 +239,17 @@ func NewCustomProxier(loadBalancer LoadBalancer, listenIP net.IP, iptables iptab
 		klog.V(2).InfoS("Failed to set open file handler limit to 64000 (running in UserNS, ignoring)", "err", err)
 	}
 
-	proxyPorts := newPortAllocator(pr)
+	// make a dummy port range, newPortAllocator will make one for us w/ defaults
+	proxyPorts := newPortAllocator(k8snet.PortRange{})
 
 	klog.V(2).InfoS("Setting proxy IP and initializing iptables", "ip", hostIP)
-	return createProxier(loadBalancer, listenIP, iptables, exec, hostIP, proxyPorts, syncPeriod, minSyncPeriod, udpIdleTimeout, makeProxySocket)
+
+	// ... finish implementing these functions ...
+	return createProxier(hostIP, iptables, exec, hostIP, proxyPorts, syncPeriod, minSyncPeriod, udpIdleTimeout, makeProxySocket)
 }
 
 // createProxier makes a userspace proxier.  It does some iptables actions but it doesn't actually run iptables AS the proxy.
-func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptablesInterfaceImpl iptables.IptablesInterface, exec utilexec.Interface, hostIP net.IP, proxyPorts PortAllocator, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, makeProxySocket ProxySocketFunc) (*UserspaceLinux, error) {
+func createProxier(listenIP net.IP, iptablesInterfaceImpl iptables.IptablesInterface, exec utilexec.Interface, hostIP net.IP, proxyPorts PortAllocator, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, makeProxySocket ProxySocketFunc) (*UserspaceLinux, error) {
 	// convenient to pass nil for tests..
 	if proxyPorts == nil {
 		proxyPorts = newPortAllocator(utilnet.PortRange{})
