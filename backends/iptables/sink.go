@@ -71,7 +71,6 @@ func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *loca
 	for _, impl := range IptablesImpl {
 		impl.endpointsChanges.EndpointUpdate(namespace, serviceName, key, endpoint)
 	}
-
 }
 
 func (s *Backend) DeleteEndpoint(namespace, serviceName, key string) {

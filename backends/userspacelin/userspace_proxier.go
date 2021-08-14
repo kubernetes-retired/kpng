@@ -20,23 +20,24 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"sigs.k8s.io/kpng/client"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	libcontaineruserns "github.com/opencontainers/runc/libcontainer/userns"
+	// libcontaineruserns "github.com/opencontainers/runc/libcontainer/userns"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	// utilfeature "k8s.io/apiserver/pkg/util/feature"
 	servicehelper "k8s.io/cloud-provider/service/helpers"
 	"k8s.io/klog/v2"
-	kubefeatures "k8s.io/kubernetes/pkg/features"
+	// kubefeatures "k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/proxy/config"
 	"k8s.io/kubernetes/pkg/util/async"
 	"k8s.io/kubernetes/pkg/util/conntrack"
@@ -136,7 +137,7 @@ type asyncRunnerInterface interface {
 
 // Proxier is a simple proxy for TCP connections between a localhost:lport
 // and services that provide the actual implementations.
-type Proxier struct {
+type UserspaceLinux struct {
 	// EndpointSlice support has not been added for this proxier yet.
 	config.NoopEndpointSliceHandler
 	// TODO(imroc): implement node handler for userspace proxier.
@@ -208,7 +209,8 @@ var (
 // if iptables fails to update or acquire the initial lock. Once a proxier is
 // created, it will keep iptables up to date in the background and will not
 // terminate if a particular iptables call fails.
-func NewProxier(loadBalancer LoadBalancer, listenIP net.IP, iptables iptables.Interface, exec utilexec.Interface, pr utilnet.PortRange, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, nodePortAddresses []string) (*Proxier, error) {
+
+func NewUserspaceLinux(loadBalancer LoadBalancer, listenIP net.IP, iptables iptables.IptablesInterface, exec utilexec.Interface, pr utilnet.PortRange, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, nodePortAddresses []string) (*UserspaceLinux, error) {
 	return NewCustomProxier(loadBalancer, listenIP, iptables, exec, pr, syncPeriod, minSyncPeriod, udpIdleTimeout, nodePortAddresses, newProxySocket)
 }
 
@@ -216,7 +218,7 @@ func NewProxier(loadBalancer LoadBalancer, listenIP net.IP, iptables iptables.In
 // for the given LoadBalancer and address.  The new proxier is constructed using
 // the ProxySocket constructor provided, however, instead of constructing the
 // default ProxySockets.
-func NewCustomProxier(loadBalancer LoadBalancer, listenIP net.IP, iptables iptables.Interface, exec utilexec.Interface, pr utilnet.PortRange, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, nodePortAddresses []string, makeProxySocket ProxySocketFunc) (*Proxier, error) {
+func NewCustomProxier(loadBalancer LoadBalancer, listenIP net.IP, iptables iptables.IptablesInterface, exec utilexec.Interface, pr utilnet.PortRange, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, nodePortAddresses []string, makeProxySocket ProxySocketFunc) (*UserspaceLinux, error) {
 	if listenIP.Equal(localhostIPv4) || listenIP.Equal(localhostIPv6) {
 		return nil, ErrProxyOnLocalhost
 	}
@@ -252,7 +254,7 @@ func NewCustomProxier(loadBalancer LoadBalancer, listenIP net.IP, iptables iptab
 }
 
 // createProxier makes a userspace proxier.  It does some iptables actions but it doesn't actually run iptables AS the proxy.
-func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptablesInterfaceImpl iptables.IptablesInterface, exec utilexec.Interface, hostIP net.IP, proxyPorts PortAllocator, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, makeProxySocket ProxySocketFunc) (*Proxier, error) {
+func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptablesInterfaceImpl iptables.IptablesInterface, exec utilexec.Interface, hostIP net.IP, proxyPorts PortAllocator, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, makeProxySocket ProxySocketFunc) (*UserspaceLinux, error) {
 	// convenient to pass nil for tests..
 	if proxyPorts == nil {
 		proxyPorts = newPortAllocator(utilnet.PortRange{})
@@ -266,7 +268,7 @@ func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptablesInterface
 	if err := iptablesFlush(iptablesInterfaceImpl); err != nil {
 		return nil, fmt.Errorf("failed to flush iptables: %v", err)
 	}
-	proxier := &Proxier{
+	proxier := &UserspaceLinux{
 		loadBalancer:    loadBalancer,
 		serviceMap:      make(map[iptables.ServicePortName]*ServiceInfo),
 		serviceChanges:  make(map[types.NamespacedName]*serviceChange),
@@ -357,7 +359,7 @@ func CleanupLeftovers(ipt iptables.IptablesInterface) (encounteredError bool) {
 
 // shutdown closes all service port proxies and returns from the proxy's
 // sync loop. Used from testcases.
-func (proxier *Proxier) shutdown() {
+func (proxier *UserspaceLinux) shutdown() {
 	proxier.mu.Lock()
 	defer proxier.mu.Unlock()
 

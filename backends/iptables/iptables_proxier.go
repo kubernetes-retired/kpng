@@ -73,7 +73,7 @@ type iptables struct {
 	endpointsChanges  *EndpointChangeTracker
 	localDetector     LocalTrafficDetector
 	portsMap          map[utilnet.LocalPort]utilnet.Closeable
-	iptInterface      Interface
+	iptInterface      IptablesInterface
 }
 
 var portMapper = &utilnet.ListenPortOpener
