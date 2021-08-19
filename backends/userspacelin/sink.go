@@ -109,15 +109,17 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 
 func (s *Backend) Setup() {
 	hostname = s.NodeName
+	// make a proxier for ipv4, ipv6
 	usImpl = make(map[v1.IPFamily]*UserspaceLinux)
 
 	for _, protocol := range []v1.IPFamily{v1.IPv4Protocol, v1.IPv6Protocol} {
-		usImpl := NewUserspaceLinux()
+		theProxier, _ := NewUserspaceLinux()
 
-		usImpl.iptInterface = NewIPTableExec(exec.New(), Protocol(protocol))
-		usImpl.serviceChanges = iptables.NewServiceChangeTracker(newServiceInfo, protocol, iptable.recorder)
-		usImpl.endpointsChanges = NewEndpointChangeTracker(hostname, protocol, iptable.recorder)
-		IptablesImpl[protocol] = iptable
+		usImpl[protocol] = theProxier
+
+		usImpl[protocol].iptables = NewIPTableExec(exec.New(), Protocol(protocol))
+		usImpl[protocol].serviceChanges = iptables.NewServiceChangeTracker(newServiceInfo, protocol, iptable.recorder)
+		usImpl[protocol].endpointsSynced = NewEndpointChangeTracker(hostname, protocol, iptable.recorder)
 	}
 }
 
@@ -140,6 +142,7 @@ func (s *Backend) SetService(svc *localnetv1.Service) {
 func (s *Backend) DeleteService(namespace, name string) {
 	for _, impl := range IptablesImpl {
 		impl.serviceChanges.Delete(namespace, name)
+
 	}
 }
 
