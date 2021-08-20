@@ -45,6 +45,8 @@ type ProxySocket interface {
 	ListenPort() int
 }
 
+// newProxySocket creates a socket that has a listener that copies
+// bytes on new connections
 func newProxySocket(protocol v1.Protocol, ip net.IP, port int) (ProxySocket, error) {
 	host := ""
 	if ip != nil {
@@ -52,24 +54,24 @@ func newProxySocket(protocol v1.Protocol, ip net.IP, port int) (ProxySocket, err
 	}
 
 	switch strings.ToUpper(string(protocol)) {
-	case "TCP":
-		listener, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
-		if err != nil {
-			return nil, err
-		}
-		return &tcpProxySocket{Listener: listener, port: port}, nil
-	case "UDP":
-		addr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(host, strconv.Itoa(port)))
-		if err != nil {
-			return nil, err
-		}
-		conn, err := net.ListenUDP("udp", addr)
-		if err != nil {
-			return nil, err
-		}
-		return &udpProxySocket{UDPConn: conn, port: port}, nil
-	case "SCTP":
-		return nil, fmt.Errorf("SCTP is not supported for user space proxy")
+		case "TCP":
+			listener, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+			if err != nil {
+				return nil, err
+			}
+			return &tcpProxySocket{Listener: listener, port: port}, nil
+		case "UDP":
+			addr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(host, strconv.Itoa(port)))
+			if err != nil {
+				return nil, err
+			}
+			conn, err := net.ListenUDP("udp", addr)
+			if err != nil {
+				return nil, err
+			}
+			return &udpProxySocket{UDPConn: conn, port: port}, nil
+		case "SCTP":
+			return nil, fmt.Errorf("SCTP is not supported for user space proxy")
 	}
 	return nil, fmt.Errorf("unknown protocol %q", protocol)
 }
@@ -161,6 +163,8 @@ func ProxyTCP(in, out *net.TCPConn) {
 	wg.Wait()
 }
 
+// copyBytes is used every time we get a connection, it copys the bytes from the
+// incoming port into the socket...
 func copyBytes(direction string, dest, src *net.TCPConn, wg *sync.WaitGroup) {
 	defer wg.Done()
 	klog.V(4).Infof("Copying %s: %s -> %s", direction, src.RemoteAddr(), dest.RemoteAddr())
