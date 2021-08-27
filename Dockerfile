@@ -1,4 +1,4 @@
-from golang:1.16.5-alpine3.13 as build
+from golang:1.17.0-alpine3.13 as build
 
 # install dependencies
 run apk add --update --no-cache \
