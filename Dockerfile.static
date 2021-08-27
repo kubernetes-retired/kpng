@@ -1,0 +1,38 @@
+from golang:1.17.0-alpine3.13 as build
+
+# install dependencies
+run apk add --update --no-cache \
+    gcc musl-dev \
+    linux-headers
+
+# build static dependencies
+# - libnl3
+workdir /deps/libnl-3
+run wget -O libnl3.tar.gz https://github.com/thom311/libnl/releases/download/libnl3_5_0/libnl-3.5.0.tar.gz
+run tar zxvf libnl3.tar.gz --strip-components=1
+run apk add bison flex make
+run ./configure --prefix=/usr --sysconfdir=/etc --enable-cli=no --disable-shared
+run make && make install
+
+workdir /src
+
+# go mod args
+arg GOPROXY
+arg GONOSUMDB
+
+# cache dependencies, they don't change as much as the code
+add go.mod go.sum ./
+run go mod download
+
+# test and build
+
+add . ./
+#run go test ./...
+run go install -trimpath \
+      -ldflags "-extldflags '-static -pthread'" \
+      ./cmd/...
+
+# the real image
+from scratch
+entrypoint ["/bin/kpng"]
+copy --from=build /go/bin/ /bin/
