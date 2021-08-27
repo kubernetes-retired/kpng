@@ -69,16 +69,40 @@ func ExampleDiffStore() {
 	// Output:
 	// set a to alice
 	// set b to bob
-	// -> updated: [{[97] alice} {[98] bob}] deleted: []
+	// -> updated: [{a => alice} {b => bob}] deleted: []
 	//
 	// set a to alice2
-	// -> updated: [{[97] alice2}] deleted: []
+	// -> updated: [{a => alice2}] deleted: []
 	//
 	// set a to alice3
-	// -> updated: [{[97] alice3}] deleted: [{[98] bob}]
+	// -> updated: [{a => alice3}] deleted: [{b => bob}]
 	//
 	// set a to alice3
 	// set b to bob
-	// -> updated: [{[98] bob}] deleted: []
+	// -> updated: [{b => bob}] deleted: []
 	// tree size after double reset: 0
+}
+
+func ExampleDiffPortMapping() {
+	s := New()
+
+	set := func(ports ...int) {
+		s.Reset(ItemDeleted)
+
+		for _, port := range ports {
+			key := fmt.Sprintf("%s/%s:%d", "my-ns", "my-svc", port)
+			s.Set([]byte(key), 0, port)
+		}
+
+		fmt.Println("updated:", s.Updated(), "deleted:", s.Deleted())
+	}
+
+	// Output:
+	set(80)
+	// updated: [{my-ns/my-svc:80 => 80}] deleted: []
+	set(80, 81)
+	// updated: [{my-ns/my-svc:81 => 81}] deleted: []
+	set(443)
+	// updated: [{my-ns/my-svc:443 => 443}] deleted: [{my-ns/my-svc:81 => 81} {my-ns/my-svc:80 => 80}]
+
 }
