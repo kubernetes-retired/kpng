@@ -18,6 +18,7 @@ package diffstore
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/google/btree"
 )
@@ -30,6 +31,10 @@ type KV struct {
 func (a *KV) Less(bItem btree.Item) bool {
 	b := bItem.(*KV)
 	return bytes.Compare(a.Key, b.Key) < 0
+}
+
+func (a KV) String() string {
+	return fmt.Sprintf("{%s => %v}", string(a.Key), a.Value)
 }
 
 type ItemState int
