@@ -35,4 +35,4 @@ run go install -trimpath \
 # the real image
 from scratch
 entrypoint ["/bin/kpng"]
-copy --from=build /go/bin/ /bin/
+copy --from=build /go/bin/kpng /bin/
