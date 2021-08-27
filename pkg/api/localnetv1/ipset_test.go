@@ -18,6 +18,7 @@ package localnetv1
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -79,8 +80,8 @@ func ExampleIPSetDiff() {
 
 	added, removed := s1.Diff(s2)
 
-	fmt.Println("added:  ", added)
-	fmt.Println("removed:", removed)
+	fmt.Println("added:  ", strings.ReplaceAll(added.String(), "  ", " "))
+	fmt.Println("removed:", strings.ReplaceAll(removed.String(), "  ", " "))
 
 	// Output:
 	// added:   V4:"1.1.1.3" V6:"::3"
