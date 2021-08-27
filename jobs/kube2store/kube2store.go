@@ -79,11 +79,10 @@ func (j Job) Run(ctx context.Context) {
 	factory := informers.NewSharedInformerFactoryWithOptions(j.Kube, time.Second*30)
 	factory.Start(stopCh)
 
+	labelSelector := j.getLabelSelector().String()
+	klog.Info("service label selector: ", labelSelector)
 	svcFactory := informers.NewSharedInformerFactoryWithOptions(j.Kube, time.Second*30,
-		informers.WithTweakListOptions(func(options *metav1.ListOptions) {
-			options.LabelSelector = j.getLabelSelector().String()
-			klog.Info("label selector: ", options.LabelSelector)
-		}))
+		informers.WithTweakListOptions(func(options *metav1.ListOptions) { options.LabelSelector = labelSelector }))
 	svcFactory.Start(stopCh)
 
 	// start watches
