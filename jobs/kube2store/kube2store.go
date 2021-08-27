@@ -36,6 +36,8 @@ import (
 type Config struct {
 	UseSlices bool
 
+	ServiceProxyName string
+
 	ServiceLabelGlobs      []string
 	ServiceAnnonationGlobs []string
 
@@ -52,6 +54,8 @@ const (
 
 func (c *Config) BindFlags(flags *pflag.FlagSet) {
 	flags.BoolVar(&c.UseSlices, "use-slices", true, "use EndpointsSlice (not Endpoints)")
+
+	flags.StringVar(&c.ServiceProxyName, "service-proxy-name", "", "the "+LabelServiceProxyName+" match to use (handle normal services if not set)")
 
 	flags.StringSliceVar(&c.ServiceLabelGlobs, "with-service-labels", nil, "service labels to include")
 	flags.StringSliceVar(&c.ServiceAnnonationGlobs, "with-service-annotations", nil, "service annotations to include")
@@ -72,17 +76,21 @@ func (j Job) Run(ctx context.Context) {
 	stopCh := ctx.Done()
 
 	// start informers
-	factory := informers.NewSharedInformerFactoryWithOptions(j.Kube, time.Second*30,
+	factory := informers.NewSharedInformerFactoryWithOptions(j.Kube, time.Second*30)
+	factory.Start(stopCh)
+
+	svcFactory := informers.NewSharedInformerFactoryWithOptions(j.Kube, time.Second*30,
 		informers.WithTweakListOptions(func(options *metav1.ListOptions) {
 			options.LabelSelector = j.getLabelSelector().String()
+			klog.Info("label selector: ", options.LabelSelector)
 		}))
-	factory.Start(stopCh)
+	svcFactory.Start(stopCh)
 
 	// start watches
 	coreFactory := factory.Core().V1()
 
 	{
-		servicesInformer := coreFactory.Services().Informer()
+		servicesInformer := svcFactory.Core().V1().Services().Informer()
 		servicesInformer.AddEventHandler(&serviceEventHandler{j.eventHandler(servicesInformer)})
 		go servicesInformer.Run(stopCh)
 
@@ -115,17 +123,24 @@ func (j Job) eventHandler(informer cache.SharedIndexInformer) eventHandler {
 }
 
 func (j Job) getLabelSelector() labels.Selector {
-	noProxyName, err := labels.NewRequirement(LabelServiceProxyName, selection.DoesNotExist, nil)
-	if err != nil {
-		klog.Exit(err)
-	}
-
-	noHeadlessEndpoints, err := labels.NewRequirement(v1.IsHeadlessService, selection.DoesNotExist, nil)
-	if err != nil {
-		klog.Exit(err)
-	}
-
 	labelSelector := labels.NewSelector()
-	labelSelector = labelSelector.Add(*noProxyName, *noHeadlessEndpoints)
+
+	addReq := func(key string, op selection.Operator, v ...string) {
+		req, err := labels.NewRequirement(key, op, v)
+		if err != nil {
+			klog.Exit(err)
+		}
+
+		labelSelector = labelSelector.Add(*req)
+	}
+
+	if proxyName := j.Config.ServiceProxyName; proxyName == "" {
+		addReq(LabelServiceProxyName, selection.DoesNotExist)
+	} else {
+		addReq(LabelServiceProxyName, selection.Equals, proxyName)
+	}
+
+	addReq(v1.IsHeadlessService, selection.DoesNotExist)
+
 	return labelSelector
 }
