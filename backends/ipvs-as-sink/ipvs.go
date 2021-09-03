@@ -1,10 +1,28 @@
+/*
+Copyright 2021 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package ipvssink
 
 import (
-	"bytes"
 	"net"
 	"strings"
 	"time"
+
+	"k8s.io/utils/exec"
+	utilipset "sigs.k8s.io/kpng/backends/util/ipvs"
 
 	"github.com/google/seesaw/ipvs"
 	"github.com/vishvananda/netlink"
@@ -39,6 +57,8 @@ type Backend struct {
 
 	// <namespace>/<service-name>/<ip>/<protocol>:<port>/<ip> -> ipvsSvcDst
 	dests *diffstore.DiffStore
+
+	ipsetList map[string]*IPSet
 }
 
 var _ decoder.Interface = &Backend{}
@@ -62,8 +82,14 @@ func (s *Backend) Sink() localsink.Sink {
 func (s *Backend) Setup() {
 	ipvs.Init()
 
-	// populate dummyIPs
+	s.createIPVSDummyInterface()
 
+	s.initializeIPSets()
+	// TODO: populate lbs and endpoints with some kind and "claim" mechanism, or just flush ipvs LBs?
+}
+
+func (s *Backend) createIPVSDummyInterface() {
+	// populate dummyIPs
 	const dummyName = "kube-ipvs0"
 
 	dummy, err := netlink.LinkByName(dummyName)
@@ -116,8 +142,32 @@ func (s *Backend) Setup() {
 
 		s.dummyIPsRefCounts[cidr] = 0
 	}
+}
 
-	// TODO: populate lbs and endpoints with some kind and "claim" mechanism, or just flush ipvs LBs?
+func (s *Backend) initializeIPSets() {
+	var ipsetInterface utilipset.Interface
+
+	// Create a iptables utils.
+	execer := exec.New()
+
+	ipsetInterface = utilipset.New(execer)
+
+	// initialize ipsetList with all sets we needed
+	s.ipsetList = make(map[string]*IPSet)
+	for _, is := range ipsetInfo {
+		ipv4Set := newIPv4Set(ipsetInterface, is.name, is.setType, is.comment)
+		s.ipsetList[ipv4Set.Name] = ipv4Set
+
+		ipv6Set := newIPv6Set(ipsetInterface, is.name, is.setType, is.comment)
+		s.ipsetList[ipv6Set.Name] = ipv6Set
+	}
+
+	// make sure ip sets exists in the system.
+	for _, set := range s.ipsetList {
+		if err := ensureIPSet(set); err != nil {
+			return
+		}
+	}
 }
 
 func (s *Backend) Reset() { /* noop, we're wrapped in filterreset */ }
@@ -148,7 +198,7 @@ func (s *Backend) Sync() {
 		}
 	}
 
-	// add service LBs
+	// add service IP into IPVS
 	for _, lbKV := range s.lbs.Updated() {
 		lb := lbKV.Value.(ipvsLB)
 		// add the service
@@ -158,30 +208,11 @@ func (s *Backend) Sync() {
 		err := ipvs.AddService(ipvsSvc)
 
 		if err != nil && !strings.HasSuffix(err.Error(), "object exists") {
-			klog.Error("failed to add service ", string(lbKV.Key), ": ", err)
-		}
-
-		// When existing service gets updated with new port/protocol, endpoints
-		// behind it also needs to be updated into tree, so that they are handled below.
-		for _, epKV := range s.endpoints.GetByPrefix([]byte(lb.ServiceKey + "/")) {
-			epIP := epKV.Value.(string)
-			s.dests.Set([]byte(string(lbKV.Key)+"/"+epIP), 0, ipvsSvcDst{
-				Svc: lb.ToService(),
-				Dst: ipvsDestination(epIP, lb.Port, s.weight),
-			})
+			klog.Error("failed to add service in IPVS", string(lbKV.Key), ": ", err)
 		}
 	}
 
-	// add/remove destinations
-	for _, kv := range s.dests.Deleted() {
-		svcDst := kv.Value.(ipvsSvcDst)
-
-		klog.V(2).Info("deleting destination ", string(kv.Key))
-		if err := ipvs.DeleteDestination(svcDst.Svc, svcDst.Dst); err != nil {
-			klog.Error("failed to delete destination ", string(kv.Key), ": ", err)
-		}
-	}
-
+	// Add endpoint/real-server entries into IPVS
 	for _, kv := range s.dests.Updated() {
 		svcDst := kv.Value.(ipvsSvcDst)
 
@@ -191,7 +222,17 @@ func (s *Backend) Sync() {
 		}
 	}
 
-	// remove service LBs
+	// Delete endpoint/real-server entries from IPVS
+	for _, kv := range s.dests.Deleted() {
+		svcDst := kv.Value.(ipvsSvcDst)
+
+		klog.V(2).Info("deleting destination ", string(kv.Key))
+		if err := ipvs.DeleteDestination(svcDst.Svc, svcDst.Dst); err != nil {
+			klog.Error("failed to delete destination ", string(kv.Key), ": ", err)
+		}
+	}
+
+	// remove service IP from IPVS
 	for _, lbKV := range s.lbs.Deleted() {
 		lb := lbKV.Value.(ipvsLB)
 
@@ -199,15 +240,14 @@ func (s *Backend) Sync() {
 		err := ipvs.DeleteService(lb.ToService())
 
 		if err != nil {
-			klog.Error("failed to delete service", string(lbKV.Key), ": ", err)
+			klog.Error("failed to delete service from IPVS", string(lbKV.Key), ": ", err)
 		}
+	}
 
-		// When existing service gets updated with deletion of port/protocol,
-		// endpoint behind it needs to be removed from tree.
-		for _, epKV := range s.endpoints.GetByPrefix([]byte(lb.ServiceKey + "/")) {
-			epIP := epKV.Value.(string)
-			s.dests.Delete([]byte(string(lbKV.Key) + "/" + epIP))
-		}
+	// sync ipset entries
+	for _, set := range s.ipsetList {
+		set.syncIPSetEntries()
+		set.resetEntries()
 	}
 
 	// signal diffstores we've finished
@@ -219,12 +259,12 @@ func (s *Backend) Sync() {
 func (s *Backend) SetService(svc *localnetv1.Service) {
 	klog.V(1).Infof("SetService(%v)", svc)
 
-	if svc.Type == NodePortService || svc.Type == LoadBalancerService {
-		s.handleNodePortSvc(svc)
+	if svc.Type == ClusterIPService {
+		s.handleClusterIPService(svc, AddService)
 	}
 
-	if svc.Type == ClusterIPService {
-		s.handleClusterIPSvc(svc)
+	if svc.Type == NodePortService {
+		s.handleNodePortService(svc, AddService)
 	}
 }
 
@@ -234,6 +274,14 @@ func (s *Backend) DeleteService(namespace, name string) {
 	key := namespace + "/" + name
 	svc := s.svcs[key]
 	delete(s.svcs, key)
+
+	if svc.Type == ClusterIPService {
+		s.handleClusterIPService(svc, DeleteService)
+	}
+
+	if svc.Type == NodePortService {
+		s.handleNodePortService(svc, DeleteService)
+	}
 
 	for _, ip := range asDummyIPs(svc.IPs.All()) {
 		s.dummyIPsRefCounts[ip]--
@@ -247,195 +295,28 @@ func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *loca
 	klog.Infof("SetEndpoint(%q, %q, %q, %v)", namespace, serviceName, key, endpoint)
 
 	svcKey := namespace + "/" + serviceName
-	prefix := svcKey + "/" + key + "/"
+	service := s.svcs[svcKey]
 
-	for _, ips := range [][]string{endpoint.IPs.V4, endpoint.IPs.V6} {
-		if len(ips) == 0 {
-			continue
-		}
-
-		ip := ips[0]
-		s.endpoints.Set([]byte(prefix+ip), 0, ip)
-
-		// add a destination for every LB of this service
-		for _, lbKV := range s.lbs.GetByPrefix([]byte(svcKey + "/")) {
-			lb := lbKV.Value.(ipvsLB)
-			s.dests.Set([]byte(string(lbKV.Key)+"/"+ip), 0, ipvsSvcDst{
-				Svc: lb.ToService(),
-				Dst: ipvsDestination(ip, lb.Port, s.weight),
-			})
-		}
+	if service.Type == ClusterIPService {
+		s.SetEndPointForClusterIPSvc(svcKey, key, endpoint)
 	}
 
+	if service.Type == NodePortService {
+		s.SetEndPointForNodePortSvc(svcKey, key, endpoint)
+	}
 }
 
 func (s *Backend) DeleteEndpoint(namespace, serviceName, key string) {
 	klog.Infof("DeleteEndpoint(%q, %q, %q)", namespace, serviceName, key)
 
-	svcPrefix := []byte(namespace + "/" + serviceName + "/")
-	prefix := []byte(string(svcPrefix) + key + "/")
+	svcKey := namespace + "/" + serviceName
+	service := s.svcs[svcKey]
 
-	for _, kv := range s.endpoints.GetByPrefix(prefix) {
-		// remove this endpoint from the destinations if the service
-		ip := kv.Value.(string)
-		suffix := []byte("/" + ip)
-
-		for _, destKV := range s.dests.GetByPrefix(svcPrefix) {
-			if bytes.HasSuffix(destKV.Key, suffix) {
-				s.dests.Delete(destKV.Key)
-			}
-		}
+	if service.Type == ClusterIPService {
+		s.DeleteEndPointForClusterIPSvc(svcKey, key)
 	}
 
-	// remove this endpoint from the endpoints
-	s.endpoints.DeleteByPrefix(prefix)
-}
-
-func (s *Backend) handleClusterIPSvc(svc *localnetv1.Service) {
-	key := svc.Namespace + "/" + svc.Name
-
-	isNewService := true
-	if _, ok := s.svcs[key]; ok {
-		isNewService = false
-	}
-
-	if isNewService {
-		s.handleNewClusterIPSvc(key, svc)
-	} else {
-		s.handleUpdatedClusterIPSvc(key, svc)
-	}
-}
-
-func (s *Backend) handleNewClusterIPSvc(key string, svc *localnetv1.Service) {
-	// update the svc
-	prevSvc := s.svcs[key]
-	s.svcs[key] = svc
-
-	s.addServiceIPToKubeIPVSIntf(prevSvc, svc)
-
-	s.storeLBSvc(svc.Ports, svc.IPs.All().All(), key, ClusterIPService)
-}
-
-func (s *Backend) handleUpdatedClusterIPSvc(key string, svc *localnetv1.Service) {
-	// update the svc
-	prevSvc := s.svcs[key]
-	s.svcs[key] = svc
-
-	s.addServiceIPToKubeIPVSIntf(prevSvc, svc)
-
-	addedPorts, removedPorts := diffInPortMapping(prevSvc, svc)
-
-	s.storeLBSvc(addedPorts, svc.IPs.All().All(), key, ClusterIPService)
-
-	s.deleteLBSvc(removedPorts, svc.IPs.All().All(), key)
-}
-
-func (s *Backend) handleNodePortSvc(svc *localnetv1.Service) {
-	key := svc.Namespace + "/" + svc.Name
-
-	isNewService := true
-	if _, ok := s.svcs[key]; ok {
-		isNewService = false
-	}
-
-	if isNewService {
-		s.handleNewNodePortSvc(key, svc)
-	} else {
-		s.handleUpdatedNodePortSvc(key, svc)
-	}
-
-}
-
-func (s *Backend) handleNewNodePortSvc(key string, svc *localnetv1.Service) {
-	// update the svc
-	prevSvc := s.svcs[key]
-	s.svcs[key] = svc
-
-	s.addServiceIPToKubeIPVSIntf(prevSvc, svc)
-
-	//Node Addresses need to be added as NodePortService
-	//so that in sync(), nodePort is attached to nodeIPs.
-	s.storeLBSvc(svc.Ports, s.nodeAddresses, key, NodePortService)
-
-	//NodePort svc clusterIPs need to be added as ClusterIPService
-	//so that in sync(), port is attached to clusterIP.
-	s.storeLBSvc(svc.Ports, svc.IPs.All().All(), key, ClusterIPService)
-}
-
-func (s *Backend) handleUpdatedNodePortSvc(key string, svc *localnetv1.Service) {
-	// update the svc
-	prevSvc := s.svcs[key]
-	s.svcs[key] = svc
-
-	s.addServiceIPToKubeIPVSIntf(prevSvc, svc)
-
-	addedPorts, removedPorts := diffInPortMapping(prevSvc, svc)
-
-	//Node Addresses need to be added as NodePortService
-	//so that in sync(), nodePort is attached to nodeIPs.
-	s.storeLBSvc(addedPorts, s.nodeAddresses, key, NodePortService)
-
-	//NodePort svc clusterIPs need to be added as ClusterIPService
-	//so that in sync(), port is attached to clusterIP.
-	s.storeLBSvc(addedPorts, svc.IPs.All().All(), key, ClusterIPService)
-
-	s.deleteLBSvc(removedPorts, s.nodeAddresses, key)
-
-	s.deleteLBSvc(removedPorts, svc.IPs.All().All(), key)
-}
-
-func (s *Backend) addServiceIPToKubeIPVSIntf(prevSvc, curr *localnetv1.Service) {
-	// sync dummy IPs
-	var prevIPs *localnetv1.IPSet
-	if prevSvc == nil {
-		prevIPs = localnetv1.NewIPSet()
-	} else {
-		prevIPs = prevSvc.IPs.All()
-	}
-
-	currentIPs := curr.IPs.All()
-
-	added, removed := prevIPs.Diff(currentIPs)
-
-	for _, ip := range asDummyIPs(added) {
-		if _, ok := s.dummyIPsRefCounts[ip]; !ok {
-			// IP is not referenced so we must add it
-			klog.V(2).Info("adding dummy IP ", ip)
-
-			_, ipNet, err := net.ParseCIDR(ip)
-			if err != nil {
-				klog.Fatalf("failed to parse ip/net %q: %v", ip, err)
-			}
-
-			if err = netlink.AddrAdd(s.dummy, &netlink.Addr{IPNet: ipNet}); err != nil {
-				klog.Error("failed to add dummy IP ", ip, ": ", err)
-			}
-		}
-
-		s.dummyIPsRefCounts[ip]++
-	}
-
-	for _, ip := range asDummyIPs(removed) {
-		s.dummyIPsRefCounts[ip]--
-	}
-}
-
-func (s *Backend) storeLBSvc(portList []*localnetv1.PortMapping, addrList []string, key, svcType string) {
-	for _, ip := range addrList {
-		prefix := key + "/" + ip + "/"
-		for _, port := range portList {
-			lbKey := prefix + epPortSuffix(port)
-			s.lbs.Set([]byte(lbKey), 0, ipvsLB{IP: ip, ServiceKey: key, Port: port, SchedulingMethod: s.schedulingMethod, ServiceType: svcType})
-		}
-	}
-}
-
-func (s *Backend) deleteLBSvc(portList []*localnetv1.PortMapping, addrList []string, key string) {
-	for _, ip := range addrList {
-		prefix := key + "/" + ip + "/"
-		for _, port := range portList {
-			lbKey := prefix + epPortSuffix(port)
-			s.lbs.Delete([]byte(lbKey))
-		}
+	if service.Type == NodePortService {
+		s.DeleteEndPointForNodePortSvc(svcKey, key)
 	}
 }
