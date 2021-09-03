@@ -84,6 +84,15 @@ message Service {
     repeated PortMapping Ports = 6;
 
     bool ExternalTrafficToLocal = 7;
+
+    string SessionAffinity = 10;
+    SessionAffinityConfig SessionAffinityConfig = 11;
+    IPSet LoadBalancerSourceRanges = 12;
+    IPSet LoadBalancerIngressIPs = 13;
+}
+
+message SessionAffinityConfig {
+    int32 TimeoutSeconds = 2;
 }
 
 message IPFilter {
