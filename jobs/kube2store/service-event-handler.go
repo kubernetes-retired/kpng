@@ -17,6 +17,8 @@ limitations under the License.
 package kube2store
 
 import (
+	"net"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"
@@ -29,7 +31,10 @@ type serviceEventHandler struct{ eventHandler }
 
 func (h *serviceEventHandler) onChange(obj interface{}) {
 	svc := obj.(*v1.Service)
-
+	var timeout int32
+	if svc.Spec.SessionAffinity != v1.ServiceAffinityNone {
+		timeout = *svc.Spec.SessionAffinityConfig.ClientIP.TimeoutSeconds
+	}
 	// build the service
 	service := &localnetv1.Service{
 		Namespace:   svc.Namespace,
@@ -42,8 +47,13 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 			ExternalIPs: localnetv1.NewIPSet(svc.Spec.ExternalIPs...),
 		},
 		ExternalTrafficToLocal: svc.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal,
+		SessionAffinity:        string(svc.Spec.SessionAffinity),
+		SessionAffinityConfig: &localnetv1.SessionAffinityConfig{
+			TimeoutSeconds: timeout,
+		},
+		LoadBalancerSourceRanges: localnetv1.NewIPSet(svc.Spec.LoadBalancerSourceRanges...),
+		LoadBalancerIngressIPs:   localnetv1.NewIPSet(getIngressIps(svc.Status.LoadBalancer.Ingress)...),
 	}
-
 	// extract cluster IPs with backward compatibility (k8s before ClusterIPs)
 	clusterIPs := []string{}
 	if len(svc.Spec.ClusterIPs) == 0 {
@@ -131,4 +141,14 @@ func (h *serviceEventHandler) OnDelete(oldObj interface{}) {
 		tx.DelService(svc.Namespace, svc.Name)
 		h.updateSync(proxystore.Services, tx)
 	})
+}
+
+func getIngressIps(ingress []v1.LoadBalancerIngress) []string {
+	var loadBalancerIngressIPs []string
+	for _, ingress := range ingress {
+		if net.ParseIP(ingress.IP) != nil {
+			loadBalancerIngressIPs = append(loadBalancerIngressIPs, ingress.IP)
+		}
+	}
+	return loadBalancerIngressIPs
 }
