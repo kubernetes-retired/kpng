@@ -250,6 +250,9 @@ func NewCustomProxier(makeProxySocket ProxySocketFunc) (*UserspaceLinux, error) 
 
 // createProxier makes a userspace proxier.  It does some iptables actions but it doesn't actually run iptables AS the proxy.
 func createProxier(listenIP net.IP, iptablesInterfaceImpl iptables.IptablesInterface, exec utilexec.Interface, hostIP net.IP, proxyPorts PortAllocator, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, makeProxySocket ProxySocketFunc) (*UserspaceLinux, error) {
+	// Hack: since the userspace proxy is old, we don't expect people to need to replace this loadbalancer. so we hardcode it to round_robin.go.
+	loadBalancer := NewLoadBalancerRR()
+
 	// convenient to pass nil for tests..
 	if proxyPorts == nil {
 		proxyPorts = newPortAllocator(utilnet.PortRange{})
@@ -264,7 +267,7 @@ func createProxier(listenIP net.IP, iptablesInterfaceImpl iptables.IptablesInter
 		return nil, fmt.Errorf("failed to flush iptables: %v", err)
 	}
 	proxier := &UserspaceLinux{
-		loadBalancer:    loadBalancer,
+		loadBalancer:    loadBalancer, // <---- 
 		serviceMap:      make(map[iptables.ServicePortName]*ServiceInfo),
 		serviceChanges:  make(map[types.NamespacedName]*serviceChange),
 		portMap:         make(map[portMapKey]*portMapValue),

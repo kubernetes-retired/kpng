@@ -69,6 +69,10 @@ func (s *Backend) DeleteService(namespace, name string) {
 
 func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint) {
 	for _, impl := range IptablesImpl {
+		// note we modified the upstream KubeProxy to support a EndpointUpdate method
+		// for KPNG.  To do that we updated the implementation of "updatePending", in upstream
+		// to take a service info as an input... rather then do a look up.
+		// This is the KPNG way.
 		impl.endpointsChanges.EndpointUpdate(namespace, serviceName, key, endpoint)
 	}
 }

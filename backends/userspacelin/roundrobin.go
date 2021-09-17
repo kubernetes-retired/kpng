@@ -204,13 +204,15 @@ func (lb *LoadBalancerRR) removeStaleAffinity(svcPort iptables.ServicePortName, 
 	}
 }
 
-func (lb *LoadBalancerRR) OnEndpointsAdd(endpoints *v1.Endpoints) {
+func (lb *LoadBalancerRR) OnEndpointsAdd(namespace, serviceName, key string, endpoints *v1.Endpoints) {
 	portsToEndpoints := util.BuildPortsToEndpointsMap(endpoints)
 
 	lb.lock.Lock()
 	defer lb.lock.Unlock()
 
 	for portname := range portsToEndpoints {
+		// OMG endpoints are named the same thing as their service so we can use this to find the service name
+		// MEANWHILE endpointSlice has a LABEL that references the service 
 		svcPort := iptables.ServicePortName{NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
 		newEndpoints := portsToEndpoints[portname]
 		state, exists := lb.services[svcPort]
@@ -229,14 +231,18 @@ func (lb *LoadBalancerRR) OnEndpointsAdd(endpoints *v1.Endpoints) {
 	}
 }
 
+[]*v1.Endpoints, endpoint
 func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {
+
+	// part 1: make new endpoints as needed stuff... 
+
 	portsToEndpoints := util.BuildPortsToEndpointsMap(endpoints)
-	oldPortsToEndpoints := util.BuildPortsToEndpointsMap(oldEndpoints)
 	registeredEndpoints := make(map[iptables.ServicePortName]bool)
 
 	lb.lock.Lock()
 	defer lb.lock.Unlock()
 
+	// new stuff
 	for portname := range portsToEndpoints {
 		svcPort := iptables.ServicePortName{NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
 		newEndpoints := portsToEndpoints[portname]
@@ -263,6 +269,10 @@ func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoint
 		registeredEndpoints[svcPort] = true
 	}
 
+	// part 2: clean old stuff
+	oldPortsToEndpoints := util.BuildPortsToEndpointsMap(oldEndpoints)
+
+	// clean old stuff 
 	// Now remove all endpoints missing from the update.
 	for portname := range oldPortsToEndpoints {
 		svcPort := iptables.ServicePortName{NamespacedName: types.NamespacedName{Namespace: oldEndpoints.Namespace, Name: oldEndpoints.Name}, Port: portname}

@@ -126,7 +126,7 @@ func (s *Backend) Setup() {
 func (s *Backend) Reset() { /* noop, we're wrapped in filterreset */ }
 
 func (s *Backend) Sync() {
-	for _, impl := range IptablesImpl {
+	for _, impl := range usImpl {
 		wg.Add(1)
 		go impl.sync()
 	}
@@ -134,26 +134,50 @@ func (s *Backend) Sync() {
 }
 
 func (s *Backend) SetService(svc *localnetv1.Service) {
-	for _, impl := range IptablesImpl {
+	for _, impl := range usImpl {
 		impl.serviceChanges.Update(svc)
 	}
 }
 
 func (s *Backend) DeleteService(namespace, name string) {
-	for _, impl := range IptablesImpl {
+	for _, impl := range usImpl {
 		impl.serviceChanges.Delete(namespace, name)
 
 	}
 }
 
-func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint) {
-	for _, impl := range IptablesImpl {
-		impl.endpointsChanges.EndpointUpdate(namespace, serviceName, key, endpoint)
+func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint:q) {
+	for _, impl := range usImpl {
+		spn := ServicePortName{ 
+			Namespaced: namespace,
+			Name: serviceName,
+			Port: ...,
+			Protocol: ...,
+		}
+		impl.loadBalancer.services
+		impl.loadBalancer.OnEndpointsAdd(namespace, serviceName, key, endpoint)
 	}
 }
 
 func (s *Backend) DeleteEndpoint(namespace, serviceName, key string) {
-	for _, impl := range IptablesImpl {
-		impl.endpointsChanges.EndpointUpdate(namespace, serviceName, key, nil)
-	}
+	 print("this doesnt work sorry")
 }
+
+
+1
+2 <-- last connection sent here
+3
+-------------------- rr.OnEndpointsUpdate (1,2,3) (1,2,3,4)
+1
+2
+3 <-- next connection will send here 
+4
+--------------------- rr.OnEndpointsUpdate (1,2,3) (1,2,4)
+1
+2
+4 <-- next connection will send here 
+---------------------
+1 <-- next connection will send here 
+2
+4
+
