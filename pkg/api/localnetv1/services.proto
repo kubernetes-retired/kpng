@@ -75,6 +75,8 @@ message Service {
 
     ServiceIPs IPs = 4;
 
+    repeated IPFilter IPFilters = 10;
+
     // true if the service maps the whole IP, not just individual ports.
     bool MapIP = 5;
 
@@ -84,9 +86,17 @@ message Service {
     bool ExternalTrafficToLocal = 7;
 }
 
+message IPFilter {
+    // TargetIPs are the IPs targetted to match (before DNAT)
+    IPSet TargetIPs = 1;
+
+    // SourceRanges are the CIDRs that are allowed by this filter rule
+    repeated string SourceRanges = 2;
+}
+
 message ServiceIPs {
     IPSet ClusterIPs = 1;
-    IPSet ExternalIPs = 2;
+    IPSet IngressIPs = 2;
     bool  Headless = 3;
 }
 
