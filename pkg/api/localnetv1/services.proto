@@ -87,10 +87,10 @@ message Service {
 }
 
 message IPFilter {
-    // TargetIPs are the IPs targetted to match (before DNAT)
+    // TargetIPs are the destination IPs to match (before DNAT)
     IPSet TargetIPs = 1;
 
-    // SourceRanges are the CIDRs that are allowed by this filter rule
+    // SourceRanges are the CIDRs of IPs that are allowed by this filter rule
     repeated string SourceRanges = 2;
 }
 
