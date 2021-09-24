@@ -22,7 +22,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	"k8s.io/klog"
+//	"k8s.io/klog"
 )
 
 func Bind(flags FlagSet) (f *Flags) {
