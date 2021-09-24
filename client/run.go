@@ -23,7 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"k8s.io/klog"
+	// "k8s.io/klog"
 	"sigs.k8s.io/kpng/localsink"
 	"sigs.k8s.io/kpng/localsink/fullstate"
 )
@@ -62,7 +62,7 @@ type Runner struct {
 
 func (r *Runner) BindFlags(flags *pflag.FlagSet) {
 	goflags := &flag.FlagSet{}
-	klog.InitFlags(goflags)
+	//klog.InitFlags(goflags)
 	flags.AddGoFlagSet(goflags)
 
 	flag.BoolVar(&r.once, "once", false, "only one fetch loop")
@@ -88,7 +88,7 @@ func (r *Runner) RunBackend(handler fullstate.Callback) {
 		var err error
 		r.nodeName, err = os.Hostname()
 		if err != nil {
-			klog.Fatal("no node-name set and hostname request failed: ", err)
+			// klog.Fatal("no node-name set and hostname request failed: ", err)
 		}
 	}
 
@@ -104,7 +104,7 @@ func (r *Runner) RunSink(sink localsink.Sink) {
 	if r.cpuprofile != "" {
 		f, err := os.Create(r.cpuprofile)
 		if err != nil {
-			klog.Fatal(err)
+			//klog.Fatal(err)
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
@@ -116,7 +116,7 @@ func (r *Runner) RunSink(sink localsink.Sink) {
 		canceled := r.epc.Next()
 
 		if canceled {
-			klog.Infof("finished")
+			//klog.Infof("finished")
 			return
 		}
 

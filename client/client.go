@@ -29,7 +29,7 @@ import (
 	// allow multi gRPC URLs
 	_ "github.com/Jille/grpc-multi-resolver"
 
-	"k8s.io/klog"
+	// "k8s.io/klog"
 
 	"sigs.k8s.io/kpng/localsink"
 	"sigs.k8s.io/kpng/localsink/fullstate"
@@ -118,7 +118,7 @@ retry:
 		op, err := epc.watch.Recv()
 
 		if err != nil {
-			klog.Error("watch recv failed: ", err)
+			// klog.Error("watch recv failed: ", err)
 			epc.postError()
 			goto retry
 		}
@@ -151,11 +151,11 @@ func (epc *EndpointsClient) CancelOn(signals ...os.Signal) {
 		signal.Notify(c, signals...)
 		sig := <-c
 
-		klog.Info("got signal ", sig, ", stopping")
+		//klog.Info("got signal ", sig, ", stopping")
 		epc.Cancel()
 
 		sig = <-c
-		klog.Info("got signal ", sig, " again, forcing exit")
+		//klog.Info("got signal ", sig, " again, forcing exit")
 		os.Exit(1)
 	}()
 }
@@ -165,7 +165,7 @@ func (epc *EndpointsClient) Context() context.Context {
 }
 
 func (epc *EndpointsClient) DialContext(ctx context.Context) (conn *grpc.ClientConn, err error) {
-	klog.Info("connecting to ", epc.Target)
+	//klog.Info("connecting to ", epc.Target)
 
 	opts := append(
 		make([]grpc.DialOption, 0),
@@ -198,7 +198,7 @@ retry:
 	if err == context.Canceled {
 		return true
 	} else if err != nil {
-		klog.Info("failed to connect: ", err)
+		//klog.Info("failed to connect: ", err)
 		epc.errorSleep()
 		goto retry
 	}
@@ -209,7 +209,7 @@ retry:
 	if err != nil {
 		conn.Close()
 
-		klog.Info("failed to start watch: ", err)
+		//klog.Info("failed to start watch: ", err)
 		epc.errorSleep()
 		goto retry
 	}
