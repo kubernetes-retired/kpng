@@ -1,6 +1,7 @@
 package iptables
 
 import (
+	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"sync"
 
 	"github.com/spf13/pflag"
@@ -10,7 +11,6 @@ import (
 	"sigs.k8s.io/kpng/localsink"
 	"sigs.k8s.io/kpng/localsink/decoder"
 	"sigs.k8s.io/kpng/localsink/filterreset"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
 
 type Backend struct {
@@ -55,7 +55,7 @@ func (s *Backend) Sync() {
 	wg.Wait()
 }
 
-func (s *Backend) SetService(svc *localnetv1.Service) {
+func (s *Backend) SetService(svc *localnetv12.Service) {
 	for _, impl := range IptablesImpl {
 		impl.serviceChanges.Update(svc)
 	}
@@ -67,7 +67,7 @@ func (s *Backend) DeleteService(namespace, name string) {
 	}
 }
 
-func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint) {
+func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv12.Endpoint) {
 	for _, impl := range IptablesImpl {
 		impl.endpointsChanges.EndpointUpdate(namespace, serviceName, key, endpoint)
 	}

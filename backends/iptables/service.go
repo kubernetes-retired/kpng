@@ -19,15 +19,14 @@ package iptables
 import (
 	"fmt"
 	"net"
+	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"strings"
-
-	"k8s.io/klog/v2"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/events"
+	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/proxy/metrics"
 )
 
@@ -38,7 +37,7 @@ import (
 type BaseServiceInfo struct {
 	clusterIP                net.IP
 	port                     int
-	protocol                 localnetv1.Protocol
+	protocol                 localnetv12.Protocol
 	nodePort                 int
 	loadBalancerStatus       v1.LoadBalancerStatus
 	sessionAffinityType      v1.ServiceAffinity
@@ -86,7 +85,7 @@ func (info *BaseServiceInfo) StickyMaxAgeSeconds() int {
 }
 
 // Protocol is part of ServicePort interface.
-func (info *BaseServiceInfo) Protocol() localnetv1.Protocol {
+func (info *BaseServiceInfo) Protocol() localnetv12.Protocol {
 	return info.protocol
 }
 
@@ -139,7 +138,7 @@ func (info *BaseServiceInfo) HintsAnnotation() string {
 	return info.hintsAnnotation
 }
 
-func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localnetv1.PortMapping, service *localnetv1.Service) *BaseServiceInfo {
+func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localnetv12.PortMapping, service *localnetv12.Service) *BaseServiceInfo {
 	nodeLocalExternal := false
 	if RequestsOnlyLocalTraffic(service) {
 		nodeLocalExternal = true
@@ -235,7 +234,7 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localnetv1.PortMapping
 }
 
 // returns a new ServicePort which abstracts a serviceInfo
-func newServiceInfo(port *localnetv1.PortMapping, service *localnetv1.Service, baseInfo *BaseServiceInfo) ServicePort {
+func newServiceInfo(port *localnetv12.PortMapping, service *localnetv12.Service, baseInfo *BaseServiceInfo) ServicePort {
 	info := &serviceInfo{BaseServiceInfo: baseInfo}
 
 	// Store the following for performance reasons.
@@ -254,7 +253,7 @@ func newServiceInfo(port *localnetv1.PortMapping, service *localnetv1.Service, b
 	return info
 }
 
-type makeServicePortFunc func(*localnetv1.PortMapping, *localnetv1.Service, *BaseServiceInfo) ServicePort
+type makeServicePortFunc func(*localnetv12.PortMapping, *localnetv12.Service, *BaseServiceInfo) ServicePort
 
 // This handler is invoked by the apply function on every change. This function should not modify the
 // ServiceMap's but just use the changes for any Proxier specific cleanup.
@@ -297,7 +296,7 @@ func NewServiceChangeTracker(makeServiceInfo makeServicePortFunc, ipFamily v1.IP
 //   - pass <oldService, service> as the <previous, current> pair.
 // Delete item
 //   - pass <service, nil> as the <previous, current> pair.
-func (sct *ServiceChangeTracker) Update(current *localnetv1.Service) bool {
+func (sct *ServiceChangeTracker) Update(current *localnetv12.Service) bool {
 	svc := current
 	if svc == nil {
 		return false
@@ -398,7 +397,7 @@ type serviceInfo struct {
 // serviceToServiceMap translates a single Service object to a ServiceMap.
 //
 // NOTE: service object should NOT be modified.
-func (sct *ServiceChangeTracker) serviceToServiceMap(service *localnetv1.Service) serviceChange {
+func (sct *ServiceChangeTracker) serviceToServiceMap(service *localnetv12.Service) serviceChange {
 	if service == nil {
 		return nil
 	}
@@ -421,6 +420,6 @@ func (sct *ServiceChangeTracker) serviceToServiceMap(service *localnetv1.Service
 	return serviceMap
 }
 
-func IsServiceIPSet(service *localnetv1.Service) bool {
+func IsServiceIPSet(service *localnetv12.Service) bool {
 	return len(service.IPs.ClusterIPs.V4) > 0 || len(service.IPs.ClusterIPs.V6) > 0
 }

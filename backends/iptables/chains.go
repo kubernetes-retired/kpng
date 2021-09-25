@@ -1,10 +1,10 @@
 package iptables
 
 type iptablesJumpChain struct {
-table     Table
-dstChain  Chain
-srcChain  Chain
-comment   string
+table    Table
+dstChain Chain
+srcChain Chain
+comment  string
 extraArgs []string
 }
 

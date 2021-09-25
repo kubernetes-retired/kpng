@@ -17,10 +17,8 @@ limitations under the License.
 package iptables
 
 import (
+	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"time"
-
-	"k8s.io/klog/v2"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 
 	v1 "k8s.io/api/core/v1"
 	discovery "k8s.io/api/discovery/v1beta1"
@@ -28,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/component-base/metrics"
+	"k8s.io/klog/v2"
 )
 
 var supportedEndpointSliceAddressTypes = sets.NewString(
@@ -96,7 +95,7 @@ func NewEndpointChangeTracker(hostname string, ipFamily v1.IPFamily, recorder ev
 	}
 }
 
-func (ect *EndpointChangeTracker) EndpointUpdate(namespace, serviceName, key string, endpoint *localnetv1.Endpoint) {
+func (ect *EndpointChangeTracker) EndpointUpdate(namespace, serviceName, key string, endpoint *localnetv12.Endpoint) {
 	namespacedName := types.NamespacedName{Name: serviceName, Namespace: namespace}
 	EndpointChangesTotal.Inc()
 	ect.endpointsCache.updatePending(namespacedName, key, endpoint)

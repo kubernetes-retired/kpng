@@ -31,10 +31,10 @@ import (
 
 	// "k8s.io/klog"
 
-	"sigs.k8s.io/kpng/localsink"
-	"sigs.k8s.io/kpng/localsink/fullstate"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
-	"sigs.k8s.io/kpng/pkg/tlsflags"
+	"sigs.k8s.io/kpng/server/localsink"
+	"sigs.k8s.io/kpng/server/localsink/fullstate"
+	"sigs.k8s.io/kpng/server/pkg/api/localnetv1"
+	"sigs.k8s.io/kpng/server/pkg/tlsflags"
 )
 
 type ServiceEndpoints = fullstate.ServiceEndpoints
