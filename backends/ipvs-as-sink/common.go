@@ -18,17 +18,17 @@ package ipvssink
 
 import (
 	"net"
+	"sigs.k8s.io/kpng/server/backends/util/ipvs"
+	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"strings"
 
 	"github.com/vishvananda/netlink"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	netutils "k8s.io/utils/net"
-	utilipset "sigs.k8s.io/kpng/backends/util/ipvs"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
 
-func (s *Backend) AddOrDelEndPointInIPSet(endPointList []string, portList []*localnetv1.PortMapping, op Operation) {
+func (s *Backend) AddOrDelEndPointInIPSet(endPointList []string, portList []*localnetv12.PortMapping, op Operation) {
 	//if !destination.isLocalEndPoint {
 	//	return
 	//}
@@ -63,17 +63,17 @@ func getIPFamily(ipAddr string) v1.IPFamily {
 	return ipAddrFamily
 }
 
-func getEndPointEntry(endPointIP string, port *localnetv1.PortMapping) *utilipset.Entry {
-	return &utilipset.Entry{
+func getEndPointEntry(endPointIP string, port *localnetv12.PortMapping) *ipvs.Entry {
+	return &ipvs.Entry{
 		IP:       endPointIP,
 		Port:     int(port.TargetPort),
 		Protocol: strings.ToLower(port.Protocol.String()),
 		IP2:      endPointIP,
-		SetType:  utilipset.HashIPPortIP,
+		SetType:  ipvs.HashIPPortIP,
 	}
 }
 
-func (s *Backend) AddOrDelClusterIPInIPSet(svc *localnetv1.Service, portList []*localnetv1.PortMapping, op Operation) {
+func (s *Backend) AddOrDelClusterIPInIPSet(svc *localnetv12.Service, portList []*localnetv12.PortMapping, op Operation) {
 	svcIPFamily := getServiceIPFamily(svc)
 
 	for _, port := range portList {
@@ -103,7 +103,7 @@ func (s *Backend) AddOrDelClusterIPInIPSet(svc *localnetv1.Service, portList []*
 	}
 }
 
-func getServiceIPFamily(svc *localnetv1.Service) []v1.IPFamily {
+func getServiceIPFamily(svc *localnetv12.Service) []v1.IPFamily {
 	var svcIPFamily []v1.IPFamily
 	if len(svc.IPs.ClusterIPs.V4) > 0 && len(svc.IPs.ClusterIPs.V6) == 0 {
 		svcIPFamily = append(svcIPFamily, v1.IPv4Protocol)
@@ -119,16 +119,16 @@ func getServiceIPFamily(svc *localnetv1.Service) []v1.IPFamily {
 	return svcIPFamily
 }
 
-func getIPSetEntry(svcIP string, port *localnetv1.PortMapping) *utilipset.Entry {
-	return &utilipset.Entry{
+func getIPSetEntry(svcIP string, port *localnetv12.PortMapping) *ipvs.Entry {
+	return &ipvs.Entry{
 		IP:       svcIP,
 		Port:     int(port.Port),
 		Protocol: strings.ToLower(port.Protocol.String()),
-		SetType:  utilipset.HashIPPort,
+		SetType:  ipvs.HashIPPort,
 	}
 }
 
-func getServiceIP(endPointIP string, svc *localnetv1.Service) string {
+func getServiceIP(endPointIP string, svc *localnetv12.Service) string {
 	var svcIP string
 	if netutils.IsIPv4String(endPointIP) {
 		svcIP = svc.IPs.ClusterIPs.V4[0]
@@ -139,11 +139,11 @@ func getServiceIP(endPointIP string, svc *localnetv1.Service) string {
 	return svcIP
 }
 
-func (s *Backend) addServiceIPToKubeIPVSIntf(prevSvc, curr *localnetv1.Service) {
+func (s *Backend) addServiceIPToKubeIPVSIntf(prevSvc, curr *localnetv12.Service) {
 	// sync dummy IPs
-	var prevIPs *localnetv1.IPSet
+	var prevIPs *localnetv12.IPSet
 	if prevSvc == nil {
-		prevIPs = localnetv1.NewIPSet()
+		prevIPs = localnetv12.NewIPSet()
 	} else {
 		prevIPs = prevSvc.IPs.All()
 	}
@@ -175,7 +175,7 @@ func (s *Backend) addServiceIPToKubeIPVSIntf(prevSvc, curr *localnetv1.Service) 
 	}
 }
 
-func (s *Backend) storeLBSvc(portList []*localnetv1.PortMapping, addrList []string, key, svcType string) {
+func (s *Backend) storeLBSvc(portList []*localnetv12.PortMapping, addrList []string, key, svcType string) {
 	for _, ip := range addrList {
 		prefix := key + "/" + ip + "/"
 		for _, port := range portList {
@@ -185,7 +185,7 @@ func (s *Backend) storeLBSvc(portList []*localnetv1.PortMapping, addrList []stri
 	}
 }
 
-func (s *Backend) deleteLBSvc(portList []*localnetv1.PortMapping, addrList []string, key string) {
+func (s *Backend) deleteLBSvc(portList []*localnetv12.PortMapping, addrList []string, key string) {
 	for _, ip := range addrList {
 		prefix := key + "/" + ip + "/"
 		for _, port := range portList {

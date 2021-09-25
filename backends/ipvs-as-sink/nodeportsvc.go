@@ -18,14 +18,14 @@ package ipvssink
 
 import (
 	"bytes"
+	"sigs.k8s.io/kpng/server/backends/util/ipvs"
+	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"strings"
 
 	"k8s.io/klog/v2"
-	utilipset "sigs.k8s.io/kpng/backends/util/ipvs"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
 
-func (s *Backend) handleNodePortService(svc *localnetv1.Service, op Operation) {
+func (s *Backend) handleNodePortService(svc *localnetv12.Service, op Operation) {
 	svckey := svc.Namespace + "/" + svc.Name
 
 	if op == AddService {
@@ -50,7 +50,7 @@ func (s *Backend) handleNodePortService(svc *localnetv1.Service, op Operation) {
 	}
 }
 
-func (s *Backend) handleNewNodePortService(key string, svc *localnetv1.Service) {
+func (s *Backend) handleNewNodePortService(key string, svc *localnetv12.Service) {
 	s.svcs[key] = svc
 
 	s.addServiceIPToKubeIPVSIntf(nil, svc)
@@ -69,7 +69,7 @@ func (s *Backend) handleNewNodePortService(key string, svc *localnetv1.Service) 
 	s.AddOrDelClusterIPInIPSet(svc, svc.Ports, AddService)
 }
 
-func (s *Backend) handleUpdatedNodePortService(svckey string, svc *localnetv1.Service) {
+func (s *Backend) handleUpdatedNodePortService(svckey string, svc *localnetv12.Service) {
 	// update the svc
 	prevSvc := s.svcs[svckey]
 	s.svcs[svckey] = svc
@@ -131,24 +131,24 @@ func (s *Backend) handleUpdatedNodePortService(svckey string, svc *localnetv1.Se
 	}
 }
 
-func (s *Backend) AddOrDelNodePortInIPSet(svc *localnetv1.Service, portList []*localnetv1.PortMapping, op Operation) {
+func (s *Backend) AddOrDelNodePortInIPSet(svc *localnetv12.Service, portList []*localnetv12.PortMapping, op Operation) {
 	svcIPFamily := getServiceIPFamily(svc)
 
 	for _, port := range portList {
-		var entries []*utilipset.Entry
+		var entries []*ipvs.Entry
 		for _, ipFamily := range svcIPFamily {
 			protocol := strings.ToLower(port.Protocol.String())
 			ipsetName := protocolIPSetMap[protocol][ipFamily]
 			nodePortSet := s.ipsetList[ipsetName]
 			switch protocol {
-			case utilipset.ProtocolTCP, utilipset.ProtocolUDP:
-				entries = []*utilipset.Entry{getNodePortIPSetEntry(int(port.NodePort), protocol, utilipset.BitmapPort)}
+			case ipvs.ProtocolTCP, ipvs.ProtocolUDP:
+				entries = []*ipvs.Entry{getNodePortIPSetEntry(int(port.NodePort), protocol, ipvs.BitmapPort)}
 
-			case utilipset.ProtocolSCTP:
+			case ipvs.ProtocolSCTP:
 				// Since hash ip:port is used for SCTP, all the nodeIPs to be used in the SCTP ipset entries.
-				entries = []*utilipset.Entry{}
+				entries = []*ipvs.Entry{}
 				for _, nodeIP := range s.nodeAddresses {
-					entry := getNodePortIPSetEntry(int(port.NodePort), protocol, utilipset.HashIPPort)
+					entry := getNodePortIPSetEntry(int(port.NodePort), protocol, ipvs.HashIPPort)
 					entry.IP = nodeIP
 					entries = append(entries, entry)
 				}
@@ -173,8 +173,8 @@ func (s *Backend) AddOrDelNodePortInIPSet(svc *localnetv1.Service, portList []*l
 	}
 }
 
-func getNodePortIPSetEntry(port int, protocol string, ipSetType utilipset.Type) *utilipset.Entry {
-	return &utilipset.Entry{
+func getNodePortIPSetEntry(port int, protocol string, ipSetType ipvs.Type) *ipvs.Entry {
+	return &ipvs.Entry{
 		// No need to provide ip info
 		Port:     port,
 		Protocol: protocol,
@@ -182,7 +182,7 @@ func getNodePortIPSetEntry(port int, protocol string, ipSetType utilipset.Type) 
 	}
 }
 
-func (s *Backend) SetEndPointForNodePortSvc(svcKey, key string, endpoint *localnetv1.Endpoint) {
+func (s *Backend) SetEndPointForNodePortSvc(svcKey, key string, endpoint *localnetv12.Endpoint) {
 	prefix := svcKey + "/" + key + "/"
 	service := s.svcs[svcKey]
 	portList := service.Ports
