@@ -1,0 +1,8 @@
+#! /bin/sh
+
+test -n "$PROXY_NAME" || export PROXY_NAME=kpng-example
+test -n "$CALLOUT" || export CALLOUT=jq
+
+kpng kube --service-proxy-name=$PROXY_NAME to-api &
+
+exec /bin/kpng-callout

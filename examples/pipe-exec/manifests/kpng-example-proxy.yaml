@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kpng-example-proxy
+spec:
+  selector:
+    matchLabels:
+      app: kpng-example-proxy
+  template:
+    metadata:
+      labels:
+        app: kpng-example-proxy
+    spec:
+      hostNetwork: true
+      containers:
+      - name: kpng
+        image: registry.nordix.org/cloud-native/kpng-example-proxy:latest
+        env:
+        - name: CALLOUT
+          value: "/bin/kpng-example-allip"
+        securityContext:
+          privileged: true

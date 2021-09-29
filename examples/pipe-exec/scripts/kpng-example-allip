@@ -1,0 +1,52 @@
+#! /bin/sh
+
+# This allows testing with;
+#   export ip6tables=echo
+#   export iptables=echo
+#   cat /tmp/out | scripts/kpng-example-allip
+test -n "$ip6tables" || ip6tables=ip6tables
+test -n "$iptables" || iptables=iptables
+
+# get_ips <file.json> <V4|V6>
+# If succesful sets variables; xip, podip
+get_ips() {
+	xip=$(cat $1 | jq -r ".Service.IPs.ExternalIPs.$2[0]")
+	test -n "$xip" -a "$xip" != "null" || return 1
+	podip=$(cat $1 | jq -r ".Endpoints[]|select(.Local == true)|select(.IPs.$2 != null)|.IPs.$2[0]")
+	test -n "$podip" -a "$podip" != "null" || return 1
+	return 0
+}
+
+# handle_service <file.json>
+handle_service() {
+	cp $1 /tmp/svc
+	if get_ips $1 V6; then
+		$ip6tables -t nat -S PREROUTING | grep -qF "$xip/128" || \
+			ip6tables -t nat -A PREROUTING -d $xip/128 -j DNAT --to-destination $podip
+		$ip6tables -t nat -S OUTPUT | grep -qF "$xip/128" || \
+			ip6tables -t nat -A OUTPUT -d $xip/128 -j DNAT --to-destination $podip
+	fi
+
+	if get_ips $1 V4; then
+		$iptables -t nat -S PREROUTING | grep -qF "$xip/32" || \
+			iptables -t nat -A PREROUTING -d $xip/32 -j DNAT --to-destination $podip
+		$iptables -t nat -S OUTPUT | grep -qF "$xip/32" || \
+			iptables -t nat -A OUTPUT -d $xip/32 -j DNAT --to-destination $podip
+	fi
+}
+
+tmp=/tmp/out-$$
+mkdir -p $tmp
+# "jq -s ." creates an array of services
+jq -s . > $tmp/out
+
+i=0
+cat $tmp/out | jq ".[$i]" > $tmp/svc
+while ! grep -q '^null' $tmp/svc; do
+	cat $tmp/svc | jq .Service.Name
+	handle_service $tmp/svc
+	i=$((i + 1))
+	cat $tmp/out | jq ".[$i]" > $tmp/svc
+done
+
+rm -r $tmp
