@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kpng-example
+  labels:
+    service.kubernetes.io/service-proxy-name: kpng-example
+spec:
+  ipFamilyPolicy: RequireDualStack
+  clusterIP: None
+  externalIPs:
+  - 10.0.0.55
+  - 1000::55
+  selector:
+    app: kpng-alpine
+  ports:
+  - port: 6000
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kpng-alpine
+spec:
+  selector:
+    matchLabels:
+      app: kpng-alpine
+  template:
+    metadata:
+      labels:
+        app: kpng-alpine
+    spec:
+      containers:
+      - name: alpine
+        image: docker.io/library/alpine:latest
+        imagePullPolicy: IfNotPresent
+        command: ["nc", "-lk", "-p", "6000", "-e", "hostname"]
