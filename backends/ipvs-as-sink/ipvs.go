@@ -27,7 +27,7 @@ import (
 	"k8s.io/utils/exec"
 
 	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	ipvs2 "sigs.k8s.io/kpng/backends/util/ipvs"
+	ipvs2 "sigs.k8s.io/kpng/backends/ipvs/util"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
 	"sigs.k8s.io/kpng/client/localsink/filterreset"

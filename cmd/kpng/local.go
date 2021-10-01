@@ -3,9 +3,9 @@ package main
 import (
 	"github.com/spf13/cobra"
 
-	"sigs.k8s.io/kpng/backends/cmd/storecmds"
-	"sigs.k8s.io/kpng/server/jobs/api2local"
 	"sigs.k8s.io/kpng/client/localsink"
+	"sigs.k8s.io/kpng/cmd/kpng/storecmds"
+	"sigs.k8s.io/kpng/server/jobs/api2local"
 )
 
 func local2sinkCmd() *cobra.Command {

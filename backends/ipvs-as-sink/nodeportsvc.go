@@ -23,7 +23,7 @@ import (
 	"k8s.io/klog/v2"
 
 	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/backends/util/ipvs"
+	"sigs.k8s.io/kpng/backends/ipvs/util"
 )
 
 func (s *Backend) handleNodePortService(svc *localnetv12.Service, op Operation) {

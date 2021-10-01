@@ -27,7 +27,7 @@ import (
 	netutils "k8s.io/utils/net"
 
 	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/backends/util/ipvs"
+	"sigs.k8s.io/kpng/backends/ipvs/util"
 )
 
 func (s *Backend) AddOrDelEndPointInIPSet(endPointList []string, portList []*localnetv12.PortMapping, op Operation) {

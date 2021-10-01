@@ -5,7 +5,10 @@ go 1.17
 replace (
 	sigs.k8s.io/kpng => ../empty
 	sigs.k8s.io/kpng/api => ../api
-	sigs.k8s.io/kpng/backends => ../backends
+	sigs.k8s.io/kpng/backends/iptables => ../backends/iptables
+	sigs.k8s.io/kpng/backends/ipvs => ../backends/ipvs
+	sigs.k8s.io/kpng/backends/ipvs-as-sink => ../backends/ipvs-as-sink
+	sigs.k8s.io/kpng/backends/nft => ../backends/nft
 	sigs.k8s.io/kpng/client => ../client
 	sigs.k8s.io/kpng/server => ../server
 )
@@ -18,9 +21,13 @@ replace (
 
 require (
 	github.com/spf13/cobra v1.2.1
+	google.golang.org/protobuf v1.27.1
 	k8s.io/client-go v0.21.2
 	k8s.io/klog v1.0.0
-	sigs.k8s.io/kpng/backends v0.0.0-00010101000000-000000000000
+	sigs.k8s.io/kpng/api v0.0.0-00010101000000-000000000000
+	sigs.k8s.io/kpng/backends/ipvs v0.0.0-00010101000000-000000000000
+	sigs.k8s.io/kpng/backends/ipvs-as-sink v0.0.0-00010101000000-000000000000
+	sigs.k8s.io/kpng/backends/nft v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/kpng/client v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/kpng/server v0.0.0-00010101000000-000000000000
 )
@@ -56,7 +63,6 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20210930144712-2e2e1008e8a3 // indirect
 	google.golang.org/grpc v1.41.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
@@ -64,7 +70,6 @@ require (
 	k8s.io/apimachinery v0.22.2 // indirect
 	k8s.io/klog/v2 v2.20.0 // indirect
 	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b // indirect
-	sigs.k8s.io/kpng/api v0.0.0-00010101000000-000000000000 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
