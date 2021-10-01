@@ -20,43 +20,43 @@ import (
 	"fmt"
 	"sort"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 func Example() {
 	s := New()
 
-	endpoint := func(ip string, ready bool) *localnetv12.EndpointInfo {
-		return &localnetv12.EndpointInfo{
+	endpoint := func(ip string, ready bool) *localnetv1.EndpointInfo {
+		return &localnetv1.EndpointInfo{
 			Namespace:   "default",
 			SourceName:  "svc0",
 			ServiceName: "svc0",
-			Conditions: &localnetv12.EndpointConditions{
+			Conditions: &localnetv1.EndpointConditions{
 				Ready: ready,
 			},
-			Endpoint: &localnetv12.Endpoint{
-				IPs: &localnetv12.IPSet{V4: []string{ip}},
+			Endpoint: &localnetv1.Endpoint{
+				IPs: &localnetv1.IPSet{V4: []string{ip}},
 			},
 		}
 	}
 
 	for _, twoReady := range []bool{true, false} {
 		s.Update(func(tx *Tx) {
-			tx.SetService(&localnetv12.Service{
+			tx.SetService(&localnetv1.Service{
 				Namespace: "default",
 				Name:      "svc0",
 			}, []string{"*"})
 
-			tx.SetEndpointsOfSource("default", "svc0", []*localnetv12.EndpointInfo{
+			tx.SetEndpointsOfSource("default", "svc0", []*localnetv1.EndpointInfo{
 				endpoint("10.0.0.1", false),
 				endpoint("10.0.0.2", twoReady),
 			})
 		})
 
 		fmt.Println("two ready:", twoReady)
-		infos := make([]*localnetv12.EndpointInfo, 0)
+		infos := make([]*localnetv1.EndpointInfo, 0)
 		s.View(0, func(tx *Tx) {
-			tx.EachEndpointOfService("default", "svc0", func(info *localnetv12.EndpointInfo) {
+			tx.EachEndpointOfService("default", "svc0", func(info *localnetv1.EndpointInfo) {
 				infos = append(infos, info)
 			})
 		})

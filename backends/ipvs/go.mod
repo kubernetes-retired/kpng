@@ -6,7 +6,6 @@ replace (
 	sigs.k8s.io/kpng => ../../empty
 	sigs.k8s.io/kpng/api => ../../api
 	sigs.k8s.io/kpng/client => ../../client
-	sigs.k8s.io/kpng/server => ../../server // FIXME this is bad
 )
 
 replace (

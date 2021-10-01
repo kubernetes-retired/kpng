@@ -19,12 +19,12 @@ package endpoints
 import (
 	"google.golang.org/grpc"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
-func Setup(s grpc.ServiceRegistrar, store *proxystore2.Store) {
-	localnetv12.RegisterEndpointsService(s, localnetv12.NewEndpointsService(localnetv12.UnstableEndpointsService(&Server{
+func Setup(s grpc.ServiceRegistrar, store *proxystore.Store) {
+	localnetv1.RegisterEndpointsService(s, localnetv1.NewEndpointsService(localnetv1.UnstableEndpointsService(&Server{
 		Store: store,
 	})))
 }

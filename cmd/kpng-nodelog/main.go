@@ -24,7 +24,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"k8s.io/klog"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client"
 	"sigs.k8s.io/kpng/client/localsink"
 )
@@ -66,29 +66,29 @@ func (s *sink) WaitRequest() (nodeName string, err error) {
 
 var prevs = map[string]proto.Message{}
 
-func (s *sink) Send(op *localnetv12.OpItem) (err error) {
+func (s *sink) Send(op *localnetv1.OpItem) (err error) {
 	if s.start.IsZero() {
 		s.start = time.Now()
 		fmt.Println("< recv at", s.start)
 	}
 
 	switch v := op.Op; v.(type) {
-	case *localnetv12.OpItem_Set:
+	case *localnetv1.OpItem_Set:
 		set := op.GetSet()
 
 		var v proto.Message
 		switch set.Ref.Set {
-		case localnetv12.Set_ServicesSet:
-			v = &localnetv12.Service{}
-		case localnetv12.Set_EndpointsSet:
-			v = &localnetv12.Endpoint{}
+		case localnetv1.Set_ServicesSet:
+			v = &localnetv1.Service{}
+		case localnetv1.Set_EndpointsSet:
+			v = &localnetv1.Endpoint{}
 
-		case localnetv12.Set_GlobalEndpointInfos:
-			v = &localnetv12.EndpointInfo{}
-		case localnetv12.Set_GlobalNodeInfos:
-			v = &localnetv12.NodeInfo{}
-		case localnetv12.Set_GlobalServiceInfos:
-			v = &localnetv12.ServiceInfo{}
+		case localnetv1.Set_GlobalEndpointInfos:
+			v = &localnetv1.EndpointInfo{}
+		case localnetv1.Set_GlobalNodeInfos:
+			v = &localnetv1.NodeInfo{}
+		case localnetv1.Set_GlobalServiceInfos:
+			v = &localnetv1.ServiceInfo{}
 
 		default:
 			klog.Info("unknown set: ", set.Ref.Set)
@@ -109,14 +109,14 @@ func (s *sink) Send(op *localnetv12.OpItem) (err error) {
 		fmt.Println("+", refStr, "->", v)
 
 		prevs[refStr] = v
-	case *localnetv12.OpItem_Delete:
+	case *localnetv1.OpItem_Delete:
 		refStr := op.GetDelete().String()
 		prev := prevs[refStr]
 
 		fmt.Println("-", refStr, "->", prev)
 		delete(prevs, refStr)
 
-	case *localnetv12.OpItem_Sync:
+	case *localnetv1.OpItem_Sync:
 		fmt.Println("> sync after", time.Since(s.start))
 		s.start = time.Time{}
 	}

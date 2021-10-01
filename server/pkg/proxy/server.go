@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"os"
 	"runtime/trace"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
-	tlsflags2 "sigs.k8s.io/kpng/server/pkg/tlsflags"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -32,6 +30,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
+
+	"sigs.k8s.io/kpng/client/pkg/tlsflags"
+	"sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 var (
@@ -44,13 +45,13 @@ var (
 
 	ManageEndpointSlices bool = true
 
-	tlsFlags *tlsflags2.Flags
+	tlsFlags *tlsflags.Flags
 )
 
 func InitFlags(flagSet *flag.FlagSet) {
 	klog.InitFlags(flagSet)
 
-	tlsFlags = tlsflags2.Bind(flagSet)
+	tlsFlags = tlsflags.Bind(flagSet)
 
 	flagSet.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster. Defaults to envvar KUBECONFIG.")
 	flagSet.StringVar(&serverURL, "server", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
@@ -64,7 +65,7 @@ type Server struct {
 	InformerFactory informers.SharedInformerFactory
 	QuitCh          chan struct{}
 
-	Store *proxystore2.Store
+	Store *proxystore.Store
 
 	GRPC *grpc.Server
 
@@ -78,7 +79,7 @@ func NewServer() (srv *Server, err error) {
 
 	srv = &Server{
 		QuitCh: make(chan struct{}, 1),
-		Store:  proxystore2.New(),
+		Store:  proxystore.New(),
 	}
 
 	// setup tracing

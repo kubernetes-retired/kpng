@@ -3,22 +3,23 @@ package store2api
 import (
 	"context"
 	"crypto/tls"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
-	server2 "sigs.k8s.io/kpng/server/pkg/server"
-	endpoints2 "sigs.k8s.io/kpng/server/pkg/server/endpoints"
-	global2 "sigs.k8s.io/kpng/server/pkg/server/global"
-	tlsflags2 "sigs.k8s.io/kpng/server/pkg/tlsflags"
 
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
+	"sigs.k8s.io/kpng/client/pkg/tlsflags"
+	"sigs.k8s.io/kpng/server/pkg/proxystore"
+	"sigs.k8s.io/kpng/server/pkg/server"
+	"sigs.k8s.io/kpng/server/pkg/server/endpoints"
+	"sigs.k8s.io/kpng/server/pkg/server/global"
 )
 
 type Config struct {
 	BindSpec  string
 	GlobalAPI bool
 	LocalAPI  bool
-	TLS       *tlsflags2.Flags
+	TLS       *tlsflags.Flags
 }
 
 func (c *Config) BindFlags(flags *pflag.FlagSet) {
@@ -27,19 +28,19 @@ func (c *Config) BindFlags(flags *pflag.FlagSet) {
 	flags.BoolVar(&c.LocalAPI, "local-api", true, "serve local API")
 
 	if c.TLS == nil {
-		c.TLS = &tlsflags2.Flags{}
+		c.TLS = &tlsflags.Flags{}
 	}
 
 	c.TLS.Bind(flags, "listen-")
 }
 
 type Job struct {
-	Store  *proxystore2.Store
+	Store  *proxystore.Store
 	Config *Config
 }
 
 func (j *Job) Run(ctx context.Context) error {
-	lis := server2.MustListen(j.Config.BindSpec)
+	lis := server.MustListen(j.Config.BindSpec)
 
 	// setup gRPC server
 	var srv *grpc.Server
@@ -55,10 +56,10 @@ func (j *Job) Run(ctx context.Context) error {
 
 	// setup server
 	if j.Config.GlobalAPI {
-		global2.Setup(srv, j.Store)
+		global.Setup(srv, j.Store)
 	}
 	if j.Config.LocalAPI {
-		endpoints2.Setup(srv, j.Store)
+		endpoints.Setup(srv, j.Store)
 	}
 
 	// handle exit

@@ -2,18 +2,18 @@ package main
 
 import (
 	"context"
-	api2store2 "sigs.k8s.io/kpng/server/jobs/api2store"
-	apiwatch2 "sigs.k8s.io/kpng/server/pkg/apiwatch"
-//	storecmds2 "sigs.k8s.io/kpng/server/pkg/cmd/storecmds"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
-	tlsflags2 "sigs.k8s.io/kpng/server/pkg/tlsflags"
 
 	"github.com/spf13/cobra"
+
+	"sigs.k8s.io/kpng/server/jobs/api2store"
+	"sigs.k8s.io/kpng/server/pkg/apiwatch"
+	"sigs.k8s.io/kpng/server/pkg/proxystore"
+	"sigs.k8s.io/kpng/client/pkg/tlsflags"
 )
 
 var (
-	api2storeJob = &api2store2.Job{
-		Watch: apiwatch2.Watch{TLSFlags: &tlsflags2.Flags{}},
+	api2storeJob = &api2store.Job{
+		Watch: apiwatch.Watch{TLSFlags: &tlsflags.Flags{}},
 	}
 )
 
@@ -32,10 +32,10 @@ func api2storeCmd() *cobra.Command {
 	return cmd
 }
 
-func setupAPI2store() (ctx context.Context, store *proxystore2.Store, err error) {
+func setupAPI2store() (ctx context.Context, store *proxystore.Store, err error) {
 	ctx = setupGlobal()
 
-	store = proxystore2.New()
+	store = proxystore.New()
 
 	api2storeJob.Store = store
 	go api2storeJob.Run(ctx)

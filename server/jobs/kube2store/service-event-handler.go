@@ -21,8 +21,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 type serviceEventHandler struct{ eventHandler }
@@ -31,15 +31,15 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 	svc := obj.(*v1.Service)
 
 	// build the service
-	service := &localnetv12.Service{
+	service := &localnetv1.Service{
 		Namespace:   svc.Namespace,
 		Name:        svc.Name,
 		Type:        string(svc.Spec.Type),
 		Labels:      globsFilter(svc.Labels, h.config.ServiceLabelGlobs),
 		Annotations: globsFilter(svc.Annotations, h.config.ServiceAnnonationGlobs),
-		IPs: &localnetv12.ServiceIPs{
-			ClusterIPs:  &localnetv12.IPSet{},
-			ExternalIPs: localnetv12.NewIPSet(svc.Spec.ExternalIPs...),
+		IPs: &localnetv1.ServiceIPs{
+			ClusterIPs:  &localnetv1.IPSet{},
+			ExternalIPs: localnetv1.NewIPSet(svc.Spec.ExternalIPs...),
 		},
 		ExternalTrafficToLocal: svc.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal,
 	}
@@ -63,14 +63,14 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 	}
 
 	// ports information
-	service.Ports = make([]*localnetv12.PortMapping, 0, len(svc.Spec.Ports))
+	service.Ports = make([]*localnetv1.PortMapping, 0, len(svc.Spec.Ports))
 
 	for _, port := range svc.Spec.Ports {
-		p := &localnetv12.PortMapping{
+		p := &localnetv1.PortMapping{
 			Name:     port.Name,
 			NodePort: port.NodePort,
 			Port:     port.Port,
-			Protocol: localnetv12.ParseProtocol(string(port.Protocol)),
+			Protocol: localnetv1.ParseProtocol(string(port.Protocol)),
 		}
 
 		if port.TargetPort.Type == intstr.Int {
@@ -109,10 +109,10 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 		service.Ports = append(service.Ports, p)
 	}
 
-	h.s.Update(func(tx *proxystore2.Tx) {
+	h.s.Update(func(tx *proxystore.Tx) {
 		klog.V(3).Info("service ", service.Namespace, "/", service.Name, " topology key: ", svc.Spec.TopologyKeys)
 		tx.SetService(service, svc.Spec.TopologyKeys)
-		h.updateSync(proxystore2.Services, tx)
+		h.updateSync(proxystore.Services, tx)
 	})
 }
 
@@ -127,8 +127,8 @@ func (h *serviceEventHandler) OnUpdate(oldObj, newObj interface{}) {
 func (h *serviceEventHandler) OnDelete(oldObj interface{}) {
 	svc := oldObj.(*v1.Service)
 
-	h.s.Update(func(tx *proxystore2.Tx) {
+	h.s.Update(func(tx *proxystore.Tx) {
 		tx.DelService(svc.Namespace, svc.Name)
-		h.updateSync(proxystore2.Services, tx)
+		h.updateSync(proxystore.Services, tx)
 	})
 }

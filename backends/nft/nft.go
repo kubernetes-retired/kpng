@@ -26,7 +26,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"strconv"
 	"strings"
 	"time"
@@ -139,8 +139,8 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 
 		svcCount++
 
-		clusterIPs := &localnetv12.IPSet{}
-		ips := &localnetv12.IPSet{}
+		clusterIPs := &localnetv1.IPSet{}
+		ips := &localnetv1.IPSet{}
 
 		if svc.IPs.ClusterIPs != nil {
 			clusterIPs.AddSet(svc.IPs.ClusterIPs)
@@ -243,10 +243,10 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			svc_chain := prefix + strings.Join([]string{"svc", svc.Namespace, svc.Name}, "_")
 
 			hasRules := false
-			for _, protocol := range []localnetv12.Protocol{
-				localnetv12.Protocol_TCP,
-				localnetv12.Protocol_UDP,
-				localnetv12.Protocol_SCTP,
+			for _, protocol := range []localnetv1.Protocol{
+				localnetv1.Protocol_TCP,
+				localnetv1.Protocol_UDP,
+				localnetv1.Protocol_SCTP,
 			} {
 				rule.Reset()
 

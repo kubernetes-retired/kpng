@@ -23,18 +23,18 @@ import (
 
 	"k8s.io/klog"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	store2localdiff2 "sigs.k8s.io/kpng/server/jobs/store2localdiff"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
+	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/server/jobs/store2localdiff"
+	"sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 type Server struct {
-	Store *proxystore2.Store
+	Store *proxystore.Store
 }
 
-var syncItem = &localnetv12.OpItem{Op: &localnetv12.OpItem_Sync{}}
+var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
 
-func (s *Server) Watch(res localnetv12.Endpoints_WatchServer) error {
+func (s *Server) Watch(res localnetv1.Endpoints_WatchServer) error {
 	remote := ""
 	{
 		ctxPeer, _ := peer.FromContext(res.Context())
@@ -44,7 +44,7 @@ func (s *Server) Watch(res localnetv12.Endpoints_WatchServer) error {
 	klog.Info("new connection from ", remote)
 	defer klog.Info("connection from ", remote, " closed")
 
-	job := &store2localdiff2.Job{
+	job := &store2localdiff.Job{
 		Store: s.Store,
 		Sink:  serverSink{res, remote},
 	}
@@ -53,7 +53,7 @@ func (s *Server) Watch(res localnetv12.Endpoints_WatchServer) error {
 }
 
 type serverSink struct {
-	localnetv12.Endpoints_WatchServer
+	localnetv1.Endpoints_WatchServer
 	remote string
 }
 

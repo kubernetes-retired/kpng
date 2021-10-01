@@ -18,10 +18,10 @@ package ipvssink
 
 import (
 	"bytes"
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
-func (s *Backend) handleClusterIPService(svc *localnetv12.Service, op Operation) {
+func (s *Backend) handleClusterIPService(svc *localnetv1.Service, op Operation) {
 	key := svc.Namespace + "/" + svc.Name
 
 	if op == AddService {
@@ -42,7 +42,7 @@ func (s *Backend) handleClusterIPService(svc *localnetv12.Service, op Operation)
 	}
 }
 
-func (s *Backend) handleNewClusterIPService(key string, svc *localnetv12.Service) {
+func (s *Backend) handleNewClusterIPService(key string, svc *localnetv1.Service) {
 	s.svcs[key] = svc
 
 	//Cluster service IP is added to kube-ipvs0 interface
@@ -55,7 +55,7 @@ func (s *Backend) handleNewClusterIPService(key string, svc *localnetv12.Service
 	s.AddOrDelClusterIPInIPSet(svc, svc.Ports, AddService)
 }
 
-func (s *Backend) handleUpdatedClusterIPService(key string, svc *localnetv12.Service) {
+func (s *Backend) handleUpdatedClusterIPService(key string, svc *localnetv1.Service) {
 	// update the svc
 	prevSvc := s.svcs[key]
 	s.svcs[key] = svc
@@ -117,7 +117,7 @@ func (s *Backend) handleUpdatedClusterIPService(key string, svc *localnetv12.Ser
 	}
 }
 
-func (s *Backend) SetEndPointForClusterIPSvc(svcKey, key string, endpoint *localnetv12.Endpoint) {
+func (s *Backend) SetEndPointForClusterIPSvc(svcKey, key string, endpoint *localnetv1.Endpoint) {
 	prefix := svcKey + "/" + key + "/"
 	service := s.svcs[svcKey]
 	portList := service.Ports

@@ -10,10 +10,10 @@ import (
 
 	"k8s.io/klog/v2"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/localsink"
-	apiwatch2 "sigs.k8s.io/kpng/server/pkg/apiwatch"
-	tlsflags2 "sigs.k8s.io/kpng/server/pkg/tlsflags"
+	"sigs.k8s.io/kpng/server/pkg/apiwatch"
+	"sigs.k8s.io/kpng/client/pkg/tlsflags"
 )
 
 // Config helps building sink with the standard flags (sinks are not required to have a stable node-name, but most will have).
@@ -33,14 +33,14 @@ func (c *Config) BindFlags(flags *pflag.FlagSet) {
 }
 
 type Job struct {
-	apiwatch2.Watch
+	apiwatch.Watch
 	Sink localsink.Sink
 }
 
 func New(sink localsink.Sink) *Job {
 	return &Job{
-		Watch: apiwatch2.Watch{
-			TLSFlags: &tlsflags2.Flags{},
+		Watch: apiwatch.Watch{
+			TLSFlags: &tlsflags.Flags{},
 		},
 		Sink: sink,
 	}
@@ -71,7 +71,7 @@ func (j *Job) run(ctx context.Context) (err error) {
 	defer conn.Close()
 
 	// watch local state
-	local := localnetv12.NewEndpointsClient(conn)
+	local := localnetv1.NewEndpointsClient(conn)
 
 	watch, err := local.Watch(ctx)
 	if err != nil {
@@ -86,7 +86,7 @@ func (j *Job) run(ctx context.Context) (err error) {
 	}
 }
 
-func (j *Job) runLoop(watch localnetv12.Endpoints_WatchClient) (err error) {
+func (j *Job) runLoop(watch localnetv1.Endpoints_WatchClient) (err error) {
 	ctx := watch.Context()
 
 	if err = ctx.Err(); err != nil {
@@ -95,7 +95,7 @@ func (j *Job) runLoop(watch localnetv12.Endpoints_WatchClient) (err error) {
 
 	nodeName, err := j.Sink.WaitRequest()
 
-	err = watch.Send(&localnetv12.WatchReq{
+	err = watch.Send(&localnetv1.WatchReq{
 		NodeName: nodeName,
 	})
 	if err != nil {
@@ -103,7 +103,7 @@ func (j *Job) runLoop(watch localnetv12.Endpoints_WatchClient) (err error) {
 	}
 
 	for {
-		var op *localnetv12.OpItem
+		var op *localnetv1.OpItem
 		op, err = watch.Recv()
 
 		if err != nil {
@@ -111,7 +111,7 @@ func (j *Job) runLoop(watch localnetv12.Endpoints_WatchClient) (err error) {
 		}
 
 		switch op.Op.(type) {
-		case *localnetv12.OpItem_Reset_:
+		case *localnetv1.OpItem_Reset_:
 			j.Sink.Reset()
 
 		default:
@@ -121,7 +121,7 @@ func (j *Job) runLoop(watch localnetv12.Endpoints_WatchClient) (err error) {
 			}
 		}
 
-		if _, isSync := op.Op.(*localnetv12.OpItem_Sync); isSync {
+		if _, isSync := op.Op.(*localnetv1.OpItem_Sync); isSync {
 			return
 		}
 	}

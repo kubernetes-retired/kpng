@@ -8,17 +8,17 @@ import (
 	"github.com/cespare/xxhash"
 	"github.com/golang/protobuf/proto"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	store2diff2 "sigs.k8s.io/kpng/server/jobs/store2diff"
+	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/server/jobs/store2diff"
 	"sigs.k8s.io/kpng/client/localsink"
-	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
-	endpoints2 "sigs.k8s.io/kpng/server/pkg/endpoints"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
-	watchstate2 "sigs.k8s.io/kpng/server/pkg/server/watchstate"
+	"sigs.k8s.io/kpng/client/pkg/diffstore"
+	"sigs.k8s.io/kpng/server/pkg/endpoints"
+	"sigs.k8s.io/kpng/server/pkg/proxystore"
+	"sigs.k8s.io/kpng/server/pkg/server/watchstate"
 )
 
 type Job struct {
-	Store *proxystore2.Store
+	Store *proxystore.Store
 	Sink  localsink.Sink
 }
 
@@ -28,11 +28,11 @@ func (j *Job) Run(ctx context.Context) error {
 		buf:  proto.NewBuffer(make([]byte, 0, 256)),
 	}
 
-	job := &store2diff2.Job{
+	job := &store2diff.Job{
 		Store: j.Store,
-		Sets: []localnetv12.Set{
-			localnetv12.Set_ServicesSet,
-			localnetv12.Set_EndpointsSet,
+		Sets: []localnetv1.Set{
+			localnetv1.Set_ServicesSet,
+			localnetv1.Set_EndpointsSet,
 		},
 		Sink: run,
 	}
@@ -53,7 +53,7 @@ func (s *jobRun) Wait() (err error) {
 	return
 }
 
-func (s *jobRun) Update(tx *proxystore2.Tx, w *watchstate2.WatchState) {
+func (s *jobRun) Update(tx *proxystore.Tx, w *watchstate.WatchState) {
 	if !tx.AllSynced() {
 		return
 	}
@@ -63,11 +63,11 @@ func (s *jobRun) Update(tx *proxystore2.Tx, w *watchstate2.WatchState) {
 	ctx, task := trace.NewTask(context.Background(), "LocalState.Update")
 	defer task.End()
 
-	svcs := w.StoreFor(localnetv12.Set_ServicesSet)
-	seps := w.StoreFor(localnetv12.Set_EndpointsSet)
+	svcs := w.StoreFor(localnetv1.Set_ServicesSet)
+	seps := w.StoreFor(localnetv1.Set_EndpointsSet)
 
 	// set all new values
-	tx.Each(proxystore2.Services, func(kv *proxystore2.KV) bool {
+	tx.Each(proxystore.Services, func(kv *proxystore.KV) bool {
 		key := []byte(kv.Namespace + "/" + kv.Name)
 
 		if trace.IsEnabled() {
@@ -76,7 +76,7 @@ func (s *jobRun) Update(tx *proxystore2.Tx, w *watchstate2.WatchState) {
 		svcs.Set(key, kv.Service.Hash, kv.Service.Service)
 
 		// filter endpoints for this node
-		endpointInfos := endpoints2.ForNode(tx, kv.Service, nodeName)
+		endpointInfos := endpoints.ForNode(tx, kv.Service, nodeName)
 
 		for _, ei := range endpointInfos {
 			// hash only the endpoint
@@ -100,17 +100,17 @@ func (s *jobRun) Update(tx *proxystore2.Tx, w *watchstate2.WatchState) {
 	})
 }
 
-func (_ *jobRun) SendDiff(w *watchstate2.WatchState) (updated bool) {
+func (_ *jobRun) SendDiff(w *watchstate.WatchState) (updated bool) {
 	_, task := trace.NewTask(context.Background(), "LocalState.SendDiff")
 	defer task.End()
 
 	count := 0
-	count += w.SendUpdates(localnetv12.Set_ServicesSet)
-	count += w.SendUpdates(localnetv12.Set_EndpointsSet)
-	count += w.SendDeletes(localnetv12.Set_EndpointsSet)
-	count += w.SendDeletes(localnetv12.Set_ServicesSet)
+	count += w.SendUpdates(localnetv1.Set_ServicesSet)
+	count += w.SendUpdates(localnetv1.Set_EndpointsSet)
+	count += w.SendDeletes(localnetv1.Set_EndpointsSet)
+	count += w.SendDeletes(localnetv1.Set_ServicesSet)
 
-	w.Reset(diffstore2.ItemDeleted)
+	w.Reset(diffstore.ItemDeleted)
 
 	return count != 0
 }

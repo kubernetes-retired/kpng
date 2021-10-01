@@ -19,8 +19,8 @@ package kube2store
 import (
 	v1 "k8s.io/api/core/v1"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 type endpointsEventHandler struct{ eventHandler }
@@ -35,9 +35,9 @@ func (h *endpointsEventHandler) OnAdd(obj interface{}) {
 	sourceName := h.sourceName(eps)
 
 	// update store
-	h.s.Update(func(tx *proxystore2.Tx) {
+	h.s.Update(func(tx *proxystore.Tx) {
 		// expensive update as we're computing endpoints here, but still the best we can do
-		infos := make([]*localnetv12.EndpointInfo, 0)
+		infos := make([]*localnetv1.EndpointInfo, 0)
 		for _, subset := range eps.Subsets {
 			// add endpoints
 			for _, set := range []struct {
@@ -48,14 +48,14 @@ func (h *endpointsEventHandler) OnAdd(obj interface{}) {
 				{false, subset.NotReadyAddresses},
 			} {
 				for _, addr := range set.addresses {
-					info := &localnetv12.EndpointInfo{
+					info := &localnetv1.EndpointInfo{
 						Namespace:   eps.Namespace,
 						ServiceName: eps.Name, // eps name is the service name
 						SourceName:  sourceName,
-						Endpoint: &localnetv12.Endpoint{
+						Endpoint: &localnetv1.Endpoint{
 							Hostname: addr.Hostname,
 						},
-						Conditions: &localnetv12.EndpointConditions{
+						Conditions: &localnetv1.EndpointConditions{
 							Ready: set.ready,
 						},
 					}
@@ -80,7 +80,7 @@ func (h *endpointsEventHandler) OnAdd(obj interface{}) {
 		}
 
 		tx.SetEndpointsOfSource(eps.Namespace, sourceName, infos)
-		h.updateSync(proxystore2.Endpoints, tx)
+		h.updateSync(proxystore.Endpoints, tx)
 	})
 }
 
@@ -95,8 +95,8 @@ func (h *endpointsEventHandler) OnDelete(oldObj interface{}) {
 	sourceName := h.sourceName(eps)
 
 	// update store
-	h.s.Update(func(tx *proxystore2.Tx) {
+	h.s.Update(func(tx *proxystore.Tx) {
 		tx.DelEndpointsOfSource(eps.Namespace, sourceName)
-		h.updateSync(proxystore2.Endpoints, tx)
+		h.updateSync(proxystore.Endpoints, tx)
 	})
 }

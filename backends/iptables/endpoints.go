@@ -28,7 +28,7 @@ import (
 	//"k8s.io/component-base/metrics"
 	"k8s.io/klog/v2"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 var supportedEndpointSliceAddressTypes = sets.NewString(
@@ -97,7 +97,7 @@ func NewEndpointChangeTracker(hostname string, ipFamily v1.IPFamily, recorder ev
 	}
 }
 
-func (ect *EndpointChangeTracker) EndpointUpdate(namespace, serviceName, key string, endpoint *localnetv12.Endpoint) {
+func (ect *EndpointChangeTracker) EndpointUpdate(namespace, serviceName, key string, endpoint *localnetv1.Endpoint) {
 	namespacedName := types.NamespacedName{Name: serviceName, Namespace: namespace}
 	EndpointChangesTotal.Inc()
 	ect.endpointsCache.updatePending(namespacedName, key, endpoint)

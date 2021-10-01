@@ -23,26 +23,22 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
+	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/client/pkg/diffstore"
 )
 
-type OpSink interface {
-	Send(op *localnetv12.OpItem) error
-}
-
 type WatchState struct {
-	res   OpSink
-	sets  []localnetv12.Set
-	diffs []*diffstore2.DiffStore
+	res   localnetv1.OpSink
+	sets  []localnetv1.Set
+	diffs []*diffstore.DiffStore
 	pb    *proto.Buffer
 	Err   error
 }
 
-func New(res OpSink, sets []localnetv12.Set) *WatchState {
-	diffs := make([]*diffstore2.DiffStore, len(sets))
+func New(res localnetv1.OpSink, sets []localnetv1.Set) *WatchState {
+	diffs := make([]*diffstore.DiffStore, len(sets))
 	for i := range sets {
-		diffs[i] = diffstore2.New()
+		diffs[i] = diffstore.New()
 	}
 
 	return &WatchState{
@@ -53,7 +49,7 @@ func New(res OpSink, sets []localnetv12.Set) *WatchState {
 	}
 }
 
-func (w *WatchState) StoreFor(set localnetv12.Set) *diffstore2.DiffStore {
+func (w *WatchState) StoreFor(set localnetv1.Set) *diffstore.DiffStore {
 	for i, s := range w.sets {
 		if s == set {
 			return w.diffs[i]
@@ -62,7 +58,7 @@ func (w *WatchState) StoreFor(set localnetv12.Set) *diffstore2.DiffStore {
 	panic(fmt.Errorf("not watching set %v", set))
 }
 
-func (w *WatchState) SendUpdates(set localnetv12.Set) (count int) {
+func (w *WatchState) SendUpdates(set localnetv1.Set) (count int) {
 	if w.Err != nil {
 		return
 	}
@@ -78,7 +74,7 @@ func (w *WatchState) SendUpdates(set localnetv12.Set) (count int) {
 	return len(updated)
 }
 
-func (w *WatchState) SendDeletes(set localnetv12.Set) (count int) {
+func (w *WatchState) SendDeletes(set localnetv1.Set) (count int) {
 	if w.Err != nil {
 		return
 	}
@@ -94,7 +90,7 @@ func (w *WatchState) SendDeletes(set localnetv12.Set) (count int) {
 	return len(deleted)
 }
 
-func (w *WatchState) send(item *localnetv12.OpItem) {
+func (w *WatchState) send(item *localnetv1.OpItem) {
 	if w.Err != nil {
 		return
 	}
@@ -104,43 +100,43 @@ func (w *WatchState) send(item *localnetv12.OpItem) {
 	}
 }
 
-func (w *WatchState) sendSet(set localnetv12.Set, path string, m proto.Message) {
+func (w *WatchState) sendSet(set localnetv1.Set, path string, m proto.Message) {
 	w.pb.Reset()
 	if err := w.pb.Marshal(m); err != nil {
 		panic("protobuf Marshal failed: " + err.Error())
 	}
 
-	w.send(&localnetv12.OpItem{
-		Op: &localnetv12.OpItem_Set{
-			Set: &localnetv12.Value{
-				Ref:   &localnetv12.Ref{Set: set, Path: path},
+	w.send(&localnetv1.OpItem{
+		Op: &localnetv1.OpItem_Set{
+			Set: &localnetv1.Value{
+				Ref:   &localnetv1.Ref{Set: set, Path: path},
 				Bytes: w.pb.Bytes(),
 			},
 		},
 	})
 }
 
-func (w *WatchState) sendDelete(set localnetv12.Set, path string) {
-	w.send(&localnetv12.OpItem{
-		Op: &localnetv12.OpItem_Delete{
-			Delete: &localnetv12.Ref{Set: set, Path: path},
+func (w *WatchState) sendDelete(set localnetv1.Set, path string) {
+	w.send(&localnetv1.OpItem{
+		Op: &localnetv1.OpItem_Delete{
+			Delete: &localnetv1.Ref{Set: set, Path: path},
 		},
 	})
 }
 
-func (w *WatchState) Reset(state diffstore2.ItemState) {
+func (w *WatchState) Reset(state diffstore.ItemState) {
 	for _, s := range w.diffs {
 		s.Reset(state)
 	}
 }
 
-var syncItem = &localnetv12.OpItem{Op: &localnetv12.OpItem_Sync{}}
+var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
 
 func (w *WatchState) SendSync() {
 	w.send(syncItem)
 }
 
-var resetItem = &localnetv12.OpItem{Op: &localnetv12.OpItem_Reset_{}}
+var resetItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Reset_{}}
 
 func (w *WatchState) SendReset() {
 	w.send(resetItem)

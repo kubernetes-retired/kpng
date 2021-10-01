@@ -1,25 +1,26 @@
+
 modd.conf {}
 
-**/*.go go.mod go.sum {
+api/**    { prep: "cd api      && go test ./..." }
+client/** { prep: "cd client   && go test ./..." }
+server/** { prep: "cd server   && go test ./..." }
+cmd/**    { prep: "cd cmd      && go test ./..." }
+
+backends/iptables/**     { prep: "cd backends/iptables     && go test ./..." }
+backends/ipvs/**         { prep: "cd backends/ipvs         && go test ./..." }
+backends/ipvs-as-sink/** { prep: "cd backends/ipvs-as-sink && go test ./..." }
+backends/nft/**          { prep: "cd backends/nft          && go test ./..." }
+
+**/*.go */go.mod */go.sum {
   prep: mkdir -p dist
-  prep: go test ./...
-  prep: go build -trimpath -o dist ./cmd/... ./examples/...
+  prep: cd cmd      && go build -trimpath -o ../dist          ./...
+
+  prep: mkdir -p dist/examples
+  prep: cd examples && go build -trimpath -o ../dist/examples ./...
 }
 
-dist/* Dockerfile {
-  prep: docker build .
-}
+#dist/kpng {
+#    daemon: dist/kpng kube                                  to-api --listen tcp://[::1]:12090
+#    daemon: dist/kpng kube --service-proxy-name=other-proxy to-api --listen tcp://[::1]:12091
+#}
 
-dist/kpng {
-  #daemon: dist/kpng file to-api --listen unix:///tmp/kpng.sock
-  #daemon: sudo ./netns-test nft -v=2 --cluster-cidrs=11.0.0.0/8 --node-name vm-001
-  #daemon: sudo ./netns-test ipvs2 -v=2 --node-name vm-001
-}
-
-dist/kpng-backend-torture {
-  #daemon: ./dist/kpng-backend-torture --listen unix:///tmp/kpng.sock --sleep 1s 1:1 0:0 1:1 1:2 1:1 #1:0 0:0 #5:2 # 1000:100 100000:1 1:100000
-}
-
-**/*.proto {
-  prep: for mod in @mods; do protoc -I ./ --go_out=paths=source_relative:. --go-grpc_out=paths=source_relative:. $mod; done
-}

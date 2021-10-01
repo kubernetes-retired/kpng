@@ -11,7 +11,7 @@ import (
 	"k8s.io/klog"
 
 	"sigs.k8s.io/kpng/client"
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 const (
@@ -142,16 +142,16 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 
 }
 
-func buildClusterIP(svc *localnetv12.Service, ip string, eps []*localnetv12.Endpoint, nodePort bool) (string, error) {
+func buildClusterIP(svc *localnetv1.Service, ip string, eps []*localnetv1.Endpoint, nodePort bool) (string, error) {
 	var svcString strings.Builder
 	for _, port := range svc.Ports {
 		var proto string
 		switch port.Protocol {
-		case localnetv12.Protocol_TCP:
+		case localnetv1.Protocol_TCP:
 			proto = "-t"
-		case localnetv12.Protocol_SCTP:
+		case localnetv1.Protocol_SCTP:
 			proto = "--sctp-service "
-		case localnetv12.Protocol_UDP:
+		case localnetv1.Protocol_UDP:
 			proto = "-u"
 		default:
 			return "", fmt.Errorf("service %s/%s uses an unknown protocol", svc.Namespace, svc.Name)
@@ -180,7 +180,7 @@ func buildClusterIP(svc *localnetv12.Service, ip string, eps []*localnetv12.Endp
 	return svcString.String(), nil
 }
 
-func buildEndponts(VirtualIP, proto string, port, tgtPort int32, endpoints []*localnetv12.Endpoint) string {
+func buildEndponts(VirtualIP, proto string, port, tgtPort int32, endpoints []*localnetv1.Endpoint) string {
 	var strBuilder strings.Builder
 	for _, endpoint := range endpoints {
 		ip := endpoint.GetIPs().V4[0] //TODO:  This is what we call a Gambiarra :D Need to deal better with this thing.

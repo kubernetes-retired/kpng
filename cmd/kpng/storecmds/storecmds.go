@@ -6,18 +6,18 @@ import (
 
 	"github.com/spf13/cobra"
 
-	ipvs2 "sigs.k8s.io/kpng/backends/ipvs"
-	ipvssink2 "sigs.k8s.io/kpng/backends/ipvs-as-sink"
-	nft2 "sigs.k8s.io/kpng/backends/nft"
+	"sigs.k8s.io/kpng/backends/ipvs"
+	"sigs.k8s.io/kpng/backends/ipvs-as-sink"
+	"sigs.k8s.io/kpng/backends/nft"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
-	store2api2 "sigs.k8s.io/kpng/server/jobs/store2api"
-	store2file2 "sigs.k8s.io/kpng/server/jobs/store2file"
-	store2localdiff2 "sigs.k8s.io/kpng/server/jobs/store2localdiff"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
+	"sigs.k8s.io/kpng/server/jobs/store2api"
+	"sigs.k8s.io/kpng/server/jobs/store2file"
+	"sigs.k8s.io/kpng/server/jobs/store2localdiff"
+	"sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
-type SetupFunc func() (ctx context.Context, store *proxystore2.Store, err error)
+type SetupFunc func() (ctx context.Context, store *proxystore.Store, err error)
 
 func Commands(setup SetupFunc) []*cobra.Command {
 	return []*cobra.Command{
@@ -32,7 +32,7 @@ func (c SetupFunc) ToAPICmd() *cobra.Command {
 		Use: "to-api",
 	}
 
-	cfg := &store2api2.Config{}
+	cfg := &store2api.Config{}
 	cfg.BindFlags(cmd.Flags())
 
 	cmd.RunE = func(_ *cobra.Command, _ []string) (err error) {
@@ -41,7 +41,7 @@ func (c SetupFunc) ToAPICmd() *cobra.Command {
 			return
 		}
 
-		j := &store2api2.Job{
+		j := &store2api.Job{
 			Store:  store,
 			Config: cfg,
 		}
@@ -57,7 +57,7 @@ func (c SetupFunc) ToFileCmd() *cobra.Command {
 		Short: "dump global state to a yaml db file",
 	}
 
-	cfg := &store2file2.Config{}
+	cfg := &store2file.Config{}
 	cfg.BindFlags(cmd.Flags())
 
 	cmd.RunE = func(_ *cobra.Command, _ []string) (err error) {
@@ -66,7 +66,7 @@ func (c SetupFunc) ToFileCmd() *cobra.Command {
 			return
 		}
 
-		j := &store2file2.Job{
+		j := &store2file.Job{
 			Store:  store,
 			Config: cfg,
 		}
@@ -82,7 +82,7 @@ func (c SetupFunc) ToLocalCmd() (cmd *cobra.Command) {
 	}
 
 	var ctx context.Context
-	job := &store2localdiff2.Job{}
+	job := &store2localdiff.Job{}
 
 	cmd.PersistentPreRunE = func(_ *cobra.Command, _ []string) (err error) {
 		ctx, job.Store, err = c()
@@ -108,10 +108,10 @@ func LocalCmds(run func(sink localsink.Sink) error) (cmds []*cobra.Command) {
 	}
 
 	// sink backends
-	ipvsBackend := ipvssink2.New()
+	ipvsBackend := ipvssink.New()
 
 	cmd := &cobra.Command{
-		Use: "to-ipvs2",
+		Use: "to-ipvs",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return run(ipvsBackend.Sink())
 		},
@@ -141,11 +141,11 @@ func nftCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cobr
 		Use: "to-nft",
 	}
 
-	nft2.BindFlags(cmd.Flags())
+	nft.BindFlags(cmd.Flags())
 
 	cmd.RunE = func(_ *cobra.Command, _ []string) error {
-		nft2.PreRun()
-		sink.Callback = nft2.Callback
+		nft.PreRun()
+		sink.Callback = nft.Callback
 		return run(sink)
 	}
 
@@ -157,11 +157,11 @@ func ipvsCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cob
 		Use: "to-ipvs",
 	}
 
-	ipvs2.BindFlags(cmd.Flags())
+	ipvs.BindFlags(cmd.Flags())
 
 	cmd.RunE = func(_ *cobra.Command, _ []string) error {
-		ipvs2.PreRun()
-		sink.Callback = ipvs2.Callback
+		ipvs.PreRun()
+		sink.Callback = ipvs.Callback
 		return run(sink)
 	}
 

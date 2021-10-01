@@ -26,12 +26,12 @@ import (
 	"k8s.io/klog"
 	"k8s.io/utils/exec"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	ipvs2 "sigs.k8s.io/kpng/backends/ipvs/util"
+	"sigs.k8s.io/kpng/api/localnetv1"
+	ipvsutil "sigs.k8s.io/kpng/backends/ipvs/util"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
 	"sigs.k8s.io/kpng/client/localsink/filterreset"
-	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
+	"sigs.k8s.io/kpng/client/pkg/diffstore"
 )
 
 type Backend struct {
@@ -44,18 +44,18 @@ type Backend struct {
 
 	dummy netlink.Link
 
-	svcs map[string]*localnetv12.Service
+	svcs map[string]*localnetv1.Service
 
 	dummyIPsRefCounts map[string]int
 
 	// <namespace>/<service-name>/<ip>/<protocol>:<port> -> ipvsLB
-	lbs *diffstore2.DiffStore
+	lbs *diffstore.DiffStore
 
 	// <namespace>/<service-name>/<endpoint key>/<ip> -> <ip>
-	endpoints *diffstore2.DiffStore
+	endpoints *diffstore.DiffStore
 
 	// <namespace>/<service-name>/<ip>/<protocol>:<port>/<ip> -> ipvsSvcDst
-	dests *diffstore2.DiffStore
+	dests *diffstore.DiffStore
 
 	ipsetList map[string]*IPSet
 }
@@ -64,13 +64,13 @@ var _ decoder.Interface = &Backend{}
 
 func New() *Backend {
 	return &Backend{
-		svcs: map[string]*localnetv12.Service{},
+		svcs: map[string]*localnetv1.Service{},
 
 		dummyIPsRefCounts: map[string]int{},
 
-		lbs:       diffstore2.New(),
-		endpoints: diffstore2.New(),
-		dests:     diffstore2.New(),
+		lbs:       diffstore.New(),
+		endpoints: diffstore.New(),
+		dests:     diffstore.New(),
 	}
 }
 
@@ -144,12 +144,12 @@ func (s *Backend) createIPVSDummyInterface() {
 }
 
 func (s *Backend) initializeIPSets() {
-	var ipsetInterface ipvs2.Interface
+	var ipsetInterface ipvsutil.Interface
 
 	// Create a iptables utils.
 	execer := exec.New()
 
-	ipsetInterface = ipvs2.New(execer)
+	ipsetInterface = ipvsutil.New(execer)
 
 	// initialize ipsetList with all sets we needed
 	s.ipsetList = make(map[string]*IPSet)
@@ -250,12 +250,12 @@ func (s *Backend) Sync() {
 	}
 
 	// signal diffstores we've finished
-	s.lbs.Reset(diffstore2.ItemUnchanged)
-	s.endpoints.Reset(diffstore2.ItemUnchanged)
-	s.dests.Reset(diffstore2.ItemUnchanged)
+	s.lbs.Reset(diffstore.ItemUnchanged)
+	s.endpoints.Reset(diffstore.ItemUnchanged)
+	s.dests.Reset(diffstore.ItemUnchanged)
 }
 
-func (s *Backend) SetService(svc *localnetv12.Service) {
+func (s *Backend) SetService(svc *localnetv1.Service) {
 	klog.V(1).Infof("SetService(%v)", svc)
 
 	if svc.Type == ClusterIPService {
@@ -290,7 +290,7 @@ func (s *Backend) DeleteService(namespace, name string) {
 	s.lbs.DeleteByPrefix([]byte(key + "/"))
 }
 
-func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv12.Endpoint) {
+func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint) {
 	klog.Infof("SetEndpoint(%q, %q, %q, %v)", namespace, serviceName, key, endpoint)
 
 	svcKey := namespace + "/" + serviceName

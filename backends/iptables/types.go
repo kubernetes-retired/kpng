@@ -19,7 +19,7 @@ package iptables
 import (
 	"fmt"
 	"net"
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,7 +46,7 @@ type Provider interface {
 type ServicePortName struct {
 	types.NamespacedName
 	Port     string
-	Protocol localnetv12.Protocol
+	Protocol localnetv1.Protocol
 }
 
 func (spn ServicePortName) String() string {
@@ -77,7 +77,7 @@ type ServicePort interface {
 	// LoadBalancerIPStrings returns service LoadBalancerIPs as a string array.
 	LoadBalancerIPStrings() []string
 	// GetProtocol returns service protocol.
-	Protocol() localnetv12.Protocol
+	Protocol() localnetv1.Protocol
 	// LoadBalancerSourceRanges returns service LoadBalancerSourceRanges if present empty array if not
 	LoadBalancerSourceRanges() []string
 	// GetHealthCheckNodePort returns service health check node port if present.  If return 0, it means not present.

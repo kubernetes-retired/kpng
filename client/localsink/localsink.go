@@ -2,9 +2,10 @@ package localsink
 
 import (
 	"os"
-	watchstate2 "sigs.k8s.io/kpng/server/pkg/server/watchstate"
 
 	"github.com/spf13/pflag"
+
+	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
 type Sink interface {
@@ -17,7 +18,7 @@ type Sink interface {
 	// Reset the state of the Sink (ie: when the client is disconnected and reconnects)
 	Reset()
 
-	watchstate2.OpSink
+	localnetv1.OpSink
 }
 
 type Config struct {

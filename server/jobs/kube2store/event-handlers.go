@@ -18,17 +18,17 @@ package kube2store
 
 import (
 	"k8s.io/client-go/tools/cache"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
+	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 type eventHandler struct {
 	config   *Config
-	s        *proxystore2.Store
+	s        *proxystore.Store
 	informer cache.SharedIndexInformer
 	syncSet  bool
 }
 
-func (h *eventHandler) updateSync(set proxystore2.Set, tx *proxystore2.Tx) {
+func (h *eventHandler) updateSync(set proxystore.Set, tx *proxystore.Tx) {
 	if h.syncSet {
 		return
 	}

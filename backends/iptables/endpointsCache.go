@@ -20,7 +20,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 // EndpointsCache is used as a cache of EndpointSlice information.
@@ -39,7 +39,7 @@ type EndpointsCache struct {
 
 // endpointsInfoByName groups endpointInfo by the names of the
 // corresponding Endpoint.
-type endpointsInfoByName map[string]*localnetv12.Endpoint
+type endpointsInfoByName map[string]*localnetv1.Endpoint
 
 // NewEndpointsCache initializes an EndpointCache.
 func NewEndpointsCache(hostname string, ipFamily v1.IPFamily, recorder events.EventRecorder) *EndpointsCache {
@@ -52,7 +52,7 @@ func NewEndpointsCache(hostname string, ipFamily v1.IPFamily, recorder events.Ev
 }
 
 // updatePending updates a pending slice in the cache.
-func (cache *EndpointsCache) updatePending(svcKey types.NamespacedName, key string, endpoint *localnetv12.Endpoint) bool {
+func (cache *EndpointsCache) updatePending(svcKey types.NamespacedName, key string, endpoint *localnetv1.Endpoint) bool {
 	var esInfoMap *endpointsInfoByName
 	var ok bool
 	if esInfoMap, ok = cache.trackerByServiceMap[svcKey]; !ok {

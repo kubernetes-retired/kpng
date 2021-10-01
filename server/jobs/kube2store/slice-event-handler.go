@@ -20,8 +20,8 @@ import (
 	discovery "k8s.io/api/discovery/v1beta1"
 	"k8s.io/klog"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 const hostNameLabel = "kubernetes.io/hostname"
@@ -45,16 +45,16 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 	}
 
 	// compute endpoints
-	infos := make([]*localnetv12.EndpointInfo, 0, len(eps.Endpoints))
+	infos := make([]*localnetv1.EndpointInfo, 0, len(eps.Endpoints))
 
 	for _, sliceEndpoint := range eps.Endpoints {
-		info := &localnetv12.EndpointInfo{
+		info := &localnetv1.EndpointInfo{
 			Namespace:   eps.Namespace,
 			ServiceName: serviceName,
 			SourceName:  eps.Name,
 			Topology:    sliceEndpoint.Topology,
-			Endpoint:    &localnetv12.Endpoint{},
-			Conditions:  &localnetv12.EndpointConditions{},
+			Endpoint:    &localnetv1.Endpoint{},
+			Conditions:  &localnetv1.EndpointConditions{},
 		}
 
 		if sliceEndpoint.Topology != nil {
@@ -76,13 +76,13 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 		infos = append(infos, info)
 	}
 
-	h.s.Update(func(tx *proxystore2.Tx) {
+	h.s.Update(func(tx *proxystore.Tx) {
 		tx.SetEndpointsOfSource(eps.Namespace, eps.Name, infos)
-		h.updateSync(proxystore2.Endpoints, tx)
+		h.updateSync(proxystore.Endpoints, tx)
 
 		if log := klog.V(3); log {
 			log.Info("endpoints of ", eps.Namespace, "/", serviceName, ":")
-			tx.EachEndpointOfService(eps.Namespace, serviceName, func(ei *localnetv12.EndpointInfo) {
+			tx.EachEndpointOfService(eps.Namespace, serviceName, func(ei *localnetv1.EndpointInfo) {
 				log.Info("- ", ei.Endpoint.IPs, " | topo: ", ei.Topology)
 			})
 		}
@@ -97,8 +97,8 @@ func (h sliceEventHandler) OnUpdate(oldObj, newObj interface{}) {
 func (h sliceEventHandler) OnDelete(oldObj interface{}) {
 	eps := oldObj.(*discovery.EndpointSlice)
 
-	h.s.Update(func(tx *proxystore2.Tx) {
+	h.s.Update(func(tx *proxystore.Tx) {
 		tx.DelEndpointsOfSource(eps.Namespace, eps.Name)
-		h.updateSync(proxystore2.Endpoints, tx)
+		h.updateSync(proxystore.Endpoints, tx)
 	})
 }

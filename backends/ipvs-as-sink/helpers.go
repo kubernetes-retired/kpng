@@ -21,7 +21,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/backends/ipvs/util"
 )
 
@@ -64,7 +64,7 @@ const (
 	DeleteEndPoint Operation = 3
 )
 
-func asDummyIPs(set *localnetv12.IPSet) (ips []string) {
+func asDummyIPs(set *localnetv1.IPSet) (ips []string) {
 	ips = make([]string, 0, len(set.V4)+len(set.V6))
 
 	for _, ip := range set.V4 {
@@ -77,12 +77,12 @@ func asDummyIPs(set *localnetv12.IPSet) (ips []string) {
 	return
 }
 
-func epPortSuffix(port *localnetv12.PortMapping) string {
+func epPortSuffix(port *localnetv1.PortMapping) string {
 	return port.Protocol.String() + ":" + strconv.Itoa(int(port.Port))
 }
 
 // diffInPortMapping TODO, we should support this logic in the diffstore, this is a temporary workaround.
-func diffInPortMapping(previous, current *localnetv12.Service) (added, removed []*localnetv12.PortMapping) {
+func diffInPortMapping(previous, current *localnetv1.Service) (added, removed []*localnetv1.PortMapping) {
 	for _, p1 := range previous.Ports {
 		found := false
 		for _, p2 := range current.Ports {

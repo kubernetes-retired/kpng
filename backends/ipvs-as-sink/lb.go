@@ -19,7 +19,7 @@ package ipvssink
 import (
 	"encoding/json"
 	"net"
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"syscall"
 
 	"github.com/google/seesaw/ipvs"
@@ -29,7 +29,7 @@ type ipvsLB struct {
 	IP               string
 	ServiceKey       string
 	ServiceType      string
-	Port             *localnetv12.PortMapping
+	Port             *localnetv1.PortMapping
 	SchedulingMethod string
 }
 
@@ -53,18 +53,18 @@ func (lb ipvsLB) ToService() ipvs.Service {
 	}
 
 	switch lb.Port.Protocol {
-	case localnetv12.Protocol_TCP:
+	case localnetv1.Protocol_TCP:
 		s.Protocol = syscall.IPPROTO_TCP
-	case localnetv12.Protocol_UDP:
+	case localnetv1.Protocol_UDP:
 		s.Protocol = syscall.IPPROTO_UDP
-	case localnetv12.Protocol_SCTP:
+	case localnetv1.Protocol_SCTP:
 		s.Protocol = syscall.IPPROTO_SCTP
 	}
 
 	return s
 }
 
-func ipvsDestination(targetIP string, port *localnetv12.PortMapping, epWeight int32) ipvs.Destination {
+func ipvsDestination(targetIP string, port *localnetv1.PortMapping, epWeight int32) ipvs.Destination {
 	return ipvs.Destination{
 		Address: net.ParseIP(targetIP),
 		Port:    uint16(port.TargetPort),

@@ -3,7 +3,7 @@ package filterreset
 import (
 	"github.com/cespare/xxhash"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/localsink"
 )
 
@@ -15,7 +15,7 @@ type Sink struct {
 }
 
 type memItem struct {
-	set  localnetv12.Set
+	set  localnetv1.Set
 	hash uint64
 }
 
@@ -39,9 +39,9 @@ func (s *Sink) Reset() {
 	s.seen = make(map[string]bool, len(s.memory))
 }
 
-func (s *Sink) Send(op *localnetv12.OpItem) (err error) {
+func (s *Sink) Send(op *localnetv1.OpItem) (err error) {
 	switch v := op.Op; v.(type) {
-	case *localnetv12.OpItem_Set:
+	case *localnetv1.OpItem_Set:
 		set := op.GetSet()
 		path := set.Ref.Path
 
@@ -62,7 +62,7 @@ func (s *Sink) Send(op *localnetv12.OpItem) (err error) {
 
 		return s.sink.Send(op)
 
-	case *localnetv12.OpItem_Delete:
+	case *localnetv1.OpItem_Delete:
 		del := op.GetDelete()
 
 		if _, exists := s.memory[del.Path]; exists {
@@ -72,16 +72,16 @@ func (s *Sink) Send(op *localnetv12.OpItem) (err error) {
 
 		return nil
 
-	case *localnetv12.OpItem_Sync:
+	case *localnetv1.OpItem_Sync:
 		if s.filtering {
 			toDelete := make([]string, 0)
 			for path, mem := range s.memory {
 				if !s.seen[path] {
 					toDelete = append(toDelete, path)
 
-					err = s.sink.Send(&localnetv12.OpItem{
-						Op: &localnetv12.OpItem_Delete{
-							Delete: &localnetv12.Ref{
+					err = s.sink.Send(&localnetv1.OpItem{
+						Op: &localnetv1.OpItem_Delete{
+							Delete: &localnetv1.Ref{
 								Set:  mem.set,
 								Path: path,
 							},

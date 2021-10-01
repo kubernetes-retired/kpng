@@ -22,11 +22,12 @@ import (
 	"fmt"
 	"os"
 	"runtime/pprof"
-	proxy2 "sigs.k8s.io/kpng/server/pkg/proxy"
 
 	"github.com/spf13/cobra"
 
 	"k8s.io/klog"
+
+	"sigs.k8s.io/kpng/server/pkg/proxy"
 )
 
 var (
@@ -61,10 +62,10 @@ func setupGlobal() (ctx context.Context) {
 
 	// handle exit signals
 	go func() {
-		proxy2.WaitForTermSignal()
+		proxy.WaitForTermSignal()
 		cancel()
 
-		proxy2.WaitForTermSignal()
+		proxy.WaitForTermSignal()
 		klog.Fatal("forced exit after second term signal")
 		os.Exit(1)
 	}()

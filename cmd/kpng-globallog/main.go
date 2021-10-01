@@ -19,7 +19,6 @@ package main
 import (
 	"context"
 	"fmt"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -29,6 +28,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"k8s.io/klog"
 
+	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client"
 )
 
@@ -76,7 +76,7 @@ func run() {
 
 	ctx := epc.Context()
 
-	cli := localnetv12.NewGlobalClient(conn)
+	cli := localnetv1.NewGlobalClient(conn)
 
 	w, err := cli.Watch(ctx)
 	if isCanceled(err) {
@@ -107,9 +107,9 @@ func run() {
 
 var prevs = map[string]proto.Message{}
 
-func watchReq(w localnetv12.Global_WatchClient) error {
+func watchReq(w localnetv1.Global_WatchClient) error {
 	fmt.Println("< req (global) at", time.Now())
-	if err := w.Send(&localnetv12.GlobalWatchReq{}); err != nil {
+	if err := w.Send(&localnetv1.GlobalWatchReq{}); err != nil {
 		return err
 	}
 
@@ -128,22 +128,22 @@ loop:
 		}
 
 		switch v := op.Op; v.(type) {
-		case *localnetv12.OpItem_Set:
+		case *localnetv1.OpItem_Set:
 			set := op.GetSet()
 
 			var v proto.Message
 			switch set.Ref.Set {
-			case localnetv12.Set_ServicesSet:
-				v = &localnetv12.Service{}
-			case localnetv12.Set_EndpointsSet:
-				v = &localnetv12.Endpoint{}
+			case localnetv1.Set_ServicesSet:
+				v = &localnetv1.Service{}
+			case localnetv1.Set_EndpointsSet:
+				v = &localnetv1.Endpoint{}
 
-			case localnetv12.Set_GlobalEndpointInfos:
-				v = &localnetv12.EndpointInfo{}
-			case localnetv12.Set_GlobalNodeInfos:
-				v = &localnetv12.NodeInfo{}
-			case localnetv12.Set_GlobalServiceInfos:
-				v = &localnetv12.ServiceInfo{}
+			case localnetv1.Set_GlobalEndpointInfos:
+				v = &localnetv1.EndpointInfo{}
+			case localnetv1.Set_GlobalNodeInfos:
+				v = &localnetv1.NodeInfo{}
+			case localnetv1.Set_GlobalServiceInfos:
+				v = &localnetv1.ServiceInfo{}
 
 			default:
 				klog.Info("unknown set: ", set.Ref.Set)
@@ -166,14 +166,14 @@ loop:
 
 			prevs[refStr] = v
 
-		case *localnetv12.OpItem_Delete:
+		case *localnetv1.OpItem_Delete:
 			refStr := op.GetDelete().String()
 			prev := prevs[refStr]
 
 			fmt.Println("-", refStr, "->", prev)
 			delete(prevs, refStr)
 
-		case *localnetv12.OpItem_Sync:
+		case *localnetv1.OpItem_Sync:
 			fmt.Println("> sync after", time.Since(start))
 			break loop // done
 		}

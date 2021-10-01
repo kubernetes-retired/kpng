@@ -4,13 +4,13 @@ import (
 	"github.com/google/btree"
 	"google.golang.org/protobuf/proto"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/localsink"
 )
 
 type ServiceEndpoints struct {
-	Service   *localnetv12.Service
-	Endpoints []*localnetv12.Endpoint
+	Service   *localnetv1.Service
+	Endpoints []*localnetv1.Endpoint
 }
 
 type Callback func(item <-chan *ServiceEndpoints)
@@ -59,17 +59,17 @@ func (s *Sink) Reset() {
 	s.data.Clear(false)
 }
 
-func (s *Sink) Send(op *localnetv12.OpItem) (err error) {
+func (s *Sink) Send(op *localnetv1.OpItem) (err error) {
 	switch v := op.Op; v.(type) {
-	case *localnetv12.OpItem_Set:
+	case *localnetv1.OpItem_Set:
 		set := op.GetSet()
 
 		var v proto.Message
 		switch set.Ref.Set {
-		case localnetv12.Set_ServicesSet:
-			v = &localnetv12.Service{}
-		case localnetv12.Set_EndpointsSet:
-			v = &localnetv12.Endpoint{}
+		case localnetv1.Set_ServicesSet:
+			v = &localnetv1.Service{}
+		case localnetv1.Set_EndpointsSet:
+			v = &localnetv1.Endpoint{}
 
 		default:
 			return
@@ -82,10 +82,10 @@ func (s *Sink) Send(op *localnetv12.OpItem) (err error) {
 
 		s.data.ReplaceOrInsert(kv{set.Ref.Path, v})
 
-	case *localnetv12.OpItem_Delete:
+	case *localnetv1.OpItem_Delete:
 		s.data.Delete(kv{Path: op.GetDelete().Path})
 
-	case *localnetv12.OpItem_Sync:
+	case *localnetv1.OpItem_Sync:
 		results := make(chan *ServiceEndpoints, 1)
 
 		go func() {
@@ -95,13 +95,13 @@ func (s *Sink) Send(op *localnetv12.OpItem) (err error) {
 
 			s.data.Ascend(func(i btree.Item) bool {
 				switch v := i.(kv).Value.(type) {
-				case *localnetv12.Service:
+				case *localnetv1.Service:
 					if seps != nil {
 						results <- seps
 					}
 
 					seps = &ServiceEndpoints{Service: v}
-				case *localnetv12.Endpoint:
+				case *localnetv1.Endpoint:
 					seps.Endpoints = append(seps.Endpoints, v)
 				}
 

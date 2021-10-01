@@ -3,27 +3,27 @@ package store2diff
 import (
 	"context"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
-	watchstate2 "sigs.k8s.io/kpng/server/pkg/server/watchstate"
+	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/server/pkg/proxystore"
+	"sigs.k8s.io/kpng/server/pkg/server/watchstate"
 )
 
 type Job struct {
-	Store *proxystore2.Store
-	Sets  []localnetv12.Set
+	Store *proxystore.Store
+	Sets  []localnetv1.Set
 	Sink  Sink
 }
 
 type Sink interface {
-	watchstate2.OpSink
+	localnetv1.OpSink
 
 	Wait() error
-	Update(tx *proxystore2.Tx, w *watchstate2.WatchState)
-	SendDiff(w *watchstate2.WatchState) (updated bool)
+	Update(tx *proxystore.Tx, w *watchstate.WatchState)
+	SendDiff(w *watchstate.WatchState) (updated bool)
 }
 
 func (j *Job) Run(ctx context.Context) (err error) {
-	w := watchstate2.New(j.Sink, j.Sets)
+	w := watchstate.New(j.Sink, j.Sets)
 
 	var (
 		rev    uint64
@@ -49,7 +49,7 @@ func (j *Job) Run(ctx context.Context) (err error) {
 		updated := false
 		for !updated {
 			// update the state
-			rev, closed = j.Store.View(rev, func(tx *proxystore2.Tx) {
+			rev, closed = j.Store.View(rev, func(tx *proxystore.Tx) {
 				j.Sink.Update(tx, w)
 			})
 

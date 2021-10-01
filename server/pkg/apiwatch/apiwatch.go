@@ -4,12 +4,13 @@ import (
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	tlsflags2 "sigs.k8s.io/kpng/server/pkg/tlsflags"
+
+	"sigs.k8s.io/kpng/client/pkg/tlsflags"
 )
 
 type Watch struct {
 	Server   string
-	TLSFlags *tlsflags2.Flags
+	TLSFlags *tlsflags.Flags
 }
 
 func (w *Watch) BindFlags(flags *pflag.FlagSet) {

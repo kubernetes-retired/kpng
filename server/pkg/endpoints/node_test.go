@@ -3,48 +3,48 @@ package endpoints
 import (
 	"fmt"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 func ExampleForNodeWithTopology() {
-	store := proxystore2.New()
+	store := proxystore.New()
 
-	store.Update(func(tx *proxystore2.Tx) {
-		tx.SetService(&localnetv12.Service{
+	store.Update(func(tx *proxystore.Tx) {
+		tx.SetService(&localnetv1.Service{
 			Namespace: "test",
 			Name:      "test",
 			Type:      "ClusterIP",
-			IPs:       &localnetv12.ServiceIPs{ClusterIPs: localnetv12.NewIPSet("10.1.2.3")},
-			Ports: []*localnetv12.PortMapping{
+			IPs:       &localnetv1.ServiceIPs{ClusterIPs: localnetv1.NewIPSet("10.1.2.3")},
+			Ports: []*localnetv1.PortMapping{
 				{Port: 1234},
 			},
 		}, []string{"kubernetes.io/hostname"})
 
-		tx.SetEndpointsOfSource("test", "test-abcde", []*localnetv12.EndpointInfo{
+		tx.SetEndpointsOfSource("test", "test-abcde", []*localnetv1.EndpointInfo{
 			{
 				Namespace:   "test",
 				SourceName:  "test-abcde",
 				ServiceName: "test",
-				Endpoint:    &localnetv12.Endpoint{IPs: localnetv12.NewIPSet("10.2.0.1")},
+				Endpoint:    &localnetv1.Endpoint{IPs: localnetv1.NewIPSet("10.2.0.1")},
 				Topology:    map[string]string{"kubernetes.io/hostname": "host-a"},
-				Conditions:  &localnetv12.EndpointConditions{Ready: true},
+				Conditions:  &localnetv1.EndpointConditions{Ready: true},
 			},
 			{
 				Namespace:   "test",
 				SourceName:  "test-abcde",
 				ServiceName: "test",
-				Endpoint:    &localnetv12.Endpoint{IPs: localnetv12.NewIPSet("10.2.1.1")},
+				Endpoint:    &localnetv1.Endpoint{IPs: localnetv1.NewIPSet("10.2.1.1")},
 				Topology:    map[string]string{"kubernetes.io/hostname": "host-b"},
-				Conditions:  &localnetv12.EndpointConditions{Ready: true},
+				Conditions:  &localnetv1.EndpointConditions{Ready: true},
 			},
 		})
 	})
 
-	store.View(0, func(tx *proxystore2.Tx) {
-		tx.Each(proxystore2.Services, func(kv *proxystore2.KV) (cont bool) {
+	store.View(0, func(tx *proxystore.Tx) {
+		tx.Each(proxystore.Services, func(kv *proxystore.KV) (cont bool) {
 			fmt.Print("service ", kv.Name, ":\n")
-			tx.EachEndpointOfService("test", "test", func(epi *localnetv12.EndpointInfo) {
+			tx.EachEndpointOfService("test", "test", func(epi *localnetv1.EndpointInfo) {
 				fmt.Print("  - ep ", epi.Endpoint, " (", epi.Topology, ")\n")
 			})
 			return true
@@ -52,7 +52,7 @@ func ExampleForNodeWithTopology() {
 
 		for _, host := range []string{"host-a", "host-b"} {
 			fmt.Print("host ", host, ":\n")
-			tx.Each(proxystore2.Services, func(kv *proxystore2.KV) (cont bool) {
+			tx.Each(proxystore.Services, func(kv *proxystore.KV) (cont bool) {
 				fmt.Print("  - service ", kv.Name, ":\n")
 				for _, epi := range ForNode(tx, kv.Service, host) {
 					fmt.Print("    - ep ", epi.Endpoint.IPs, "\n")

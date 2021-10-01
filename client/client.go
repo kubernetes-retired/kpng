@@ -26,15 +26,15 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-    "k8s.io/klog/v2"
+	"k8s.io/klog/v2"
 
 	// allow multi gRPC URLs
 	//_ "github.com/Jille/grpc-multi-resolver"
 
+	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
-	"sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/server/pkg/tlsflags"
+	"sigs.k8s.io/kpng/client/pkg/tlsflags"
 )
 
 type ServiceEndpoints = fullstate.ServiceEndpoints

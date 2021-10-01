@@ -18,7 +18,7 @@ package kube2store
 
 import (
 	"context"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
+	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -67,7 +67,7 @@ func (c *Config) BindFlags(flags *pflag.FlagSet) {
 
 type Job struct {
 	Kube   *kubernetes.Clientset
-	Store  *proxystore2.Store
+	Store  *proxystore.Store
 	Config *Config
 }
 

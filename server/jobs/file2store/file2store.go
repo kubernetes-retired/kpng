@@ -12,23 +12,23 @@ import (
 	"gopkg.in/yaml.v2"
 	"k8s.io/klog"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	store2file2 "sigs.k8s.io/kpng/server/jobs/store2file"
-	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
-	watchstate2 "sigs.k8s.io/kpng/server/pkg/server/watchstate"
+	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/client/pkg/diffstore"
+	"sigs.k8s.io/kpng/server/jobs/store2file"
+	"sigs.k8s.io/kpng/server/pkg/proxystore"
+	"sigs.k8s.io/kpng/server/pkg/server/watchstate"
 )
 
 type Job struct {
 	FilePath string
-	Store    *proxystore2.Store
+	Store    *proxystore.Store
 }
 
 func (j *Job) Run(ctx context.Context) {
 	configPath := j.FilePath
 	store := j.Store
 
-	w := watchstate2.New(nil, proxystore2.AllSets)
+	w := watchstate.New(nil, proxystore.AllSets)
 
 	pb := proto.NewBuffer(make([]byte, 0))
 	hashOf := func(m proto.Message) uint64 {
@@ -68,16 +68,16 @@ func (j *Job) Run(ctx context.Context) {
 			continue
 		}
 
-		state := &store2file2.GlobalState{}
+		state := &store2file.GlobalState{}
 		err = yaml.UnmarshalStrict(configBytes, state)
 		if err != nil {
 			klog.Info("failed to parse config: ", err)
 			continue
 		}
 
-		diffNodes := w.StoreFor(proxystore2.Nodes)
-		diffSvcs := w.StoreFor(proxystore2.Services)
-		diffEPs := w.StoreFor(proxystore2.Endpoints)
+		diffNodes := w.StoreFor(proxystore.Nodes)
+		diffSvcs := w.StoreFor(proxystore.Services)
+		diffEPs := w.StoreFor(proxystore.Endpoints)
 
 		for _, node := range state.Nodes {
 			diffNodes.Set([]byte(node.Name), hashOf(node), node)
@@ -90,7 +90,7 @@ func (j *Job) Run(ctx context.Context) {
 				svc.Namespace = "default"
 			}
 
-			si := &localnetv12.ServiceInfo{
+			si := &localnetv1.ServiceInfo{
 				Service:      se.Service,
 				TopologyKeys: se.TopologyKeys,
 			}
@@ -107,7 +107,7 @@ func (j *Job) Run(ctx context.Context) {
 					ep.ServiceName = svc.Name
 
 					if ep.Conditions == nil {
-						ep.Conditions = &localnetv12.EndpointConditions{Ready: true}
+						ep.Conditions = &localnetv1.EndpointConditions{Ready: true}
 					}
 
 					ba, _ := proto.Marshal(ep)
@@ -118,20 +118,20 @@ func (j *Job) Run(ctx context.Context) {
 			}
 		}
 
-		store.Update(func(tx *proxystore2.Tx) {
+		store.Update(func(tx *proxystore.Tx) {
 			for _, u := range diffNodes.Updated() {
 				klog.Info("U node ", string(u.Key))
-				tx.SetNode(u.Value.(*localnetv12.Node))
+				tx.SetNode(u.Value.(*localnetv1.Node))
 			}
 			for _, u := range diffSvcs.Updated() {
 				klog.Info("U service ", string(u.Key))
-				si := u.Value.(*localnetv12.ServiceInfo)
+				si := u.Value.(*localnetv1.ServiceInfo)
 				tx.SetService(si.Service, si.TopologyKeys)
 			}
 			for _, u := range diffEPs.Updated() {
 				klog.Info("U endpoints ", string(u.Key))
 				key := string(u.Key)
-				eis := u.Value.([]*localnetv12.EndpointInfo)
+				eis := u.Value.([]*localnetv1.EndpointInfo)
 
 				tx.SetEndpointsOfSource(path.Dir(key), path.Base(key), eis)
 			}
@@ -151,13 +151,13 @@ func (j *Job) Run(ctx context.Context) {
 				tx.DelNode(string(d.Key))
 			}
 
-			for _, set := range proxystore2.AllSets {
+			for _, set := range proxystore.AllSets {
 				tx.SetSync(set)
 			}
 		})
 
-		for _, set := range proxystore2.AllSets {
-			w.StoreFor(set).Reset(diffstore2.ItemDeleted)
+		for _, set := range proxystore.AllSets {
+			w.StoreFor(set).Reset(diffstore.ItemDeleted)
 		}
 	}
 }

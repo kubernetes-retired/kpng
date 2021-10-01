@@ -19,13 +19,13 @@ package endpoints
 import (
 	"google.golang.org/protobuf/proto"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 const hostnameLabel = "kubernetes.io/hostname"
 
-func ForNode(tx *proxystore2.Tx, si *localnetv12.ServiceInfo, nodeName string) (selection []*localnetv12.EndpointInfo) {
+func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (selection []*localnetv1.EndpointInfo) {
 	node := tx.GetNode(nodeName)
 
 	var labels map[string]string
@@ -49,16 +49,16 @@ func ForNode(tx *proxystore2.Tx, si *localnetv12.ServiceInfo, nodeName string) (
 
 	svc := si.Service
 
-	infos := make([]*localnetv12.EndpointInfo, 0)
-	tx.EachEndpointOfService(svc.Namespace, svc.Name, func(info *localnetv12.EndpointInfo) {
-		info = proto.Clone(info).(*localnetv12.EndpointInfo)
+	infos := make([]*localnetv1.EndpointInfo, 0)
+	tx.EachEndpointOfService(svc.Namespace, svc.Name, func(info *localnetv1.EndpointInfo) {
+		info = proto.Clone(info).(*localnetv1.EndpointInfo)
 
 		info.Endpoint.Local = info.NodeName == nodeName
 
 		infos = append(infos, info)
 	})
 
-	selection = make([]*localnetv12.EndpointInfo, 0, len(infos))
+	selection = make([]*localnetv1.EndpointInfo, 0, len(infos))
 
 	for _, topoKey := range topologyKeys {
 		ref := ""

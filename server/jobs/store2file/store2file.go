@@ -9,8 +9,8 @@ import (
 
 	"k8s.io/klog"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 type Config struct {
@@ -22,7 +22,7 @@ func (c *Config) BindFlags(flags *pflag.FlagSet) {
 }
 
 type Job struct {
-	Store  *proxystore2.Store
+	Store  *proxystore.Store
 	Config *Config
 }
 
@@ -36,23 +36,23 @@ func (j *Job) Run(ctx context.Context) (err error) {
 		state := GlobalState{}
 		ok := false
 
-		rev, closed = j.Store.View(rev, func(tx *proxystore2.Tx) {
+		rev, closed = j.Store.View(rev, func(tx *proxystore.Tx) {
 			if !tx.AllSynced() {
 				return
 			}
 
-			tx.Each(proxystore2.Nodes, func(kv *proxystore2.KV) bool {
+			tx.Each(proxystore.Nodes, func(kv *proxystore.KV) bool {
 				state.Nodes = append(state.Nodes, kv.Node.Node)
 				return true
 			})
 
-			tx.Each(proxystore2.Services, func(kv *proxystore2.KV) bool {
+			tx.Each(proxystore.Services, func(kv *proxystore.KV) bool {
 				sae := ServiceAndEndpoints{
 					Service:      kv.Service.Service,
 					TopologyKeys: kv.Service.TopologyKeys,
 				}
 
-				tx.EachEndpointOfService(kv.Namespace, kv.Name, func(ep *localnetv12.EndpointInfo) {
+				tx.EachEndpointOfService(kv.Namespace, kv.Name, func(ep *localnetv1.EndpointInfo) {
 					sae.Endpoints = append(sae.Endpoints, ep)
 				})
 
@@ -88,12 +88,12 @@ func (j *Job) Run(ctx context.Context) (err error) {
 }
 
 type GlobalState struct {
-	Nodes    []*localnetv12.Node
+	Nodes    []*localnetv1.Node
 	Services []ServiceAndEndpoints
 }
 
 type ServiceAndEndpoints struct {
-	Service      *localnetv12.Service
+	Service      *localnetv1.Service
 	TopologyKeys []string
-	Endpoints    []*localnetv12.EndpointInfo
+	Endpoints    []*localnetv1.EndpointInfo
 }

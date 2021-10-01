@@ -22,11 +22,11 @@ import (
 
 	"k8s.io/klog/v2"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/backends/ipvs/util"
 )
 
-func (s *Backend) handleNodePortService(svc *localnetv12.Service, op Operation) {
+func (s *Backend) handleNodePortService(svc *localnetv1.Service, op Operation) {
 	svckey := svc.Namespace + "/" + svc.Name
 
 	if op == AddService {
@@ -51,7 +51,7 @@ func (s *Backend) handleNodePortService(svc *localnetv12.Service, op Operation) 
 	}
 }
 
-func (s *Backend) handleNewNodePortService(key string, svc *localnetv12.Service) {
+func (s *Backend) handleNewNodePortService(key string, svc *localnetv1.Service) {
 	s.svcs[key] = svc
 
 	s.addServiceIPToKubeIPVSIntf(nil, svc)
@@ -70,7 +70,7 @@ func (s *Backend) handleNewNodePortService(key string, svc *localnetv12.Service)
 	s.AddOrDelClusterIPInIPSet(svc, svc.Ports, AddService)
 }
 
-func (s *Backend) handleUpdatedNodePortService(svckey string, svc *localnetv12.Service) {
+func (s *Backend) handleUpdatedNodePortService(svckey string, svc *localnetv1.Service) {
 	// update the svc
 	prevSvc := s.svcs[svckey]
 	s.svcs[svckey] = svc
@@ -132,7 +132,7 @@ func (s *Backend) handleUpdatedNodePortService(svckey string, svc *localnetv12.S
 	}
 }
 
-func (s *Backend) AddOrDelNodePortInIPSet(svc *localnetv12.Service, portList []*localnetv12.PortMapping, op Operation) {
+func (s *Backend) AddOrDelNodePortInIPSet(svc *localnetv1.Service, portList []*localnetv1.PortMapping, op Operation) {
 	svcIPFamily := getServiceIPFamily(svc)
 
 	for _, port := range portList {
@@ -183,7 +183,7 @@ func getNodePortIPSetEntry(port int, protocol string, ipSetType ipvs.Type) *ipvs
 	}
 }
 
-func (s *Backend) SetEndPointForNodePortSvc(svcKey, key string, endpoint *localnetv12.Endpoint) {
+func (s *Backend) SetEndPointForNodePortSvc(svcKey, key string, endpoint *localnetv1.Endpoint) {
 	prefix := svcKey + "/" + key + "/"
 	service := s.svcs[svcKey]
 	portList := service.Ports

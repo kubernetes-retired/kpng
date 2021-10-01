@@ -4,21 +4,21 @@ import (
 	"context"
 	"fmt"
 	"os"
-	kube2store2 "sigs.k8s.io/kpng/server/jobs/kube2store"
-//	storecmds2 "sigs.k8s.io/kpng/server/pkg/cmd/storecmds"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
 
 	"github.com/spf13/cobra"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"sigs.k8s.io/kpng/server/jobs/kube2store"
+	"sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 // FIXME separate package
 var (
 	kubeConfig string
 	kubeServer string
-	k2sCfg     = &kube2store2.Config{}
+	k2sCfg     = &kube2store.Config{}
 )
 
 func kube2storeCmd() *cobra.Command {
@@ -33,12 +33,12 @@ func kube2storeCmd() *cobra.Command {
 	flags.StringVar(&kubeServer, "server", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 
 	k2sCfg.BindFlags(k2sCmd.PersistentFlags())
-//	k2sCmd.AddCommand(storecmds2.Commands(setupKube2store)...)
+	//	k2sCmd.AddCommand(storecmds2.Commands(setupKube2store)...)
 
 	return k2sCmd
 }
 
-func setupKube2store() (ctx context.Context, store *proxystore2.Store, err error) {
+func setupKube2store() (ctx context.Context, store *proxystore.Store, err error) {
 	ctx = setupGlobal()
 
 	// setup k8s client
@@ -59,10 +59,10 @@ func setupKube2store() (ctx context.Context, store *proxystore2.Store, err error
 	}
 
 	// create the store
-	store = proxystore2.New()
+	store = proxystore.New()
 
 	// start kube2store
-	go kube2store2.Job{
+	go kube2store.Job{
 		Kube:   kubeClient,
 		Store:  store,
 		Config: k2sCfg,

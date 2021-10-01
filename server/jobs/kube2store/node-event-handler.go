@@ -19,8 +19,8 @@ package kube2store
 import (
 	v1 "k8s.io/api/core/v1"
 
-	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 type nodeEventHandler struct{ eventHandler }
@@ -29,19 +29,19 @@ func (h *nodeEventHandler) OnAdd(obj interface{}) {
 	node := obj.(*v1.Node)
 
 	// keep only what we want
-	n := &localnetv12.Node{
+	n := &localnetv1.Node{
 		Name:        node.Name,
 		Labels:      globsFilter(node.Labels, h.config.NodeLabelGlobs),
 		Annotations: globsFilter(node.Annotations, h.config.NodeAnnotationGlobs),
 	}
 
-	h.s.Update(func(tx *proxystore2.Tx) {
+	h.s.Update(func(tx *proxystore.Tx) {
 		tx.SetNode(n)
 
 		if !h.config.UseSlices {
 			// endpoints => need to update all matching topologies
-			toSet := make([]*localnetv12.EndpointInfo, 0)
-			tx.Each(proxystore2.Endpoints, func(kv *proxystore2.KV) bool {
+			toSet := make([]*localnetv1.EndpointInfo, 0)
+			tx.Each(proxystore.Endpoints, func(kv *proxystore.KV) bool {
 				if kv.Endpoint.NodeName == n.Name {
 					kv.Endpoint.Topology = n.Labels
 					toSet = append(toSet, kv.Endpoint)
@@ -54,7 +54,7 @@ func (h *nodeEventHandler) OnAdd(obj interface{}) {
 			}
 		}
 
-		h.updateSync(proxystore2.Nodes, tx)
+		h.updateSync(proxystore.Nodes, tx)
 	})
 }
 
@@ -66,8 +66,8 @@ func (h *nodeEventHandler) OnUpdate(oldObj, newObj interface{}) {
 func (h *nodeEventHandler) OnDelete(oldObj interface{}) {
 	node := oldObj.(*v1.Node)
 
-	h.s.Update(func(tx *proxystore2.Tx) {
+	h.s.Update(func(tx *proxystore.Tx) {
 		tx.DelNode(node.Name)
-		h.updateSync(proxystore2.Nodes, tx)
+		h.updateSync(proxystore.Nodes, tx)
 	})
 }
