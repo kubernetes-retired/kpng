@@ -13,7 +13,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/proxy/metrics"
 	utilnet "k8s.io/utils/net"
 )
 
@@ -962,10 +961,10 @@ func (t *iptables) sync() {
 	t.iptablesData.Write(t.natChains.Bytes())
 	t.iptablesData.Write(t.natRules.Bytes())
 
-	numberFilterIptablesRules := CountBytesLines(t.filterRules.Bytes())
-	metrics.IptablesRulesTotal.WithLabelValues(string(TableFilter)).Set(float64(numberFilterIptablesRules))
-	numberNatIptablesRules := CountBytesLines(t.natRules.Bytes())
-	metrics.IptablesRulesTotal.WithLabelValues(string(TableNAT)).Set(float64(numberNatIptablesRules))
+	//numberFilterIptablesRules := CountBytesLines(t.filterRules.Bytes())
+	//metrics.IptablesRulesTotal.WithLabelValues(string(TableFilter)).Set(float64(numberFilterIptablesRules))
+	//numberNatIptablesRules := CountBytesLines(t.natRules.Bytes())
+	//metrics.IptablesRulesTotal.WithLabelValues(string(TableNAT)).Set(float64(numberNatIptablesRules))
 
 	klog.InfoS("Restoring iptables", "rules", string(t.iptablesData.Bytes()))
 	err = t.iptInterface.RestoreAll(t.iptablesData.Bytes(), NoFlushTables, RestoreCounters)
@@ -980,13 +979,13 @@ func (t *iptables) sync() {
 	//TODO: we dont have any retry logic as in kubeproxy,need to think.
 	// success = true
 
-	for name, lastChangeTriggerTimes := range endpointUpdateResult.LastChangeTriggerTimes {
-		for _, lastChangeTriggerTime := range lastChangeTriggerTimes {
-			latency := metrics.SinceInSeconds(lastChangeTriggerTime)
-			metrics.NetworkProgrammingLatency.Observe(latency)
-			klog.V(4).InfoS("Network programming", "endpoint", klog.KRef(name.Namespace, name.Name), "elapsed", latency)
-		}
-	}
+	// for name, lastChangeTriggerTimes := range endpointUpdateResult.LastChangeTriggerTimes {
+	// 	for _, lastChangeTriggerTime := range lastChangeTriggerTimes {
+	// 		latency := metrics.SinceInSeconds(lastChangeTriggerTime)
+	// 		metrics.NetworkProgrammingLatency.Observe(latency)
+	// 		klog.V(4).InfoS("Network programming", "endpoint", klog.KRef(name.Namespace, name.Name), "elapsed", latency)
+	// 	}
+	// }
 
 	// Close old local ports and save new ones.
 	for k, v := range t.portsMap {

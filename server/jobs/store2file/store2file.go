@@ -3,12 +3,14 @@ package store2file
 import (
 	"context"
 	"os"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
 
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
+
 	"k8s.io/klog"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 type Config struct {

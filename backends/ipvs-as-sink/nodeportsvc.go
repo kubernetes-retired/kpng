@@ -18,11 +18,12 @@ package ipvssink
 
 import (
 	"bytes"
-	"sigs.k8s.io/kpng/server/backends/util/ipvs"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"strings"
 
 	"k8s.io/klog/v2"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/backends/util/ipvs"
 )
 
 func (s *Backend) handleNodePortService(svc *localnetv12.Service, op Operation) {

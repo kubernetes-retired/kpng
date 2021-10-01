@@ -20,7 +20,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
 	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 

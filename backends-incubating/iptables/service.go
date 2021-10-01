@@ -19,7 +19,6 @@ package iptables
 import (
 	"fmt"
 	"net"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -27,7 +26,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/proxy/metrics"
+
+	//"k8s.io/kubernetes/pkg/proxy/metrics"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 // BaseServiceInfo contains base information that defines a service.
@@ -301,7 +303,7 @@ func (sct *ServiceChangeTracker) Update(current *localnetv12.Service) bool {
 	if svc == nil {
 		return false
 	}
-	metrics.ServiceChangesTotal.Inc()
+	//metrics.ServiceChangesTotal.Inc()
 	namespacedName := types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}
 	var change *serviceChange
 	var ok bool
@@ -311,16 +313,16 @@ func (sct *ServiceChangeTracker) Update(current *localnetv12.Service) bool {
 	}
 	*change = sct.serviceToServiceMap(current)
 	klog.V(2).Infof("Service %s updated: %d ports", namespacedName, len(*change))
-	metrics.ServiceChangesPending.Set(float64(len(sct.items)))
+	//metrics.ServiceChangesPending.Set(float64(len(sct.items)))
 	return len(sct.items) > 0
 }
 
 func (sct *ServiceChangeTracker) Delete(namespace, name string) bool {
-	metrics.ServiceChangesTotal.Inc()
+	//metrics.ServiceChangesTotal.Inc()
 	namespacedName := types.NamespacedName{Namespace: namespace, Name: name}
 	sct.items[namespacedName] = nil
 	klog.V(2).Infof("Service %s updated for delete", namespacedName)
-	metrics.ServiceChangesPending.Set(float64(len(sct.items)))
+	//metrics.ServiceChangesPending.Set(float64(len(sct.items)))
 	return len(sct.items) > 0
 }
 
@@ -366,7 +368,7 @@ func (svcSnap *ServicesSnapshot) apply(changes *ServiceChangeTracker, UDPStaleCl
 	}
 	// clear changes after applying them to ServiceMap.
 	changes.items = make(map[types.NamespacedName]*serviceChange)
-	metrics.ServiceChangesPending.Set(0)
+	//metrics.ServiceChangesPending.Set(0)
 }
 
 func (svcSnap *ServicesSnapshot) merge(svcName types.NamespacedName, other *serviceChange, UDPStaleClusterIP sets.String) {

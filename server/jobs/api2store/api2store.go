@@ -2,9 +2,6 @@ package api2store
 
 import (
 	"context"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
-	apiwatch2 "sigs.k8s.io/kpng/server/pkg/apiwatch"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
 	"time"
 
 	"google.golang.org/grpc"
@@ -12,6 +9,10 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"k8s.io/klog"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	apiwatch2 "sigs.k8s.io/kpng/server/pkg/apiwatch"
+	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 type Job struct {

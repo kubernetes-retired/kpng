@@ -2,7 +2,8 @@ package store2diff
 
 import (
 	"context"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
 	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
 	watchstate2 "sigs.k8s.io/kpng/server/pkg/server/watchstate"
 )

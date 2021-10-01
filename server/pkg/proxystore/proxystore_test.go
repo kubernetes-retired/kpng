@@ -18,8 +18,9 @@ package proxystore
 
 import (
 	"fmt"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"sort"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 func Example() {

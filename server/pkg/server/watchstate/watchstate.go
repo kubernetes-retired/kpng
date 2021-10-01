@@ -18,12 +18,13 @@ package watchstate
 
 import (
 	"fmt"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
-	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
 
 	"github.com/gogo/protobuf/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
 )
 
 type OpSink interface {

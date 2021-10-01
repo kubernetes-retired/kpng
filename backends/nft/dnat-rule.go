@@ -18,7 +18,7 @@ package nft
 
 import (
 	"bytes"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
 	"strconv"
 
 	"k8s.io/klog"

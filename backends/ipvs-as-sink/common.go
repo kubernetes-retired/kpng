@@ -18,14 +18,16 @@ package ipvssink
 
 import (
 	"net"
-	"sigs.k8s.io/kpng/server/backends/util/ipvs"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"strings"
 
 	"github.com/vishvananda/netlink"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	netutils "k8s.io/utils/net"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/backends/util/ipvs"
 )
 
 func (s *Backend) AddOrDelEndPointInIPSet(endPointList []string, portList []*localnetv12.PortMapping, op Operation) {

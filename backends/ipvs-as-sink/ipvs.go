@@ -18,9 +18,6 @@ package ipvssink
 
 import (
 	"net"
-	ipvs2 "sigs.k8s.io/kpng/server/backends/util/ipvs"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
-	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
 	"strings"
 	"time"
 
@@ -29,9 +26,12 @@ import (
 	"k8s.io/klog"
 	"k8s.io/utils/exec"
 
-	"sigs.k8s.io/kpng/localsink"
-	"sigs.k8s.io/kpng/localsink/decoder"
-	"sigs.k8s.io/kpng/localsink/filterreset"
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	ipvs2 "sigs.k8s.io/kpng/backends/util/ipvs"
+	"sigs.k8s.io/kpng/client/localsink"
+	"sigs.k8s.io/kpng/client/localsink/decoder"
+	"sigs.k8s.io/kpng/client/localsink/filterreset"
+	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
 )
 
 type Backend struct {

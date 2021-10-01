@@ -26,7 +26,8 @@ import (
 	"sort"
 	"strings"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
+
 	"sigs.k8s.io/kpng/client"
 )
 

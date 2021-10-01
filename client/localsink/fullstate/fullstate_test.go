@@ -1,10 +1,11 @@
 package fullstate
 
 import (
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 var syncOp = &localnetv12.OpItem{Op: &localnetv12.OpItem_Sync{Sync: &localnetv12.EmptyOp{}}}
