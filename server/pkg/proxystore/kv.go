@@ -1,10 +1,11 @@
 package proxystore
 
 import (
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"strings"
 
 	"github.com/google/btree"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 type KV struct {
@@ -41,7 +42,7 @@ func (a *KV) Less(i btree.Item) bool {
 		return a.Namespace < b.Namespace
 	}
 	if a.Name != b.Name {
-        return a.Name < b.Name
+		return a.Name < b.Name
 	}
 	if a.Source != b.Source {
 		return a.Source < b.Source

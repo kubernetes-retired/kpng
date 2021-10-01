@@ -2,8 +2,9 @@ package filterreset
 
 import (
 	"github.com/cespare/xxhash"
-	"sigs.k8s.io/kpng/server/localsink"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/client/localsink"
 )
 
 type Sink struct {

@@ -3,19 +3,18 @@ package storecmds
 import (
 	"context"
 	"errors"
-	iptables2 "sigs.k8s.io/kpng/server/backends/iptables"
-	ipvs2 "sigs.k8s.io/kpng/server/backends/ipvs"
-	ipvssink2 "sigs.k8s.io/kpng/server/backends/ipvs-as-sink"
-	nft2 "sigs.k8s.io/kpng/server/backends/nft"
+
+	"github.com/spf13/cobra"
+
+	ipvs2 "sigs.k8s.io/kpng/backends/ipvs"
+	ipvssink2 "sigs.k8s.io/kpng/backends/ipvs-as-sink"
+	nft2 "sigs.k8s.io/kpng/backends/nft"
+	"sigs.k8s.io/kpng/client/localsink"
+	"sigs.k8s.io/kpng/client/localsink/fullstate"
 	store2api2 "sigs.k8s.io/kpng/server/jobs/store2api"
 	store2file2 "sigs.k8s.io/kpng/server/jobs/store2file"
 	store2localdiff2 "sigs.k8s.io/kpng/server/jobs/store2localdiff"
 	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
-
-	"github.com/spf13/cobra"
-
-	"sigs.k8s.io/kpng/server/localsink"
-	"sigs.k8s.io/kpng/server/localsink/fullstate"
 )
 
 type SetupFunc func() (ctx context.Context, store *proxystore2.Store, err error)
@@ -127,7 +126,7 @@ func LocalCmds(run func(sink localsink.Sink) error) (cmds []*cobra.Command) {
 
 func BackendCmds(sink *fullstate.Sink, run func(sink localsink.Sink) error) []*cobra.Command {
 	return []*cobra.Command{
-		iptablesCommand(sink, run),
+		//iptablesCommand(sink, run),
 		ipvsCommand(sink, run),
 		nftCommand(sink, run),
 	}
@@ -169,14 +168,15 @@ func ipvsCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cob
 	return cmd
 }
 
-func iptablesCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cobra.Command {
-	iptablesBackend := iptables2.New()
-	cmd := &cobra.Command{
-		Use: "to-iptables",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return run(iptablesBackend.Sink())
-		},
-	}
-	iptablesBackend.BindFlags(cmd.Flags())
-	return cmd
-}
+// moved to incubating (too many dependencies)
+//func iptablesCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cobra.Command {
+//	iptablesBackend := iptables2.New()
+//	cmd := &cobra.Command{
+//		Use: "to-iptables",
+//		RunE: func(_ *cobra.Command, _ []string) error {
+//			return run(iptablesBackend.Sink())
+//		},
+//	}
+//	iptablesBackend.BindFlags(cmd.Flags())
+//	return cmd
+//}

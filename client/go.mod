@@ -2,18 +2,22 @@ module sigs.k8s.io/kpng/client
 
 go 1.17
 
-replace sigs.k8s.io/kpng/server => ../server
+replace (
+	sigs.k8s.io/kpng/api => ../api
+	sigs.k8s.io/kpng/server => ../server
+)
 
 require (
 	github.com/Jille/grpc-multi-resolver v1.0.0
+	github.com/cespare/xxhash v1.1.0
+	github.com/golang/protobuf v1.5.2
 	github.com/google/btree v1.0.1
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
-	google.golang.org/grpc v1.38.0
-	google.golang.org/protobuf v1.26.0
+	google.golang.org/grpc v1.41.0
+	google.golang.org/protobuf v1.27.1
+	sigs.k8s.io/kpng/api v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/kpng/server v0.0.0-00010101000000-000000000000
-//	sigs.k8s.io/kpng/server v0.0.0-00010101000000-000000000000
-// sigs.k8s.io/kpng/server v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -22,12 +26,12 @@ require (
 )
 
 require (
-	github.com/cespare/xxhash v1.1.0 // indirect
+	github.com/go-logr/logr v0.4.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22 // indirect
 	golang.org/x/text v0.3.6 // indirect
+	k8s.io/klog/v2 v2.9.0 // indirect
 )
 
 replace (
@@ -54,6 +58,6 @@ replace (
 	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.21.2
 	k8s.io/metrics => k8s.io/metrics v0.21.2
 	k8s.io/mount-utils => k8s.io/mount-utils v0.21.2
-	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.22.2
+	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.21.2
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.21.2
 )

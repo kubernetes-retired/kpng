@@ -2,18 +2,18 @@ package api2local
 
 import (
 	"context"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
-	apiwatch2 "sigs.k8s.io/kpng/server/pkg/apiwatch"
-	tlsflags2 "sigs.k8s.io/kpng/server/pkg/tlsflags"
 	"time"
 
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/kpng/server/localsink"
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/client/localsink"
+	apiwatch2 "sigs.k8s.io/kpng/server/pkg/apiwatch"
+	tlsflags2 "sigs.k8s.io/kpng/server/pkg/tlsflags"
 )
 
 // Config helps building sink with the standard flags (sinks are not required to have a stable node-name, but most will have).

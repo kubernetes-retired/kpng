@@ -26,14 +26,14 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
+    "k8s.io/klog/v2"
+
 	// allow multi gRPC URLs
-	_ "github.com/Jille/grpc-multi-resolver"
+	//_ "github.com/Jille/grpc-multi-resolver"
 
-	// "k8s.io/klog"
-
-	"sigs.k8s.io/kpng/server/localsink"
-	"sigs.k8s.io/kpng/server/localsink/fullstate"
-	"sigs.k8s.io/kpng/server/pkg/api/localnetv1"
+	"sigs.k8s.io/kpng/client/localsink"
+	"sigs.k8s.io/kpng/client/localsink/fullstate"
+	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/server/pkg/tlsflags"
 )
 
@@ -149,13 +149,13 @@ func (epc *EndpointsClient) CancelOn(signals ...os.Signal) {
 	go func() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, signals...)
-		sig := <-c
 
-		//klog.Info("got signal ", sig, ", stopping")
+		sig := <-c
+		klog.Info("got signal ", sig, ", stopping")
 		epc.Cancel()
 
 		sig = <-c
-		//klog.Info("got signal ", sig, " again, forcing exit")
+		klog.Info("got signal ", sig, " again, forcing exit")
 		os.Exit(1)
 	}()
 }
@@ -165,7 +165,7 @@ func (epc *EndpointsClient) Context() context.Context {
 }
 
 func (epc *EndpointsClient) DialContext(ctx context.Context) (conn *grpc.ClientConn, err error) {
-	//klog.Info("connecting to ", epc.Target)
+	klog.Info("connecting to ", epc.Target)
 
 	opts := append(
 		make([]grpc.DialOption, 0),

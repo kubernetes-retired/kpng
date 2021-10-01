@@ -20,9 +20,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
+
 	"k8s.io/klog"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
 	store2localdiff2 "sigs.k8s.io/kpng/server/jobs/store2localdiff"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 

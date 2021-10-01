@@ -3,18 +3,18 @@ package store2localdiff
 import (
 	"context"
 	"runtime/trace"
-	store2diff2 "sigs.k8s.io/kpng/server/jobs/store2diff"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
-	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
-	endpoints2 "sigs.k8s.io/kpng/server/pkg/endpoints"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
-	watchstate2 "sigs.k8s.io/kpng/server/pkg/server/watchstate"
 	"strconv"
 
 	"github.com/cespare/xxhash"
 	"github.com/golang/protobuf/proto"
 
-	"sigs.k8s.io/kpng/server/localsink"
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	store2diff2 "sigs.k8s.io/kpng/server/jobs/store2diff"
+	"sigs.k8s.io/kpng/client/localsink"
+	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
+	endpoints2 "sigs.k8s.io/kpng/server/pkg/endpoints"
+	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
+	watchstate2 "sigs.k8s.io/kpng/server/pkg/server/watchstate"
 )
 
 type Job struct {

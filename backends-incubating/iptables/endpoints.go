@@ -17,7 +17,6 @@ limitations under the License.
 package iptables
 
 import (
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -25,8 +24,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/events"
-	"k8s.io/component-base/metrics"
+
+	//"k8s.io/component-base/metrics"
 	"k8s.io/klog/v2"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 var supportedEndpointSliceAddressTypes = sets.NewString(
@@ -34,25 +36,25 @@ var supportedEndpointSliceAddressTypes = sets.NewString(
 	string(discovery.AddressTypeIPv6),
 )
 
-var EndpointChangesPending = metrics.NewGauge(
-	&metrics.GaugeOpts{
-		Subsystem:      kubeProxySubsystem,
-		Name:           "sync_proxy_rules_endpoint_changes_pending",
-		Help:           "Pending proxy rules Endpoint changes",
-		StabilityLevel: metrics.ALPHA,
-	},
-)
+//var EndpointChangesPending = metrics.NewGauge(
+//	&metrics.GaugeOpts{
+//		Subsystem:      kubeProxySubsystem,
+//		Name:           "sync_proxy_rules_endpoint_changes_pending",
+//		Help:           "Pending proxy rules Endpoint changes",
+//		StabilityLevel: metrics.ALPHA,
+//	},
+//)
 
 // EndpointChangesTotal is the number of endpoint changes that the proxy
 // has seen.
-var EndpointChangesTotal = metrics.NewCounter(
-	&metrics.CounterOpts{
-		Subsystem:      kubeProxySubsystem,
-		Name:           "sync_proxy_rules_endpoint_changes_total",
-		Help:           "Cumulative proxy rules Endpoint changes",
-		StabilityLevel: metrics.ALPHA,
-	},
-)
+//var EndpointChangesTotal = metrics.NewCounter(
+//	&metrics.CounterOpts{
+//		Subsystem:      kubeProxySubsystem,
+//		Name:           "sync_proxy_rules_endpoint_changes_total",
+//		Help:           "Cumulative proxy rules Endpoint changes",
+//		StabilityLevel: metrics.ALPHA,
+//	},
+//)
 
 const kubeProxySubsystem = "kubeproxy"
 

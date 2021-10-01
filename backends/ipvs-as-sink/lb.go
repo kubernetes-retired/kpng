@@ -19,7 +19,7 @@ package ipvssink
 import (
 	"encoding/json"
 	"net"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
 	"syscall"
 
 	"github.com/google/seesaw/ipvs"

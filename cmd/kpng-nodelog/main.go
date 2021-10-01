@@ -18,15 +18,15 @@ package main
 
 import (
 	"fmt"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"time"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 	"k8s.io/klog"
 
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client"
-	"sigs.k8s.io/kpng/localsink"
+	"sigs.k8s.io/kpng/client/localsink"
 )
 
 var (

@@ -21,10 +21,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
-	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
-	server2 "sigs.k8s.io/kpng/server/pkg/server"
-	watchstate2 "sigs.k8s.io/kpng/server/pkg/server/watchstate"
 	"strconv"
 	"time"
 
@@ -33,6 +29,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"k8s.io/klog"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
+	server2 "sigs.k8s.io/kpng/server/pkg/server"
+	watchstate2 "sigs.k8s.io/kpng/server/pkg/server/watchstate"
 )
 
 var (

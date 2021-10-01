@@ -24,8 +24,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	// "k8s.io/klog"
-	"sigs.k8s.io/kpng/server/localsink"
-	"sigs.k8s.io/kpng/server/localsink/fullstate"
+	"sigs.k8s.io/kpng/client/localsink"
+	"sigs.k8s.io/kpng/client/localsink/fullstate"
 )
 
 type HandleFunc func(items []*ServiceEndpoints)

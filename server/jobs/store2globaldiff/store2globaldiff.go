@@ -3,8 +3,9 @@ package store2globaldiff
 import (
 	"context"
 	"runtime/trace"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
 	store2diff2 "sigs.k8s.io/kpng/server/jobs/store2diff"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
 	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
 	watchstate2 "sigs.k8s.io/kpng/server/pkg/server/watchstate"

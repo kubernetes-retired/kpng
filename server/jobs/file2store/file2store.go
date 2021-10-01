@@ -5,17 +5,18 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	store2file2 "sigs.k8s.io/kpng/server/jobs/store2file"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
-	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
-	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
-	watchstate2 "sigs.k8s.io/kpng/server/pkg/server/watchstate"
 	"time"
 
 	"github.com/cespare/xxhash"
 	"github.com/gogo/protobuf/proto"
 	"gopkg.in/yaml.v2"
 	"k8s.io/klog"
+
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
+	store2file2 "sigs.k8s.io/kpng/server/jobs/store2file"
+	diffstore2 "sigs.k8s.io/kpng/server/pkg/diffstore"
+	proxystore2 "sigs.k8s.io/kpng/server/pkg/proxystore"
+	watchstate2 "sigs.k8s.io/kpng/server/pkg/server/watchstate"
 )
 
 type Job struct {

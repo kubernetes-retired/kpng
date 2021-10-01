@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
-	localnetv12 "sigs.k8s.io/kpng/server/pkg/api/localnetv1"
 	"strings"
 
 	"github.com/vishvananda/netlink"
@@ -12,6 +11,7 @@ import (
 	"k8s.io/klog"
 
 	"sigs.k8s.io/kpng/client"
+	localnetv12 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 const (

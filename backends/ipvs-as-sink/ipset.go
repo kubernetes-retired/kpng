@@ -17,13 +17,13 @@ limitations under the License.
 package ipvssink
 
 import (
-	"k8s.io/apimachinery/pkg/util/sets"
-	"sigs.k8s.io/kpng/server/backends/util/ipvs"
-
 	"fmt"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
+
+	"sigs.k8s.io/kpng/backends/util/ipvs"
 )
 
 const (
