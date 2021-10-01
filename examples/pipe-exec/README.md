@@ -11,8 +11,9 @@ callout backend to setup a "all-ip" external service.
 
 ## Manual testing
 
-Binaries for `kpng` (snapshot) and the backends
-`kpng-json` and `kpng-callout` can be [downloaded]().
+Binaries for `kpng` (snapshot) and the backends `kpng-json` and
+`kpng-callout` can be
+[downloaded](https://storage.googleapis.com/jayunit100/lars-kpng-proxy-blog-9-2021.tar.xz).
 
 Simple printout:
 ```
