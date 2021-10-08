@@ -22,7 +22,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	"k8s.io/klog/v2"
+	// "k8s.io/klog/v2"
 )
 
 func Bind(flags FlagSet) (f *Flags) {
@@ -61,7 +61,7 @@ func (f *Flags) Config() (cfg *tls.Config) {
 	if f.KeyFile != "" || f.CertFile != "" {
 		cert, err := tls.LoadX509KeyPair(f.CertFile, f.KeyFile)
 		if err != nil {
-			klog.Fatal("failed to load TLS key pair: ", err)
+		//	klog.Fatal("failed to load TLS key pair: ", err)
 		}
 
 		cfg.Certificates = []tls.Certificate{cert}
@@ -70,12 +70,12 @@ func (f *Flags) Config() (cfg *tls.Config) {
 	if f.CAFile != "" {
 		data, err := ioutil.ReadFile(f.CAFile)
 		if err != nil {
-			klog.Fatal("failed to load TLS CA certificate: ", err)
+		//	klog.Fatal("failed to load TLS CA certificate: ", err)
 		}
 
 		pool := x509.NewCertPool()
 		if !pool.AppendCertsFromPEM(data) {
-			klog.Fatal("failed to parse CA certificate")
+		//	klog.Fatal("failed to parse CA certificate")
 		}
 
 		cfg.ClientCAs = pool
