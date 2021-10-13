@@ -17,10 +17,10 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
-	"encoding/json"
 
 	"sigs.k8s.io/kpng/client"
 )

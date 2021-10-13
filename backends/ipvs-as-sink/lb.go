@@ -75,5 +75,4 @@ func ipvsDestination(targetIP string, port *localnetv1.PortMapping, epWeight int
 type ipvsSvcDst struct {
 	Svc             ipvs.Service
 	Dst             ipvs.Destination
-	isLocalEndPoint bool
 }

@@ -189,7 +189,11 @@ func (s *Backend) SetEndPointForNodePortSvc(svcKey, key string, endpoint *localn
 	portList := service.Ports
 
 	for _, endPointIP := range endpoint.IPs.All() {
-		s.endpoints.Set([]byte(prefix+endPointIP), 0, endPointIP)
+		epInfo := endPointInfo{
+			endPointIP: endPointIP,
+			isLocalEndPoint: endpoint.Local,
+		}
+		s.endpoints.Set([]byte(prefix+endPointIP), 0, epInfo)
 
 		// add a destination for every LB of this service
 		for _, lbKV := range s.lbs.GetByPrefix([]byte(svcKey + "/")) {
@@ -199,14 +203,13 @@ func (s *Backend) SetEndPointForNodePortSvc(svcKey, key string, endpoint *localn
 				destination := ipvsSvcDst{
 					Svc:             lb.ToService(),
 					Dst:             ipvsDestination(endPointIP, lb.Port, s.weight),
-					isLocalEndPoint: endpoint.Local,
 				}
 				s.dests.Set([]byte(string(lbKV.Key)+"/"+endPointIP), 0, destination)
 			}
 		}
 	}
 
-	s.AddOrDelEndPointInIPSet(endpoint.IPs.All(), portList, AddEndPoint)
+	s.AddOrDelEndPointInIPSet(endpoint.IPs.All(), portList, endpoint.Local, AddEndPoint)
 }
 
 func (s *Backend) DeleteEndPointForNodePortSvc(svcKey, key string) {
@@ -214,11 +217,12 @@ func (s *Backend) DeleteEndPointForNodePortSvc(svcKey, key string) {
 	service := s.svcs[svcKey]
 	portList := service.Ports
 	var endPointList []string
+	var isLocalEndPoint bool
 
 	for _, kv := range s.endpoints.GetByPrefix(prefix) {
 		// remove this endpoint from the destinations if the service
-		endPointIP := kv.Value.(string)
-		suffix := []byte("/" + endPointIP)
+		epInfo := kv.Value.(endPointInfo)
+		suffix := []byte("/" + epInfo.endPointIP)
 
 		for _, destKV := range s.dests.GetByPrefix([]byte(svcKey)) {
 			if bytes.HasSuffix(destKV.Key, suffix) {
@@ -226,11 +230,12 @@ func (s *Backend) DeleteEndPointForNodePortSvc(svcKey, key string) {
 			}
 		}
 
-		endPointList = append(endPointList, endPointIP)
+		endPointList = append(endPointList, epInfo.endPointIP)
+		isLocalEndPoint = epInfo.isLocalEndPoint
 	}
 
 	// remove this endpoint from the endpoints
 	s.endpoints.DeleteByPrefix(prefix)
 
-	s.AddOrDelEndPointInIPSet(endPointList, portList, DeleteEndPoint)
+	s.AddOrDelEndPointInIPSet(endPointList, portList, isLocalEndPoint, DeleteEndPoint)
 }

@@ -18,7 +18,7 @@ package ipvssink
 
 import (
 	"bytes"
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
 func (s *Backend) handleClusterIPService(svc *localnetv1.Service, op Operation) {
@@ -71,19 +71,21 @@ func (s *Backend) handleUpdatedClusterIPService(key string, svc *localnetv1.Serv
 		//Update the service with added ports into LB tree
 		s.storeLBSvc(addedPorts, svc.IPs.All().All(), key, ClusterIPService)
 		var endPointList []string
+		var isLocalEndPoint bool
 
 		for _, epKV := range s.endpoints.GetByPrefix([]byte(key + "/")) {
-			epIP := epKV.Value.(string)
-			endPointList = append(endPointList, epIP)
-			svcIP := getServiceIP(epIP, svc)
+			epInfo := epKV.Value.(endPointInfo)
+			endPointList = append(endPointList, epInfo.endPointIP)
+			svcIP := getServiceIP(epInfo.endPointIP, svc)
+			isLocalEndPoint = epInfo.isLocalEndPoint
 
 			for _, port := range addedPorts {
 				lbKey := key + "/" + svcIP + "/" + epPortSuffix(port)
 				ipvslb := s.lbs.GetByPrefix([]byte(lbKey))
 
-				s.dests.Set([]byte(lbKey+"/"+epIP), 0, ipvsSvcDst{
+				s.dests.Set([]byte(lbKey+"/"+epInfo.endPointIP), 0, ipvsSvcDst{
 					Svc: ipvslb[0].Value.(ipvsLB).ToService(),
-					Dst: ipvsDestination(epIP, port, s.weight),
+					Dst: ipvsDestination(epInfo.endPointIP, port, s.weight),
 				})
 			}
 		}
@@ -91,7 +93,7 @@ func (s *Backend) handleUpdatedClusterIPService(key string, svc *localnetv1.Serv
 		//Cluster service IP needs to be programmed in ipset with added ports.
 		s.AddOrDelClusterIPInIPSet(svc, addedPorts, AddService)
 
-		s.AddOrDelEndPointInIPSet(endPointList, addedPorts, AddEndPoint)
+		s.AddOrDelEndPointInIPSet(endPointList, addedPorts, isLocalEndPoint, AddEndPoint)
 	}
 
 	// When existing service gets updated with deletion of port/protocol,
@@ -99,21 +101,23 @@ func (s *Backend) handleUpdatedClusterIPService(key string, svc *localnetv1.Serv
 	if len(removedPorts) > 0 {
 		s.deleteLBSvc(removedPorts, svc.IPs.All().All(), key)
 		var endPointList []string
+		var isLocalEndPoint bool
 
 		for _, epKV := range s.endpoints.GetByPrefix([]byte(key + "/")) {
-			epIP := epKV.Value.(string)
-			endPointList = append(endPointList, epIP)
-			svcIP := getServiceIP(epIP, svc)
+			epInfo := epKV.Value.(endPointInfo)
+			endPointList = append(endPointList, epInfo.endPointIP)
+			svcIP := getServiceIP(epInfo.endPointIP, svc)
+			isLocalEndPoint = epInfo.isLocalEndPoint
 
 			for _, port := range removedPorts {
 				lbKey := key + "/" + svcIP + "/" + epPortSuffix(port)
-				s.dests.Delete([]byte(lbKey + "/" + epIP))
+				s.dests.Delete([]byte(lbKey + "/" + epInfo.endPointIP))
 			}
 		}
 
 		s.AddOrDelClusterIPInIPSet(svc, removedPorts, DeleteService)
 
-		s.AddOrDelEndPointInIPSet(endPointList, removedPorts, DeleteEndPoint)
+		s.AddOrDelEndPointInIPSet(endPointList, removedPorts, isLocalEndPoint, DeleteEndPoint)
 	}
 }
 
@@ -123,7 +127,11 @@ func (s *Backend) SetEndPointForClusterIPSvc(svcKey, key string, endpoint *local
 	portList := service.Ports
 
 	for _, endPointIP := range endpoint.IPs.All() {
-		s.endpoints.Set([]byte(prefix+endPointIP), 0, endPointIP)
+		epInfo := endPointInfo{
+			endPointIP: endPointIP,
+			isLocalEndPoint: endpoint.Local,
+		}
+		s.endpoints.Set([]byte(prefix+endPointIP), 0, epInfo)
 		svcIP := getServiceIP(endPointIP, service)
 
 		// add a destination for every LB of this service
@@ -132,13 +140,12 @@ func (s *Backend) SetEndPointForClusterIPSvc(svcKey, key string, endpoint *local
 			destination := ipvsSvcDst{
 				Svc:             lb.ToService(),
 				Dst:             ipvsDestination(endPointIP, lb.Port, s.weight),
-				isLocalEndPoint: endpoint.Local,
 			}
 			s.dests.Set([]byte(string(lbKV.Key)+"/"+endPointIP), 0, destination)
 		}
 	}
 
-	s.AddOrDelEndPointInIPSet(endpoint.IPs.All(), portList, AddEndPoint)
+	s.AddOrDelEndPointInIPSet(endpoint.IPs.All(), portList, endpoint.Local, AddEndPoint)
 }
 
 func (s *Backend) DeleteEndPointForClusterIPSvc(svcKey, key string) {
@@ -146,21 +153,23 @@ func (s *Backend) DeleteEndPointForClusterIPSvc(svcKey, key string) {
 	service := s.svcs[svcKey]
 	portList := service.Ports
 	var endPointList []string
+	var isLocalEndPoint bool
 
 	for _, kv := range s.endpoints.GetByPrefix(prefix) {
-		endPointIP := kv.Value.(string)
-		suffix := []byte("/" + endPointIP)
+		epInfo := kv.Value.(endPointInfo)
+		suffix := []byte("/" + epInfo.endPointIP)
 
 		for _, destKV := range s.dests.GetByPrefix([]byte(svcKey)) {
 			if bytes.HasSuffix(destKV.Key, suffix) {
 				s.dests.Delete(destKV.Key)
 			}
 		}
-		endPointList = append(endPointList, endPointIP)
+		endPointList = append(endPointList, epInfo.endPointIP)
+		isLocalEndPoint = epInfo.isLocalEndPoint
 	}
 
 	// remove this endpoint from the endpoints
 	s.endpoints.DeleteByPrefix(prefix)
 
-	s.AddOrDelEndPointInIPSet(endPointList, portList, DeleteEndPoint)
+	s.AddOrDelEndPointInIPSet(endPointList, portList, isLocalEndPoint, DeleteEndPoint)
 }
