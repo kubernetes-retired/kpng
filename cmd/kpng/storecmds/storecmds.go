@@ -76,6 +76,8 @@ func (c SetupFunc) ToFileCmd() *cobra.Command {
 	return cmd
 }
 
+// ToLocalCmd sends the incoming events to a local backend, such as IPVS or IPTABLES or NFT.
+// This gives users an out of the box KPNG implementation.
 func (c SetupFunc) ToLocalCmd() (cmd *cobra.Command) {
 	cmd = &cobra.Command{
 		Use: "to-local",
@@ -129,6 +131,7 @@ func BackendCmds(sink *fullstate.Sink, run func(sink localsink.Sink) error) []*c
 		//iptablesCommand(sink, run),
 		ipvsCommand(sink, run),
 		nftCommand(sink, run),
+		iptablesCommand(sink, run),
 	}
 }
 
@@ -169,14 +172,14 @@ func ipvsCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cob
 }
 
 // moved to incubating (too many dependencies)
-//func iptablesCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cobra.Command {
-//	iptablesBackend := iptables2.New()
-//	cmd := &cobra.Command{
-//		Use: "to-iptables",
-//		RunE: func(_ *cobra.Command, _ []string) error {
-//			return run(iptablesBackend.Sink())
-//		},
-//	}
-//	iptablesBackend.BindFlags(cmd.Flags())
-//	return cmd
-//}
+func iptablesCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cobra.Command {
+	iptablesBackend := iptables2.New()
+	cmd := &cobra.Command{
+		Use: "to-iptables",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return run(iptablesBackend.Sink())
+		},
+	}
+	iptablesBackend.BindFlags(cmd.Flags())
+	return cmd
+}

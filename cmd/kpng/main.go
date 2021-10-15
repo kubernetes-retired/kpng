@@ -45,7 +45,7 @@ func main() {
 	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 
 	cmd.AddCommand(
-		kube2storeCmd(),
+		kube2storeCmd(), // no-op?
 		file2storeCmd(),
 		api2storeCmd(),
 		local2sinkCmd(),

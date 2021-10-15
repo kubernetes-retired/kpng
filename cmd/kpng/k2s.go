@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sigs.k8s.io/kpng/cmd/kpng/storecmds"
 
 	"github.com/spf13/cobra"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
+	// this depends on the kpng server to run the integrated app
 	"sigs.k8s.io/kpng/server/jobs/kube2store"
 	"sigs.k8s.io/kpng/server/pkg/proxystore"
 )
@@ -33,7 +35,7 @@ func kube2storeCmd() *cobra.Command {
 	flags.StringVar(&kubeServer, "server", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 
 	k2sCfg.BindFlags(k2sCmd.PersistentFlags())
-	//	k2sCmd.AddCommand(storecmds2.Commands(setupKube2store)...)
+	k2sCmd.AddCommand(storecmds.Commands(setupKube2store)...)
 
 	return k2sCmd
 }
