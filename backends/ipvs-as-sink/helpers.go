@@ -20,9 +20,9 @@ import (
 	"strconv"
 
 	v1 "k8s.io/api/core/v1"
-	utilipset "sigs.k8s.io/kpng/backends/util/ipvs"
 
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/backends/ipvs/util"
 )
 
 const (
@@ -41,15 +41,15 @@ var clusterIPSetMap = map[v1.IPFamily]string{
 }
 
 var protocolIPSetMap = map[string]map[v1.IPFamily]string{
-	utilipset.ProtocolTCP: {
+	ipvs.ProtocolTCP: {
 		v1.IPv4Protocol: kubeNodePortIPv4SetTCP,
 		v1.IPv6Protocol: kubeNodePortIPv6SetTCP,
 	},
-	utilipset.ProtocolUDP: {
+	ipvs.ProtocolUDP: {
 		v1.IPv4Protocol: kubeNodePortIPv4SetUDP,
 		v1.IPv6Protocol: kubeNodePortIPv6SetUDP,
 	},
-	utilipset.ProtocolSCTP: {
+	ipvs.ProtocolSCTP: {
 		v1.IPv4Protocol: kubeNodePortIPv4SetSCTP,
 		v1.IPv6Protocol: kubeNodePortIPv6SetSCTP,
 	},

@@ -21,11 +21,13 @@ import (
 	"strings"
 
 	"github.com/vishvananda/netlink"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 	netutils "k8s.io/utils/net"
-	utilipset "sigs.k8s.io/kpng/backends/util/ipvs"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/backends/ipvs/util"
 )
 
 func (s *Backend) AddOrDelEndPointInIPSet(endPointList []string, portList []*localnetv1.PortMapping, op Operation) {
@@ -63,13 +65,13 @@ func getIPFamily(ipAddr string) v1.IPFamily {
 	return ipAddrFamily
 }
 
-func getEndPointEntry(endPointIP string, port *localnetv1.PortMapping) *utilipset.Entry {
-	return &utilipset.Entry{
+func getEndPointEntry(endPointIP string, port *localnetv1.PortMapping) *ipvs.Entry {
+	return &ipvs.Entry{
 		IP:       endPointIP,
 		Port:     int(port.TargetPort),
 		Protocol: strings.ToLower(port.Protocol.String()),
 		IP2:      endPointIP,
-		SetType:  utilipset.HashIPPortIP,
+		SetType:  ipvs.HashIPPortIP,
 	}
 }
 
@@ -119,12 +121,12 @@ func getServiceIPFamily(svc *localnetv1.Service) []v1.IPFamily {
 	return svcIPFamily
 }
 
-func getIPSetEntry(svcIP string, port *localnetv1.PortMapping) *utilipset.Entry {
-	return &utilipset.Entry{
+func getIPSetEntry(svcIP string, port *localnetv1.PortMapping) *ipvs.Entry {
+	return &ipvs.Entry{
 		IP:       svcIP,
 		Port:     int(port.Port),
 		Protocol: strings.ToLower(port.Protocol.String()),
-		SetType:  utilipset.HashIPPort,
+		SetType:  ipvs.HashIPPort,
 	}
 }
 

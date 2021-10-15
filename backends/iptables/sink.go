@@ -7,10 +7,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/utils/exec"
 
-	"sigs.k8s.io/kpng/localsink"
-	"sigs.k8s.io/kpng/localsink/decoder"
-	"sigs.k8s.io/kpng/localsink/filterreset"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/client/localsink"
+	"sigs.k8s.io/kpng/client/localsink/decoder"
+	"sigs.k8s.io/kpng/client/localsink/filterreset"
 )
 
 type Backend struct {

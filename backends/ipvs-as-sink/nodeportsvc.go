@@ -21,8 +21,9 @@ import (
 	"strings"
 
 	"k8s.io/klog/v2"
-	utilipset "sigs.k8s.io/kpng/backends/util/ipvs"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/backends/ipvs/util"
 )
 
 func (s *Backend) handleNodePortService(svc *localnetv1.Service, op Operation) {
@@ -135,20 +136,20 @@ func (s *Backend) AddOrDelNodePortInIPSet(svc *localnetv1.Service, portList []*l
 	svcIPFamily := getServiceIPFamily(svc)
 
 	for _, port := range portList {
-		var entries []*utilipset.Entry
+		var entries []*ipvs.Entry
 		for _, ipFamily := range svcIPFamily {
 			protocol := strings.ToLower(port.Protocol.String())
 			ipsetName := protocolIPSetMap[protocol][ipFamily]
 			nodePortSet := s.ipsetList[ipsetName]
 			switch protocol {
-			case utilipset.ProtocolTCP, utilipset.ProtocolUDP:
-				entries = []*utilipset.Entry{getNodePortIPSetEntry(int(port.NodePort), protocol, utilipset.BitmapPort)}
+			case ipvs.ProtocolTCP, ipvs.ProtocolUDP:
+				entries = []*ipvs.Entry{getNodePortIPSetEntry(int(port.NodePort), protocol, ipvs.BitmapPort)}
 
-			case utilipset.ProtocolSCTP:
+			case ipvs.ProtocolSCTP:
 				// Since hash ip:port is used for SCTP, all the nodeIPs to be used in the SCTP ipset entries.
-				entries = []*utilipset.Entry{}
+				entries = []*ipvs.Entry{}
 				for _, nodeIP := range s.nodeAddresses {
-					entry := getNodePortIPSetEntry(int(port.NodePort), protocol, utilipset.HashIPPort)
+					entry := getNodePortIPSetEntry(int(port.NodePort), protocol, ipvs.HashIPPort)
 					entry.IP = nodeIP
 					entries = append(entries, entry)
 				}
@@ -173,8 +174,8 @@ func (s *Backend) AddOrDelNodePortInIPSet(svc *localnetv1.Service, portList []*l
 	}
 }
 
-func getNodePortIPSetEntry(port int, protocol string, ipSetType utilipset.Type) *utilipset.Entry {
-	return &utilipset.Entry{
+func getNodePortIPSetEntry(port int, protocol string, ipSetType ipvs.Type) *ipvs.Entry {
+	return &ipvs.Entry{
 		// No need to provide ip info
 		Port:     port,
 		Protocol: protocol,

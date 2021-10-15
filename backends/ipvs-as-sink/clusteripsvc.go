@@ -18,8 +18,7 @@ package ipvssink
 
 import (
 	"bytes"
-
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 func (s *Backend) handleClusterIPService(svc *localnetv1.Service, op Operation) {

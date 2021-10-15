@@ -19,11 +19,11 @@ package iptables
 import (
 	"fmt"
 	"net"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
 
 // Provider is the interface provided by proxier implementations.

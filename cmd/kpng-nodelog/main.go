@@ -24,9 +24,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"k8s.io/klog"
 
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client"
-	"sigs.k8s.io/kpng/localsink"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	"sigs.k8s.io/kpng/client/localsink"
 )
 
 var (

@@ -18,11 +18,10 @@ package nft
 
 import (
 	"bytes"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"strconv"
 
 	"k8s.io/klog"
-
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
 
 type dnatRule struct {

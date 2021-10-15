@@ -27,7 +27,7 @@ import (
 
 	"k8s.io/klog"
 
-	"sigs.k8s.io/kpng/pkg/proxy"
+	"sigs.k8s.io/kpng/server/pkg/proxy"
 )
 
 var (
@@ -45,7 +45,7 @@ func main() {
 	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 
 	cmd.AddCommand(
-		kube2storeCmd(),
+		kube2storeCmd(), // no-op?
 		file2storeCmd(),
 		api2storeCmd(),
 		local2sinkCmd(),

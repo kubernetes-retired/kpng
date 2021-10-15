@@ -26,6 +26,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"strconv"
 	"strings"
 	"time"
@@ -35,7 +36,6 @@ import (
 	"k8s.io/klog"
 
 	"sigs.k8s.io/kpng/client"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
 
 var (

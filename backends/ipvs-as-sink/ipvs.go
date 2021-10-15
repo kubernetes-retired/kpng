@@ -21,18 +21,17 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/utils/exec"
-	utilipset "sigs.k8s.io/kpng/backends/util/ipvs"
-
 	"github.com/google/seesaw/ipvs"
 	"github.com/vishvananda/netlink"
 	"k8s.io/klog"
+	"k8s.io/utils/exec"
 
-	"sigs.k8s.io/kpng/localsink"
-	"sigs.k8s.io/kpng/localsink/decoder"
-	"sigs.k8s.io/kpng/localsink/filterreset"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
-	"sigs.k8s.io/kpng/pkg/diffstore"
+	"sigs.k8s.io/kpng/api/localnetv1"
+	ipvsutil "sigs.k8s.io/kpng/backends/ipvs/util"
+	"sigs.k8s.io/kpng/client/localsink"
+	"sigs.k8s.io/kpng/client/localsink/decoder"
+	"sigs.k8s.io/kpng/client/localsink/filterreset"
+	"sigs.k8s.io/kpng/client/pkg/diffstore"
 )
 
 type Backend struct {
@@ -145,12 +144,12 @@ func (s *Backend) createIPVSDummyInterface() {
 }
 
 func (s *Backend) initializeIPSets() {
-	var ipsetInterface utilipset.Interface
+	var ipsetInterface ipvsutil.Interface
 
 	// Create a iptables utils.
 	execer := exec.New()
 
-	ipsetInterface = utilipset.New(execer)
+	ipsetInterface = ipvsutil.New(execer)
 
 	// initialize ipsetList with all sets we needed
 	s.ipsetList = make(map[string]*IPSet)

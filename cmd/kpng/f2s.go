@@ -5,9 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"sigs.k8s.io/kpng/jobs/file2store"
-	"sigs.k8s.io/kpng/pkg/cmd/storecmds"
-	"sigs.k8s.io/kpng/pkg/proxystore"
+	"sigs.k8s.io/kpng/server/jobs/file2store"
+	"sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 // FIXME separate package
@@ -24,7 +23,7 @@ func file2storeCmd() *cobra.Command {
 	flags.StringVarP(&f2sInput, "input", "i", "global-state.yaml", "Input file for the global-state")
 
 	k2sCfg.BindFlags(k2sCmd.PersistentFlags())
-	k2sCmd.AddCommand(storecmds.Commands(setupFile2store)...)
+	//	k2sCmd.AddCommand(storecmds2.Commands(setupFile2store)...)
 
 	return k2sCmd
 }

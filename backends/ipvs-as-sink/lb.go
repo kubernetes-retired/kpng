@@ -19,10 +19,10 @@ package ipvssink
 import (
 	"encoding/json"
 	"net"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"syscall"
 
 	"github.com/google/seesaw/ipvs"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
 
 type ipvsLB struct {

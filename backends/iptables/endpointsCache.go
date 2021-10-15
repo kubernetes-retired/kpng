@@ -20,7 +20,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 // EndpointsCache is used as a cache of EndpointSlice information.

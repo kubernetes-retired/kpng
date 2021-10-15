@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -12,7 +13,6 @@ import (
 	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	utilnet "k8s.io/utils/net"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 )
 
 const (

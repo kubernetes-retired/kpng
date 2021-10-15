@@ -26,15 +26,15 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
+	"k8s.io/klog/v2"
+
 	// allow multi gRPC URLs
-	_ "github.com/Jille/grpc-multi-resolver"
+	//_ "github.com/Jille/grpc-multi-resolver"
 
-	"k8s.io/klog"
-
-	"sigs.k8s.io/kpng/localsink"
-	"sigs.k8s.io/kpng/localsink/fullstate"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
-	"sigs.k8s.io/kpng/pkg/tlsflags"
+	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/client/localsink"
+	"sigs.k8s.io/kpng/client/localsink/fullstate"
+	"sigs.k8s.io/kpng/client/pkg/tlsflags"
 )
 
 type ServiceEndpoints = fullstate.ServiceEndpoints
@@ -118,7 +118,7 @@ retry:
 		op, err := epc.watch.Recv()
 
 		if err != nil {
-			klog.Error("watch recv failed: ", err)
+			// klog.Error("watch recv failed: ", err)
 			epc.postError()
 			goto retry
 		}
@@ -149,8 +149,8 @@ func (epc *EndpointsClient) CancelOn(signals ...os.Signal) {
 	go func() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, signals...)
-		sig := <-c
 
+		sig := <-c
 		klog.Info("got signal ", sig, ", stopping")
 		epc.Cancel()
 
@@ -198,7 +198,7 @@ retry:
 	if err == context.Canceled {
 		return true
 	} else if err != nil {
-		klog.Info("failed to connect: ", err)
+		//klog.Info("failed to connect: ", err)
 		epc.errorSleep()
 		goto retry
 	}
@@ -209,7 +209,7 @@ retry:
 	if err != nil {
 		conn.Close()
 
-		klog.Info("failed to start watch: ", err)
+		//klog.Info("failed to start watch: ", err)
 		epc.errorSleep()
 		goto retry
 	}

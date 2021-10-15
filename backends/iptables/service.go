@@ -19,16 +19,18 @@ package iptables
 import (
 	"fmt"
 	"net"
+	"sigs.k8s.io/kpng/backends/iptables/util"
 	"strings"
-
-	"k8s.io/klog/v2"
-	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/events"
-	"k8s.io/kubernetes/pkg/proxy/metrics"
+	"k8s.io/klog/v2"
+
+	//"k8s.io/kubernetes/pkg/proxy/metrics"
+
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 // BaseServiceInfo contains base information that defines a service.
@@ -302,7 +304,7 @@ func (sct *ServiceChangeTracker) Update(current *localnetv1.Service) bool {
 	if svc == nil {
 		return false
 	}
-	metrics.ServiceChangesTotal.Inc()
+	//metrics.ServiceChangesTotal.Inc()
 	namespacedName := types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}
 	var change *serviceChange
 	var ok bool
@@ -312,16 +314,16 @@ func (sct *ServiceChangeTracker) Update(current *localnetv1.Service) bool {
 	}
 	*change = sct.serviceToServiceMap(current)
 	klog.V(2).Infof("Service %s updated: %d ports", namespacedName, len(*change))
-	metrics.ServiceChangesPending.Set(float64(len(sct.items)))
+	//metrics.ServiceChangesPending.Set(float64(len(sct.items)))
 	return len(sct.items) > 0
 }
 
 func (sct *ServiceChangeTracker) Delete(namespace, name string) bool {
-	metrics.ServiceChangesTotal.Inc()
+	//metrics.ServiceChangesTotal.Inc()
 	namespacedName := types.NamespacedName{Namespace: namespace, Name: name}
 	sct.items[namespacedName] = nil
 	klog.V(2).Infof("Service %s updated for delete", namespacedName)
-	metrics.ServiceChangesPending.Set(float64(len(sct.items)))
+	//metrics.ServiceChangesPending.Set(float64(len(sct.items)))
 	return len(sct.items) > 0
 }
 
@@ -367,7 +369,7 @@ func (svcSnap *ServicesSnapshot) apply(changes *ServiceChangeTracker, UDPStaleCl
 	}
 	// clear changes after applying them to ServiceMap.
 	changes.items = make(map[types.NamespacedName]*serviceChange)
-	metrics.ServiceChangesPending.Set(0)
+	//metrics.ServiceChangesPending.Set(0)
 }
 
 func (svcSnap *ServicesSnapshot) merge(svcName types.NamespacedName, other *serviceChange, UDPStaleClusterIP sets.String) {
@@ -390,9 +392,9 @@ type serviceInfo struct {
 	*BaseServiceInfo
 	// The following fields are computed and stored for performance reasons.
 	serviceNameString        string
-	servicePortChainName     Chain
-	serviceFirewallChainName Chain
-	serviceLBChainName       Chain
+	servicePortChainName     util.Chain
+	serviceFirewallChainName util.Chain
+	serviceLBChainName       util.Chain
 }
 
 // serviceToServiceMap translates a single Service object to a ServiceMap.
