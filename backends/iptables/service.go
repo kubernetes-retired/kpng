@@ -19,6 +19,7 @@ package iptables
 import (
 	"fmt"
 	"net"
+	"sigs.k8s.io/kpng/backends/iptables/util"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -391,9 +392,9 @@ type serviceInfo struct {
 	*BaseServiceInfo
 	// The following fields are computed and stored for performance reasons.
 	serviceNameString        string
-	servicePortChainName     Chain
-	serviceFirewallChainName Chain
-	serviceLBChainName       Chain
+	servicePortChainName     util.Chain
+	serviceFirewallChainName util.Chain
+	serviceLBChainName       util.Chain
 }
 
 // serviceToServiceMap translates a single Service object to a ServiceMap.

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package iptables
+package util
 
 import (
 	"bytes"
@@ -89,11 +89,13 @@ type Interface interface {
 	// mapped to the same IP:PORT and consequently some suffer packet
 	// drops.
 	HasRandomFully() bool
+
+	// Present checks if the kernel supports the iptable interface
+	Present() bool
 }
 
 // Protocol defines the ip protocol either ipv4 or ipv6
-// declared elsewhere in kpng, so we skip declaring here
-// type Protocol string
+type Protocol string
 
 const (
 	// ProtocolIPv4 represents ipv4 protocol in iptables
@@ -238,6 +240,11 @@ func newInternal(exec utilexec.Interface, protocol Protocol, lockfilePath14x, lo
 	return runner
 }
 
+// New returns a new Interface which will exec iptables.
+func New(exec utilexec.Interface, protocol Protocol) Interface {
+	return newInternal(exec, protocol, "", "")
+}
+
 // EnsureChain is part of Interface.
 func (runner *runner) EnsureChain(table Table, chain Chain) (bool, error) {
 	fullArgs := makeFullArgs(table, chain)
@@ -255,11 +262,6 @@ func (runner *runner) EnsureChain(table Table, chain Chain) (bool, error) {
 		return false, fmt.Errorf("error creating chain %q: %v: %s", chain, err, out)
 	}
 	return false, nil
-}
-
-// New returns a new Interface which will exec iptables.
-func NewIPTableExec(exec utilexec.Interface, protocol Protocol) Interface {
-	return newInternal(exec, protocol, "", "")
 }
 
 // FlushChain is part of Interface.
@@ -632,7 +634,6 @@ const (
 	opFlushChain  operation = "-F"
 	opDeleteChain operation = "-X"
 	opListChain   operation = "-S"
-	opAppendRule  operation = "-A"
 	opCheckRule   operation = "-C"
 	opDeleteRule  operation = "-D"
 )
@@ -723,6 +724,16 @@ func getIPTablesRestoreVersionString(exec utilexec.Interface, protocol Protocol)
 
 func (runner *runner) HasRandomFully() bool {
 	return runner.hasRandomFully
+}
+
+// Present tests if iptable is supported on current kernel by checking the existence
+// of default table and chain
+func (runner *runner) Present() bool {
+	if _, err := runner.ChainExists(TableNAT, ChainPostrouting); err != nil {
+		return false
+	}
+
+	return true
 }
 
 var iptablesNotFoundStrings = []string{

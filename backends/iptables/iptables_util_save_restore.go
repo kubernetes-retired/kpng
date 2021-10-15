@@ -19,6 +19,7 @@ package iptables
 import (
 	"bytes"
 	"fmt"
+	"sigs.k8s.io/kpng/backends/iptables/util"
 )
 
 var (
@@ -27,7 +28,7 @@ var (
 )
 
 // MakeChainLine return an iptables-save/restore formatted chain line given a Chain
-func MakeChainLine(chain Chain) string {
+func MakeChainLine(chain util.Chain) string {
 	return fmt.Sprintf(":%s - [0:0]", chain)
 }
 
@@ -35,8 +36,8 @@ func MakeChainLine(chain Chain) string {
 // It returns a map of iptables.Chain to []byte where the []byte is the chain line
 // from save (with counters etc.).
 // Note that to avoid allocations memory is SHARED with save.
-func GetChainLines(table Table, save []byte) map[Chain][]byte {
-	chainsMap := make(map[Chain][]byte)
+func GetChainLines(table util.Table, save []byte) map[util.Chain][]byte {
+	chainsMap := make(map[util.Chain][]byte)
 	tablePrefix := []byte("*" + string(table))
 	readIndex := 0
 	// find beginning of table
@@ -65,7 +66,7 @@ func GetChainLines(table Table, save []byte) map[Chain][]byte {
 			if spaceIndex == -1 {
 				panic(fmt.Sprintf("Unexpected chain line in iptables-save output: %v", string(line)))
 			}
-			chain := Chain(line[1:spaceIndex])
+			chain := util.Chain(line[1:spaceIndex])
 			chainsMap[chain] = line
 		}
 	}
