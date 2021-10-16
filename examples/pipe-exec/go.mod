@@ -1,4 +1,4 @@
-module github.com/kubernetes-sigs/kpng/examples/blog-example
+module sigs.k8s.io/kpng/examples/blog-example
 
 go 1.17
 
@@ -29,22 +29,21 @@ replace (
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.21.2
 )
 
-require sigs.k8s.io/kpng v0.0.0-20210917162839-ef6a4c0272e2
+require sigs.k8s.io/kpng/client v0.0.0-20211016173344-b7254404fb71
 
 require (
-	github.com/Jille/grpc-multi-resolver v1.0.0 // indirect
-	github.com/cespare/xxhash v1.1.0 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/go-logr/logr v1.1.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/spf13/cobra v1.1.3 // indirect
+	github.com/spf13/cobra v1.2.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/net v0.0.0-20210428140749-89ef3d95e781 // indirect
-	golang.org/x/sys v0.0.0-20210426230700-d19ff857e887 // indirect
-	golang.org/x/text v0.3.6 // indirect
-	google.golang.org/genproto v0.0.0-20210429181445-86c259c2b4ab // indirect
-	google.golang.org/grpc v1.37.0 // indirect
-	google.golang.org/protobuf v1.26.0 // indirect
-	k8s.io/klog v1.0.0 // indirect
+	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect
+	golang.org/x/sys v0.0.0-20211015200801-69063c4bb744 // indirect
+	golang.org/x/text v0.3.7 // indirect
+	google.golang.org/genproto v0.0.0-20211016002631-37fc39342514 // indirect
+	google.golang.org/grpc v1.41.0 // indirect
+	google.golang.org/protobuf v1.27.1 // indirect
+	k8s.io/klog/v2 v2.20.0 // indirect
+	sigs.k8s.io/kpng/api v0.0.0-20211016172202-2f0db1baddba // indirect
 )
