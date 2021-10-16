@@ -9,6 +9,7 @@ import (
 	"sigs.k8s.io/kpng/backends/ipvs"
 	"sigs.k8s.io/kpng/backends/ipvs-as-sink"
 	"sigs.k8s.io/kpng/backends/nft"
+	"sigs.k8s.io/kpng/backends/iptables"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
 	"sigs.k8s.io/kpng/server/jobs/store2api"
