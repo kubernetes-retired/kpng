@@ -1,4 +1,4 @@
-module sigs.k8s.io/kpng/backends/nft
+module sigs.k8s.io/kpng/backends/ipvs
 
 go 1.17
 
