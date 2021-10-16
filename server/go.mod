@@ -28,7 +28,7 @@ require (
 	k8s.io/client-go v0.21.2
 	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.20.0
-	sigs.k8s.io/kpng/api v0.0.0-20211016163122-10ddff77b5bd
+	sigs.k8s.io/kpng/api v0.0.0-20211016170559-7c3453c01431
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
 )
 
@@ -46,6 +46,7 @@ require (
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a // indirect
+	sigs.k8s.io/kpng/client v0.0.0-20211016170559-7c3453c01431 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
