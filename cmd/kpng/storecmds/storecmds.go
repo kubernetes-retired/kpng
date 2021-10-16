@@ -128,10 +128,9 @@ func LocalCmds(run func(sink localsink.Sink) error) (cmds []*cobra.Command) {
 
 func BackendCmds(sink *fullstate.Sink, run func(sink localsink.Sink) error) []*cobra.Command {
 	return []*cobra.Command{
-		//iptablesCommand(sink, run),
 		ipvsCommand(sink, run),
 		nftCommand(sink, run),
-		iptablesCommand(sink, run),
+		//iptablesCommand(sink, run),
 	}
 }
 
@@ -172,14 +171,15 @@ func ipvsCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cob
 }
 
 // moved to incubating (too many dependencies)
-func iptablesCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cobra.Command {
-	iptablesBackend := iptables2.New()
-	cmd := &cobra.Command{
-		Use: "to-iptables",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return run(iptablesBackend.Sink())
-		},
-	}
-	iptablesBackend.BindFlags(cmd.Flags())
-	return cmd
-}
+//func iptablesCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cobra.Command {
+
+	//iptablesBackend := iptables2.New()
+	//cmd := &cobra.Command{
+//		Use: "to-iptables",
+//		RunE: func(_ *cobra.Command, _ []string) error {
+//			return run(iptablesBackend.Sink())
+//		},
+//	}
+//	iptablesBackend.BindFlags(cmd.Flags())
+//	return cmd
+//}
