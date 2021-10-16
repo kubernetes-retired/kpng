@@ -2,11 +2,6 @@ module sigs.k8s.io/kpng/server
 
 go 1.17
 
-replace (
-	sigs.k8s.io/kpng/api => ../api
-	sigs.k8s.io/kpng/client => ../client
-)
-
 require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/gobwas/glob v0.2.3
@@ -19,11 +14,11 @@ require (
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/json-iterator/go v1.1.11 // indirect
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023 // indirect
+	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect
 	golang.org/x/oauth2 v0.0.0-20210427180440-81ed05c6b58c // indirect
 	golang.org/x/term v0.0.0-20210429154555-c04ba851c2a4 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c // indirect
+	google.golang.org/genproto v0.0.0-20211016002631-37fc39342514 // indirect
 	google.golang.org/grpc v1.41.0
 	google.golang.org/protobuf v1.27.1
 	gopkg.in/yaml.v2 v2.4.0
@@ -32,22 +27,22 @@ require (
 	k8s.io/apimachinery v0.21.2
 	k8s.io/client-go v0.21.2
 	k8s.io/klog v1.0.0
-	k8s.io/klog/v2 v2.9.0
-	sigs.k8s.io/kpng/api v0.0.0-00010101000000-000000000000
-	sigs.k8s.io/kpng/client v0.0.0-00010101000000-000000000000
+	k8s.io/klog/v2 v2.20.0
+	sigs.k8s.io/kpng/api v0.0.0-20211016163122-10ddff77b5bd
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
 )
 
 require (
-	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/go-logr/logr v0.4.0 // indirect
+	github.com/go-logr/logr v1.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/go-cmp v0.5.5 // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
-	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22 // indirect
-	golang.org/x/text v0.3.6 // indirect
+	github.com/spf13/cobra v1.2.1 // indirect
+	golang.org/x/sys v0.0.0-20211015200801-69063c4bb744 // indirect
+	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a // indirect
