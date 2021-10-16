@@ -7,6 +7,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/utils/exec"
 
+	"sigs.k8s.io/kpng/backends/iptables/util"
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
@@ -38,7 +39,7 @@ func (s *Backend) Setup() {
 	IptablesImpl = make(map[v1.IPFamily]*iptables)
 	for _, protocol := range []v1.IPFamily{v1.IPv4Protocol, v1.IPv6Protocol} {
 		iptable := NewIptables()
-		iptable.iptInterface = NewIPTableExec(exec.New(), Protocol(protocol))
+		iptable.iptInterface = util.NewIPTableExec(exec.New(), util.Protocol(protocol))
 		iptable.serviceChanges = NewServiceChangeTracker(newServiceInfo, protocol, iptable.recorder)
 		iptable.endpointsChanges = NewEndpointChangeTracker(hostname, protocol, iptable.recorder)
 		IptablesImpl[protocol] = iptable

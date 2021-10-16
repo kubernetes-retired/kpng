@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/events"
 
-	//"k8s.io/component-base/metrics"
 	"k8s.io/klog/v2"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
@@ -56,7 +55,7 @@ var supportedEndpointSliceAddressTypes = sets.NewString(
 //	},
 //)
 
-const kubeProxySubsystem = "kubeproxy"
+
 
 // EndpointChangeTracker carries state about uncommitted changes to an arbitrary number of
 // Endpoints, keyed by their namespace and name.
