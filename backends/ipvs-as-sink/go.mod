@@ -3,7 +3,6 @@ module sigs.k8s.io/kpng/backends/ipvs-as-sink
 go 1.17
 
 replace (
-	sigs.k8s.io/kpng => ../../empty
 	sigs.k8s.io/kpng/api => ../../api
 	sigs.k8s.io/kpng/backends/ipvs => ../ipvs
 	sigs.k8s.io/kpng/client => ../../client
@@ -24,10 +23,9 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.20.0
 	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b
-	sigs.k8s.io/kpng/api v0.0.0-00010101000000-000000000000
-	sigs.k8s.io/kpng/backends/ipvs v0.0.0-00010101000000-000000000000
-	sigs.k8s.io/kpng/client v0.0.0-00010101000000-000000000000
-	sigs.k8s.io/kpng/server v0.0.0-00010101000000-000000000000
+	sigs.k8s.io/kpng/api v0.0.0-20211016172202-2f0db1baddba
+	sigs.k8s.io/kpng/backends/ipvs v0.0.0-20211016172202-2f0db1baddba
+	sigs.k8s.io/kpng/client v0.0.0-20211016172202-2f0db1baddba
 )
 
 require (
