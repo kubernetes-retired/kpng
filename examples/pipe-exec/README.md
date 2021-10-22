@@ -1,7 +1,7 @@
 # KPNG example
 
 This is an example for a Kubernetes [blog
-post](https://github.com/Nordix/website/blob/kpng-1/content/en/blog/_posts/2021-00-00-kpng-specialized-proxiers.md) (not yet published!).
+post](https://kubernetes.io/blog/2021/10/18/use-kpng-to-write-specialized-kube-proxiers/).
 
 The [kpng](https://github.com/kubernetes-sigs/kpng) project provides a
 simple way to write a customized proxier that can live side by side
