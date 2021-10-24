@@ -1,20 +1,21 @@
 package userspacelin
 
 import (
-"errors"
-"fmt"
-	"k8s.io/kubernetes/pkg/proxy/util"
+	"errors"
+	"fmt"
 	"net"
-"reflect"
-	"sigs.k8s.io/kpng/backends/iptables"
+	"reflect"
 	"sync"
-"time"
+	"time"
 
-v1 "k8s.io/api/core/v1"
-"k8s.io/apimachinery/pkg/types"
-"k8s.io/apimachinery/pkg/util/sets"
-"k8s.io/klog/v2"
-"k8s.io/kubernetes/pkg/util/slice"
+	"k8s.io/kubernetes/pkg/proxy/util"
+	"sigs.k8s.io/kpng/backends/iptables"
+
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog/v2"
+	"k8s.io/kubernetes/pkg/util/slice"
 )
 
 var (
@@ -212,7 +213,7 @@ func (lb *LoadBalancerRR) OnEndpointsAdd(namespace, serviceName, key string, end
 
 	for portname := range portsToEndpoints {
 		// OMG endpoints are named the same thing as their service so we can use this to find the service name
-		// MEANWHILE endpointSlice has a LABEL that references the service 
+		// MEANWHILE endpointSlice has a LABEL that references the service
 		svcPort := iptables.ServicePortName{NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
 		newEndpoints := portsToEndpoints[portname]
 		state, exists := lb.services[svcPort]
@@ -231,10 +232,10 @@ func (lb *LoadBalancerRR) OnEndpointsAdd(namespace, serviceName, key string, end
 	}
 }
 
-[]*v1.Endpoints, endpoint
+//[]*v1.Endpoints, endpoint
 func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {
 
-	// part 1: make new endpoints as needed stuff... 
+	// part 1: make new endpoints as needed stuff...
 
 	portsToEndpoints := util.BuildPortsToEndpointsMap(endpoints)
 	registeredEndpoints := make(map[iptables.ServicePortName]bool)
@@ -272,7 +273,7 @@ func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoint
 	// part 2: clean old stuff
 	oldPortsToEndpoints := util.BuildPortsToEndpointsMap(oldEndpoints)
 
-	// clean old stuff 
+	// clean old stuff
 	// Now remove all endpoints missing from the update.
 	for portname := range oldPortsToEndpoints {
 		svcPort := iptables.ServicePortName{NamespacedName: types.NamespacedName{Namespace: oldEndpoints.Namespace, Name: oldEndpoints.Name}, Port: portname}

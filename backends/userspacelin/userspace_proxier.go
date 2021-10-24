@@ -267,7 +267,7 @@ func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptablesInterface
 	proxier := &UserspaceLinux{
 		loadBalancer:    loadBalancer, // <----
 		serviceMap:      make(map[iptables.ServicePortName]*ServiceInfo),
-		serviceChanges:  make(map[types.NamespacedName]*serviceChange),
+		serviceChanges:  *ServiceChangeTracker,
 		portMap:         make(map[portMapKey]*portMapValue),
 		syncPeriod:      syncPeriod,
 		minSyncPeriod:   minSyncPeriod,
@@ -375,6 +375,7 @@ func (proxier *UserspaceLinux) Sync() {
 	proxier.syncRunner.Run()
 }
 
+// this is called sync() in iptables, omg vivek
 func (proxier *UserspaceLinux) syncProxyRules() {
 	start := time.Now()
 	defer func() {
@@ -392,17 +393,19 @@ func (proxier *UserspaceLinux) syncProxyRules() {
 	}
 
 	proxier.serviceChangesLock.Lock()
-	changes := proxier.serviceChanges
-	proxier.serviceChanges = make(map[types.NamespacedName]*serviceChange)
-	proxier.serviceChangesLock.Unlock()
+	oldChanges := proxier.serviceChanges
 
-	proxier.mu.Lock()
-	defer proxier.mu.Unlock()
+	// make the "current" service changes a new map and rebuild it...
+	proxier.serviceChanges = &ServiceChanincomgeTracker{}
+	proxier.serviceChanges.lock.Unlock()
 
-	klog.V(4).InfoS("userspace proxy: processing service events", "count", len(changes))
-	for _, change := range changes {
-		existingPorts := proxier.mergeService(change.current)
-		proxier.unmergeService(change.previous, existingPorts)
+	proxier.serviceChanges.Lock()
+	defer proxier.lock.Unlock()
+
+	klog.V(4).InfoS("userspace proxy: processing service events", "count", len(oldChanges))
+	for _, oldChange := range oldChanges {
+		existingPorts := proxier.mergeService(oldChange.current)
+		proxier.unmergeService(oldChange.previous, existingPorts)
 	}
 
 	proxier.localAddrs = GetLocalAddrSet()
@@ -612,8 +615,8 @@ func (proxier *UserspaceLinux) serviceChange(previous, current *v1.Service, deta
 	}
 	klog.V(4).InfoS("Record service change", "action", detail, "svcName", svcName)
 
-	proxier.serviceChangesLock.Lock()
-	defer proxier.serviceChangesLock.Unlock()
+	proxier.serviceChanges.lock.Lock()
+	defer proxier.serviceChanges.lock.Unlock()
 
 	change, exists := proxier.serviceChanges[svcName]
 	if !exists {
@@ -622,7 +625,7 @@ func (proxier *UserspaceLinux) serviceChange(previous, current *v1.Service, deta
 		// depends on the next update/del after a merge, not subsequent
 		// updates.
 		change = &serviceChange{previous: previous}
-		proxier.serviceChanges[svcName] = change
+		proxier.serviceChanges.serviceChanges[svcName] = change
 	}
 
 	// Always use the most current service (or nil) as change.current
@@ -630,7 +633,7 @@ func (proxier *UserspaceLinux) serviceChange(previous, current *v1.Service, deta
 
 	if reflect.DeepEqual(change.previous, change.current) {
 		// collapsed change had no effect
-		delete(proxier.serviceChanges, svcName)
+		delete(proxier.serviceChanges.serviceChanges, svcName)
 	} else if proxier.isInitialized() {
 		// change will have an effect, ask the proxy to sync
 		proxier.syncRunner.Run()
