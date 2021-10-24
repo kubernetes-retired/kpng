@@ -18,8 +18,10 @@ package userspacelin
 
 import (
 	"fmt"
+	"k8s.io/klog"
 	"net"
 	"reflect"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 
 	k8snet "k8s.io/apimachinery/pkg/util/net"
 
@@ -169,7 +171,7 @@ type UserspaceLinux struct {
 	initialized     int32
 	// protects serviceChanges
 	serviceChangesLock sync.Mutex
-	serviceChanges     map[types.NamespacedName]*serviceChange // map of service changes
+	serviceChanges     map[types.NamespacedName]*iptables.ServiceChangeTracker // map of service changes, this is the entire state-space of all services in k8s.
 	syncRunner         asyncRunnerInterface                    // governs calls to syncProxyRules
 
 	stopChan chan struct{}
@@ -267,7 +269,7 @@ func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptablesInterface
 	proxier := &UserspaceLinux{
 		loadBalancer:    loadBalancer, // <----
 		serviceMap:      make(map[iptables.ServicePortName]*ServiceInfo),
-		serviceChanges:  *ServiceChangeTracker,
+		serviceChanges:  make(map[types.NamespacedName]*iptables.ServiceChangeTracker),
 		portMap:         make(map[portMapKey]*portMapValue),
 		syncPeriod:      syncPeriod,
 		minSyncPeriod:   minSyncPeriod,
@@ -625,7 +627,7 @@ func (proxier *UserspaceLinux) serviceChange(previous, current *v1.Service, deta
 		// depends on the next update/del after a merge, not subsequent
 		// updates.
 		change = &serviceChange{previous: previous}
-		proxier.serviceChanges.serviceChanges[svcName] = change
+		proxier.serviceChanges[svcName].Update() = change
 	}
 
 	// Always use the most current service (or nil) as change.current
@@ -678,8 +680,8 @@ func (proxier *UserspaceLinux) OnServiceSynced() {
 
 // OnEndpointsAdd is called whenever creation of new endpoints object
 // is observed.
-func (proxier *UserspaceLinux) OnEndpointsAdd(endpoints *v1.Endpoints) {
-	proxier.loadBalancer.OnEndpointsAdd(endpoints)
+func (proxier *UserspaceLinux) OnEndpointsAdd(endpoints *localnetv1.Endpoint) {
+
 }
 
 // OnEndpointsUpdate is called whenever modification of an existing

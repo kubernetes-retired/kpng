@@ -1,6 +1,9 @@
 package userspacelin
 
 import (
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/kubernetes/test/e2e/storage/drivers/csi-test/mock/service"
+	"sigs.k8s.io/kpng/backends/iptables"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -111,19 +114,19 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 func (s *Backend) Setup() {
 	hostname = s.NodeName
 	// make a proxier for ipv4, ipv6
-	usImpl = make(map[v1.IPFamily]*UserspaceLinux)
 
-	for _, protocol := range []v1.IPFamily{v1.IPv4Protocol, v1.IPv6Protocol} {
-		loadBalancer := NewLoadBalancerRR()
-		iptables := NewIptables()
-		var nodePortAddresses []string
-		// TODO: support ipv6
-		theProxier, _ := NewUserspaceLinux(loadBalancer, net.ParseIP("0.0.0.0"), iptables, exec.New(), utilnet.PortRange{Base: 30000, Size: 2768}, time.Duration(1), time.Duration(1), time.Duration(1), nodePortAddresses)
-		usImpl[protocol] = theProxier
-		usImpl[protocol].iptables = NewIPTableExec(exec.New(), Protocol(protocol))
-		usImpl[protocol].serviceChanges = iptables.NewServiceChangeTracker(newServiceInfo, protocol, iptable.recorder)
-		usImpl[protocol].endpointsSynced = NewEndpointChangeTracker(hostname, protocol, iptable.recorder)
-	}
+	usImpl = make(map[v1.IPFamily]*UserspaceLinux)
+	usImpl[v1.IPv4Protocol].iptables = iptables.NewIPTableExec(exec.New(), iptables.Protocol(v1.IPv4Protocol))
+	usImpl[v1.IPv6Protocol].iptables = iptables.NewIPTableExec(exec.New(), iptables.Protocol(v1.IPv6Protocol))
+
+	nodePortAddresses := []string{}
+	theProxier, _ := NewUserspaceLinux(NewLoadBalancerRR(), net.ParseIP("0.0.0.0"), usImpl[v1.IPv4Protocol].iptables, exec.New(), utilnet.PortRange{Base: 30000, Size: 2768}, time.Duration(1), time.Duration(1), time.Duration(1), nodePortAddresses)
+	usImpl[v1.IPv4Protocol] = theProxier
+
+	nodePortAddresses = []string{}
+	// TODO THIS is untested...
+	theProxier, _ = NewUserspaceLinux(NewLoadBalancerRR(), net.ParseIP(	"::/0"), usImpl[v1.IPv6Protocol].iptables, exec.New(), utilnet.PortRange{Base: 30000, Size: 2768}, time.Duration(1), time.Duration(1), time.Duration(1), nodePortAddresses)
+	usImpl[v1.IPv4Protocol] = theProxier
 }
 
 func (s *Backend) Reset() { /* noop, we're wrapped in filterreset */ }
@@ -164,14 +167,12 @@ func (s *Backend) DeleteService(namespace, name string) {
 // name of the endpoint is the same as the service name
 func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint) {
 	for _, impl := range usImpl {
-		spn := ServicePortName{
-			Namespaced: namespace,
-			Name:       serviceName,
-			Port:       8080,
-			Protocol:   "TCP",
-		}
-		impl.loadBalancer.services
-		impl.loadBalancer.OnEndpointsAdd(namespace, serviceName, key, endpoint)
+		//spn := iptables.ServicePortName{
+		//	NamespacedName: types.NamespacedName{Namespace: namespace, Name: serviceName},
+		//	Port:       "8080",
+		//	Protocol:   localnetv1.Protocol_TCP,
+		//}
+		impl.loadBalancer.OnEndpointsAdd(endpoint)
 	}
 }
 

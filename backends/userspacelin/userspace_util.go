@@ -5,6 +5,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	utilnet "k8s.io/utils/net"
 	"net"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 	"strconv"
 )
 import helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
@@ -43,7 +44,7 @@ func ToCIDR(ip net.IP) string {
 }
 // BuildPortsToEndpointsMap builds a map of portname -> all ip:ports for that
 // portname. Explode Endpoints.Subsets[*] into this structure.
-func BuildPortsToEndpointsMap(endpoints *v1.Endpoints) map[string][]string {
+func BuildPortsToEndpointsMap(endpoints *localnetv1.Endpoint) map[string][]string {
 	portsToEndpoints := map[string][]string{}
 	for i := range endpoints.Subsets {
 		ss := &endpoints.Subsets[i]

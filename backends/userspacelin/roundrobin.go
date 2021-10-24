@@ -3,12 +3,13 @@ package userspacelin
 import (
 	"errors"
 	"fmt"
+	"k8s.io/kubernetes/pkg/proxy/util"
 	"net"
 	"reflect"
+	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 	"sync"
 	"time"
 
-	"k8s.io/kubernetes/pkg/proxy/util"
 	"sigs.k8s.io/kpng/backends/iptables"
 
 	v1 "k8s.io/api/core/v1"
@@ -205,8 +206,8 @@ func (lb *LoadBalancerRR) removeStaleAffinity(svcPort iptables.ServicePortName, 
 	}
 }
 
-func (lb *LoadBalancerRR) OnEndpointsAdd(namespace, serviceName, key string, endpoints *v1.Endpoints) {
-	portsToEndpoints := util.BuildPortsToEndpointsMap(endpoints)
+func (lb *LoadBalancerRR) OnEndpointsAdd(endpoints *localnetv1.Endpoint) {
+	portsToEndpoints := BuildPortsToEndpointsMap(endpoints)
 
 	lb.lock.Lock()
 	defer lb.lock.Unlock()

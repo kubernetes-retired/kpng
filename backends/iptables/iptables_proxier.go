@@ -133,7 +133,6 @@ func (t *iptables) sync() {
 	// responsible for detecting no-op changes and not calling this function.
 	klog.Info("Changed services:", t.serviceChanges.items)
 	klog.Info("Changed EP:", t.endpointsChanges.endpointsCache.trackerByServiceMap)
-	t.serviceMap.Update(t.serviceChanges)
 	endpointUpdateResult := t.endpointsMap.Update(t.endpointsChanges)
 	klog.Info("Service map currnetly:", t.serviceMap)
 	klog.Info("Endpoints map currnetly:", t.endpointsMap)
