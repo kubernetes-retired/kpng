@@ -5,6 +5,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	utilnet "k8s.io/utils/net"
 	"net"
+	"sigs.k8s.io/kpng/backends/iptables"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 	"strconv"
 )
@@ -42,22 +43,25 @@ func ToCIDR(ip net.IP) string {
 	}
 	return fmt.Sprintf("%s/%d", ip.String(), len)
 }
+
 // BuildPortsToEndpointsMap builds a map of portname -> all ip:ports for that
 // portname. Explode Endpoints.Subsets[*] into this structure.
-func BuildPortsToEndpointsMap(endpoints *localnetv1.Endpoint) map[string][]string {
+func BuildPortsToEndpointsMap(service []*iptables.ServicePortName , endpoints *localnetv1.Endpoint) map[string][]string {
 	portsToEndpoints := map[string][]string{}
-	for i := range endpoints.Subsets {
-		ss := &endpoints.Subsets[i]
-		for i := range ss.Ports {
-			port := &ss.Ports[i]
-			for i := range ss.Addresses {
-				addr := &ss.Addresses[i]
-				if isValidEndpoint(addr.IP, int(port.Port)) {
-					portsToEndpoints[port.Name] = append(portsToEndpoints[port.Name], net.JoinHostPort(addr.IP, strconv.Itoa(int(port.Port))))
-				}
+	ipSet := endpoints.GetIPs()
+	for _, i := range ipSet.V4 {
+		for _, svc := range service {
+			intt, _ := strconv.Atoi(svc.Port)
+			if isValidEndpoint(i, intt) {
+				//append 10.1.2.3:8080 to "a"
+				portsToEndpoints[svc.PortName] = append(portsToEndpoints[svc.PortName], net.JoinHostPort(i, svc.Port))
 			}
 		}
 	}
+	// {
+	// "a": {10.1.1.1:80, 10.2.2.2:80}
+	// "b" : {10.1.1.1:443, 10.2.2.2:443}
+	// }
 	return portsToEndpoints
 }
 

@@ -206,8 +206,12 @@ func (lb *LoadBalancerRR) removeStaleAffinity(svcPort iptables.ServicePortName, 
 	}
 }
 
-func (lb *LoadBalancerRR) OnEndpointsAdd(endpoints *localnetv1.Endpoint) {
-	portsToEndpoints := BuildPortsToEndpointsMap(endpoints)
+func (lb *LoadBalancerRR) OnEndpointsAdd(service []*iptables.ServicePortName, endpoints *localnetv1.Endpoint) {
+	portsToEndpoints := BuildPortsToEndpointsMap(service, endpoints)
+
+	namespace := service[0].Namespace
+	name := service[0].Name
+	namespacedName := types.NamespacedName{Namespace: namespace, Name: name}
 
 	lb.lock.Lock()
 	defer lb.lock.Unlock()
@@ -215,7 +219,7 @@ func (lb *LoadBalancerRR) OnEndpointsAdd(endpoints *localnetv1.Endpoint) {
 	for portname := range portsToEndpoints {
 		// OMG endpoints are named the same thing as their service so we can use this to find the service name
 		// MEANWHILE endpointSlice has a LABEL that references the service
-		svcPort := iptables.ServicePortName{NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
+		svcPort := iptables.ServicePortName{NamespacedName: namespacedName, Port: portname}
 		newEndpoints := portsToEndpoints[portname]
 		state, exists := lb.services[svcPort]
 

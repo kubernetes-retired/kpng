@@ -16,6 +16,8 @@ type LoadBalancer interface {
 	DeleteService(service iptables.ServicePortName)
 	CleanupStaleStickySessions(service iptables.ServicePortName)
 	ServiceHasEndpoints(service iptables.ServicePortName) bool
-	OnEndpointsAdd(endpoints *localnetv1.Endpoint)
 
+	// For userspace because we dont have an EndpointChangeTracker which can auto lookup services behind the scenes,
+	// we need to send this explicitly.
+	OnEndpointsAdd(service []*iptables.ServicePortName, endpoints *localnetv1.Endpoint)
 }

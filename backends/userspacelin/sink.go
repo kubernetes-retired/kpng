@@ -1,6 +1,7 @@
 package userspacelin
 
 import (
+	"fmt"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/test/e2e/storage/drivers/csi-test/mock/service"
 	"sigs.k8s.io/kpng/backends/iptables"
@@ -167,12 +168,20 @@ func (s *Backend) DeleteService(namespace, name string) {
 // name of the endpoint is the same as the service name
 func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint) {
 	for _, impl := range usImpl {
-		//spn := iptables.ServicePortName{
-		//	NamespacedName: types.NamespacedName{Namespace: namespace, Name: serviceName},
-		//	Port:       "8080",
-		//	Protocol:   localnetv1.Protocol_TCP,
-		//}
-		impl.loadBalancer.OnEndpointsAdd(endpoint)
+		// TODO lookup the right data...
+		// this can be looked up via the impl.serviceMap later... just iterate through the for loop for it and
+		// match it to the serviceName/namespace
+		//
+		spn := []*iptables.ServicePortName {
+			{
+				NamespacedName: types.NamespacedName{Namespace: namespace, Name: serviceName},
+				Port:       "8080",
+				Protocol:   localnetv1.Protocol_TCP,
+				PortName: fmt.Sprintf("%v-%v",serviceName, 8080),
+			},
+		}
+
+		impl.loadBalancer.OnEndpointsAdd(spn, endpoint)
 	}
 }
 
