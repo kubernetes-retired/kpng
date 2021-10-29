@@ -28,11 +28,16 @@ import (
 
 	"sigs.k8s.io/kpng/api/localnetv1"
 	ipvsutil "sigs.k8s.io/kpng/backends/ipvs/util"
+	"sigs.k8s.io/kpng/client/backendcmd"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
 	"sigs.k8s.io/kpng/client/localsink/filterreset"
 	"sigs.k8s.io/kpng/client/pkg/diffstore"
 )
+
+func init() {
+	backendcmd.Register("to-ipvs", func() backendcmd.Cmd { return New() })
+}
 
 type Backend struct {
 	localsink.Config

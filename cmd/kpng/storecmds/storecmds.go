@@ -6,15 +6,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"sigs.k8s.io/kpng/backends/ipvs"
-	"sigs.k8s.io/kpng/backends/ipvs-as-sink"
-	"sigs.k8s.io/kpng/backends/nft"
+	"sigs.k8s.io/kpng/client/backendcmd"
 	"sigs.k8s.io/kpng/client/localsink"
-	"sigs.k8s.io/kpng/client/localsink/fullstate"
 	"sigs.k8s.io/kpng/server/jobs/store2api"
 	"sigs.k8s.io/kpng/server/jobs/store2file"
 	"sigs.k8s.io/kpng/server/jobs/store2localdiff"
 	"sigs.k8s.io/kpng/server/pkg/proxystore"
+
+	_ "sigs.k8s.io/kpng/backends/ipvs"
+	_ "sigs.k8s.io/kpng/backends/ipvs-as-sink"
+	_ "sigs.k8s.io/kpng/backends/nft"
 )
 
 type SetupFunc func() (ctx context.Context, store *proxystore.Store, err error)
@@ -100,81 +101,34 @@ func (c SetupFunc) ToLocalCmd() (cmd *cobra.Command) {
 }
 
 func LocalCmds(run func(sink localsink.Sink) error) (cmds []*cobra.Command) {
-	// classic backends
-	cfg := &localsink.Config{}
-	sink := fullstate.New(cfg)
+	// sink backends
+	for _, useCmd := range backendcmd.Registered() {
+		backend := useCmd.New()
 
-	for _, cmd := range BackendCmds(sink, run) {
-		cfg.BindFlags(cmd.Flags())
+		cmd := &cobra.Command{
+			Use: useCmd.Use,
+			RunE: func(_ *cobra.Command, _ []string) error {
+				return run(backend.Sink())
+			},
+		}
+
+		backend.BindFlags(cmd.Flags())
+
 		cmds = append(cmds, cmd)
 	}
 
-	// sink backends
-	ipvsBackend := ipvssink.New()
-
-	cmd := &cobra.Command{
-		Use: "to-ipvs",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return run(ipvsBackend.Sink())
-		},
-	}
-
-	ipvsBackend.BindFlags(cmd.Flags())
-
-	cmds = append(cmds, cmd)
-
 	return
-}
-
-func BackendCmds(sink *fullstate.Sink, run func(sink localsink.Sink) error) []*cobra.Command {
-	return []*cobra.Command{
-		ipvsCommand(sink, run),
-		nftCommand(sink, run),
-		//iptablesCommand(sink, run),
-	}
 }
 
 func unimplemented(_ *cobra.Command, _ []string) error {
 	return errors.New("not implemented")
 }
 
-func nftCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cobra.Command {
-	cmd := &cobra.Command{
-		Use: "to-nft",
-	}
-
-	nft.BindFlags(cmd.Flags())
-
-	cmd.RunE = func(_ *cobra.Command, _ []string) error {
-		nft.PreRun()
-		sink.Callback = nft.Callback
-		return run(sink)
-	}
-
-	return cmd
-}
-
-func ipvsCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cobra.Command {
-	cmd := &cobra.Command{
-		Use: "to-ipvs",
-	}
-
-	ipvs.BindFlags(cmd.Flags())
-
-	cmd.RunE = func(_ *cobra.Command, _ []string) error {
-		ipvs.PreRun()
-		sink.Callback = ipvs.Callback
-		return run(sink)
-	}
-
-	return cmd
-}
-
 // moved to incubating (too many dependencies)
 //func iptablesCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cobra.Command {
 
-	//iptablesBackend := iptables2.New()
-	//cmd := &cobra.Command{
+//iptablesBackend := iptables2.New()
+//cmd := &cobra.Command{
 //		Use: "to-iptables",
 //		RunE: func(_ *cobra.Command, _ []string) error {
 //			return run(iptablesBackend.Sink())

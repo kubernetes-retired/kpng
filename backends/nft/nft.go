@@ -26,10 +26,11 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"strconv"
 	"strings"
 	"time"
+
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 
 	"github.com/cespare/xxhash"
 	"github.com/spf13/pflag"
