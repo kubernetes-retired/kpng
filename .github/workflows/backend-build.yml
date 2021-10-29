@@ -6,10 +6,12 @@ on:
     branches:
       - main
       - master
+      - gh-action-build-backend # TODO delete this if ever merged to master/main
   pull_request:
     branches:
       - main
       - master
+      - gh-action-build-backend # TODO delete this if ever merged to master/main
 
 jobs:
   setup:
