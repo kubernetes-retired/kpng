@@ -14,67 +14,27 @@ on:
       - gh-action-build-backend # TODO delete this if ever merged to master/main
 
 jobs:
-  setup:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        os: [linux-latest, windows-latest, macos-latest]
+        package: [iptables, ipvs, ipvs-as-sink, nft]
+    runs-on: ${{ matrix.os }}
     steps:
     - name: Setup Go
       uses: actions/setup-go@v2
       with:
         go-version: '1.17.0'
 
-    - name: Install dependencies
+    - name: Check Go
       run: |
         go version
-        go get -u golang.org/x/lint/golint
 
-  iptables:
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
+    - name: Checkout
       uses: actions/checkout@v2
     
     - name: Build backends/iptables
       run: |
-        cd ./backends/iptables
-        go mod vendor
-        go build
-
-  ipvs:
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
-      uses: actions/checkout@v2
-    
-    - name: Build backends/ipvs
-      run: |
-        cd ./backends/ipvs
-        go mod vendor
-        go build
-  
-  ipvs-as-sink:
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
-      uses: actions/checkout@v2
-    
-    - name: Build backends/ipvs-as-sink
-      run: |
-        cd ./backends/ipvs-as-sink
-        go mod vendor
-        go build
-  
-  nft:
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
-      uses: actions/checkout@v2
-    
-    - name: Build backends/nft
-      run: |
-        cd ./backends/nft
+        cd ./backends/${{ matrix.package }}
         go mod vendor
         go build
