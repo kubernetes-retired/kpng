@@ -12,10 +12,6 @@ import (
 	"sigs.k8s.io/kpng/server/jobs/store2file"
 	"sigs.k8s.io/kpng/server/jobs/store2localdiff"
 	"sigs.k8s.io/kpng/server/pkg/proxystore"
-
-	_ "sigs.k8s.io/kpng/backends/ipvs"
-	_ "sigs.k8s.io/kpng/backends/ipvs-as-sink"
-	_ "sigs.k8s.io/kpng/backends/nft"
 )
 
 type SetupFunc func() (ctx context.Context, store *proxystore.Store, err error)

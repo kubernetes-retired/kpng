@@ -20,7 +20,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"syscall"
 
 	"k8s.io/klog"
 )
@@ -35,13 +34,7 @@ func MustListen(bindSpec string) net.Listener {
 	protocol, addr := parts[0], parts[1]
 
 	// handle protocol specifics
-	afterListen := func() {}
-	switch protocol {
-	case "unix":
-		os.Remove(addr)
-		prevMask := syscall.Umask(0007)
-		afterListen = func() { syscall.Umask(prevMask) }
-	}
+	afterListen := osPrepareListen(protocol, addr)
 
 	lis, err := net.Listen(protocol, addr)
 	if err != nil {
