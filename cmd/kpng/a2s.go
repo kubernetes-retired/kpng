@@ -5,10 +5,12 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"sigs.k8s.io/kpng/client/pkg/tlsflags"
 	"sigs.k8s.io/kpng/server/jobs/api2store"
 	"sigs.k8s.io/kpng/server/pkg/apiwatch"
 	"sigs.k8s.io/kpng/server/pkg/proxystore"
-	"sigs.k8s.io/kpng/client/pkg/tlsflags"
+
+	"sigs.k8s.io/kpng/cmd/kpng/storecmds"
 )
 
 var (
@@ -27,7 +29,7 @@ func api2storeCmd() *cobra.Command {
 	flags := cmd.PersistentFlags()
 	api2storeJob.BindFlags(flags)
 
-//	cmd.AddCommand(storecmds2.Commands(setupAPI2store)...)
+	cmd.AddCommand(storecmds.Commands(setupAPI2store)...)
 
 	return cmd
 }
