@@ -119,17 +119,3 @@ func LocalCmds(run func(sink localsink.Sink) error) (cmds []*cobra.Command) {
 func unimplemented(_ *cobra.Command, _ []string) error {
 	return errors.New("not implemented")
 }
-
-// moved to incubating (too many dependencies)
-//func iptablesCommand(sink *fullstate.Sink, run func(sink localsink.Sink) error) *cobra.Command {
-
-//iptablesBackend := iptables2.New()
-//cmd := &cobra.Command{
-//		Use: "to-iptables",
-//		RunE: func(_ *cobra.Command, _ []string) error {
-//			return run(iptablesBackend.Sink())
-//		},
-//	}
-//	iptablesBackend.BindFlags(cmd.Flags())
-//	return cmd
-//}
