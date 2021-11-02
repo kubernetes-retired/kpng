@@ -12,8 +12,9 @@ import (
 
 	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/localsink"
-	"sigs.k8s.io/kpng/server/pkg/apiwatch"
 	"sigs.k8s.io/kpng/client/pkg/tlsflags"
+
+	"sigs.k8s.io/kpng/server/pkg/apiwatch"
 )
 
 // Config helps building sink with the standard flags (sinks are not required to have a stable node-name, but most will have).

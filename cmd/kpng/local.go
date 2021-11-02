@@ -17,9 +17,10 @@ func local2sinkCmd() *cobra.Command {
 
 	flags := cmd.PersistentFlags()
 
+	job := api2local.New(nil)
+	job.BindFlags(flags)
+
 	cmd.AddCommand(storecmds.LocalCmds(func(sink localsink.Sink) (err error) {
-		job := api2local.New(nil)
-		job.BindFlags(flags)
 		ctx := setupGlobal()
 		job.Sink = sink
 		job.Run(ctx)
