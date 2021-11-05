@@ -11,7 +11,10 @@ require (
 	google.golang.org/grpc v1.41.0
 	google.golang.org/protobuf v1.27.1
 	k8s.io/klog/v2 v2.9.0
+	sigs.k8s.io/kpng/api v0.0.0-00010101000000-000000000000
 )
+
+replace sigs.k8s.io/kpng/api => ../api
 
 require (
 	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023 // indirect
@@ -24,5 +27,4 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22 // indirect
 	golang.org/x/text v0.3.6 // indirect
-	sigs.k8s.io/kpng/api v0.0.0-20211016163122-10ddff77b5bd // indirect
 )
