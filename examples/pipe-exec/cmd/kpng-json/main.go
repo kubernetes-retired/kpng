@@ -1,8 +1,9 @@
 package main
 
 import (
-	"os"
 	"encoding/json"
+	"os"
+
 	"sigs.k8s.io/kpng/client"
 )
 

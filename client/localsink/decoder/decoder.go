@@ -5,7 +5,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/localsink"
 )
 

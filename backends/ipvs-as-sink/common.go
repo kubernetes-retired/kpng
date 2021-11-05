@@ -26,14 +26,19 @@ import (
 	"k8s.io/klog"
 	netutils "k8s.io/utils/net"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/backends/ipvs/util"
 )
 
-func (s *Backend) AddOrDelEndPointInIPSet(endPointList []string, portList []*localnetv1.PortMapping, op Operation) {
-	//if !destination.isLocalEndPoint {
-	//	return
-	//}
+type endPointInfo struct {
+	endPointIP string
+	isLocalEndPoint bool
+}
+
+func (s *Backend) AddOrDelEndPointInIPSet(endPointList []string, portList []*localnetv1.PortMapping, isLocalEndPoint bool, op Operation) {
+	if !isLocalEndPoint {
+		return
+	}
 	for _, port := range portList {
 		for _, endPointIP := range endPointList {
 			epIPFamily := getIPFamily(endPointIP)
