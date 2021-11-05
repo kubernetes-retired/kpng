@@ -10,7 +10,9 @@ The Kubernetes Proxy NG a new design of kube-proxy aimed at
 
 The project will provide multiple components, with the core being the API watcher that will serve the global and node-specific sets of objects.
 
-More context can be found in the project's [KEP](https://github.com/kubernetes/enhancements/issues/2104).
+- More context can be found in the project's [KEP](https://github.com/kubernetes/enhancements/issues/2104).
+- The meeting agenda and notes are here https://docs.google.com/document/d/1yW3AUp5rYDLYCAtZc6e4zeLbP5HPLXdvuEFeVESOTic/edit#
+- See you friday at 8:30 PST / 11:30 EST !!!
 
 ## How we work
 
@@ -18,8 +20,12 @@ The KPNG group is small but dedicated, because this is a hard project.  Your fir
 to the kube-proxy or to K8s networking.  However, we will pair with people wanting to join and make an impact.  We pair program every friday
 at our meetings, and also, informally at other times as well.  
 
-Our goal is to make the Kube proxy fun, and easy to understand, use, and extend.  And that goes for people working on KPNG especially.  So
-don't hesitate to join us, but just be ready for alot of work and low level troubleshooting.
+Our goal is to: 
+- make the kube proxy fun to work on and easy to understand
+- make the kube proxy extensible from a command line and backend perspective
+- learn as much as we can about k8s service networking, and build an upstream community around it
+
+And that goes for people working on KPNG especially.  So don't hesitate to join us, but just be ready for alot of work and low level troubleshooting.
 
 ## How to get involved
 
