@@ -27,11 +27,11 @@ import (
 	netutils "k8s.io/utils/net"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/backends/ipvs/util"
+	ipvs "sigs.k8s.io/kpng/backends/ipvs/util"
 )
 
 type endPointInfo struct {
-	endPointIP string
+	endPointIP      string
 	isLocalEndPoint bool
 }
 

@@ -68,6 +68,7 @@ require (
 	k8s.io/apimachinery v0.22.2 // indirect
 	k8s.io/klog/v2 v2.20.0 // indirect
 	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b // indirect
+	sigs.k8s.io/kpng/backends/ipvs v0.0.0-20211016172202-2f0db1baddba // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
