@@ -61,5 +61,5 @@ replace (
 require (
 	golang.org/x/oauth2 v0.0.0-20210402161424-2e8d93401602 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	k8s.io/component-base v0.0.0-00010101000000-000000000000
+	k8s.io/component-base v0.21.0-alpha.1
 )

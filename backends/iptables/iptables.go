@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/kpng/backends/iptables/util"
+	"sigs.k8s.io/kpng/client/backendcmd"
 
 	utilnet "k8s.io/utils/net"
 )
@@ -23,6 +24,14 @@ var (
 
 	OnlyOutput = flag.Bool("only-output", false, "Only output the ipvsadm-restore file instead of calling ipvsadm-restore")
 )
+
+func BindFlags(flags *pflag.FlagSet) {
+	        flags.AddFlagSet(flag)
+}
+
+func init() {
+	backendcmd.Register("to-iptables", func() backendcmd.Cmd { return &Backend{} })
+}
 
 type iptables struct {
 	mu         sync.Mutex        // protects the following fields

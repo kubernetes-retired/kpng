@@ -24,7 +24,7 @@ run for f in $(find -name go.mod); do d=$(dirname $f); echo "downloading mods in
 
 add . ./
 #run for f in $(find -name go.mod); do d=$(dirname $f); echo "testing in $d"; ( cd $d && go test ./... ); done
-run cd cmd && go install -trimpath ./...
+run cd cmd && pwd && go mod tidy ; go install -trimpath ./...
 
 # the real image
 from alpine:3.13
