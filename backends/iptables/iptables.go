@@ -24,6 +24,10 @@ var (
 	OnlyOutput = flag.Bool("only-output", false, "Only output the ipvsadm-restore file instead of calling ipvsadm-restore")
 )
 
+func BindFlags(flags *pflag.FlagSet) {
+	flags.AddFlagSet(flag)
+}
+
 type iptables struct {
 	mu         sync.Mutex        // protects the following fields
 	nodeLabels map[string]string //TODO: looks like can be removed as kpng controller shoujld do the work
