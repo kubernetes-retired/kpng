@@ -18,9 +18,9 @@ package userspacelin
 
 import (
 	"fmt"
-	"k8s.io/klog"
 	"net"
 	"reflect"
+
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
 
 	k8snet "k8s.io/apimachinery/pkg/util/net"
@@ -172,7 +172,7 @@ type UserspaceLinux struct {
 	// protects serviceChanges
 	serviceChangesLock sync.Mutex
 	serviceChanges     map[types.NamespacedName]*iptables.ServiceChangeTracker // map of service changes, this is the entire state-space of all services in k8s.
-	syncRunner         asyncRunnerInterface                    // governs calls to syncProxyRules
+	syncRunner         asyncRunnerInterface                                    // governs calls to syncProxyRules
 
 	stopChan chan struct{}
 }
@@ -398,11 +398,11 @@ func (proxier *UserspaceLinux) syncProxyRules() {
 	oldChanges := proxier.serviceChanges
 
 	// make the "current" service changes a new map and rebuild it...
-	proxier.serviceChanges = &ServiceChanincomgeTracker{}
-	proxier.serviceChanges.lock.Unlock()
+	proxier.serviceChanges = make(map[types.NamespacedName]*iptables.ServiceChangeTracker)
+	proxier.serviceChangesLock.Unlock()
 
-	proxier.serviceChanges.Lock()
-	defer proxier.lock.Unlock()
+	proxier.mu.Lock()
+	defer proxier.mu.Unlock()
 
 	klog.V(4).InfoS("userspace proxy: processing service events", "count", len(oldChanges))
 	for _, oldChange := range oldChanges {
@@ -617,8 +617,8 @@ func (proxier *UserspaceLinux) serviceChange(previous, current *v1.Service, deta
 	}
 	klog.V(4).InfoS("Record service change", "action", detail, "svcName", svcName)
 
-	proxier.serviceChanges.lock.Lock()
-	defer proxier.serviceChanges.lock.Unlock()
+	proxier.serviceChangesLock.Lock()
+	defer proxier.serviceChangesLock.Unlock()
 
 	change, exists := proxier.serviceChanges[svcName]
 	if !exists {
@@ -680,8 +680,8 @@ func (proxier *UserspaceLinux) OnServiceSynced() {
 
 // OnEndpointsAdd is called whenever creation of new endpoints object
 // is observed.
-func (proxier *UserspaceLinux) OnEndpointsAdd(endpoints *localnetv1.Endpoint) {
-
+func (proxier *UserspaceLinux) OnEndpointsAdd(spn []*iptables.ServicePortName, endpoints *localnetv1.Endpoint) {
+	proxier.loadBalancer.OnEndpointsAdd(spn, endpoints)
 }
 
 // OnEndpointsUpdate is called whenever modification of an existing

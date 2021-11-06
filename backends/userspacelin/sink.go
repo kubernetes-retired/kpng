@@ -2,10 +2,10 @@ package userspacelin
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/test/e2e/storage/drivers/csi-test/mock/service"
-	"sigs.k8s.io/kpng/backends/iptables"
 	"time"
+
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/kpng/backends/iptables"
 
 	v1 "k8s.io/api/core/v1"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -126,7 +126,7 @@ func (s *Backend) Setup() {
 
 	nodePortAddresses = []string{}
 	// TODO THIS is untested...
-	theProxier, _ = NewUserspaceLinux(NewLoadBalancerRR(), net.ParseIP(	"::/0"), usImpl[v1.IPv6Protocol].iptables, exec.New(), utilnet.PortRange{Base: 30000, Size: 2768}, time.Duration(1), time.Duration(1), time.Duration(1), nodePortAddresses)
+	theProxier, _ = NewUserspaceLinux(NewLoadBalancerRR(), net.ParseIP("::/0"), usImpl[v1.IPv6Protocol].iptables, exec.New(), utilnet.PortRange{Base: 30000, Size: 2768}, time.Duration(1), time.Duration(1), time.Duration(1), nodePortAddresses)
 	usImpl[v1.IPv4Protocol] = theProxier
 }
 
@@ -142,13 +142,13 @@ func (s *Backend) Sync() {
 
 func (s *Backend) SetService(svc *localnetv1.Service) {
 	for _, impl := range usImpl {
-		impl.serviceChanges.Update(svc)
+		impl.serviceChanges[types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}].Update(svc)
 	}
 }
 
 func (s *Backend) DeleteService(namespace, name string) {
 	for _, impl := range usImpl {
-		impl.serviceChanges.Delete(namespace, name)
+		impl.serviceChanges[types.NamespacedName{Namespace: namespace, Name: name}].Delete(namespace, name)
 
 	}
 }
@@ -172,12 +172,12 @@ func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *loca
 		// this can be looked up via the impl.serviceMap later... just iterate through the for loop for it and
 		// match it to the serviceName/namespace
 		//
-		spn := []*iptables.ServicePortName {
+		spn := []*iptables.ServicePortName{
 			{
 				NamespacedName: types.NamespacedName{Namespace: namespace, Name: serviceName},
-				Port:       "8080",
-				Protocol:   localnetv1.Protocol_TCP,
-				PortName: fmt.Sprintf("%v-%v",serviceName, 8080),
+				Port:           "8080",
+				Protocol:       localnetv1.Protocol_TCP,
+				PortName:       fmt.Sprintf("%v-%v", serviceName, 8080),
 			},
 		}
 
