@@ -45,6 +45,13 @@ function install {
 
     kind load docker-image $IMAGE --name kpng-proxy
 
+
+    ### Cache cni images to avoid rate-limiting
+    docker pull docker.io/calico/kube-controllers:v3.19.1
+    docker pull docker.io/calico/cni:v3.19.1
+    kind load docker-image docker.io/calico/cni:v3.19.1 --name kpng-proxy
+    kind load docker-image docker.io/calico/kube-controllers:v3.19.1 --name kpng-proxy
+
     kubectl -n kube-system create sa kpng
     kubectl create clusterrolebinding kpng --clusterrole=system:node-proxier --serviceaccount=kube-system:kpng
     kubectl -n kube-system create cm kpng --from-file kubeconfig.conf
