@@ -2,9 +2,10 @@ module sigs.k8s.io/kpng/server
 
 go 1.17
 
-replace sigs.k8s.io/kpng/client => ../client
-
-replace sigs.k8s.io/kpng/api => ../api
+replace (
+	sigs.k8s.io/kpng/client => ../client
+	sigs.k8s.io/kpng/api => ../api
+)
 
 require (
 	github.com/cespare/xxhash v1.1.0

@@ -26,11 +26,7 @@ var (
 )
 
 func BindFlags(flags *pflag.FlagSet) {
-	        flags.AddFlagSet(flag)
-}
-
-func init() {
-	backendcmd.Register("to-iptables", func() backendcmd.Cmd { return &Backend{} })
+	flags.AddFlagSet(flag)
 }
 
 type iptables struct {
