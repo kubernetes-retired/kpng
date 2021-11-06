@@ -1,4 +1,3 @@
-# TODO add license
 name: Backend Build Tests
 
 on:
@@ -14,27 +13,71 @@ on:
       - gh-action-build-backend # TODO delete this if ever merged to master/main
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [linux-latest, windows-latest, macos-latest]
-        package: [iptables, ipvs, ipvs-as-sink, nft]
-    runs-on: ${{ matrix.os }}
+  setup:
+    runs-on: ubuntu-latest
     steps:
     - name: Setup Go
       uses: actions/setup-go@v2
       with:
         go-version: '1.17.0'
 
-    - name: Check Go
+    - name: Install dependencies
       run: |
         go version
+        go get -u golang.org/x/lint/golint
 
-    - name: Checkout
+  iptables:
+    name: build backend package iptables
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
       uses: actions/checkout@v2
     
     - name: Build backends/iptables
       run: |
-        cd ./backends/${{ matrix.package }}
+        cd ./backends/iptables
+        go mod vendor
+        go build
+
+  ipvs:
+    name: build backend package ipvs
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+    
+    - name: Build backends/ipvs
+      run: |
+        cd ./backends/ipvs
+        go mod vendor
+        go build
+  
+  ipvs-as-sink:
+    name: build backend package ipvs-as-sink
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+    
+    - name: Build backends/ipvs-as-sink
+      run: |
+        cd ./backends/ipvs-as-sink
+        go mod vendor
+        go build
+  
+  nft:
+    name: build backend package nft
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+    
+    - name: Build backends/nft
+      run: |
+        cd ./backends/nft
         go mod vendor
         go build
