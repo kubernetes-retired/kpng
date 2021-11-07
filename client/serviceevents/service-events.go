@@ -2,21 +2,39 @@ package serviceevents
 
 import "sigs.k8s.io/kpng/api/localnetv1"
 
+type IPKind int
+
+const (
+	ClusterIP IPKind = iota
+	ExternalIP
+	LoadBalancerIP
+)
+
 type PortsListener interface {
 	AddPort(svc *localnetv1.Service, port *localnetv1.PortMapping)
 	DeletePort(svc *localnetv1.Service, port *localnetv1.PortMapping)
 }
 
+type IPsListener interface {
+	AddIP(svc *localnetv1.Service, ip string, ipKind IPKind, port *localnetv1.PortMapping)
+	DeleteIP(svc *localnetv1.Service, ip string, ipKind IPKind, port *localnetv1.PortMapping)
+}
+
+type IPPortsListener interface {
+	AddIPPort(svc *localnetv1.Service, ip string, ipKind IPKind, port *localnetv1.PortMapping)
+	DeleteIPPort(svc *localnetv1.Service, ip string, ipKind IPKind, port *localnetv1.PortMapping)
+}
+
 type ServicesListener struct {
-	PortsListener PortsListener
+	PortsListener   PortsListener
+	IPsListener     IPsListener
+	IPPortsListener IPPortsListener
 
 	services map[string]*localnetv1.Service
 }
 
-func New(portsListener PortsListener) *ServicesListener {
+func New() *ServicesListener {
 	return &ServicesListener{
-		PortsListener: portsListener,
-
 		services: map[string]*localnetv1.Service{},
 	}
 }
@@ -31,33 +49,39 @@ func (sl *ServicesListener) SetService(svc *localnetv1.Service) {
 
 	if !ok {
 		// new service
-		for _, port := range svc.Ports {
-			sl.PortsListener.AddPort(svc, port)
+
+		if sl.PortsListener != nil {
+			for _, port := range svc.Ports {
+				sl.PortsListener.AddPort(svc, port)
+			}
 		}
+
 		return
 	}
 
 	// updated service
-portsLoop:
-	for _, port := range svc.Ports {
-		for _, prevPort := range prevSvc.Ports {
-			if samePort(port, prevPort) {
-				continue portsLoop
-			}
-		}
-
-		sl.PortsListener.AddPort(svc, port)
-	}
-
-prevPortsLoop:
-	for _, prevPort := range prevSvc.Ports {
+	if sl.PortsListener != nil {
+	portsLoop:
 		for _, port := range svc.Ports {
-			if samePort(port, prevPort) {
-				continue prevPortsLoop
+			for _, prevPort := range prevSvc.Ports {
+				if samePort(port, prevPort) {
+					continue portsLoop
+				}
 			}
+
+			sl.PortsListener.AddPort(svc, port)
 		}
 
-		sl.PortsListener.DeletePort(svc, prevPort)
+	prevPortsLoop:
+		for _, prevPort := range prevSvc.Ports {
+			for _, port := range svc.Ports {
+				if samePort(port, prevPort) {
+					continue prevPortsLoop
+				}
+			}
+
+			sl.PortsListener.DeletePort(svc, prevPort)
+		}
 	}
 
 }
@@ -72,8 +96,10 @@ func (sl *ServicesListener) DeleteService(namespace, name string) {
 
 	delete(sl.services, svcKey)
 
-	for _, port := range svc.Ports {
-		sl.PortsListener.DeletePort(svc, port)
+	if sl.PortsListener != nil {
+		for _, port := range svc.Ports {
+			sl.PortsListener.DeletePort(svc, port)
+		}
 	}
 }
 

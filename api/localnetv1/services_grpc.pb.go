@@ -11,6 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // EndpointsClient is the client API for Endpoints service.
@@ -29,14 +30,8 @@ func NewEndpointsClient(cc grpc.ClientConnInterface) EndpointsClient {
 	return &endpointsClient{cc}
 }
 
-var endpointsWatchStreamDesc = &grpc.StreamDesc{
-	StreamName:    "Watch",
-	ServerStreams: true,
-	ClientStreams: true,
-}
-
 func (c *endpointsClient) Watch(ctx context.Context, opts ...grpc.CallOption) (Endpoints_WatchClient, error) {
-	stream, err := c.cc.NewStream(ctx, endpointsWatchStreamDesc, "/localnetv1.Endpoints/Watch", opts...)
+	stream, err := c.cc.NewStream(ctx, &Endpoints_ServiceDesc.Streams[0], "/localnetv1.Endpoints/Watch", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -66,17 +61,37 @@ func (x *endpointsWatchClient) Recv() (*OpItem, error) {
 	return m, nil
 }
 
-// EndpointsService is the service API for Endpoints service.
-// Fields should be assigned to their respective handler implementations only before
-// RegisterEndpointsService is called.  Any unassigned fields will result in the
-// handler for that method returning an Unimplemented error.
-type EndpointsService struct {
+// EndpointsServer is the server API for Endpoints service.
+// All implementations must embed UnimplementedEndpointsServer
+// for forward compatibility
+type EndpointsServer interface {
 	// Returns all the endpoints for this node.
-	Watch func(Endpoints_WatchServer) error
+	Watch(Endpoints_WatchServer) error
+	mustEmbedUnimplementedEndpointsServer()
 }
 
-func (s *EndpointsService) watch(_ interface{}, stream grpc.ServerStream) error {
-	return s.Watch(&endpointsWatchServer{stream})
+// UnimplementedEndpointsServer must be embedded to have forward compatible implementations.
+type UnimplementedEndpointsServer struct {
+}
+
+func (UnimplementedEndpointsServer) Watch(Endpoints_WatchServer) error {
+	return status.Errorf(codes.Unimplemented, "method Watch not implemented")
+}
+func (UnimplementedEndpointsServer) mustEmbedUnimplementedEndpointsServer() {}
+
+// UnsafeEndpointsServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to EndpointsServer will
+// result in compilation errors.
+type UnsafeEndpointsServer interface {
+	mustEmbedUnimplementedEndpointsServer()
+}
+
+func RegisterEndpointsServer(s grpc.ServiceRegistrar, srv EndpointsServer) {
+	s.RegisterService(&Endpoints_ServiceDesc, srv)
+}
+
+func _Endpoints_Watch_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(EndpointsServer).Watch(&endpointsWatchServer{stream})
 }
 
 type Endpoints_WatchServer interface {
@@ -101,54 +116,22 @@ func (x *endpointsWatchServer) Recv() (*WatchReq, error) {
 	return m, nil
 }
 
-// RegisterEndpointsService registers a service implementation with a gRPC server.
-func RegisterEndpointsService(s grpc.ServiceRegistrar, srv *EndpointsService) {
-	srvCopy := *srv
-	if srvCopy.Watch == nil {
-		srvCopy.Watch = func(Endpoints_WatchServer) error {
-			return status.Errorf(codes.Unimplemented, "method Watch not implemented")
-		}
-	}
-	sd := grpc.ServiceDesc{
-		ServiceName: "localnetv1.Endpoints",
-		Methods:     []grpc.MethodDesc{},
-		Streams: []grpc.StreamDesc{
-			{
-				StreamName:    "Watch",
-				Handler:       srvCopy.watch,
-				ServerStreams: true,
-				ClientStreams: true,
-			},
+// Endpoints_ServiceDesc is the grpc.ServiceDesc for Endpoints service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var Endpoints_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "localnetv1.Endpoints",
+	HandlerType: (*EndpointsServer)(nil),
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Watch",
+			Handler:       _Endpoints_Watch_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
-		Metadata: "api/localnetv1/services.proto",
-	}
-
-	s.RegisterService(&sd, nil)
-}
-
-// NewEndpointsService creates a new EndpointsService containing the
-// implemented methods of the Endpoints service in s.  Any unimplemented
-// methods will result in the gRPC server returning an UNIMPLEMENTED status to the client.
-// This includes situations where the method handler is misspelled or has the wrong
-// signature.  For this reason, this function should be used with great care and
-// is not recommended to be used by most users.
-func NewEndpointsService(s interface{}) *EndpointsService {
-	ns := &EndpointsService{}
-	if h, ok := s.(interface {
-		Watch(Endpoints_WatchServer) error
-	}); ok {
-		ns.Watch = h.Watch
-	}
-	return ns
-}
-
-// UnstableEndpointsService is the service API for Endpoints service.
-// New methods may be added to this interface if they are added to the service
-// definition, which is not a backward-compatible change.  For this reason,
-// use of this type is not recommended.
-type UnstableEndpointsService interface {
-	// Returns all the endpoints for this node.
-	Watch(Endpoints_WatchServer) error
+	},
+	Metadata: "api/localnetv1/services.proto",
 }
 
 // GlobalClient is the client API for Global service.
@@ -166,14 +149,8 @@ func NewGlobalClient(cc grpc.ClientConnInterface) GlobalClient {
 	return &globalClient{cc}
 }
 
-var globalWatchStreamDesc = &grpc.StreamDesc{
-	StreamName:    "Watch",
-	ServerStreams: true,
-	ClientStreams: true,
-}
-
 func (c *globalClient) Watch(ctx context.Context, opts ...grpc.CallOption) (Global_WatchClient, error) {
-	stream, err := c.cc.NewStream(ctx, globalWatchStreamDesc, "/localnetv1.Global/Watch", opts...)
+	stream, err := c.cc.NewStream(ctx, &Global_ServiceDesc.Streams[0], "/localnetv1.Global/Watch", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -203,16 +180,36 @@ func (x *globalWatchClient) Recv() (*OpItem, error) {
 	return m, nil
 }
 
-// GlobalService is the service API for Global service.
-// Fields should be assigned to their respective handler implementations only before
-// RegisterGlobalService is called.  Any unassigned fields will result in the
-// handler for that method returning an Unimplemented error.
-type GlobalService struct {
-	Watch func(Global_WatchServer) error
+// GlobalServer is the server API for Global service.
+// All implementations must embed UnimplementedGlobalServer
+// for forward compatibility
+type GlobalServer interface {
+	Watch(Global_WatchServer) error
+	mustEmbedUnimplementedGlobalServer()
 }
 
-func (s *GlobalService) watch(_ interface{}, stream grpc.ServerStream) error {
-	return s.Watch(&globalWatchServer{stream})
+// UnimplementedGlobalServer must be embedded to have forward compatible implementations.
+type UnimplementedGlobalServer struct {
+}
+
+func (UnimplementedGlobalServer) Watch(Global_WatchServer) error {
+	return status.Errorf(codes.Unimplemented, "method Watch not implemented")
+}
+func (UnimplementedGlobalServer) mustEmbedUnimplementedGlobalServer() {}
+
+// UnsafeGlobalServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to GlobalServer will
+// result in compilation errors.
+type UnsafeGlobalServer interface {
+	mustEmbedUnimplementedGlobalServer()
+}
+
+func RegisterGlobalServer(s grpc.ServiceRegistrar, srv GlobalServer) {
+	s.RegisterService(&Global_ServiceDesc, srv)
+}
+
+func _Global_Watch_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GlobalServer).Watch(&globalWatchServer{stream})
 }
 
 type Global_WatchServer interface {
@@ -237,51 +234,20 @@ func (x *globalWatchServer) Recv() (*GlobalWatchReq, error) {
 	return m, nil
 }
 
-// RegisterGlobalService registers a service implementation with a gRPC server.
-func RegisterGlobalService(s grpc.ServiceRegistrar, srv *GlobalService) {
-	srvCopy := *srv
-	if srvCopy.Watch == nil {
-		srvCopy.Watch = func(Global_WatchServer) error {
-			return status.Errorf(codes.Unimplemented, "method Watch not implemented")
-		}
-	}
-	sd := grpc.ServiceDesc{
-		ServiceName: "localnetv1.Global",
-		Methods:     []grpc.MethodDesc{},
-		Streams: []grpc.StreamDesc{
-			{
-				StreamName:    "Watch",
-				Handler:       srvCopy.watch,
-				ServerStreams: true,
-				ClientStreams: true,
-			},
+// Global_ServiceDesc is the grpc.ServiceDesc for Global service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var Global_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "localnetv1.Global",
+	HandlerType: (*GlobalServer)(nil),
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Watch",
+			Handler:       _Global_Watch_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
-		Metadata: "api/localnetv1/services.proto",
-	}
-
-	s.RegisterService(&sd, nil)
-}
-
-// NewGlobalService creates a new GlobalService containing the
-// implemented methods of the Global service in s.  Any unimplemented
-// methods will result in the gRPC server returning an UNIMPLEMENTED status to the client.
-// This includes situations where the method handler is misspelled or has the wrong
-// signature.  For this reason, this function should be used with great care and
-// is not recommended to be used by most users.
-func NewGlobalService(s interface{}) *GlobalService {
-	ns := &GlobalService{}
-	if h, ok := s.(interface {
-		Watch(Global_WatchServer) error
-	}); ok {
-		ns.Watch = h.Watch
-	}
-	return ns
-}
-
-// UnstableGlobalService is the service API for Global service.
-// New methods may be added to this interface if they are added to the service
-// definition, which is not a backward-compatible change.  For this reason,
-// use of this type is not recommended.
-type UnstableGlobalService interface {
-	Watch(Global_WatchServer) error
+	},
+	Metadata: "api/localnetv1/services.proto",
 }

@@ -24,7 +24,5 @@ import (
 )
 
 func Setup(s grpc.ServiceRegistrar, store *proxystore.Store) {
-	localnetv1.RegisterGlobalService(s, localnetv1.NewGlobalService(localnetv1.UnstableGlobalService(&Server{
-		Store: store,
-	})))
+	localnetv1.RegisterGlobalServer(s, &Server{Store: store})
 }

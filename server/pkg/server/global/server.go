@@ -23,6 +23,8 @@ import (
 )
 
 type Server struct {
+	localnetv1.UnimplementedGlobalServer
+
 	Store *proxystore.Store
 }
 

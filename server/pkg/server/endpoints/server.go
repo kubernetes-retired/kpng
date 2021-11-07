@@ -29,6 +29,8 @@ import (
 )
 
 type Server struct {
+	localnetv1.UnimplementedEndpointsServer
+
 	Store *proxystore.Store
 }
 

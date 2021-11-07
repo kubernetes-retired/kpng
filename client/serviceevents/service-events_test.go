@@ -16,7 +16,8 @@ func (pl portsLsnr) DeletePort(svc *localnetv1.Service, port *localnetv1.PortMap
 }
 
 func ExampleListener() {
-	sl := New(portsLsnr{})
+	sl := New()
+	sl.PortsListener = portsLsnr{}
 
 	fmt.Println("add svc with port 80")
 	sl.SetService(&localnetv1.Service{
@@ -51,24 +52,24 @@ func ExampleListener() {
 	sl.DeleteService("ns", "svc-1")
 
 	// Output:
-    // add svc with port 80
-    // ADD svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80}
-    //     port: Protocol:TCP Port:80
-    //
-    // add port 81
-    // ADD svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:81}
-    //     port: Protocol:TCP Port:81
-    //
-    // add port 82, remove port 81
-    // ADD svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
-    //     port: Protocol:TCP Port:82
-    // DEL svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
-    //     port: Protocol:TCP Port:81
-    //
-    // delete svc
-    // DEL svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
-    //     port: Protocol:TCP Port:80
-    // DEL svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
-    //     port: Protocol:TCP Port:82
+	// add svc with port 80
+	// ADD svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80}
+	//     port: Protocol:TCP Port:80
+	//
+	// add port 81
+	// ADD svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:81}
+	//     port: Protocol:TCP Port:81
+	//
+	// add port 82, remove port 81
+	// ADD svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     port: Protocol:TCP Port:82
+	// DEL svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     port: Protocol:TCP Port:81
+	//
+	// delete svc
+	// DEL svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     port: Protocol:TCP Port:80
+	// DEL svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     port: Protocol:TCP Port:82
 
 }
