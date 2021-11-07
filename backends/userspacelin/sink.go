@@ -132,6 +132,8 @@ func (s *Backend) Setup() {
 
 func (s *Backend) Reset() { /* noop, we're wrapped in filterreset */ }
 
+
+
 func (s *Backend) Sync() {
 	for _, impl := range usImpl {
 		wg.Add(1)

@@ -268,7 +268,7 @@ type makeServicePortFunc func(*localnetv1.PortMapping, *localnetv1.Service, *Bas
 // ServiceChangeTracker carries state about uncommitted changes to an arbitrary number of
 // Services, keyed by their namespace and name.
 type ServiceChangeTracker struct {
-	// items maps a service to its serviceChange.
+	// items maps a service to its serviceChangee (which is just a map[servicePortName]servicePort)
 	items map[types.NamespacedName]*serviceChange
 	// makeServiceInfo allows proxier to inject customized information when processing service.
 	makeServiceInfo makeServicePortFunc
@@ -277,6 +277,17 @@ type ServiceChangeTracker struct {
 
 	recorder events.EventRecorder
 }
+
+func (s *ServiceChangeTracker) Items() map[types.NamespacedName]*serviceChange {
+	return s.items
+}
+
+func (s *ServiceChangeTracker) ItemsBlah() map[types.NamespacedName]*serviceChange {
+	svcChange := s.items[types.NamespacedName{"a", "b"}]
+	return map[ServicePortName]ServicePort
+//	return s.items
+}
+
 
 // NewServiceChangeTracker initializes a ServiceChangeTracker
 func NewServiceChangeTracker(makeServiceInfo makeServicePortFunc, ipFamily v1.IPFamily, recorder events.EventRecorder) *ServiceChangeTracker {
@@ -336,7 +347,7 @@ type UpdateServiceMapResult struct {
 }
 
 // ServiceMap maps a service to its ServicePort.
-type serviceChange map[ServicePortName]ServicePort
+type serviceChange map[ServicePortName]iptables.ServicePort
 type ServicesSnapshot map[types.NamespacedName]serviceChange
 
 func (svcSnap *ServicesSnapshot) Update(changes *ServiceChangeTracker) (result UpdateServiceMapResult) {
