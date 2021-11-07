@@ -62,7 +62,7 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 		}
 	}
 
-	// Session affinity info
+	// session affinity info
 	switch svc.Spec.SessionAffinity {
 	case "ClusterIP":
 		cfg := svc.Spec.SessionAffinityConfig.ClientIP
@@ -73,7 +73,7 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 		}
 	}
 
-	// Get load balancer IPs
+	// load balancer IPs
 	if len(svc.Status.LoadBalancer.Ingress) != 0 {
 		ips := localnetv1.NewIPSet()
 		for _, ingress := range svc.Status.LoadBalancer.Ingress {
@@ -82,6 +82,13 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 			}
 		}
 		service.IPs.LoadBalancerIPs = ips
+	}
+
+	// load balancer source ranges
+	if len(svc.Spec.LoadBalancerSourceRanges) != 0 {
+		service.IPFilters = append(service.IPFilters, &localnetv1.IPFilter{
+			SourceRanges: svc.Spec.LoadBalancerSourceRanges,
+		})
 	}
 
 	// ports information
