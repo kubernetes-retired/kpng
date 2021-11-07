@@ -81,6 +81,7 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 				ips.Add(ingress.IP)
 			}
 		}
+		service.IPs.LoadBalancerIPs = ips
 	}
 
 	// ports information
