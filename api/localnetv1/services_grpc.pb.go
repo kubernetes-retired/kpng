@@ -120,7 +120,7 @@ func RegisterEndpointsService(s grpc.ServiceRegistrar, srv *EndpointsService) {
 				ClientStreams: true,
 			},
 		},
-		Metadata: "pkg/api/localnetv1/services.proto",
+		Metadata: "api/localnetv1/services.proto",
 	}
 
 	s.RegisterService(&sd, nil)
@@ -256,7 +256,7 @@ func RegisterGlobalService(s grpc.ServiceRegistrar, srv *GlobalService) {
 				ClientStreams: true,
 			},
 		},
-		Metadata: "pkg/api/localnetv1/services.proto",
+		Metadata: "api/localnetv1/services.proto",
 	}
 
 	s.RegisterService(&sd, nil)

@@ -21,8 +21,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
+	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 type serviceEventHandler struct{ eventHandler }
@@ -59,6 +59,27 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 			service.IPs.Headless = true
 		} else {
 			service.IPs.ClusterIPs.Add(ip)
+		}
+	}
+
+	// Session affinity info
+	switch svc.Spec.SessionAffinity {
+	case "ClusterIP":
+		cfg := svc.Spec.SessionAffinityConfig.ClientIP
+		service.SessionAffinity = &localnetv1.Service_ClientIP{
+			ClientIP: &localnetv1.ClientIPAffinity{
+				TimeoutSeconds: *cfg.TimeoutSeconds,
+			},
+		}
+	}
+
+	// Get load balancer IPs
+	if len(svc.Status.LoadBalancer.Ingress) != 0 {
+		ips := localnetv1.NewIPSet()
+		for _, ingress := range svc.Status.LoadBalancer.Ingress {
+			if ingress.IP != "" {
+				ips.Add(ingress.IP)
+			}
 		}
 	}
 

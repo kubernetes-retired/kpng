@@ -84,6 +84,10 @@ message Service {
     repeated PortMapping Ports = 6;
 
     bool ExternalTrafficToLocal = 7;
+
+    oneof SessionAffinity {
+        ClientIPAffinity ClientIP = 11;
+    };
 }
 
 message IPFilter {
@@ -96,7 +100,8 @@ message IPFilter {
 
 message ServiceIPs {
     IPSet ClusterIPs = 1;
-    IPSet IngressIPs = 2;
+    IPSet ExternalIPs = 2;
+    IPSet LoadBalancerIPs = 4;
     bool  Headless = 3;
 }
 
@@ -133,7 +138,13 @@ message PortMapping {
     string   TargetPortName = 6;
 }
 
-// global sync support
+message ClientIPAffinity {
+    int32 TimeoutSeconds = 1;
+}
+
+// ------------------------------------------------------------------------
+// global (cluster-wide) model
+//
 
 message ServiceInfo {
     uint64 Hash = 1;

@@ -324,9 +324,11 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			}
 
 			// handle external IPs dispatch
-			extIPs := svc.IPs.ExternalIPs.V4
+            extIPsSet := svc.IPs.AllIngress()
+
+			extIPs := extIPsSet.V4
 			if set.v6 {
-				extIPs = svc.IPs.ExternalIPs.V6
+				extIPs = extIPsSet.V6
 			}
 
 			if len(extIPs) != 0 {
