@@ -73,3 +73,20 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
 
 [owners]: https://git.k8s.io/community/contributors/guide/owners.md
 [Creative Commons 4.0]: https://git.k8s.io/website/LICENSE
+
+### Maintainance
+
+Maintaining and updating KPNG.  We will expand this overtime.
+
+#### Go modules
+- The go deps for the individual backends need to be periodically updated, you can run this:
+```
+for f in $(find -name go.mod); do (cd $(dirname $f) && go mod tidy -compat=1.17
+```
+- As k8s versions get updated, the go modules need to be updated in different backends accordingly, especially iptables, which uses alot of k8s code
+
+#### The kpng-local-up script
+
+The hack/kpng-local-up.sh script generally can be used to test that you're go modules are correct in all the backends because it
+will compile the full project.
+
