@@ -78,6 +78,10 @@ func insertString(a *[]string, s string) {
 }
 
 func (set *IPSet) All() []string {
+    if set == nil {
+        return nil
+    }
+
 	all := make([]string, 0, len(set.V4)+len(set.V6))
 	all = append(all, set.V4...)
 	all = append(all, set.V6...)
