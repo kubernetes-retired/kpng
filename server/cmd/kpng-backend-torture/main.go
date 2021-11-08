@@ -51,7 +51,7 @@ func main() {
 
 	srv := grpc.NewServer()
 
-	localnetv1.RegisterEndpointsService(srv, localnetv1.NewEndpointsService(localnetv1.UnstableEndpointsService(watchSrv{})))
+	localnetv1.RegisterEndpointsServer(srv, watchSrv{})
 
 	lis := server.MustListen(*bindSpec)
 	srv.Serve(lis)
@@ -59,7 +59,9 @@ func main() {
 
 var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
 
-type watchSrv struct{}
+type watchSrv struct {
+	localnetv1.UnimplementedEndpointsServer
+}
 
 func (s watchSrv) Watch(res localnetv1.Endpoints_WatchServer) error {
 	w := watchstate.New(res, []localnetv1.Set{localnetv1.Set_ServicesSet, localnetv1.Set_EndpointsSet})
