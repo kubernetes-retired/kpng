@@ -2,37 +2,35 @@ package userspacelin
 
 import (
 	"fmt"
-	v1 "k8s.io/api/core/v1"
-	utilnet "k8s.io/utils/net"
 	"net"
+	"strconv"
+
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
+	utilnet "k8s.io/utils/net"
 	"sigs.k8s.io/kpng/backends/iptables"
 	"sigs.k8s.io/kpng/pkg/api/localnetv1"
-	"strconv"
 )
-import helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
-import "k8s.io/klog/v2"
 
 // ShouldSkipService checks if a given service should skip proxying
-func ShouldSkipService(service *v1.Service) bool {
+func ShouldSkipService(service *localnetv1.Service) bool {
 	// if ClusterIP is "None" or empty, skip proxying
-	if !helper.IsServiceIPSet(service) {
-		klog.V(3).Infof("Skipping service %s in namespace %s due to clusterIP = %q", service.Name, service.Namespace, service.Spec.ClusterIP)
+	if !iptables.IsServiceIPSet(service) {
+		klog.V(3).Infof("Skipping service %s in namespace %s due to clusterIP = %q", service.Name, service.Namespace, service.IPs.ClusterIPs.V4[0])
 		return true
 	}
 	// Even if ClusterIP is set, ServiceTypeExternalName services don't get proxied
-	if service.Spec.Type == v1.ServiceTypeExternalName {
+	if service.Type == string(v1.ServiceTypeExternalName) {
 		klog.V(3).Infof("Skipping service %s in namespace %s due to Type=ExternalName", service.Name, service.Namespace)
 		return true
 	}
 	return false
 }
 
-
 // isValidEndpoint checks that the given host / port pair are valid endpoint
 func isValidEndpoint(host string, port int) bool {
 	return host != "" && port > 0
 }
-
 
 // ToCIDR returns a host address of the form <ip-address>/32 for
 // IPv4 and <ip-address>/128 for IPv6
@@ -46,7 +44,7 @@ func ToCIDR(ip net.IP) string {
 
 // BuildPortsToEndpointsMap builds a map of portname -> all ip:ports for that
 // portname. Explode Endpoints.Subsets[*] into this structure.
-func BuildPortsToEndpointsMap(service []*iptables.ServicePortName , endpoints *localnetv1.Endpoint) map[string][]string {
+func BuildPortsToEndpointsMap(service []*iptables.ServicePortName, endpoints *localnetv1.Endpoint) map[string][]string {
 	portsToEndpoints := map[string][]string{}
 	ipSet := endpoints.GetIPs()
 	for _, i := range ipSet.V4 {
@@ -81,6 +79,7 @@ func GetLocalAddrs() ([]net.IP, error) {
 	}
 	return localAddrs, nil
 }
+
 // GetLocalAddrSet return a local IPSet.
 // If failed to get local addr, will assume no local ips.
 func GetLocalAddrSet() utilnet.IPSet {

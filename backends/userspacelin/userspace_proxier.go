@@ -18,8 +18,6 @@ package userspacelin
 
 import (
 	"fmt"
-	"k8s.io/client-go/tools/events"
-	"k8s.io/kubernetes/test/e2e/storage/drivers/csi-test/mock/service"
 	"net"
 	"reflect"
 
@@ -169,7 +167,7 @@ type UserspaceLinux struct {
 	// protects serviceChanges
 	serviceChangesLock sync.Mutex
 	serviceChanges     map[types.NamespacedName]*RajasServiceChangeTracker // map of service changes, this is the entire state-space of all services in k8s.
-	syncRunner         asyncRunnerInterface                                    // governs calls to syncProxyRules
+	syncRunner         asyncRunnerInterface                                // governs calls to syncProxyRules
 
 	stopChan chan struct{}
 }
@@ -266,7 +264,7 @@ func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptablesInterface
 	proxier := &UserspaceLinux{
 		loadBalancer:    loadBalancer, // <----
 		serviceMap:      make(map[iptables.ServicePortName]*ServiceInfo),
-		serviceChanges:  make(map[types.NamespacedName]*iptables.ServiceChangeTracker),
+		serviceChanges:  make(map[types.NamespacedName]*RajasServiceChangeTracker),
 		portMap:         make(map[portMapKey]*portMapValue),
 		syncPeriod:      syncPeriod,
 		minSyncPeriod:   minSyncPeriod,
@@ -396,7 +394,7 @@ func (proxier *UserspaceLinux) syncProxyRules() {
 	oldChanges := proxier.serviceChanges
 
 	// make the "current" service changes a new map and rebuild it...
-	proxier.serviceChanges = make(map[types.NamespacedName]*iptables.ServiceChangeTracker)
+	proxier.serviceChanges = make(map[types.NamespacedName]*RajasServiceChangeTracker)
 	proxier.serviceChangesLock.Unlock()
 
 	proxier.mu.Lock()
@@ -404,9 +402,9 @@ func (proxier *UserspaceLinux) syncProxyRules() {
 
 	klog.V(4).InfoS("userspace proxy: processing service events", "count", len(oldChanges))
 	for _, oldChange := range oldChanges {
-		for nsn, svcChange := range oldChange.Items() {
-			existingPorts := proxier.mergeService(svcChange)
-			proxier.unmergeService(oldChange.previous, existingPorts)
+		for _, svcChange := range oldChange.items {
+			existingPorts := proxier.mergeService(svcChange.current)
+			proxier.unmergeService(svcChange.previous, existingPorts)
 		}
 	}
 
@@ -514,11 +512,11 @@ func (proxier *UserspaceLinux) mergeService(service *localnetv1.Service) sets.St
 	svcName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
 	for i := range service.Ports {
 		servicePort := &service.Ports[i]
-		serviceName := iptables.ServicePortName{NamespacedName: svcName, Port: servicePort.Name}
-		existingPorts.Insert(servicePort.Name)
+		serviceName := iptables.ServicePortName{NamespacedName: svcName, Port: (*servicePort).Name}
+		existingPorts.Insert((*servicePort).Name)
 		info, exists := proxier.serviceMap[serviceName]
 		// TODO: check health of the socket? What if ProxyLoop exited?
-		if exists && sameConfig(info, service, servicePort) {
+		if exists && sameConfig(info, service, *servicePort) {
 			// Nothing changed.
 			continue
 		}
@@ -535,15 +533,15 @@ func (proxier *UserspaceLinux) mergeService(service *localnetv1.Service) sets.St
 			continue
 		}
 
-		serviceIP := net.ParseIP(service.Spec.ClusterIP)
-		klog.V(1).InfoS("Adding new service", "serviceName", serviceName, "addr", net.JoinHostPort(serviceIP.String(), strconv.Itoa(int(servicePort.Port))), "protocol", servicePort.Protocol)
-		info, err = proxier.addServiceOnPortInternal(serviceName, servicePort.Protocol, proxyPort, proxier.udpIdleTimeout)
+		serviceIP := net.ParseIP(service.IPs.ClusterIPs.V4[0])
+		klog.V(1).InfoS("Adding new service", "serviceName", serviceName, "addr", net.JoinHostPort(serviceIP.String(), strconv.Itoa(int((*servicePort).Port))), "protocol", servicePort.Protocol)
+		info, err = proxier.addServiceOnPortInternal(serviceName, v1.Protocol(localnetv1.Protocol_name[int32((*servicePort).Protocol.Enum().Number())]), proxyPort, proxier.udpIdleTimeout)
 		if err != nil {
 			klog.ErrorS(err, "Failed to start proxy", "serviceName", serviceName)
 			continue
 		}
 		info.portal.ip = serviceIP
-		info.portal.port = int(servicePort.Port)
+		info.portal.port = int((*servicePort).Port)
 		info.externalIPs = service.Spec.ExternalIPs
 		// Deep-copy in case the service instance changes
 		info.loadBalancerStatus = *service.Status.LoadBalancer.DeepCopy()
@@ -567,7 +565,7 @@ func (proxier *UserspaceLinux) mergeService(service *localnetv1.Service) sets.St
 	return existingPorts
 }
 
-func (proxier *UserspaceLinux) unmergeService(service *v1.Service, existingPorts sets.String) {
+func (proxier *UserspaceLinux) unmergeService(service *localnetv1.Service, existingPorts sets.String) {
 	if service == nil {
 		return
 	}
@@ -577,12 +575,12 @@ func (proxier *UserspaceLinux) unmergeService(service *v1.Service, existingPorts
 	}
 	staleUDPServices := sets.NewString()
 	svcName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
-	for i := range service.Spec.Ports {
-		servicePort := &service.Spec.Ports[i]
-		if existingPorts.Has(servicePort.Name) {
+	for i := range service.Ports {
+		servicePort := &service.Ports[i]
+		if existingPorts.Has((*servicePort).Name) {
 			continue
 		}
-		serviceName := iptables.ServicePortName{NamespacedName: svcName, Port: servicePort.Name}
+		serviceName := iptables.ServicePortName{NamespacedName: svcName, Port: (*servicePort).Name}
 
 		klog.V(1).InfoS("Stopping service", "serviceName", serviceName)
 		info, exists := proxier.serviceMap[serviceName]
@@ -626,16 +624,16 @@ func (proxier *UserspaceLinux) serviceChange(previous, current *localnetv1.Servi
 		// the oldest service info (or nil) because correct unmerging
 		// depends on the next update/del after a merge, not subsequent
 		// updates.
-		change = &rajasServiceChange{previous: previous}
-		proxier.serviceChanges[svcName].Update() = change
+		change = &RajasServiceChangeTracker{items: map[types.NamespacedName]*rajasServiceChange{svcName: &rajasServiceChange{previous: previous}}}
+		proxier.serviceChanges[svcName] = change
 	}
 
 	// Always use the most current service (or nil) as change.current
-	change.current = current
+	change.items[svcName].current = current
 
-	if reflect.DeepEqual(change.previous, change.current) {
+	if reflect.DeepEqual(change.items[svcName].previous, change.items[svcName].current) {
 		// collapsed change had no effect
-		delete(proxier.serviceChanges.serviceChanges, svcName)
+		delete(proxier.serviceChanges, svcName)
 	} else if proxier.isInitialized() {
 		// change will have an effect, ask the proxy to sync
 		proxier.syncRunner.Run()
@@ -644,19 +642,19 @@ func (proxier *UserspaceLinux) serviceChange(previous, current *localnetv1.Servi
 
 // OnServiceAdd is called whenever creation of new service object
 // is observed.
-func (proxier *UserspaceLinux) OnServiceAdd(service *v1.Service) {
+func (proxier *UserspaceLinux) OnServiceAdd(service *localnetv1.Service) {
 	proxier.serviceChange(nil, service, "OnServiceAdd")
 }
 
 // OnServiceUpdate is called whenever modification of an existing
 // service object is observed.
-func (proxier *UserspaceLinux) OnServiceUpdate(oldService, service *v1.Service) {
+func (proxier *UserspaceLinux) OnServiceUpdate(oldService, service *localnetv1.Service) {
 	proxier.serviceChange(oldService, service, "OnServiceUpdate")
 }
 
 // OnServiceDelete is called whenever deletion of an existing service
 // object is observed.
-func (proxier *UserspaceLinux) OnServiceDelete(service *v1.Service) {
+func (proxier *UserspaceLinux) OnServiceDelete(service *localnetv1.Service) {
 	proxier.serviceChange(service, nil, "OnServiceDelete")
 }
 
@@ -715,7 +713,7 @@ func (proxier *UserspaceLinux) OnEndpointsSynced() {
 	go proxier.syncProxyRules()
 }
 
-func sameConfig(info *ServiceInfo, service *v1.Service, port *v1.ServicePort) bool {
+func sameConfig(info *ServiceInfo, service *localnetv1.Service, port *v1.ServicePort) bool {
 	if info.protocol != port.Protocol || info.portal.port != int(port.Port) || info.nodePort != int(port.NodePort) {
 		return false
 	}

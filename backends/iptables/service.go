@@ -278,17 +278,6 @@ type ServiceChangeTracker struct {
 	recorder events.EventRecorder
 }
 
-func (s *ServiceChangeTracker) Items() map[types.NamespacedName]*serviceChange {
-	return s.items
-}
-
-func (s *ServiceChangeTracker) ItemsBlah() map[types.NamespacedName]*serviceChange {
-	svcChange := s.items[types.NamespacedName{"a", "b"}]
-	return map[ServicePortName]ServicePort
-//	return s.items
-}
-
-
 // NewServiceChangeTracker initializes a ServiceChangeTracker
 func NewServiceChangeTracker(makeServiceInfo makeServicePortFunc, ipFamily v1.IPFamily, recorder events.EventRecorder) *ServiceChangeTracker {
 	return &ServiceChangeTracker{
