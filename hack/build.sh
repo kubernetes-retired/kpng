@@ -2,18 +2,20 @@
 
 # TODO add license
 
-# removing output from pushd and popd
+package=$1
+
+# removing output from pushd
 pushd () {
   command pushd "$@" > /dev/null
 }
-
+# removing output from popd
 popd () {
   command popd "$@" > /dev/null
 }
 
 function build_package() {
   local dir="$1"
-  echo "trying to build '$1' "
+  echo "trying to build '$dir' "
   pushd ../$dir/
     go mod download
     go build
@@ -38,9 +40,10 @@ function build_all_backends() {
   build_nft
 }
 
-case $1 in
+case $package in
   "iptable")  build_iptable ;;
   "ipvs")     build_ipvs ;;
   "nft")      build_nft ;;
   "")         build_all_backends ;;
+  *)          echo "invalid argument: '$package'" ;;
 esac
