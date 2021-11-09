@@ -16,7 +16,7 @@ popd () {
 function build_package() {
   local dir="$1"
   echo "trying to build '$dir' "
-  pushd ../$dir/
+  pushd ./$dir/
     go mod download
     go build
   popd
