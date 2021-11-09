@@ -14,6 +14,7 @@ type tcpProxy struct {
 	targetPort    string
 }
 
+// Start proxying and return the lsnr to be closed when the proxy is removed
 func (proxy tcpProxy) Start() io.Closer {
 	lsnr, err := net.Listen("tcp", proxy.localAddrPort)
 	if err != nil {
@@ -40,16 +41,19 @@ func (proxy tcpProxy) Start() io.Closer {
 	return lsnr
 }
 
+// handleConn handles an incoming client connection
 func (proxy tcpProxy) handleConn(logPrefix string, conn net.Conn) {
 	defer conn.Close()
 
-	ep := proxy.svc.RandomEndpoint()
-	if ep == nil {
+	targetIP := proxy.svc.RandomEndpoint()
+	if targetIP == "" {
 		log.Print(logPrefix, ": service ", proxy.svc.Name, " has no endpoints")
 		return
 	}
 
-	ipPort := net.JoinHostPort(ep.IPs.First(), proxy.targetPort)
+	ipPort := net.JoinHostPort(targetIP, proxy.targetPort)
+
+	log.Print(logPrefix, ": connecting client ", conn.RemoteAddr(), " to ", ipPort)
 
 	tgt, err := net.DialTimeout("tcp", ipPort, 30*time.Second)
 	if err != nil {
