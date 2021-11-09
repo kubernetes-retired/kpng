@@ -2,16 +2,6 @@ package serviceevents
 
 import "sigs.k8s.io/kpng/api/localnetv1"
 
-type IPKind int
-
-const (
-	ClusterIP IPKind = iota
-	ExternalIP
-	LoadBalancerIP
-)
-
-//go:generate stringer -type=IPKind
-
 type PortsListener interface {
 	AddPort(svc *localnetv1.Service, port *localnetv1.PortMapping)
 	DeletePort(svc *localnetv1.Service, port *localnetv1.PortMapping)
@@ -27,6 +17,20 @@ type IPPortsListener interface {
 	DeleteIPPort(svc *localnetv1.Service, ip string, ipKind IPKind, port *localnetv1.PortMapping)
 }
 
+// ServicesListener analyzes updates to the Service set and produced detailed
+// events about the changes.
+//
+// The analyze producing events is only called if the corresponding listener
+// is present, so no cost is associated with ignored events.
+//
+// Event call order is:
+// - AddPort
+// - DeletePort
+// - AddIP
+// - AddIPPort
+// - DeleteIPPort
+// - DeleteIP
+//
 type ServicesListener struct {
 	PortsListener   PortsListener
 	IPsListener     IPsListener
@@ -35,6 +39,10 @@ type ServicesListener struct {
 	services map[string]*localnetv1.Service
 }
 
+// New creates a new ServicesListener.
+//
+// Reminder: you need to associate listeners for this listener to be useful.
+//
 func New() *ServicesListener {
 	return &ServicesListener{
 		services: map[string]*localnetv1.Service{},

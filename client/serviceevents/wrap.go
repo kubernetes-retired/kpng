@@ -14,6 +14,18 @@ type wrapper struct {
 
 var _ decoder.Interface = wrapper{}
 
+// Wrap a decoder so it receives detailled events depending on which interfaces
+// it implements.
+//
+// A good practice is to ensure your decoder is implementing what you expect
+// this way:
+//
+//     type MyBackend struct { }
+//
+//     var _ servicevents.PortsListener   = &MyBackend{}
+//     var _ servicevents.IPsListener     = &MyBackend{}
+//     var _ servicevents.IPPortsListener = &MyBackend{}
+//
 func Wrap(backend decoder.Interface) decoder.Interface {
 	l := New()
 
