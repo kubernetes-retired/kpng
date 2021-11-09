@@ -110,8 +110,12 @@ func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
 		}},
 	}
 
+	deferredCalls := make([]func(), 0)
+
 	if sl.IPsListener != nil {
 		for _, ext := range ipsExtractors {
+			ext := ext
+
 			var prevIPs, currIPs []string
 
 			if prevSvc != nil {
@@ -125,15 +129,21 @@ func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
 				SameKey: func(pi, ci int) bool {
 					return prevIPs[pi] == currIPs[ci]
 				},
-				Added:   func(ci int) { sl.IPsListener.AddIP(currSvc, currIPs[ci], ext.ipKind) },
+				Added: func(ci int) {
+					sl.IPsListener.AddIP(currSvc, currIPs[ci], ext.ipKind)
+				},
 				Updated: func(_, _ int) {},
-				Deleted: func(pi int) { sl.IPsListener.DeleteIP(prevSvc, prevIPs[pi], ext.ipKind) },
+				Deleted: func(pi int) {
+					deferredCalls = append(deferredCalls, func() { sl.IPsListener.DeleteIP(prevSvc, prevIPs[pi], ext.ipKind) })
+				},
 			}.SlicesLen(len(prevIPs), len(currIPs))
 		}
 	}
 
 	if sl.IPPortsListener != nil {
 		for _, ext := range ipsExtractors {
+			ext := ext
+
 			type ipPort struct {
 				ip   string
 				port *localnetv1.PortMapping
@@ -167,6 +177,10 @@ func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
 				Deleted: func(pi int) { sl.IPPortsListener.DeleteIPPort(prevSvc, prevs[pi].ip, ext.ipKind, prevs[pi].port) },
 			}.SlicesLen(len(prevs), len(currs))
 		}
+	}
+
+	for _, deferredCall := range deferredCalls {
+		deferredCall()
 	}
 }
 

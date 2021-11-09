@@ -2,35 +2,45 @@ package serviceevents
 
 import (
 	"fmt"
+	"strings"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
+// fix the protobuf "I'll randomly choose to double spaces or not" bug (it's a bug right???)
+func cleanStr(v fmt.Stringer) string {
+	if v == nil {
+		return "<nil>"
+	}
+
+	return strings.ReplaceAll(v.String(), "  ", " ")
+}
+
 type portsLsnr struct{}
 
 func (_ portsLsnr) AddPort(svc *localnetv1.Service, port *localnetv1.PortMapping) {
-	fmt.Print("ADD svc: ", svc, "\n    port: ", port, "\n")
+	fmt.Print("ADD svc: ", cleanStr(svc), "\n    port: ", cleanStr(port), "\n")
 }
 func (_ portsLsnr) DeletePort(svc *localnetv1.Service, port *localnetv1.PortMapping) {
-	fmt.Print("DEL svc: ", svc, "\n    port: ", port, "\n")
+	fmt.Print("DEL svc: ", cleanStr(svc), "\n    port: ", cleanStr(port), "\n")
 }
 
 type ipsLsnr struct{}
 
 func (_ ipsLsnr) AddIP(svc *localnetv1.Service, ip string, ipKind IPKind) {
-	fmt.Print("ADD svc: ", svc, "\n    ip: ", ip, " (", ipKind, ")\n")
+	fmt.Print("ADD svc: ", cleanStr(svc), "\n    ip: ", ip, " (", ipKind, ")\n")
 }
 func (_ ipsLsnr) DeleteIP(svc *localnetv1.Service, ip string, ipKind IPKind) {
-	fmt.Print("DEL svc: ", svc, "\n    ip: ", ip, " (", ipKind, ")\n")
+	fmt.Print("DEL svc: ", cleanStr(svc), "\n    ip: ", ip, " (", ipKind, ")\n")
 }
 
 type ipPortsLsnr struct{}
 
 func (_ ipPortsLsnr) AddIPPort(svc *localnetv1.Service, ip string, ipKind IPKind, port *localnetv1.PortMapping) {
-	fmt.Print("ADD svc: ", svc, "\n    ip: ", ip, " (", ipKind, ")\n    port: ", port, "\n")
+	fmt.Print("ADD svc: ", cleanStr(svc), "\n    ip: ", ip, " (", ipKind, ")\n    port: ", cleanStr(port), "\n")
 }
 func (_ ipPortsLsnr) DeleteIPPort(svc *localnetv1.Service, ip string, ipKind IPKind, port *localnetv1.PortMapping) {
-	fmt.Print("DEL svc: ", svc, "\n    ip: ", ip, " (", ipKind, ")\n    port: ", port, "\n")
+	fmt.Print("DEL svc: ", cleanStr(svc), "\n    ip: ", ip, " (", ipKind, ")\n    port: ", cleanStr(port), "\n")
 }
 
 func Example() {
@@ -116,11 +126,11 @@ func Example() {
 	//     port: Protocol:TCP Port:82
 	// DEL svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
 	//     ip: 10.1.1.1 (ClusterIP)
-	// DEL svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
-	//     ip: 10.1.1.1 (ClusterIP)
 	//     port: Protocol:TCP Port:80
 	// DEL svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
 	//     ip: 10.1.1.1 (ClusterIP)
 	//     port: Protocol:TCP Port:82
+	// DEL svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     ip: 10.1.1.1 (ClusterIP)
 
 }
