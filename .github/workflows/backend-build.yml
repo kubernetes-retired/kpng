@@ -25,7 +25,7 @@ jobs:
       run: |
         go version
         go get -u golang.org/x/lint/golint
-        
+
   iptables:
     name: build backend package iptables
     needs: setup
@@ -35,7 +35,7 @@ jobs:
       uses: actions/checkout@v2
     
     - name: Build backends/iptables
-      run: ./hack/build.sh iptables
+      run: ./build.sh iptables
 
   ipvs-as-sink:
     name: build backend package ipvs-as-sink
@@ -46,7 +46,7 @@ jobs:
       uses: actions/checkout@v2
     
     - name: Build backends/ipvs-as-sink
-      run: ./hack/build.sh ipvs
+      run: ./build.sh ipvs
   
   nft:
     name: build backend package nft
@@ -57,4 +57,4 @@ jobs:
       uses: actions/checkout@v2
     
     - name: Build backends/nft
-      run: ./hack/build.sh nft
+      run: ./build.sh nft
