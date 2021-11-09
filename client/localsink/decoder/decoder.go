@@ -9,21 +9,28 @@ import (
 	"sigs.k8s.io/kpng/client/localsink"
 )
 
+type ServicesListener interface {
+	// SetService is called when a service is added or updated
+	SetService(service *localnetv1.Service)
+	// DeleteService is called when a service is deleted
+	DeleteService(namespace, name string)
+}
+
+type EndpointsListener interface {
+	// SetEndpoint is called when an endpoint is added or updated
+	SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint)
+	// DeleteEndpoint is called when an endpoint is deleted
+	DeleteEndpoint(namespace, serviceName, key string)
+}
+
 type Interface interface {
 	// Sync signals an stream sync event
 	Sync()
 
 	// methods handling decoded values
 
-	// SetService is called when a service is added or updated
-	SetService(service *localnetv1.Service)
-	// DeleteService is called when a service is deleted
-	DeleteService(namespace, name string)
-
-	// SetEndpoint is called when an endpoint is added or updated
-	SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint)
-	// DeleteEndpoint is called when an endpoint is deleted
-	DeleteEndpoint(namespace, serviceName, key string)
+	ServicesListener
+	EndpointsListener
 
 	// subset of localsink.Sink
 
