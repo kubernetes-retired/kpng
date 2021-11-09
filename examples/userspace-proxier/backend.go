@@ -17,7 +17,7 @@ type userspaceBackend struct {
 }
 
 // ------------------------------------------------------------------------
-// Sink interface
+// Decoder sink backend interface
 //
 
 // Sync signals an stream sync event
