@@ -10,6 +10,8 @@ const (
 	LoadBalancerIP
 )
 
+//go:generate stringer -type=IPKind
+
 type PortsListener interface {
 	AddPort(svc *localnetv1.Service, port *localnetv1.PortMapping)
 	DeletePort(svc *localnetv1.Service, port *localnetv1.PortMapping)

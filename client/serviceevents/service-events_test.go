@@ -101,12 +101,12 @@ func Example() {
 	//
 	// add cluster IP
 	// ADD svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
-	//     ip: 10.1.1.1 (0)
+	//     ip: 10.1.1.1 (ClusterIP)
 	// ADD svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
-	//     ip: 10.1.1.1 (0)
+	//     ip: 10.1.1.1 (ClusterIP)
 	//     port: Protocol:TCP Port:80
 	// ADD svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
-	//     ip: 10.1.1.1 (0)
+	//     ip: 10.1.1.1 (ClusterIP)
 	//     port: Protocol:TCP Port:82
 	//
 	// delete svc
@@ -115,12 +115,12 @@ func Example() {
 	// DEL svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
 	//     port: Protocol:TCP Port:82
 	// DEL svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
-	//     ip: 10.1.1.1 (0)
+	//     ip: 10.1.1.1 (ClusterIP)
 	// DEL svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
-	//     ip: 10.1.1.1 (0)
+	//     ip: 10.1.1.1 (ClusterIP)
 	//     port: Protocol:TCP Port:80
 	// DEL svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
-	//     ip: 10.1.1.1 (0)
+	//     ip: 10.1.1.1 (ClusterIP)
 	//     port: Protocol:TCP Port:82
 
 }
