@@ -3,7 +3,7 @@ from alpine:3.13 as gomods
 copy . /src/
 run cd /src/ && find -type f \! \( -name go.mod -o -name go.sum \) -exec rm {} +
 
-from golang:1.17.1-alpine3.13 as build
+from golang:1.17.3-alpine3.13 as build
 
 # install dependencies
 run apk add --update --no-cache \
