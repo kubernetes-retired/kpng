@@ -16,7 +16,7 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     steps:
-    - name: Setup Go
+    - name: Setup
       uses: actions/setup-go@v2
       with:
         go-version: '1.17.0'
@@ -35,25 +35,8 @@ jobs:
       uses: actions/checkout@v2
     
     - name: Build backends/iptables
-      run: |
-        cd ./backends/iptables
-        go mod vendor
-        go build
+      run: ./hack/build.sh iptables
 
-  ipvs:
-    name: build backend package ipvs
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
-      uses: actions/checkout@v2
-    
-    - name: Build backends/ipvs
-      run: |
-        cd ./backends/ipvs
-        go mod vendor
-        go build
-  
   ipvs-as-sink:
     name: build backend package ipvs-as-sink
     needs: setup
@@ -63,10 +46,7 @@ jobs:
       uses: actions/checkout@v2
     
     - name: Build backends/ipvs-as-sink
-      run: |
-        cd ./backends/ipvs-as-sink
-        go mod vendor
-        go build
+      run: ./hack/build.sh ipvs
   
   nft:
     name: build backend package nft
@@ -77,7 +57,4 @@ jobs:
       uses: actions/checkout@v2
     
     - name: Build backends/nft
-      run: |
-        cd ./backends/nft
-        go mod vendor
-        go build
+      run: ./hack/build.sh nft

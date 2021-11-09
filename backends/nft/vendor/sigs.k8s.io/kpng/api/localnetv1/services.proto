@@ -1,0 +1,188 @@
+// Copyright 2021 The Kubernetes Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package localnetv1;
+
+option go_package = "sigs.k8s.io/kpng/server/pkg/api/localnetv1";
+
+service Endpoints { // FIXME rename to Local
+    // Returns all the endpoints for this node.
+    rpc Watch (stream WatchReq) returns (stream OpItem);
+}
+
+message WatchReq {
+    // NodeName of the requester
+    string NodeName = 1;
+}
+
+message OpItem {
+    oneof Op {
+        // Sync signals that the change set is complete (especially useful to know when the initial state is complete)
+        EmptyOp Sync = 1;
+        // Reset signals that the whole data set will be sent next
+        EmptyOp Reset = 4;
+
+        // Add/update a value in a set
+        Value Set = 2;
+        // Delete a value in a set
+        Ref   Delete = 3;
+    }
+}
+
+message EmptyOp {
+}
+
+enum Set {
+    UnknownSet = 0;
+    ServicesSet = 1;
+    EndpointsSet = 2;
+
+    GlobalServiceInfos = 10;
+    GlobalEndpointInfos = 11;
+    GlobalNodeInfos = 12;
+}
+
+message Ref {
+    Set    Set = 1;
+    string Path = 2;
+}
+
+message Value {
+    Ref   Ref = 1;
+    bytes Bytes = 2;
+}
+
+message Service {
+    string Namespace = 1;
+    string Name = 2;
+    string Type = 3;
+
+    map<string, string> Labels = 8;
+    map<string, string> Annotations = 9;
+
+    ServiceIPs IPs = 4;
+
+    repeated IPFilter IPFilters = 10;
+
+    // true if the service maps the whole IP, not just individual ports.
+    bool MapIP = 5;
+
+    // Individual ports mapped for the this service
+    repeated PortMapping Ports = 6;
+
+    bool ExternalTrafficToLocal = 7;
+
+    oneof SessionAffinity {
+        ClientIPAffinity ClientIP = 11;
+    };
+}
+
+message IPFilter {
+    // TargetIPs are the destination IPs to match (before DNAT)
+    IPSet TargetIPs = 1;
+
+    // SourceRanges are the CIDRs of IPs that are allowed by this filter rule
+    repeated string SourceRanges = 2;
+}
+
+message ServiceIPs {
+    IPSet ClusterIPs = 1;
+    IPSet ExternalIPs = 2;
+    IPSet LoadBalancerIPs = 4;
+    bool  Headless = 3;
+}
+
+message Endpoint {
+    string Hostname = 1;
+    IPSet  IPs = 2;
+    bool   Local = 3;
+}
+
+message IPSet {
+    repeated string V4 = 1;
+    repeated string V6 = 2;
+}
+
+message Port {
+    string   Name     = 1;
+    Protocol Protocol = 2;
+    int32    Port     = 3;
+}
+
+enum Protocol {
+    UnknownProtocol = 0;
+    TCP = 1;
+    UDP = 2;
+    SCTP = 3;
+}
+
+message PortMapping {
+    string   Name       = 1;
+    Protocol Protocol   = 2;
+    int32    Port       = 3;
+    int32    NodePort   = 4;
+    int32    TargetPort = 5;
+    string   TargetPortName = 6;
+}
+
+message ClientIPAffinity {
+    int32 TimeoutSeconds = 1;
+}
+
+// ------------------------------------------------------------------------
+// global (cluster-wide) model
+//
+
+message ServiceInfo {
+    uint64 Hash = 1;
+
+    Service Service = 2;
+    repeated string TopologyKeys = 3;
+}
+
+message EndpointInfo {
+    uint64 Hash = 1;
+
+    string Namespace = 2;
+    string SourceName = 3;
+    string ServiceName = 4;
+    string NodeName = 5;
+
+    Endpoint Endpoint = 6;
+    EndpointConditions Conditions = 7;
+    map<string, string> Topology = 8;
+}
+
+message EndpointConditions {
+    bool Ready = 1;
+}
+
+message NodeInfo {
+    uint64 Hash = 1;
+    Node   Node = 2;
+}
+
+message Node {
+    string Name = 1;
+    map<string, string> Labels = 2;
+    map<string, string> Annotations = 3;
+}
+
+service Global {
+    rpc Watch(stream GlobalWatchReq) returns (stream OpItem);
+}
+
+message GlobalWatchReq {}
