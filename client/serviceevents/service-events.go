@@ -158,7 +158,7 @@ func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
 
 				pairs := make([]ipPort, 0, len(ips)*len(svc.Ports))
 				for _, ip := range ips {
-					for _, port := range prevSvc.Ports {
+					for _, port := range svc.Ports {
 						pairs = append(pairs, ipPort{ip, port})
 					}
 				}

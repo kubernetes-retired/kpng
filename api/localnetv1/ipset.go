@@ -27,6 +27,20 @@ func NewIPSet(ips ...string) (set *IPSet) {
 	return
 }
 
+func (set *IPSet) IsEmpty() bool {
+	return len(set.V4) == 0 && len(set.V6) == 0
+}
+
+func (set *IPSet) First() string {
+	if len(set.V4) != 0 {
+		return set.V4[0]
+	}
+	if len(set.V6) != 0 {
+		return set.V6[0]
+	}
+	return ""
+}
+
 // Add adds an address to this set, returning the parsed IP. `ìp` will be nil if it couldn't be parsed.
 func (set *IPSet) Add(s string) (ip net.IP) {
 	ip = net.ParseIP(s)
@@ -78,9 +92,9 @@ func insertString(a *[]string, s string) {
 }
 
 func (set *IPSet) All() []string {
-    if set == nil {
-        return nil
-    }
+	if set == nil {
+		return nil
+	}
 
 	all := make([]string, 0, len(set.V4)+len(set.V6))
 	all = append(all, set.V4...)

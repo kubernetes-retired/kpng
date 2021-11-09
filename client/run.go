@@ -23,6 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
 	// "k8s.io/klog"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
@@ -55,19 +56,15 @@ func RunCh(backend fullstate.Callback, extraBindFlags ...func(*pflag.FlagSet)) {
 type Runner struct {
 	once       bool
 	cpuprofile string
-	nodeName   string
+	NodeName   string
 
 	epc *EndpointsClient
 }
 
-func (r *Runner) BindFlags(flags *pflag.FlagSet) {
-	goflags := &flag.FlagSet{}
-	//klog.InitFlags(goflags)
-	flags.AddGoFlagSet(goflags)
-
+func (r *Runner) BindFlags(flags FlagSet) {
 	flag.BoolVar(&r.once, "once", false, "only one fetch loop")
 	flag.StringVar(&r.cpuprofile, "cpuprofile", "", "write cpu profile to file")
-	flag.StringVar(&r.nodeName, "node-name", "", "node name to request to the proxy server")
+	flag.StringVar(&r.NodeName, "node-name", func() string { s, _ := os.Hostname(); return s }(), "node name to request to the proxy server")
 
 	r.epc = New(flags)
 }
@@ -84,15 +81,7 @@ func ArrayBackend(handlers ...HandleFunc) fullstate.Callback {
 // RunBackend runs the client with the standard options, using the channeled backend.
 // It should consume less memory as the dataset is processed as it's read instead of buffered.
 func (r *Runner) RunBackend(handler fullstate.Callback) {
-	if r.nodeName == "" {
-		var err error
-		r.nodeName, err = os.Hostname()
-		if err != nil {
-			// klog.Fatal("no node-name set and hostname request failed: ", err)
-		}
-	}
-
-	sink := fullstate.New(&localsink.Config{NodeName: r.nodeName})
+	sink := fullstate.New(&localsink.Config{NodeName: r.NodeName})
 	sink.Callback = handler
 
 	r.RunSink(sink)
@@ -111,6 +100,8 @@ func (r *Runner) RunSink(sink localsink.Sink) {
 	}
 
 	r.epc.CancelOnSignals()
+
+	r.epc.Sink.Setup()
 
 	for {
 		canceled := r.epc.Next()

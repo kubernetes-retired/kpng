@@ -77,7 +77,7 @@ type EndpointsClient struct {
 
 // DefaultFlags registers this client's values to the standard flags.
 func (epc *EndpointsClient) DefaultFlags(flags FlagSet) {
-	flags.StringVar(&epc.Target, "target", "127.0.0.1:12090", "API to reach (can use multi:///1.0.0.1:1234,1.0.0.2:1234)")
+	flags.StringVar(&epc.Target, "api", "127.0.0.1:12090", "API to reach (can use multi:///1.0.0.1:1234,1.0.0.2:1234)")
 
 	flags.DurationVar(&epc.ErrorDelay, "error-delay", 1*time.Second, "duration to wait before retrying after errors")
 
