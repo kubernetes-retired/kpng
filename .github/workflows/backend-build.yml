@@ -1,0 +1,60 @@
+name: Backend Build Tests
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - github_actions # TODO delete this if ever merged to master/main
+  pull_request:
+    branches:
+      - main
+      - master
+      - github_actions # TODO delete this if ever merged to master/main
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Setup Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: '1.17.0'
+
+    - name: Install dependencies
+      run: |
+        go version
+        go get -u golang.org/x/lint/golint
+
+  iptables:
+    name: build backend package iptables
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+    
+    - name: Build backends/iptables
+      run: ./hack/build.sh iptables
+
+  ipvs-as-sink:
+    name: build backend package ipvs-as-sink
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+    
+    - name: Build backends/ipvs-as-sink
+      run: ./hack/build.sh ipvs
+  
+  nft:
+    name: build backend package nft
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+    
+    - name: Build backends/nft
+      run: ./hack/build.sh nft
