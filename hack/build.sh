@@ -36,8 +36,7 @@ function build_package() {
 
 function build_all_backends() {
   cd ./backends
-  for f in $(find . -type f -name 'go.mod' | sed -r 's|/[^/]+$||' |sort |uniq)
-    do build_package $f; done
+  for f in $(find -name go.mod); do build_package $(dirname $f); done
 }
 
 case $package in
