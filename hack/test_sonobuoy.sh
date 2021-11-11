@@ -14,8 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-for f in $(find -name go.mod);
-  do d=$(dirname $f); 
-    echo "downloading mods in $d"; 
-    ( cd $d && go mod download ); 
-  done
+function quick_test() {
+  ./setup_sonobuoy.sh
+  ./sonobuoy/sonobuoy run --mode quick --wait
+}
+
+# cd to dir of script
+cd "${0%/*}"
+
+
+quick_test
