@@ -14,8 +14,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-for f in $(find -name go.mod);
-  do d=$(dirname $f); 
-    echo "downloading mods in $d"; 
-    ( cd $d && go mod download ); 
-  done
+function is_kind_available() {
+  if ! command -v kind &> /dev/null
+  then
+    echo "kind could not be found"
+    exit
+  fi
+}
+
+function get_sonobuoy() {
+  mkdir sonobuoy
+  wget https://github.com/vmware-tanzu/sonobuoy/releases/download/v0.55.0/sonobuoy_0.55.0_linux_amd64.tar.gz -O ./sonobuoy.tar.gz
+  tar -xf sonobuoy.tar.gz -C ./sonobuoy
+  rm sonobuoy.tar.gz
+}
+
+is_kind_available
+
+# cd to dir of script
+cd "${0%/*}"
+
+get_sonobuoy
+
+# create a kind cluster with kpng instead of kubeproxy
+./kpng-local-up.sh

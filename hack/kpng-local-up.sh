@@ -1,6 +1,21 @@
 #!/bin/bash
-# build the kpng image...
 
+# Copyright 2021 The Kubernetes Authors.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# build the kpng image...
 # TODO Replace with 1.22 once we address 
 #: ${KIND:="kindest/node:v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6"}
 : ${KIND:="kindest/node:v1.22.0@sha256:b8bda84bb3a190e6e028b1760d277454a72267a5454b57db34437c34a588d047"}
@@ -47,6 +62,7 @@ function install_k8s {
 
 function install_kpng {
     # substitute it with your changes...
+
     echo "Applying template"
     envsubst <kpng-deployment-ds.yaml.tmpl >kpng-deployment-ds.yaml
 
@@ -62,6 +78,9 @@ function install_kpng {
     kubectl delete -f kpng-deployment-ds.yaml
     kubectl create -f kpng-deployment-ds.yaml
 }
+
+# change dir to dir of script
+cd "${0%/*}"
 
 # Comment out build if you just want to install the default, i.e. for quickly getting up and running.
 build_kpng
