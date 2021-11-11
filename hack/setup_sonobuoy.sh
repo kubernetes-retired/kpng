@@ -24,7 +24,10 @@ function is_kind_available() {
 
 function get_sonobuoy() {
   mkdir sonobuoy
-  wget https://github.com/vmware-tanzu/sonobuoy/releases/download/v0.55.0/sonobuoy_0.55.0_linux_amd64.tar.gz -O ./sonobuoy.tar.gz
+  this_os=$(uname| tr '[:upper:]' '[:lower:]')
+  this_arcitecture=$(dpkg --print-architecture)
+  url="https://github.com/vmware-tanzu/sonobuoy/releases/download/v0.55.0/sonobuoy_0.55.0_"$this_os"_"$this_arcitecture".tar.gz"
+  wget $url -O ./sonobuoy.tar.gz
   tar -xf sonobuoy.tar.gz -C ./sonobuoy
   rm sonobuoy.tar.gz
 }
@@ -37,4 +40,4 @@ cd "${0%/*}"
 get_sonobuoy
 
 # create a kind cluster with kpng instead of kubeproxy
-./kpng-local-up.sh
+#./kpng-local-up.sh

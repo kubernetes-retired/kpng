@@ -36,7 +36,6 @@ function build_kpng {
 }
 
 function install_calico {
-
     ### Cache cni images to avoid rate-limiting
     docker pull docker.io/calico/kube-controllers:v3.19.1
     docker pull docker.io/calico/cni:v3.19.1
@@ -79,7 +78,7 @@ function install_kpng {
     kubectl create -f kpng-deployment-ds.yaml
 }
 
-# change dir to dir of script
+# cd to dir of this script
 cd "${0%/*}"
 
 # Comment out build if you just want to install the default, i.e. for quickly getting up and running.
