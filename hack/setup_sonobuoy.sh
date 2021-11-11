@@ -28,7 +28,7 @@ function setup_sonobuoy() {
   else 
     mkdir sonobuoy
     os=$(uname| tr '[:upper:]' '[:lower:]')
-    architecture=$(dpkg --print-architecture)
+    architecture=amd64 #TODO add logic to determine architecture
     url="https://github.com/vmware-tanzu/sonobuoy/releases/download/v0.55.0/sonobuoy_0.55.0_"$os"_"$architecture".tar.gz"
     wget $url -O ./sonobuoy.tar.gz
     tar -xf sonobuoy.tar.gz -C ./sonobuoy
