@@ -22,14 +22,26 @@ function is_kind_available() {
   fi
 }
 
-function get_sonobuoy() {
-  mkdir sonobuoy
-  this_os=$(uname| tr '[:upper:]' '[:lower:]')
-  this_arcitecture=$(dpkg --print-architecture)
-  url="https://github.com/vmware-tanzu/sonobuoy/releases/download/v0.55.0/sonobuoy_0.55.0_"$this_os"_"$this_arcitecture".tar.gz"
-  wget $url -O ./sonobuoy.tar.gz
-  tar -xf sonobuoy.tar.gz -C ./sonobuoy
-  rm sonobuoy.tar.gz
+function setup_sonobuoy() {
+  if [ -f ./sonobuoy/sonobuoy ]; then
+    echo "Found Sonobuoy, skipping setup."
+  else 
+    mkdir sonobuoy
+    os=$(uname| tr '[:upper:]' '[:lower:]')
+    architecture=$(dpkg --print-architecture)
+    url="https://github.com/vmware-tanzu/sonobuoy/releases/download/v0.55.0/sonobuoy_0.55.0_"$os"_"$architecture".tar.gz"
+    wget $url -O ./sonobuoy.tar.gz
+    tar -xf sonobuoy.tar.gz -C ./sonobuoy
+    rm sonobuoy.tar.gz
+  fi
+}
+
+function setup_kind() {
+  if kind get clusters | grep -q kpng-proxy; then
+    echo "Found kind cluster 'kpng-proxy', skipping setup."
+  else
+    ./kpng-local-up.sh
+  fi
 }
 
 is_kind_available
@@ -37,7 +49,5 @@ is_kind_available
 # cd to dir of script
 cd "${0%/*}"
 
-get_sonobuoy
-
-# create a kind cluster with kpng instead of kubeproxy
-#./kpng-local-up.sh
+setup_sonobuoy
+setup_kind
