@@ -1,4 +1,4 @@
-name: Unit Tests Build
+name: Build Sonobuoy Tests 
 
 on:
   push:
@@ -27,12 +27,12 @@ jobs:
         go get -u golang.org/x/lint/golint
 
   build_tests:
-    name: build unit tests
+    name: Build sonobuoy tests
     needs: setup
     runs-on: ubuntu-latest
     steps:
     - name: checkout
       uses: actions/checkout@v2
     
-    - name: Build unit tests
+    - name: Build sonobuoy tests
       run: ./hack/test_sonobuoy.sh
