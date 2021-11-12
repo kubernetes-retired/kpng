@@ -514,18 +514,18 @@ func (proxier *UserspaceLinux) mergeService(service *localnetv1.Service) sets.St
 		servicePort := &service.Ports[i]
 		serviceName := iptables.ServicePortName{NamespacedName: svcName, Port: (*servicePort).Name}
 		existingPorts.Insert((*servicePort).Name)
-		info, exists := proxier.serviceMap[serviceName]
+		theServices, exists := proxier.serviceMap[serviceName]
 		// TODO: check health of the socket? What if ProxyLoop exited?
-		if exists && sameConfig(info, service, *servicePort) {
+		if exists && sameConfig(theServices, service, *servicePort) {
 			// Nothing changed.
 			continue
 		}
 		if exists {
 			klog.V(4).InfoS("Something changed for service: stopping it", "serviceName", serviceName)
-			if err := proxier.cleanupPortalAndProxy(serviceName, info); err != nil {
+			if err := proxier.cleanupPortalAndProxy(serviceName, theServices); err != nil {
 				klog.ErrorS(err, "Failed to cleanup portal and proxy")
 			}
-			info.setFinished()
+			theServices.setFinished()
 		}
 		proxyPort, err := proxier.proxyPorts.AllocateNext()
 		if err != nil {
@@ -534,32 +534,44 @@ func (proxier *UserspaceLinux) mergeService(service *localnetv1.Service) sets.St
 		}
 
 		serviceIP := net.ParseIP(service.IPs.ClusterIPs.V4[0])
-		klog.V(1).InfoS("Adding new service", "serviceName", serviceName, "addr", net.JoinHostPort(serviceIP.String(), strconv.Itoa(int((*servicePort).Port))), "protocol", servicePort.Protocol)
-		info, err = proxier.addServiceOnPortInternal(serviceName, v1.Protocol(localnetv1.Protocol_name[int32((*servicePort).Protocol.Enum().Number())]), proxyPort, proxier.udpIdleTimeout)
+		klog.V(1).InfoS("Adding new service", "serviceName", serviceName, "addr", net.JoinHostPort(serviceIP.String(), strconv.Itoa(int((*servicePort).Port))), "protocol", &servicePort)
+		theServices, err = proxier.addServiceOnPortInternal(serviceName, v1.Protocol(localnetv1.Protocol_name[int32((*servicePort).Protocol.Enum().Number())]), proxyPort, proxier.udpIdleTimeout)
 		if err != nil {
 			klog.ErrorS(err, "Failed to start proxy", "serviceName", serviceName)
 			continue
 		}
-		info.portal.ip = serviceIP
-		info.portal.port = int((*servicePort).Port)
-		info.externalIPs = service.Spec.ExternalIPs
+		theServices.portal.ip = serviceIP
+		theServices.portal.port = int((*servicePort).Port)
+		theServices.externalIPs = service.GetIPs().ExternalIPs.GetV4()
 		// Deep-copy in case the service instance changes
-		info.loadBalancerStatus = *service.Status.LoadBalancer.DeepCopy()
-		info.nodePort = int(servicePort.NodePort)
-		info.sessionAffinityType = service.Spec.SessionAffinity
-		// Kube-apiserver side guarantees SessionAffinityConfig won't be nil when session affinity type is ClientIP
-		if service.Spec.SessionAffinity == v1.ServiceAffinityClientIP {
-			info.stickyMaxAgeSeconds = int(*service.Spec.SessionAffinityConfig.ClientIP.TimeoutSeconds)
+		/**
+			ClusterIPs  *IPSet `protobuf:"bytes,1,opt,name=ClusterIPs,proto3" json:"ClusterIPs,omitempty"`
+			ExternalIPs *IPSet `protobuf:"bytes,2,opt,name=ExternalIPs,proto3" json:"ExternalIPs,omitempty"`
+			Headless    bool   `protobuf:"varint,3,opt,name=Headless,proto3" json:"Headless,omitempty"`
 		}
+		 */
+		// TODO build up this data structure from the types inside of "theServices"
+		thisServiceIsEmpty := v1.LoadBalancerStatus{}
+		theServices.loadBalancerStatus = thisServiceIsEmpty
 
-		klog.V(4).InfoS("Record serviceInfo", "serviceInfo", info)
+		theServices.nodePort = int(theServices.nodePort)
 
-		if err := proxier.openPortal(serviceName, info); err != nil {
+		/**
+				// TODO sessionAffinity
+				info.sessionAffinityType = service.SessionAffinity
+				// Kube-apiserver side guarantees SessionAffinityConfig won't be nil when session affinity type is ClientIP
+				if service.SessionAffinity == v1.ServiceAffinityClientIP {
+					info.stickyMaxAgeSeconds = int(*service.SessionAffinityConfig.ClientIP.TimeoutSeconds)
+				}
+		**/
+		klog.V(4).InfoS("Record serviceInfo", "serviceInfo", theServices)
+
+		if err := proxier.openPortal(serviceName, theServices); err != nil {
 			klog.ErrorS(err, "Failed to open portal", "serviceName", serviceName)
 		}
-		proxier.loadBalancer.NewService(serviceName, info.sessionAffinityType, info.stickyMaxAgeSeconds)
+		proxier.loadBalancer.NewService(serviceName, theServices.sessionAffinityType, theServices.stickyMaxAgeSeconds)
 
-		info.setStarted()
+		theServices.setStarted()
 	}
 
 	return existingPorts
@@ -713,22 +725,30 @@ func (proxier *UserspaceLinux) OnEndpointsSynced() {
 	go proxier.syncProxyRules()
 }
 
-func sameConfig(info *ServiceInfo, service *localnetv1.Service, port *v1.ServicePort) bool {
-	if info.protocol != port.Protocol || info.portal.port != int(port.Port) || info.nodePort != int(port.NodePort) {
+// TODO do we need portmapping?
+func sameConfig(info *ServiceInfo, service *localnetv1.Service, port *localnetv1.PortMapping) bool {
+	pr := v1.Protocol(info.protocol)
+
+	if pr != v1.Protocol(port.Protocol) || info.portal.port != int(port.Port) || info.nodePort != int(port.NodePort) {
 		return false
 	}
-	if !info.portal.ip.Equal(net.ParseIP(service.Spec.ClusterIP)) {
+	if !info.portal.ip.Equal(net.ParseIP(service.IPs.ClusterIPs.V4[0])) {
 		return false
 	}
-	if !ipsEqual(info.externalIPs, service.Spec.ExternalIPs) {
+	if !ipsEqual(info.externalIPs, service.IPs.ExternalIPs.V4) {
 		return false
 	}
-	if !servicehelper.LoadBalancerStatusEqual(&info.loadBalancerStatus, &service.Status.LoadBalancer) {
+
+	// TODO. build this loadBalancerStatus up properly.
+	loadBalancerStatus := v1.LoadBalancerStatus{}
+	if !servicehelper.LoadBalancerStatusEqual(&info.loadBalancerStatus, &loadBalancerStatus) {
 		return false
 	}
-	if info.sessionAffinityType != service.Spec.SessionAffinity {
-		return false
-	}
+
+	// TODO add Session AFfinity to KPNG
+	// if info.sessionAffinityType != service.Spec.SessionAffinity {
+	//	return false
+	//}
 	return true
 }
 
