@@ -251,6 +251,7 @@ func newServiceInfo(port *localnetv1.PortMapping, service *localnetv1.Service, b
 		svcName,
 		port.Name,
 		info.protocol,
+		port.Name,
 	}
 	protocol := strings.ToLower(string(info.Protocol()))
 	info.serviceNameString = svcPortName.String()

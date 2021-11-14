@@ -33,6 +33,7 @@ type ServicePortName struct {
 	types.NamespacedName
 	Port     string
 	Protocol localnetv1.Protocol
+	PortName string // FYI Jay added this, because we needed it for the BuildPortsToEndpointsMap function by KPNG
 }
 
 func (spn ServicePortName) String() string {
