@@ -22,9 +22,10 @@
 : ${IMAGE:="jayunit100/kpng:2"}
 : ${PULL:=IfNotPresent}
 : ${BACKEND:=iptables}
+: ${CNI:=antrea}
 export IMAGE PULL BACKEND
 
-echo -n "this will deploy kpng with docker image $IMAGE, pull policy $PULL and the $BACKEND backend. Press enter to confirm, C-c to cancel"
+echo -n "This will deploy kpng with docker image $IMAGE, pull policy $PULL, the $BACKEND backend and the $CNI CNI. Press enter to confirm, C-c to cancel"
 read
 
 function build_kpng {
@@ -35,11 +36,22 @@ function build_kpng {
     cd hack/
 }
 
-function install_calico {
+function install_k8s {
+    kind version
+    echo "****************************************************"
+    if kind get clusters | grep -q kpng-proxy; then
+        kind delete cluster --name kpng-proxy
+    fi
+    kind create cluster --config kind.yaml --image $KIND
+    echo "****************************************************"
+}
+
+function install_cni_calico {
     ### Cache cni images to avoid rate-limiting
     docker pull docker.io/calico/kube-controllers:v3.19.1
     docker pull docker.io/calico/cni:v3.19.1
     docker pull docker.io/calico/pod2daemon-flexvol:v3.19.1
+
     kind load docker-image docker.io/calico/cni:v3.19.1 --name kpng-proxy
     kind load docker-image docker.io/calico/kube-controllers:v3.19.1 --name kpng-proxy
     kind load docker-image docker.io/calico/pod2daemon-flexvol:v3.19.1 --name kpng-proxy
@@ -49,14 +61,26 @@ function install_calico {
     kubectl -n kube-system set env daemonset/calico-node FELIX_XDPENABLED=false
 }
 
-function install_k8s {
-    kind version
+function install_cni_antrea {
+    echo 1
+    url=https://raw.githubusercontent.com/antrea-io/antrea/main/hack/kind-fix-networking.sh
+    wget -P ./temp/ $url
+    echo 1.1
+    ./temp/kind-fix-networking.sh
+    echo 2
+    docker pull projects.registry.vmware.com/antrea/antrea-ubuntu:v1.4.0
+    echo 3
+    kind load docker-image projects.registry.vmware.com/antrea/antrea-ubuntu:v1.4.0 --name kpng-proxy
+    echo 4
+    kubectl apply -f https://github.com/antrea-io/antrea/releases/download/v1.4.0/antrea-kind.yml
+}
 
-    echo "****************************************************"
-    kind delete cluster --name kpng-proxy
-    kind create cluster --config kind.yaml --image $KIND
-    install_calico
-    echo "****************************************************"
+function install_cni {
+    case $CNI in
+        calico) install_cni_calico;;
+        antrea) install_cni_antrea;;
+        *) echo "invalid CNI: $CNI" && exit 1;;
+    esac
 }
 
 function install_kpng {
@@ -66,9 +90,6 @@ function install_kpng {
     envsubst <kpng-deployment-ds.yaml.tmpl >kpng-deployment-ds.yaml
 
     kind load docker-image $IMAGE --name kpng-proxy
-
-    # TODO support antrea as a secondary CNI option to test
-    cni_config
 
     kubectl -n kube-system create sa kpng
     kubectl create clusterrolebinding kpng --clusterrole=system:node-proxier --serviceaccount=kube-system:kpng
@@ -84,4 +105,5 @@ cd "${0%/*}"
 # Comment out build if you just want to install the default, i.e. for quickly getting up and running.
 build_kpng
 install_k8s
+install_cni
 install_kpng

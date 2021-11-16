@@ -14,13 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-function quick_test() {
+function quick_test {
   ./setup_sonobuoy.sh
   ./sonobuoy/sonobuoy run --mode quick --wait
 }
 
 # cd to dir of script
 cd "${0%/*}"
-
 
 quick_test
