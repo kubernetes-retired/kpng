@@ -178,7 +178,7 @@ func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
 
 			Diff{
 				SameKey: func(pi, ci int) bool {
-					return prevs[pi].ip == currs[ci].ip && samePort(prevs[pi].port, currs[pi].port)
+					return prevs[pi].ip == currs[ci].ip && samePort(prevs[pi].port, currs[ci].port)
 				},
 				Added:   func(ci int) { sl.IPPortsListener.AddIPPort(currSvc, currs[ci].ip, ext.ipKind, currs[ci].port) },
 				Updated: func(_, _ int) {},
