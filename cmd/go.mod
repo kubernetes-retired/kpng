@@ -7,6 +7,7 @@ replace (
 	sigs.k8s.io/kpng/api => ../api
 	sigs.k8s.io/kpng/backends/iptables => ../backends/iptables
 	sigs.k8s.io/kpng/backends/ipvs-as-sink => ../backends/ipvs-as-sink
+	sigs.k8s.io/kpng/backends/ipvs-as-sink2 => ../backends/ipvs-as-sink2
 	sigs.k8s.io/kpng/backends/nft => ../backends/nft
 	sigs.k8s.io/kpng/client => ../client
 	sigs.k8s.io/kpng/server => ../server
@@ -28,6 +29,7 @@ require (
 	sigs.k8s.io/kpng/api v0.0.0-20211016172202-2f0db1baddba
 	sigs.k8s.io/kpng/backends/iptables v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/kpng/backends/ipvs-as-sink v0.0.0-00010101000000-000000000000
+	sigs.k8s.io/kpng/backends/ipvs-as-sink2 v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/kpng/backends/nft v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/kpng/client v0.0.0-20211016172202-2f0db1baddba
 	sigs.k8s.io/kpng/server v0.0.0-00010101000000-000000000000
