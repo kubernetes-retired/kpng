@@ -64,7 +64,7 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 
 	// session affinity info
 	switch svc.Spec.SessionAffinity {
-	case "ClusterIP":
+	case "ClientIP":
 		cfg := svc.Spec.SessionAffinityConfig.ClientIP
 		service.SessionAffinity = &localnetv1.Service_ClientIP{
 			ClientIP: &localnetv1.ClientIPAffinity{
