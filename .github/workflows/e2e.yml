@@ -1,0 +1,207 @@
+name: e2e
+
+on:
+  push:
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+env:
+  GO_VERSION: "1.17.3"
+  K8S_VERSION: "v1.22.2"
+  KIND_CLUSTER_NAME: "kpng"
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-20.04
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.GO_VERSION }}
+      id: go
+
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Build
+      run: |
+        docker build -t kpng:test -f Dockerfile .
+        mkdir _output
+        docker save kpng:test > _output/kpng-image.tar
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: test-image
+        path: _output/kpng-image.tar
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-20.04
+    timeout-minutes: 100
+    needs:
+      - build
+    strategy:
+      fail-fast: false
+      matrix:
+        ipFamily: ["ipv4", "ipv6", "dual"]
+        backend: ["iptables", "nft"]
+    env:
+      JOB_NAME: "kpng-e2e-${{ matrix.ipFamily }}-${{ matrix.backend }}"
+      IP_FAMILY: ${{ matrix.ipFamily }}
+      BACKEND: ${{ matrix.backend }}
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Enable ipv4 and ipv6 forwarding
+      run: |
+        sudo sysctl -w net.ipv6.conf.all.forwarding=1
+        sudo sysctl -w net.ipv4.ip_forward=1
+
+    - name: Set up environment (download dependencies)
+      run: |
+        TMP_DIR=$(mktemp -d)
+        # Test binaries
+        curl -L https://dl.k8s.io/${{ env.K8S_VERSION }}/kubernetes-test-linux-amd64.tar.gz -o ${TMP_DIR}/kubernetes-test-linux-amd64.tar.gz
+        tar xvzf ${TMP_DIR}/kubernetes-test-linux-amd64.tar.gz \
+          --directory ${TMP_DIR} \
+          --strip-components=3 kubernetes/test/bin/ginkgo kubernetes/test/bin/e2e.test
+        # kubectl
+        curl -L https://dl.k8s.io/${{ env.K8S_VERSION }}/bin/linux/amd64/kubectl -o ${TMP_DIR}/kubectl
+        # kind
+        curl -Lo ${TMP_DIR}/kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
+        # Install
+        sudo cp ${TMP_DIR}/ginkgo /usr/local/bin/ginkgo
+        sudo cp ${TMP_DIR}/e2e.test /usr/local/bin/e2e.test
+        sudo cp ${TMP_DIR}/kubectl /usr/local/bin/kubectl
+        sudo cp ${TMP_DIR}/kind /usr/local/bin/kind
+        sudo chmod +x /usr/local/bin/*
+
+    - name: Create multi node cluster
+      run: |
+        # output_dir
+        mkdir -p _artifacts
+        # create cluster
+        cat <<EOF | /usr/local/bin/kind create cluster \
+          --name ${{ env.KIND_CLUSTER_NAME}}           \
+          --image kindest/node:${{ env.K8S_VERSION }}  \
+          -v7 --wait 1m --retain --config=-
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        networking:
+          ipFamily: ${IP_FAMILY}
+        nodes:
+        - role: control-plane
+        - role: worker
+        - role: worker
+        EOF
+        # dump the kubeconfig for later
+        /usr/local/bin/kind get kubeconfig --name ${{ env.KIND_CLUSTER_NAME}} > _artifacts/kubeconfig.conf
+
+    - name: Get Cluster status
+      run: |
+        # wait network is ready
+        /usr/local/bin/kubectl wait --for=condition=ready pods --namespace=kube-system -l k8s-app=kube-dns
+        /usr/local/bin/kubectl get nodes -o wide
+        /usr/local/bin/kubectl get pods -A
+
+    - name: Workaround CoreDNS for IPv6 airgapped
+      if: ${{ matrix.ipFamily == 'ipv6' }}
+      run: |
+        # Patch CoreDNS to work in Github CI
+        # 1. Github CI doesn´t offer IPv6 connectivity, so CoreDNS should be configured
+        # to work in an offline environment:
+        # https://github.com/coredns/coredns/issues/2494#issuecomment-457215452
+        # 2. Github CI adds following domains to resolv.conf search field:
+        # .net.
+        # CoreDNS should handle those domains and answer with NXDOMAIN instead of SERVFAIL
+        # otherwise pods stops trying to resolve the domain.
+        # Get the current config
+        original_coredns=$(/usr/local/bin/kubectl get -oyaml -n=kube-system configmap/coredns)
+        echo "Original CoreDNS config:"
+        echo "${original_coredns}"
+        # Patch it
+        fixed_coredns=$(
+          printf '%s' "${original_coredns}" | sed \
+            -e 's/^.*kubernetes cluster\.local/& net/' \
+            -e '/^.*upstream$/d' \
+            -e '/^.*fallthrough.*$/d' \
+            -e '/^.*forward . \/etc\/resolv.conf$/d' \
+            -e '/^.*loop$/d' \
+        )
+        echo "Patched CoreDNS config:"
+        echo "${fixed_coredns}"
+        printf '%s' "${fixed_coredns}" | /usr/local/bin/kubectl apply -f -
+
+    - uses: actions/download-artifact@v2
+      with:
+        name: test-image
+
+    - name: Install kpng
+      run: |
+        # remove kube-proxy
+        # QUESTION (it seems current tests were not removing it???)
+        # are they testing both in partallel
+        /usr/local/bin/kubectl -n kube-system delete daemonset.apps/kube-proxy
+
+        # preload kpng image
+        docker load --input kpng-image.tar
+        /usr/local/bin/kind load docker-image kpng:test --name ${{ env.KIND_CLUSTER_NAME}}
+
+        # TODO this should be part of the template        
+        /usr/local/bin/kubectl -n kube-system create sa kpng
+        /usr/local/bin/kubectl create clusterrolebinding kpng --clusterrole=system:node-proxier --serviceaccount=kube-system:kpng
+        /usr/local/bin/kubectl -n kube-system create cm kpng --from-file _artifacts/kubeconfig.conf
+
+        echo "Applying template"
+        export IMAGE=kpng:test
+        export PULL=IfNotPresent
+        envsubst <hack/kpng-deployment-ds.yaml.tmpl >kpng-deployment-ds.yaml
+        /usr/local/bin/kubectl create -f kpng-deployment-ds.yaml
+
+        # wait until kpng is ready
+        /usr/local/bin/kubectl --namespace=kube-system rollout status daemonset kpng -w --timeout=3m
+
+    - name: Run tests
+      run: |
+        export KUBERNETES_CONFORMANCE_TEST='y'
+        export E2E_REPORT_DIR=${PWD}/_artifacts
+
+        # Run tests
+        /usr/local/bin/ginkgo --nodes=25                \
+          --focus="\[Conformance\]|\[sig-network\]"     \
+          --skip="Feature|Federation|PerformanceDNS|DualStack|Disruptive|Serial|KubeProxy|LoadBalancer|GCE|Netpol|NetworkPolicy"   \
+          /usr/local/bin/e2e.test                       \
+          --                                            \
+          --kubeconfig=${PWD}/_artifacts/kubeconfig.conf     \
+          --provider=local                              \
+          --dump-logs-on-failure=false                  \
+          --report-dir=${E2E_REPORT_DIR}                \
+          --disable-log-dump=true
+
+    - name: Upload Junit Reports
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: kind-junit-${{ env.JOB_NAME }}-${{ github.run_id }}
+        path: './_artifacts/*.xml'
+
+    - name: Export logs
+      if: always()
+      run: |
+        /usr/local/bin/kind export logs --name ${KIND_CLUSTER_NAME} --loglevel=debug ./_artifacts/logs
+
+    - name: Upload logs
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: kind-logs-${{ env.JOB_NAME }}-${{ github.run_id }}
+        path: ./_artifacts/logs
+
+    - name: Publish Test Report
+      uses: mikepenz/action-junit-report@v2
+      if: always()
+      with:
+        report_paths: './_artifacts/*.xml'
