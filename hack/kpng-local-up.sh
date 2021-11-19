@@ -67,8 +67,7 @@ function install_kpng {
 
     kind load docker-image $IMAGE --name kpng-proxy
 
-    # TODO support antrea as a secondary CNI option to test
-    cni_config
+    # todo(jayunit100) support antrea as a secondary CNI option to test
 
     kubectl -n kube-system create sa kpng
     kubectl create clusterrolebinding kpng --clusterrole=system:node-proxier --serviceaccount=kube-system:kpng
