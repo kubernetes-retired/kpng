@@ -16,7 +16,12 @@
 
 function quick_test() {
   ./setup_sonobuoy.sh
-  ./sonobuoy/sonobuoy run --mode quick --wait
+  #todo check if sonobuoy ns is present, delete it
+  ./sonobuoy/sonobuoy run  --e2e-focus=sig-network --e2e-skip=Disruptive --e2e-skip=Slow --wait
+  results=$(./sonobuoy/sonobuoy retrieve)
+  ./sonobuoy/sonobuoy results $results
+  # ./sonobuoy/sonobuoy results --mode detailed --plugin e2e $results | jq '. | select(.status == "failed") | .details'
+
 }
 
 # cd to dir of script
