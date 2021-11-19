@@ -17,15 +17,15 @@
 package=$1
 
 # removing output from pushd
-function pushd () {
+function pushd {
   command pushd "$@" > /dev/null
 }
 # removing output from popd
-function popd () {
+function popd {
   command popd "$@" > /dev/null
 }
 
-function build_package() {
+function build_package {
   local dir="$1"
   echo "trying to build '$dir' "
   pushd ./$dir/
@@ -34,7 +34,7 @@ function build_package() {
   popd
 }
 
-function build_all_backends() {
+function build_all_backends {
   cd ./backends
   for f in $(find -name go.mod); do build_package $(dirname $f); done
 }

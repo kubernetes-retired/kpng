@@ -1,16 +1,12 @@
-name: Build Sonobuoy Tests 
+name: Unit Tests 
 
 on:
   push:
     branches:
-      - main
       - master
-      - github_actions # TODO delete this if ever merged to master/main
   pull_request:
     branches:
-      - main
       - master
-      - github_actions # TODO delete this if ever merged to master/main
 
 jobs:
   setup:
@@ -26,13 +22,13 @@ jobs:
         go version
         go get -u golang.org/x/lint/golint
 
-  build_tests:
-    name: Build sonobuoy tests
+  test:
+    name: run unit tests
     needs: setup
     runs-on: ubuntu-latest
     steps:
     - name: checkout
       uses: actions/checkout@v2
     
-    - name: Build sonobuoy tests
-      run: ./hack/test_sonobuoy.sh
+    - name: run unit tests
+      run: ./hack/test_unit.sh

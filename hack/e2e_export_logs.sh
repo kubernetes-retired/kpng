@@ -6,7 +6,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 # 
-#     http://www.apache.org/licenses/LICENSE-2.0
+#         http://www.apache.org/licenses/LICENSE-2.0
 # 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,13 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-function quick_test {
-  ./setup_sonobuoy.sh
-  ./sonobuoy/sonobuoy run --mode quick --wait
-}
+# this script is for ci
+# if the test_e2e.sh fails, the logs still need to be exportet
 
-# cd to dir of script
-cd "${0%/*}"
-
-
-quick_test
+set -e
+pushd "${0%/*}" > /dev/null
+E2E_DIR="$(pwd)/temp/e2e/"
+popd > /dev/null
+E2E_FILE="${E2E_DIR}/clustername"
+E2E_LOGS="${E2E_DIR}/artifacts/logs"
+kind export logs --name="$(cat $E2E_FILE)" --loglevel="debug" "${E2E_LOGS}"

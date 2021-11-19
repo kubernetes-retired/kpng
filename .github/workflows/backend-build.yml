@@ -3,20 +3,17 @@ name: Backend Build Tests
 on:
   push:
     branches:
-      - main
       - master
-      - github_actions # TODO delete this if ever merged to master/main
   pull_request:
     branches:
-      - main
       - master
-      - github_actions # TODO delete this if ever merged to master/main
 
 jobs:
   setup:
+    name: setup
     runs-on: ubuntu-latest
     steps:
-    - name: Setup Go
+    - name: setup Go
       uses: actions/setup-go@v2
       with:
         go-version: '1.17.3'
@@ -34,8 +31,8 @@ jobs:
     - name: checkout
       uses: actions/checkout@v2
     
-    - name: Build backends/iptables
-      run: ./hack/build.sh iptables
+    - name: build backends/iptables
+      run: ./hack/test_backend_build.sh iptables
 
   ipvs-as-sink:
     name: build backend package ipvs-as-sink
@@ -45,8 +42,8 @@ jobs:
     - name: checkout
       uses: actions/checkout@v2
     
-    - name: Build backends/ipvs-as-sink
-      run: ./hack/build.sh ipvs
+    - name: build backends/ipvs-as-sink
+      run: ./hack/test_backend_build.sh ipvs
   
   nft:
     name: build backend package nft
@@ -56,5 +53,5 @@ jobs:
     - name: checkout
       uses: actions/checkout@v2
     
-    - name: Build backends/nft
-      run: ./hack/build.sh nft
+    - name: build backends/nft
+      run: ./hack/test_backend_build.sh nft

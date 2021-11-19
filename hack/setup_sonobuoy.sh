@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-function is_kind_available() {
+function is_kind_available {
   if ! command -v kind &> /dev/null
   then
     echo "kind could not be found"
@@ -22,7 +22,7 @@ function is_kind_available() {
   fi
 }
 
-function setup_sonobuoy() {
+function setup_sonobuoy {
   if [ -f ./sonobuoy/sonobuoy ]; then
     echo "Found Sonobuoy, skipping setup."
   else 
@@ -36,7 +36,7 @@ function setup_sonobuoy() {
   fi
 }
 
-function setup_kind() {
+function setup_kind {
   if kind get clusters | grep -q kpng-proxy; then
     echo "Found kind cluster 'kpng-proxy', skipping setup."
   else
