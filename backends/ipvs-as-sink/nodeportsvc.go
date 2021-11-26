@@ -18,12 +18,7 @@ package ipvssink
 
 import (
 	"bytes"
-	"strings"
-
-	"k8s.io/klog/v2"
-
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/backends/ipvs/util"
+	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
 func (s *Backend) handleNodePortService(svc *localnetv1.Service, op Operation) {
@@ -46,7 +41,6 @@ func (s *Backend) handleNodePortService(svc *localnetv1.Service, op Operation) {
 		portList := svc.Ports
 
 		s.AddOrDelNodePortInIPSet(svc, portList, DeleteService)
-
 		s.AddOrDelClusterIPInIPSet(svc, svc.Ports, DeleteService)
 	}
 }
@@ -62,7 +56,7 @@ func (s *Backend) handleNewNodePortService(key string, svc *localnetv1.Service) 
 
 	//NodePort svc clusterIPs need to be added as ClusterIPService
 	//so that in sync(), port is attached to clusterIP.
-	s.storeLBSvc(svc.Ports, svc.IPs.All().All(), key, ClusterIPService)
+	s.storeLBSvc(svc.Ports, svc.IPs.ClusterIPs.All(), key, ClusterIPService)
 
 	portList := svc.Ports
 	s.AddOrDelNodePortInIPSet(svc, portList, AddService)
@@ -129,57 +123,6 @@ func (s *Backend) handleUpdatedNodePortService(svckey string, svc *localnetv1.Se
 		s.deleteLBSvc(removedPorts, svc.IPs.All().All(), svckey)
 
 		s.AddOrDelNodePortInIPSet(svc, removedPorts, DeleteService)
-	}
-}
-
-func (s *Backend) AddOrDelNodePortInIPSet(svc *localnetv1.Service, portList []*localnetv1.PortMapping, op Operation) {
-	svcIPFamily := getServiceIPFamily(svc)
-
-	for _, port := range portList {
-		var entries []*ipvs.Entry
-		for _, ipFamily := range svcIPFamily {
-			protocol := strings.ToLower(port.Protocol.String())
-			ipsetName := protocolIPSetMap[protocol][ipFamily]
-			nodePortSet := s.ipsetList[ipsetName]
-			switch protocol {
-			case ipvs.ProtocolTCP, ipvs.ProtocolUDP:
-				entries = []*ipvs.Entry{getNodePortIPSetEntry(int(port.NodePort), protocol, ipvs.BitmapPort)}
-
-			case ipvs.ProtocolSCTP:
-				// Since hash ip:port is used for SCTP, all the nodeIPs to be used in the SCTP ipset entries.
-				entries = []*ipvs.Entry{}
-				for _, nodeIP := range s.nodeAddresses {
-					entry := getNodePortIPSetEntry(int(port.NodePort), protocol, ipvs.HashIPPort)
-					entry.IP = nodeIP
-					entries = append(entries, entry)
-				}
-			default:
-				// It should never hit
-				klog.ErrorS(nil, "Unsupported protocol type", "protocol", protocol)
-			}
-			if nodePortSet != nil {
-				for _, entry := range entries {
-					if valid := nodePortSet.validateEntry(entry); !valid {
-						klog.ErrorS(nil, "error adding entry to ipset", "entry", entry.String(), "ipset", nodePortSet.Name)
-					}
-					if op == AddService {
-						nodePortSet.newEntries.Insert(entry.String())
-					}
-					if op == DeleteService {
-						nodePortSet.deleteEntries.Insert(entry.String())
-					}
-				}
-			}
-		}
-	}
-}
-
-func getNodePortIPSetEntry(port int, protocol string, ipSetType ipvs.Type) *ipvs.Entry {
-	return &ipvs.Entry{
-		// No need to provide ip info
-		Port:     port,
-		Protocol: protocol,
-		SetType:  ipSetType,
 	}
 }
 

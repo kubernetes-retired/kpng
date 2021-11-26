@@ -27,7 +27,7 @@ import (
 	"k8s.io/utils/exec"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
-	ipvsutil "sigs.k8s.io/kpng/backends/ipvs/util"
+	ipsetutil "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
 	"sigs.k8s.io/kpng/client/backendcmd"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
@@ -149,12 +149,12 @@ func (s *Backend) createIPVSDummyInterface() {
 }
 
 func (s *Backend) initializeIPSets() {
-	var ipsetInterface ipvsutil.Interface
+	var ipsetInterface ipsetutil.Interface
 
 	// Create a iptables utils.
 	execer := exec.New()
 
-	ipsetInterface = ipvsutil.New(execer)
+	ipsetInterface = ipsetutil.New(execer)
 
 	// initialize ipsetList with all sets we needed
 	s.ipsetList = make(map[string]*IPSet)
@@ -270,6 +270,10 @@ func (s *Backend) SetService(svc *localnetv1.Service) {
 	if svc.Type == NodePortService {
 		s.handleNodePortService(svc, AddService)
 	}
+
+	if svc.Type == LoadBalancerService {
+		s.handleLBService(svc, AddService)
+	}
 }
 
 func (s *Backend) DeleteService(namespace, name string) {
@@ -285,6 +289,10 @@ func (s *Backend) DeleteService(namespace, name string) {
 
 	if svc.Type == NodePortService {
 		s.handleNodePortService(svc, DeleteService)
+	}
+
+	if svc.Type == LoadBalancerService {
+		s.handleLBService(svc, DeleteService)
 	}
 
 	for _, ip := range asDummyIPs(svc.IPs.All()) {
@@ -308,6 +316,10 @@ func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *loca
 	if service.Type == NodePortService {
 		s.SetEndPointForNodePortSvc(svcKey, key, endpoint)
 	}
+
+	if service.Type == LoadBalancerService {
+		s.SetEndPointForLBSvc(svcKey, key, endpoint)
+	}
 }
 
 func (s *Backend) DeleteEndpoint(namespace, serviceName, key string) {
@@ -322,5 +334,9 @@ func (s *Backend) DeleteEndpoint(namespace, serviceName, key string) {
 
 	if service.Type == NodePortService {
 		s.DeleteEndPointForNodePortSvc(svcKey, key)
+	}
+
+	if service.Type == LoadBalancerService {
+		s.DeleteEndPointForLBSvc(svcKey, key)
 	}
 }
