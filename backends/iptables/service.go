@@ -19,8 +19,9 @@ package iptables
 import (
 	"fmt"
 	"net"
-	"sigs.k8s.io/kpng/backends/iptables/util"
 	"strings"
+
+	"sigs.k8s.io/kpng/backends/iptables/util"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -42,7 +43,7 @@ type BaseServiceInfo struct {
 	port                     int
 	protocol                 localnetv1.Protocol
 	nodePort                 int
-	loadBalancerStatus       v1.LoadBalancerStatus
+	loadBalancerIPs          []string
 	sessionAffinityType      v1.ServiceAffinity
 	stickyMaxAgeSeconds      int
 	externalIPs              []string
@@ -115,8 +116,8 @@ func (info *BaseServiceInfo) ExternalIPStrings() []string {
 // LoadBalancerIPStrings is part of ServicePort interface.
 func (info *BaseServiceInfo) LoadBalancerIPStrings() []string {
 	var ips []string
-	for _, ing := range info.loadBalancerStatus.Ingress {
-		ips = append(ips, ing.IP)
+	for _, ing := range info.loadBalancerIPs {
+		ips = append(ips, ing)
 	}
 	return ips
 }
@@ -171,14 +172,10 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localnetv1.PortMapping
 		nodeLocalExternal:   nodeLocalExternal,
 		nodeLocalInternal:   nodeLocalInternal,
 		// internalTrafficPolicy: service.Spec.InternalTrafficPolicy, //TODO : CHECK InternalTrafficPolicy
-		hintsAnnotation: service.Annotations[v1.AnnotationTopologyAwareHints],
+		hintsAnnotation:          service.Annotations[v1.AnnotationTopologyAwareHints],
+		loadBalancerSourceRanges: getLoadbalancerSourceRanges(service.IPFilters),
+		loadBalancerIPs:          getLoadBalancerIPs(service.IPs.LoadBalancerIPs, sct.ipFamily),
 	}
-
-	//TODO : CHECK LoadBalancerSourceRanges
-	// loadBalancerSourceRanges := make([]string, len(service.Spec.LoadBalancerSourceRanges))
-	// for i, sourceRange := range service.Spec.LoadBalancerSourceRanges {
-	// 	loadBalancerSourceRanges[i] = strings.TrimSpace(sourceRange)
-	// }
 
 	// filter external ips, source ranges and ingress ips
 	// prior to dual stack services, this was considered an error, but with dual stack
@@ -193,36 +190,6 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localnetv1.PortMapping
 		klog.V(4).Infof("service change tracker(%v) ignored the following external IPs(%s) for service %v/%v as they don't match IPFamily", sct.ipFamily, strings.Join(ips, ","), service.Namespace, service.Name)
 	}
 
-	//TODO : CHECK LoadBalancerSourceRanges
-	// ipFamilyMap = MapCIDRsByIPFamily(loadBalancerSourceRanges)
-	// info.loadBalancerSourceRanges = ipFamilyMap[sct.ipFamily]
-	// // Log the CIDRs not matching the ipFamily
-	// if cidrs, ok := ipFamilyMap[OtherIPFamily(sct.ipFamily)]; ok && len(cidrs) > 0 {
-	// 	klog.V(4).Infof("service change tracker(%v) ignored the following load balancer source ranges(%s) for service %v/%v as they don't match IPFamily", sct.ipFamily, strings.Join(cidrs, ","), service.Namespace, service.Name)
-	// }
-
-	//TODO : CHECK Load Balancer Ingress IPs , service.Status.LoadBalancer.Ingress
-	// Obtain Load Balancer Ingress IPs
-	// var ips []string
-	// for _, ing := range service.Status.LoadBalancer.Ingress {
-	// 	if ing.IP != "" {
-	// 		ips = append(ips, ing.IP)
-	// 	}
-	// }
-
-	// if len(ips) > 0 {
-	// 	ipFamilyMap = MapIPsByIPFamily(ips)
-
-	// 	if ipList, ok := ipFamilyMap[OtherIPFamily(sct.ipFamily)]; ok && len(ipList) > 0 {
-	// 		klog.V(4).Infof("service change tracker(%v) ignored the following load balancer(%s) ingress ips for service %v/%v as they don't match IPFamily", sct.ipFamily, strings.Join(ipList, ","), service.Namespace, service.Name)
-
-	// 	}
-	// 	// Create the LoadBalancerStatus with the filtered IPs
-	// 	for _, ip := range ipFamilyMap[sct.ipFamily] {
-	// 		info.loadBalancerStatus.Ingress = append(info.loadBalancerStatus.Ingress, v1.LoadBalancerIngress{IP: ip})
-	// 	}
-	// }
-
 	//TODO : CHECK service.Spec.HealthCheckNodePort
 	// if apiservice.NeedsHealthCheck(service) {
 	// 	p := service.Spec.HealthCheckNodePort
@@ -234,6 +201,30 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localnetv1.PortMapping
 	// }
 
 	return info
+}
+
+func getLoadBalancerIPs(ips *localnetv1.IPSet, ipFamily v1.IPFamily) []string {
+	if ips == nil {
+		return nil
+	}
+	if ipFamily == v1.IPv4Protocol {
+		return ips.V4
+	}
+	return ips.V6
+
+}
+
+//TODO: Would be better to have SourceRanges also as IPSet instead?
+//Change the code to return based on ipfamily once that is done.
+func getLoadbalancerSourceRanges(filters []*localnetv1.IPFilter) []string {
+	var sourceRanges []string
+	for _, filter := range filters {
+		if len(filter.SourceRanges) <= 0 {
+			continue
+		}
+		sourceRanges = append(sourceRanges, filter.SourceRanges...)
+	}
+	return sourceRanges
 }
 
 // returns a new ServicePort which abstracts a serviceInfo
