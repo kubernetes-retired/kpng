@@ -27,7 +27,7 @@ import (
 	netutils "k8s.io/utils/net"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
-	ipvs "sigs.k8s.io/kpng/backends/ipvs/util"
+	ipsetutil "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
 )
 
 type endPointInfo struct {
@@ -70,13 +70,13 @@ func getIPFamily(ipAddr string) v1.IPFamily {
 	return ipAddrFamily
 }
 
-func getEndPointEntry(endPointIP string, port *localnetv1.PortMapping) *ipvs.Entry {
-	return &ipvs.Entry{
+func getEndPointEntry(endPointIP string, port *localnetv1.PortMapping) *ipsetutil.Entry {
+	return &ipsetutil.Entry{
 		IP:       endPointIP,
 		Port:     int(port.TargetPort),
 		Protocol: strings.ToLower(port.Protocol.String()),
 		IP2:      endPointIP,
-		SetType:  ipvs.HashIPPortIP,
+		SetType:  ipsetutil.HashIPPortIP,
 	}
 }
 
@@ -94,7 +94,7 @@ func (s *Backend) AddOrDelClusterIPInIPSet(svc *localnetv1.Service, portList []*
 			}
 			ipSetName := clusterIPSetMap[ipFamily]
 			// Capture the clusterIP.
-			entry := getIPSetEntry(clusterIP, port)
+			entry := getIPSetEntry(clusterIP, "", port)
 			// add service Cluster IP:Port to kubeServiceAccess ip set for the purpose of solving hairpin.
 			if valid := s.ipsetList[ipSetName].validateEntry(entry); !valid {
 				klog.Errorf("error adding entry :%s, to ipset:%s", entry.String(), s.ipsetList[ipSetName].Name)
@@ -126,12 +126,21 @@ func getServiceIPFamily(svc *localnetv1.Service) []v1.IPFamily {
 	return svcIPFamily
 }
 
-func getIPSetEntry(svcIP string, port *localnetv1.PortMapping) *ipvs.Entry {
-	return &ipvs.Entry{
+func getIPSetEntry(svcIP,srcAddr string, port *localnetv1.PortMapping) *ipsetutil.Entry {
+	if srcAddr != "" {
+		return &ipsetutil.Entry{
+			IP:       svcIP,
+			Port:     int(port.Port),
+			Protocol: strings.ToLower(port.Protocol.String()),
+			SetType:  ipsetutil.HashIPPort,
+			Net: srcAddr,
+		}
+	}
+	return &ipsetutil.Entry{
 		IP:       svcIP,
 		Port:     int(port.Port),
 		Protocol: strings.ToLower(port.Protocol.String()),
-		SetType:  ipvs.HashIPPort,
+		SetType:  ipsetutil.HashIPPort,
 	}
 }
 
@@ -199,5 +208,56 @@ func (s *Backend) deleteLBSvc(portList []*localnetv1.PortMapping, addrList []str
 			lbKey := prefix + epPortSuffix(port)
 			s.lbs.Delete([]byte(lbKey))
 		}
+	}
+}
+
+func (s *Backend) AddOrDelNodePortInIPSet(svc *localnetv1.Service, portList []*localnetv1.PortMapping, op Operation) {
+	svcIPFamily := getServiceIPFamily(svc)
+
+	for _, port := range portList {
+		var entries []*ipsetutil.Entry
+		for _, ipFamily := range svcIPFamily {
+			protocol := strings.ToLower(port.Protocol.String())
+			ipsetName := protocolIPSetMap[protocol][ipFamily]
+			nodePortSet := s.ipsetList[ipsetName]
+			switch protocol {
+			case ipsetutil.ProtocolTCP, ipsetutil.ProtocolUDP:
+				entries = []*ipsetutil.Entry{getNodePortIPSetEntry(int(port.NodePort), protocol, ipsetutil.BitmapPort)}
+
+			case ipsetutil.ProtocolSCTP:
+				// Since hash ip:port is used for SCTP, all the nodeIPs to be used in the SCTP ipset entries.
+				entries = []*ipsetutil.Entry{}
+				for _, nodeIP := range s.nodeAddresses {
+					entry := getNodePortIPSetEntry(int(port.NodePort), protocol, ipsetutil.HashIPPort)
+					entry.IP = nodeIP
+					entries = append(entries, entry)
+				}
+			default:
+				// It should never hit
+				klog.Errorf( "Unsupported protocol type %v protocol ", protocol)
+			}
+			if nodePortSet != nil {
+				for _, entry := range entries {
+					if valid := nodePortSet.validateEntry(entry); !valid {
+						klog.Errorf( "error adding entry (%v) to ipset (%v)", entry.String(),  nodePortSet.Name)
+					}
+					if op == AddService {
+						nodePortSet.newEntries.Insert(entry.String())
+					}
+					if op == DeleteService {
+						nodePortSet.deleteEntries.Insert(entry.String())
+					}
+				}
+			}
+		}
+	}
+}
+
+func getNodePortIPSetEntry(port int, protocol string, ipSetType ipsetutil.Type) *ipsetutil.Entry {
+	return &ipsetutil.Entry{
+		// No need to provide ip info
+		Port:     port,
+		Protocol: protocol,
+		SetType:  ipSetType,
 	}
 }

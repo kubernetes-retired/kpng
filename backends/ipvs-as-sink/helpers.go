@@ -21,13 +21,14 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/backends/ipvs/util"
+	"sigs.k8s.io/kpng/api/localnetv1"
+	ipsetutil "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
 )
 
 const (
 	ClusterIPService = "ClusterIP"
 	NodePortService  = "NodePort"
+	LoadBalancerService  = "LoadBalancer"
 )
 
 var loopBackIPSetMap = map[v1.IPFamily]string{
@@ -41,18 +42,38 @@ var clusterIPSetMap = map[v1.IPFamily]string{
 }
 
 var protocolIPSetMap = map[string]map[v1.IPFamily]string{
-	ipvs.ProtocolTCP: {
+	ipsetutil.ProtocolTCP: {
 		v1.IPv4Protocol: kubeNodePortIPv4SetTCP,
 		v1.IPv6Protocol: kubeNodePortIPv6SetTCP,
 	},
-	ipvs.ProtocolUDP: {
+	ipsetutil.ProtocolUDP: {
 		v1.IPv4Protocol: kubeNodePortIPv4SetUDP,
 		v1.IPv6Protocol: kubeNodePortIPv6SetUDP,
 	},
-	ipvs.ProtocolSCTP: {
+	ipsetutil.ProtocolSCTP: {
 		v1.IPv4Protocol: kubeNodePortIPv4SetSCTP,
 		v1.IPv6Protocol: kubeNodePortIPv6SetSCTP,
 	},
+}
+
+var loadbalancerIPSetMap = map[v1.IPFamily]string{
+	v1.IPv4Protocol: kubeLoadBalancerIPv4Set,
+	v1.IPv6Protocol: kubeLoadBalancerIPv6Set,
+}
+
+var loadbalancerLocalSetMap = map[v1.IPFamily]string{
+	v1.IPv4Protocol: kubeLoadBalancerLocalIPv4Set,
+	v1.IPv6Protocol: kubeLoadBalancerLocalIPv6Set,
+}
+
+var loadbalancerSourceCIDRSetMap = map[v1.IPFamily]string{
+	v1.IPv4Protocol: kubeLoadBalancerSourceCIDRIPv4Set,
+	v1.IPv6Protocol: kubeLoadBalancerSourceCIDRIPv6Set,
+}
+
+var loadbalancerFWSetMap = map[v1.IPFamily]string{
+	v1.IPv4Protocol: kubeLoadbalancerFWIPv4Set,
+	v1.IPv6Protocol: kubeLoadbalancerFWIPv6Set,
 }
 
 type Operation int32
@@ -81,7 +102,6 @@ func epPortSuffix(port *localnetv1.PortMapping) string {
 	return port.Protocol.String() + ":" + strconv.Itoa(int(port.Port))
 }
 
-// diffInPortMapping TODO, we should support this logic in the diffstore, this is a temporary workaround.
 func diffInPortMapping(previous, current *localnetv1.Service) (added, removed []*localnetv1.PortMapping) {
 	for _, p1 := range previous.Ports {
 		found := false

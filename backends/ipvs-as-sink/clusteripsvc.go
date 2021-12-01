@@ -49,7 +49,7 @@ func (s *Backend) handleNewClusterIPService(key string, svc *localnetv1.Service)
 	s.addServiceIPToKubeIPVSIntf(nil, svc)
 
 	//Cluster service IP is stored in LB tree
-	s.storeLBSvc(svc.Ports, svc.IPs.All().All(), key, ClusterIPService)
+	s.storeLBSvc(svc.Ports, svc.IPs.ClusterIPs.All(), key, ClusterIPService)
 
 	//Cluster service IP needs to be programmed in ipset.
 	s.AddOrDelClusterIPInIPSet(svc, svc.Ports, AddService)

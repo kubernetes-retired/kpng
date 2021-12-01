@@ -23,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/kpng/backends/ipvs/util"
+	ipsetutil "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
 )
 
 const (
@@ -95,25 +95,25 @@ const (
 // ipsetInfo is all ipset we needed in ipvs proxier
 var ipsetInfo = []struct {
 	name    string
-	setType ipvs.Type
+	setType ipsetutil.Type
 	comment string
 }{
-	{kubeLoopBackIPv4Set, ipvs.HashIPPortIP, kubeLoopBackIPSetComment},
-	{kubeClusterIPv4Set, ipvs.HashIPPort, kubeClusterIPSetComment},
-	{kubeExternalIPv4Set, ipvs.HashIPPort, kubeExternalIPSetComment},
-	{kubeExternalIPv4LocalSet, ipvs.HashIPPort, kubeExternalIPLocalSetComment},
-	{kubeLoadBalancerIPv4Set, ipvs.HashIPPort, kubeLoadBalancerSetComment},
-	{kubeLoadbalancerFWIPv4Set, ipvs.HashIPPort, kubeLoadbalancerFWSetComment},
-	{kubeLoadBalancerLocalIPv4Set, ipvs.HashIPPort, kubeLoadBalancerLocalSetComment},
-	{kubeLoadBalancerSourceIPv4Set, ipvs.HashIPPortIP, kubeLoadBalancerSourceIPSetComment},
-	{kubeLoadBalancerSourceCIDRIPv4Set, ipvs.HashIPPortNet, kubeLoadBalancerSourceCIDRSetComment},
-	{kubeNodePortIPv4SetTCP, ipvs.BitmapPort, kubeNodePortSetTCPComment},
-	{kubeNodePortLocalIPv4SetTCP, ipvs.BitmapPort, kubeNodePortLocalSetTCPComment},
-	{kubeNodePortIPv4SetUDP, ipvs.BitmapPort, kubeNodePortSetUDPComment},
-	{kubeNodePortLocalIPv4SetUDP, ipvs.BitmapPort, kubeNodePortLocalSetUDPComment},
-	{kubeNodePortIPv4SetSCTP, ipvs.HashIPPort, kubeNodePortSetSCTPComment},
-	{kubeNodePortLocalIPv4SetSCTP, ipvs.HashIPPort, kubeNodePortLocalSetSCTPComment},
-	{kubeHealthCheckNodePortIPv4Set, ipvs.BitmapPort, kubeHealthCheckNodePortSetComment},
+	{kubeLoopBackIPv4Set, ipsetutil.HashIPPortIP, kubeLoopBackIPSetComment},
+	{kubeClusterIPv4Set, ipsetutil.HashIPPort, kubeClusterIPSetComment},
+	{kubeExternalIPv4Set, ipsetutil.HashIPPort, kubeExternalIPSetComment},
+	{kubeExternalIPv4LocalSet, ipsetutil.HashIPPort, kubeExternalIPLocalSetComment},
+	{kubeLoadBalancerIPv4Set, ipsetutil.HashIPPort, kubeLoadBalancerSetComment},
+	{kubeLoadbalancerFWIPv4Set, ipsetutil.HashIPPort, kubeLoadbalancerFWSetComment},
+	{kubeLoadBalancerLocalIPv4Set, ipsetutil.HashIPPort, kubeLoadBalancerLocalSetComment},
+	{kubeLoadBalancerSourceIPv4Set, ipsetutil.HashIPPortIP, kubeLoadBalancerSourceIPSetComment},
+	{kubeLoadBalancerSourceCIDRIPv4Set, ipsetutil.HashIPPortNet, kubeLoadBalancerSourceCIDRSetComment},
+	{kubeNodePortIPv4SetTCP, ipsetutil.BitmapPort, kubeNodePortSetTCPComment},
+	{kubeNodePortLocalIPv4SetTCP, ipsetutil.BitmapPort, kubeNodePortLocalSetTCPComment},
+	{kubeNodePortIPv4SetUDP, ipsetutil.BitmapPort, kubeNodePortSetUDPComment},
+	{kubeNodePortLocalIPv4SetUDP, ipsetutil.BitmapPort, kubeNodePortLocalSetUDPComment},
+	{kubeNodePortIPv4SetSCTP, ipsetutil.HashIPPort, kubeNodePortSetSCTPComment},
+	{kubeNodePortLocalIPv4SetSCTP, ipsetutil.HashIPPort, kubeNodePortLocalSetSCTPComment},
+	{kubeHealthCheckNodePortIPv4Set, ipsetutil.BitmapPort, kubeHealthCheckNodePortSetComment},
 }
 
 // IPSetVersioner can query the current ipset version.
@@ -123,20 +123,20 @@ type IPSetVersioner interface {
 }
 
 type IPSet struct {
-	ipvs.IPSet
+	ipsetutil.IPSet
 	// activeEntries is the current active entries of the ipset.
 	newEntries sets.String
 	// activeEntries is the current active entries of the ipset.
 	deleteEntries sets.String
 	// handle is the util ipset interface handle.
-	handle ipvs.Interface
+	handle ipsetutil.Interface
 }
 
 // NewIPSet initialize a new IPSet struct
-func newIPv4Set(handle ipvs.Interface, name string, setType ipvs.Type, comment string) *IPSet {
-	hashFamily := ipvs.ProtocolFamilyIPV4
+func newIPv4Set(handle ipsetutil.Interface, name string, setType ipsetutil.Type, comment string) *IPSet {
+	hashFamily := ipsetutil.ProtocolFamilyIPV4
 	set := &IPSet{
-		IPSet: ipvs.IPSet{
+		IPSet: ipsetutil.IPSet{
 			Name:       name,
 			SetType:    setType,
 			HashFamily: hashFamily,
@@ -150,8 +150,8 @@ func newIPv4Set(handle ipvs.Interface, name string, setType ipvs.Type, comment s
 }
 
 // NewIPSet initialize a new IPSet struct
-func newIPv6Set(handle ipvs.Interface, name string, setType ipvs.Type, comment string) *IPSet {
-	hashFamily := ipvs.ProtocolFamilyIPV6
+func newIPv6Set(handle ipsetutil.Interface, name string, setType ipsetutil.Type, comment string) *IPSet {
+	hashFamily := ipsetutil.ProtocolFamilyIPV6
 	// In dual-stack both ipv4 and ipv6 ipset's can co-exist. To
 	// ensure unique names the prefix for ipv6 is changed from
 	// "KUBE-" to "KUBE-6-". The "KUBE-" prefix is kept for
@@ -167,7 +167,7 @@ func newIPv6Set(handle ipvs.Interface, name string, setType ipvs.Type, comment s
 		}
 	}
 	set := &IPSet{
-		IPSet: ipvs.IPSet{
+		IPSet: ipsetutil.IPSet{
 			Name:       name,
 			SetType:    setType,
 			HashFamily: hashFamily,
@@ -180,7 +180,7 @@ func newIPv6Set(handle ipvs.Interface, name string, setType ipvs.Type, comment s
 	return set
 }
 
-func (set *IPSet) validateEntry(entry *ipvs.Entry) bool {
+func (set *IPSet) validateEntry(entry *ipsetutil.Entry) bool {
 	return entry.Validate(&set.IPSet)
 }
 

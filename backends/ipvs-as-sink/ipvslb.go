@@ -19,7 +19,7 @@ package ipvssink
 import (
 	"encoding/json"
 	"net"
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localnetv1"
 	"syscall"
 
 	"github.com/google/seesaw/ipvs"
@@ -45,6 +45,9 @@ func (lb ipvsLB) ToService() ipvs.Service {
 	}
 	if lb.ServiceType == NodePortService {
 		port = uint16(lb.Port.NodePort)
+	}
+	if lb.ServiceType == LoadBalancerService {
+		port = uint16(lb.Port.Port)
 	}
 	s := ipvs.Service{
 		Address:   net.ParseIP(lb.IP),
