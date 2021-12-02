@@ -1,0 +1,36 @@
+Vagrant.configure("2") do |config|
+    config.vm.provision "shell", inline: <<-SHELL
+        apt-get update -y
+        echo "10.0.0.12  master-kpng" >> /etc/hosts
+        echo "10.0.0.21  worker-kpng01" >> /etc/hosts
+        echo "10.0.0.22  worker-kpng02" >> /etc/hosts
+    SHELL
+    
+    config.vm.define "master" do |master|
+      master.vm.box = "bento/ubuntu-18.04"
+      master.vm.hostname = "master-kpng"
+      master.vm.network "private_network", ip: "10.0.0.12"
+      master.vm.provider "virtualbox" do |vb|
+          vb.memory = 4048
+          vb.cpus = 2
+      end
+      master.vm.provision "shell", path: "scripts/installation.sh"
+      master.vm.provision "shell", path: "scripts/master.sh"
+    end
+
+    (1..2).each do |i|
+  
+    config.vm.define "worker0#{i}" do |worker|
+      worker.vm.box = "bento/ubuntu-18.04"
+      worker.vm.hostname = "kpng-worker0#{i}"
+      worker.vm.network "private_network", ip: "10.0.0.2#{i}"
+      worker.vm.provider "virtualbox" do |vb|
+          vb.memory = 2048
+          vb.cpus = 1
+      end
+      worker.vm.provision "shell", path: "scripts/installation.sh"
+      worker.vm.provision "shell", path: "scripts/worker.sh"
+    end
+    
+    end
+  end
