@@ -1,0 +1,12 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+reviewers:
+  - nehaLohia27
+  - FriedrichWilken
+  - knabben
+  - anusha94
+approvers:
+  - nehaLohia27
+  - FriedrichWilken
+  - knabben
+  - anusha94
