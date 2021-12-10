@@ -156,7 +156,7 @@ function create_cluster {
             - role: worker
             - role: worker
 EOF
-    kind get kubeconfig --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig.conf"
+    kind get kubeconfig --internal --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig.conf"
     export KUBECONFIG="${E2E_ARTIFACTS}/kubeconfig.conf"
     echo "cluster is up"
     echo -e "Let's move on.\n"
