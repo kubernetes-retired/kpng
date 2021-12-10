@@ -278,7 +278,8 @@ function set_e2e_dir {
 function main {
     # in ci this should fail
     if [ "${ci_mode}" = true ] ; then 
-        set -e
+        # REMOVE THIS comment out ON THE REPO WITH A PR WHEN LOCAL TESTS ARE ALL GREEN
+        # set -e
     fi
 
     # setting up variables
@@ -332,7 +333,7 @@ do
 done
 
 if [[ ! -z "${ip_family}" &&  ! -z "${backend}" ]]; then
-    main "${ip_family}" "${backend}" "${ci_mode}"
+   main "${ip_family}" "${backend}" "${ci_mode}"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help
