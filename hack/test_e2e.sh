@@ -280,6 +280,7 @@ function main {
     if [ "${ci_mode}" = true ] ; then 
         # REMOVE THIS comment out ON THE REPO WITH A PR WHEN LOCAL TESTS ARE ALL GREEN
         # set -e
+        echo "this tests can't fail now in ci"
     fi
 
     # setting up variables
