@@ -1,3 +1,10 @@
+
+TODO add toc for file because we will have to add a lot of text for all the test
+
+TODO add how-to/prereq. for e2e tests
+TODO add how-to/prereq. for backend build unit tests
+TODO add how-to/prereq. for backend build tests
+
 # Get up and running w kpng
 
 Run the local-up-kpng.sh script (make sure you have a kind or other cluster ready).

@@ -15,15 +15,15 @@
 # limitations under the License.
 
 # removing output from pushd
-function pushd () {
+function pushd {
   command pushd "$@" > /dev/null
 }
 # removing output from popd
-function popd () {
+function popd {
   command popd "$@" > /dev/null
 }
 
-function draw_line() {
+function draw_line {
   echo "=================================="
 }
 
