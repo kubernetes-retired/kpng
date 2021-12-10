@@ -156,9 +156,8 @@ function create_cluster {
             - role: worker
             - role: worker
 EOF
-    kind get kubeconfig --internal --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig_internal.conf"
+    kind get kubeconfig --internal --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig.conf"
     kind get kubeconfig --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig_tests.conf"
-    # export KUBECONFIG="${E2E_ARTIFACTS}/kubeconfig_internal.conf"
     echo "cluster is up"
     echo -e "Let's move on.\n"
 }
@@ -229,7 +228,7 @@ function install_kpng {
     # TODO this should be part of the template                
     kubectl -n kube-system create sa kpng
     kubectl create clusterrolebinding kpng --clusterrole=system:node-proxier --serviceaccount=kube-system:kpng
-    kubectl -n kube-system create cm kpng --from-file "${E2E_ARTIFACTS}/kubeconfig_internal.conf"
+    kubectl -n kube-system create cm kpng --from-file "${E2E_ARTIFACTS}/kubeconfig.conf"
     echo "Applying template"
     export IMAGE=kpng:test
     export PULL=IfNotPresent
