@@ -157,7 +157,7 @@ function create_cluster {
             - role: worker
 EOF
     kind get kubeconfig --internal --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig.conf"
-    export KUBECONFIG="${E2E_ARTIFACTS}/kubeconfig.conf"
+    kind get kubeconfig --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig_tests.conf"
     echo "cluster is up"
     echo -e "Let's move on.\n"
 }
@@ -244,13 +244,13 @@ function install_kpng {
 }
 
 function run_tests {
-    cp ${E2E_ARTIFACTS}/kubeconfig.conf ${E2E_DIR}/kubeconfig.conf 
+    cp ${E2E_ARTIFACTS}/kubeconfig_tests.conf ${E2E_DIR}/kubeconfig_tests.conf 
     ${E2E_DIR}/ginkgo --nodes=25 \
         --focus="\[Conformance\]|\[sig-network\]" \
         --skip="Feature|Federation|PerformanceDNS|Disruptive|Serial|LoadBalancer|KubeProxy|GCE|Netpol|NetworkPolicy" \
         ${E2E_DIR}/e2e.test \
         -- \
-        --kubeconfig=kubeconfig.conf \
+        --kubeconfig=kubeconfig_tests.conf \
         --provider=local \
         --dump-logs-on-failure=false \
         --report-dir=artifacts/reports \
