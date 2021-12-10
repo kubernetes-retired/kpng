@@ -59,10 +59,10 @@ type iptables struct {
 	// that are significantly impacting performance.
 	iptablesData             *bytes.Buffer
 	existingFilterChainsData *bytes.Buffer
-	filterChains             *bytes.Buffer
-	filterRules              *bytes.Buffer
-	natChains                *bytes.Buffer
-	natRules                 *bytes.Buffer
+	filterChains             util.LineBuffer
+	filterRules              util.LineBuffer
+	natChains                util.LineBuffer
+	natRules                 util.LineBuffer
 
 	// endpointChainsNumber is the total amount of endpointChains across all
 	// services that we will generate (it is computed at the beginning of
@@ -93,10 +93,10 @@ func NewIptables() *iptables {
 		endpointsMap:             make(EndpointsMap),
 		iptablesData:             bytes.NewBuffer(nil),
 		existingFilterChainsData: bytes.NewBuffer(nil),
-		filterChains:             bytes.NewBuffer(nil),
-		filterRules:              bytes.NewBuffer(nil),
-		natChains:                bytes.NewBuffer(nil),
-		natRules:                 bytes.NewBuffer(nil),
+		filterChains:             util.LineBuffer{},
+		filterRules:              util.LineBuffer{},
+		natChains:                util.LineBuffer{},
+		natRules:                 util.LineBuffer{},
 		portsMap:                 make(map[utilnet.LocalPort]utilnet.Closeable),
 		masqueradeAll:            true,
 		masqueradeMark:           fmt.Sprintf("%#08x", masqueradeValue),
@@ -173,7 +173,7 @@ func (t *iptables) sync() {
 	if err != nil { // if we failed to get any rules
 		klog.ErrorS(err, "Failed to execute iptables-save, syncing all rules")
 	} else { // otherwise parse the output
-		preexistingFilterChains = GetChainLines(util.TableFilter, t.existingFilterChainsData.Bytes())
+		preexistingFilterChains = util.GetChainLines(util.TableFilter, t.existingFilterChainsData.Bytes())
 	}
 
 	existingNATChains := make(map[util.Chain][]byte)
@@ -182,7 +182,7 @@ func (t *iptables) sync() {
 	if err != nil { // if we failed to get any rules
 		klog.ErrorS(err, "Failed to execute iptables-save, syncing all rules")
 	} else { // otherwise parse the output
-		existingNATChains = GetChainLines(util.TableNAT, t.iptablesData.Bytes())
+		existingNATChains = util.GetChainLines(util.TableNAT, t.iptablesData.Bytes())
 	}
 
 	// Reset all buffers used later.
@@ -193,23 +193,23 @@ func (t *iptables) sync() {
 	t.natRules.Reset()
 
 	// Write iptables header lines to specific chain indicies...
-	WriteLine(t.filterChains, "*filter")
-	WriteLine(t.natChains, "*nat")
+	t.filterChains.Write("*filter")
+	t.natChains.Write("*nat")
 
 	// Make sure we keep stats for the top-level chains, if they existed
 	// (which most should have because we created them above).
 	for _, chainName := range []util.Chain{kubeServicesChain, kubeExternalServicesChain, kubeForwardChain, kubeNodePortsChain} {
 		if chain, ok := preexistingFilterChains[chainName]; ok {
-			WriteBytesLine(t.filterChains, chain)
+			t.filterChains.WriteBytes(chain)
 		} else {
-			WriteLine(t.filterChains, MakeChainLine(chainName))
+			t.filterChains.Write(util.MakeChainLine(chainName))
 		}
 	}
 	for _, chainName := range []util.Chain{kubeServicesChain, kubeNodePortsChain, kubePostroutingChain, KubeMarkMasqChain} {
 		if chain, ok := existingNATChains[chainName]; ok {
-			WriteBytesLine(t.natChains, chain)
+			t.natChains.WriteBytes(chain)
 		} else {
-			WriteLine(t.natChains, MakeChainLine(chainName))
+			t.natChains.Write(util.MakeChainLine(chainName))
 		}
 	}
 
@@ -217,17 +217,17 @@ func (t *iptables) sync() {
 	// this so that it is easier to flush and change, for example if the mark
 	// value should ever change.
 	// NB: THIS MUST MATCH the corresponding code in the kubelet
-	WriteLine(t.natRules, []string{
+	t.natRules.Write(
 		"-A", string(kubePostroutingChain),
 		"-m", "mark", "!", "--mark", fmt.Sprintf("%s/%s", t.masqueradeMark, t.masqueradeMark),
 		"-j", "RETURN",
-	}...)
+	)
 	// Clear the mark to avoid re-masquerading if the packet re-traverses the network stack.
-	WriteLine(t.natRules, []string{
+	t.natRules.Write(
 		"-A", string(kubePostroutingChain),
 		// XOR proxier.masqueradeMark to unset it
 		"-j", "MARK", "--xor-mark", t.masqueradeMark,
-	}...)
+	)
 	masqRule := []string{
 		"-A", string(kubePostroutingChain),
 		"-m", "comment", "--comment", `"kubernetes service traffic requiring SNAT"`,
@@ -238,15 +238,15 @@ func (t *iptables) sync() {
 	//if iptables.HasRandomFully() {
 	//	masqRule = append(masqRule, "--random-fully")
 	//}
-	WriteLine(t.natRules, masqRule...)
+	t.natRules.Write(masqRule)
 
 	// Install the kubernetes-specific masquerade mark rule. We use a whole chain for
 	// this so that it is easier to flush and change, for example if the mark
 	// value should ever change.
-	WriteLine(t.natRules, []string{
+	t.natRules.Write(
 		"-A", string(KubeMarkMasqChain),
 		"-j", "MARK", "--or-mark", t.masqueradeMark,
-	}...)
+	)
 
 	// Accumulate NAT chains to keep.
 	activeNATChains := map[util.Chain]bool{} // use a map as a set
@@ -321,9 +321,9 @@ func (t *iptables) sync() {
 			if hasEndpoints {
 				// Create the per-service chain, retaining counters if possible.
 				if chain, ok := existingNATChains[svcChain]; ok {
-					WriteBytesLine(t.natChains, chain)
+					t.natChains.WriteBytes(chain)
 				} else {
-					WriteLine(t.natChains, MakeChainLine(svcChain))
+					t.natChains.Write(util.MakeChainLine(svcChain))
 				}
 				activeNATChains[svcChain] = true
 			}
@@ -333,9 +333,9 @@ func (t *iptables) sync() {
 				// Only for services request OnlyLocal traffic
 				// create the per-service LB chain, retaining counters if possible.
 				if lbChain, ok := existingNATChains[svcXlbChain]; ok {
-					WriteBytesLine(t.natChains, lbChain)
+					t.natChains.WriteBytes(lbChain)
 				} else {
-					WriteLine(t.natChains, MakeChainLine(svcXlbChain))
+					t.natChains.Write(util.MakeChainLine(svcXlbChain))
 				}
 				activeNATChains[svcXlbChain] = true
 			}
@@ -352,23 +352,31 @@ func (t *iptables) sync() {
 				)
 				klog.Info("WRITING RULES FOR CLUSTERIP:", args)
 				if t.masqueradeAll {
-					WriteRuleLine(t.natRules, string(svcChain), append(args, "-j", string(KubeMarkMasqChain))...)
+					t.natRules.Write(
+						"-A", string(svcChain),
+						args,
+						"-j", string(KubeMarkMasqChain))
 				} else if t.localDetector.IsImplemented() { //TODO is this required?
 					// This masquerades off-cluster traffic to a service VIP.  The idea
 					// is that you can establish a static route for your Service range,
 					// routing to any node, and that node will bridge into the Service
 					// for you.  Since that might bounce off-node, we masquerade here.
 					// If/when we support "Local" policy for VIPs, we should update this.
-					WriteRuleLine(t.natRules, string(svcChain), t.localDetector.JumpIfNotLocal(args, string(KubeMarkMasqChain))...)
+					t.natRules.Write(
+						"-A", string(svcChain),
+						t.localDetector.JumpIfNotLocal(args, string(KubeMarkMasqChain)))
 				}
-				WriteRuleLine(t.natRules, string(kubeServicesChain), append(args, "-j", string(svcChain))...)
+				t.natRules.Write(
+					"-A", string(kubeServicesChain),
+					args,
+					"-j", string(svcChain))
 			} else {
 				// No endpoints.
-				WriteLine(t.filterRules,
+				t.filterRules.Write(
 					"-A", string(kubeServicesChain),
 					"-m", "comment", "--comment", fmt.Sprintf(`"%s has no endpoints"`, svcNameString),
 					"-m", protocol, "-p", protocol,
-					"-d", ToCIDR(svcInfo.ClusterIP()),
+					"-d", svcInfo.ClusterIP().String(),
 					"--dport", strconv.Itoa(svcInfo.Port()),
 					"-j", "REJECT",
 				)
@@ -424,24 +432,33 @@ func (t *iptables) sync() {
 					// be always forwarded to the corresponding Service, so no need to SNAT
 					// If we can't differentiate the local traffic we always SNAT.
 					if !svcInfo.NodeLocalExternal() {
+						appendTo := []string{"-A", string(svcChain)}
 						destChain = svcChain
 						// This masquerades off-cluster traffic to a External IP.
 						if t.localDetector.IsImplemented() {
-							WriteRuleLine(t.natRules, string(svcChain), t.localDetector.JumpIfNotLocal(args, string(KubeMarkMasqChain))...)
+							t.natRules.Write(
+								appendTo,
+								t.localDetector.JumpIfNotLocal(args, string(KubeMarkMasqChain)))
 						} else {
-							WriteRuleLine(t.natRules, string(svcChain), append(args, "-j", string(KubeMarkMasqChain))...)
+							t.natRules.Write(
+								appendTo,
+								args,
+								"-j", string(KubeMarkMasqChain))
 						}
 					}
 					// Send traffic bound for external IPs to the service chain.
-					WriteRuleLine(t.natRules, string(kubeServicesChain), append(args, "-j", string(destChain))...)
+					t.natRules.Write(
+						"-A", string(kubeServicesChain),
+						args,
+						"-j", string(destChain))
 
 				} else {
 					// No endpoints.
-					WriteLine(t.filterRules,
+					t.filterRules.Write(
 						"-A", string(kubeExternalServicesChain),
 						"-m", "comment", "--comment", fmt.Sprintf(`"%s has no endpoints"`, svcNameString),
 						"-m", protocol, "-p", protocol,
-						"-d", ToCIDR(net.ParseIP(externalIP)),
+						"-d", externalIP,
 						"--dport", strconv.Itoa(svcInfo.Port()),
 						"-j", "REJECT",
 					)
@@ -456,9 +473,9 @@ func (t *iptables) sync() {
 					if hasEndpoints {
 						// create service firewall chain
 						if chain, ok := existingNATChains[fwChain]; ok {
-							WriteBytesLine(t.natChains, chain)
+							t.natChains.WriteBytes(chain)
 						} else {
-							WriteLine(t.natChains, MakeChainLine(fwChain))
+							t.natChains.Write(util.MakeChainLine(fwChain))
 						}
 						activeNATChains[fwChain] = true
 						// The service firewall rules are created based on ServiceSpec.loadBalancerSourceRanges field.
@@ -473,7 +490,7 @@ func (t *iptables) sync() {
 							"--dport", strconv.Itoa(svcInfo.Port()),
 						)
 						// jump to service firewall chain
-						WriteLine(t.natRules, append(args, "-j", string(fwChain))...)
+						t.natRules.Write(args, "-j", string(fwChain))
 
 						args = append(args[:0],
 							"-A", string(fwChain),
@@ -485,18 +502,18 @@ func (t *iptables) sync() {
 						// If we are proxying globally, we need to masquerade in case we cross nodes.
 						// If we are proxying only locally, we can retain the source IP.
 						if !svcInfo.NodeLocalExternal() {
-							WriteLine(t.natRules, append(args, "-j", string(KubeMarkMasqChain))...)
+							t.natRules.Write(args, "-j", string(KubeMarkMasqChain))
 							chosenChain = svcChain
 						}
 
 						if len(svcInfo.LoadBalancerSourceRanges()) == 0 {
 							// allow all sources, so jump directly to the KUBE-SVC or KUBE-XLB chain
-							WriteLine(t.natRules, append(args, "-j", string(chosenChain))...)
+							t.natRules.Write(args, "-j", string(chosenChain))
 						} else {
 							// firewall filter based on each source range
 							allowFromNode := false
 							for _, src := range svcInfo.LoadBalancerSourceRanges() {
-								WriteLine(t.natRules, append(args, "-s", src, "-j", string(chosenChain))...)
+								t.natRules.Write(args, "-s", src, "-j", string(chosenChain))
 								_, cidr, err := net.ParseCIDR(src)
 								if err != nil {
 									klog.ErrorS(err, "Error parsing CIDR in LoadBalancerSourceRanges, dropping it", "cidr", cidr)
@@ -508,20 +525,23 @@ func (t *iptables) sync() {
 							// loadbalancer's backend hosts. In this case, request will not hit the loadbalancer but loop back directly.
 							// Need to add the following rule to allow request on host.
 							if allowFromNode {
-								WriteLine(t.natRules, append(args, "-s", ToCIDR(net.ParseIP(ingress)), "-j", string(chosenChain))...)
+								t.natRules.Write(
+									args,
+									"-s", ingress,
+									"-j", string(chosenChain))
 							}
 						}
 
 						// If the packet was able to reach the end of firewall chain, then it did not get DNATed.
 						// It means the packet cannot go thru the firewall, then mark it for DROP
-						WriteLine(t.natRules, append(args, "-j", string(KubeMarkDropChain))...)
+						t.natRules.Write(args, "-j", string(KubeMarkDropChain))
 					} else {
 						// No endpoints.
-						WriteLine(t.filterRules,
+						t.filterRules.Write(
 							"-A", string(kubeExternalServicesChain),
 							"-m", "comment", "--comment", fmt.Sprintf(`"%s has no endpoints"`, svcNameString),
 							"-m", protocol, "-p", protocol,
-							"-d", ToCIDR(net.ParseIP(ingress)),
+							"-d", ingress,
 							"--dport", strconv.Itoa(svcInfo.Port()),
 							"-j", "REJECT",
 						)
@@ -591,9 +611,15 @@ func (t *iptables) sync() {
 					)
 					if !svcInfo.NodeLocalExternal() {
 						// Nodeports need SNAT, unless they're local.
-						WriteRuleLine(t.natRules, string(svcChain), append(args, "-j", string(KubeMarkMasqChain))...)
+						t.natRules.Write(
+							"-A", string(svcChain),
+							args,
+							"-j", string(KubeMarkMasqChain))
 						// Jump to the service chain.
-						WriteRuleLine(t.natRules, string(kubeNodePortsChain), append(args, "-j", string(svcChain))...)
+						t.natRules.Write(
+							"-A", string(kubeNodePortsChain),
+							args,
+							"-j", string(svcChain))
 					} else {
 						// TODO: Make all nodePorts jump to the firewall chain.
 						// Currently we only create it for loadbalancers (#33586).
@@ -603,12 +629,19 @@ func (t *iptables) sync() {
 						if isIPv6 {
 							loopback = "::1/128"
 						}
-						WriteRuleLine(t.natRules, string(kubeNodePortsChain), append(args, "-s", loopback, "-j", string(KubeMarkMasqChain))...)
-						WriteRuleLine(t.natRules, string(kubeNodePortsChain), append(args, "-j", string(svcXlbChain))...)
+						appendTo := []string{"-A", string(kubeNodePortsChain)}
+						t.natRules.Write(
+							appendTo,
+							args,
+							"-s", loopback, "-j", string(KubeMarkMasqChain))
+						t.natRules.Write(
+							appendTo,
+							args,
+							"-j", string(svcXlbChain))
 					}
 				} else {
 					// No endpoints.
-					WriteLine(t.filterRules,
+					t.filterRules.Write(
 						"-A", string(kubeExternalServicesChain),
 						"-m", "comment", "--comment", fmt.Sprintf(`"%s has no endpoints"`, svcNameString),
 						"-m", "addrtype", "--dst-type", "LOCAL",
@@ -623,7 +656,7 @@ func (t *iptables) sync() {
 			if svcInfo.HealthCheckNodePort() != 0 {
 				// no matter if node has local endpoints, healthCheckNodePorts
 				// need to add a rule to accept the incoming connection
-				WriteLine(t.filterRules,
+				t.filterRules.Write(
 					"-A", string(kubeNodePortsChain),
 					"-m", "comment", "--comment", fmt.Sprintf(`"%s health check node port"`, svcNameString),
 					"-m", "tcp", "-p", "tcp",
@@ -667,9 +700,9 @@ func (t *iptables) sync() {
 
 				// Create the endpoint chain, retaining counters if possible.
 				if chain, ok := existingNATChains[endpointChain]; ok {
-					WriteBytesLine(t.natChains, chain)
+					t.natChains.WriteBytes(chain)
 				} else {
-					WriteLine(t.natChains, MakeChainLine(endpointChain))
+					t.natChains.Write(util.MakeChainLine(endpointChain))
 				}
 				activeNATChains[endpointChain] = true
 			}
@@ -686,7 +719,7 @@ func (t *iptables) sync() {
 						"--rcheck", "--seconds", strconv.Itoa(svcInfo.StickyMaxAgeSeconds()), "--reap",
 						"-j", string(endpointChain),
 					)
-					WriteLine(t.natRules, args...)
+					t.natRules.Write(args)
 				}
 			}
 
@@ -738,7 +771,7 @@ func (t *iptables) sync() {
 				}
 				// The final (or only if n == 1) rule is a guaranteed match.
 				args = append(args, "-j", string(endpointChain))
-				WriteLine(t.natRules, args...)
+				t.natRules.Write(args)
 			}
 
 			// Every endpoint gets a chain, regardless of its state. This is required later since we may
@@ -754,16 +787,17 @@ func (t *iptables) sync() {
 				args = append(args[:0], "-A", string(endpointChain))
 				args = t.appendServiceCommentLocked(args, svcNameString)
 				// Handle traffic that loops back to the originator with SNAT.
-				WriteLine(t.natRules, append(args,
+				args = append(args,
 					"-s", ToCIDR(net.ParseIP(*epIP)),
-					"-j", string(KubeMarkMasqChain))...)
+					"-j", string(KubeMarkMasqChain))
+				t.natRules.Write(args)
 				// Update client-affinity lists.
 				if svcInfo.SessionAffinityType() == v1.ServiceAffinityClientIP {
 					args = append(args, "-m", "recent", "--name", string(endpointChain), "--set")
 				}
 				// DNAT to final destination.
 				args = append(args, "-m", protocol, "-p", protocol, "-j", "DNAT", "--to-destination", net.JoinHostPort(*endpoints[i], strconv.Itoa(svcInfo.TargetPort())))
-				WriteLine(t.natRules, args...)
+				t.natRules.Write(args)
 			}
 
 			// The logic below this applies only if this service is marked as OnlyLocal
@@ -780,19 +814,21 @@ func (t *iptables) sync() {
 					"-m", "comment", "--comment",
 					`"Redirect pods trying to reach external loadbalancer VIP to clusterIP"`,
 				)
-				WriteLine(t.natRules, t.localDetector.JumpIfLocal(args, string(svcChain))...)
+				t.natRules.Write(t.localDetector.JumpIfLocal(args, string(svcChain)))
 			}
 
 			// Next, redirect all src-type=LOCAL -> LB IP to the service chain for externalTrafficPolicy=Local
 			// This allows traffic originating from the host to be redirected to the service correctly,
 			// otherwise traffic to LB IPs are dropped if there are no local endpoints.
 			args = append(args[:0], "-A", string(svcXlbChain))
-			WriteLine(t.natRules, append(args,
+			t.natRules.Write(
+				args,
 				"-m", "comment", "--comment", fmt.Sprintf(`"masquerade LOCAL traffic for %s LB IP"`, svcNameString),
-				"-m", "addrtype", "--src-type", "LOCAL", "-j", string(KubeMarkMasqChain))...)
-			WriteLine(t.natRules, append(args,
+				"-m", "addrtype", "--src-type", "LOCAL", "-j", string(KubeMarkMasqChain))
+			t.natRules.Write(
+				args,
 				"-m", "comment", "--comment", fmt.Sprintf(`"route LOCAL traffic for %s LB IP to service chain"`, svcNameString),
-				"-m", "addrtype", "--src-type", "LOCAL", "-j", string(svcChain))...)
+				"-m", "addrtype", "--src-type", "LOCAL", "-j", string(svcChain))
 
 			// Prefer local ready endpoint chains, but fall back to ready terminating if none exist
 			localEndpointChains := localReadyEndpointChains
@@ -811,12 +847,12 @@ func (t *iptables) sync() {
 					"-j",
 					string(KubeMarkDropChain),
 				)
-				WriteLine(t.natRules, args...)
+				t.natRules.Write(args)
 			} else {
 				// First write session affinity rules only over local endpoints, if applicable.
 				if svcInfo.SessionAffinityType() == v1.ServiceAffinityClientIP {
 					for _, endpointChain := range localEndpointChains {
-						WriteLine(t.natRules,
+						t.natRules.Write(
 							"-A", string(svcXlbChain),
 							"-m", "comment", "--comment", svcNameString,
 							"-m", "recent", "--name", string(endpointChain),
@@ -842,7 +878,7 @@ func (t *iptables) sync() {
 					}
 					// The final (or only if n == 1) rule is a guaranteed match.
 					args = append(args, "-j", string(endpointChain))
-					WriteLine(t.natRules, args...)
+					t.natRules.Write(args)
 				}
 			}
 		}
@@ -858,8 +894,8 @@ func (t *iptables) sync() {
 			// We must (as per iptables) write a chain-line for it, which has
 			// the nice effect of flushing the chain.  Then we can remove the
 			// chain.
-			WriteBytesLine(t.natChains, existingNATChains[chain])
-			WriteLine(t.natRules, "-X", chainString)
+			t.natChains.WriteBytes(existingNATChains[chain])
+			t.natRules.Write("-X", chainString)
 		}
 	}
 
@@ -874,7 +910,7 @@ func (t *iptables) sync() {
 				"-m", "comment", "--comment", `"kubernetes service nodeports; NOTE: this must be the last rule in this chain"`,
 				"-m", "addrtype", "--dst-type", "LOCAL",
 				"-j", string(kubeNodePortsChain))
-			WriteLine(t.natRules, args...)
+			t.natRules.Write(args)
 			// Nothing else matters after the zero CIDR.
 			break
 		}
@@ -889,13 +925,13 @@ func (t *iptables) sync() {
 			"-m", "comment", "--comment", `"kubernetes service nodeports; NOTE: this must be the last rule in this chain"`,
 			"-d", address,
 			"-j", string(kubeNodePortsChain))
-		WriteLine(t.natRules, args...)
+		t.natRules.Write(args)
 	}
 
 	// Drop the packets in INVALID state, which would potentially cause
 	// unexpected connection reset.
 	// https://github.com/kubernetes/kubernetes/issues/74839
-	WriteLine(t.filterRules,
+	t.filterRules.Write(
 		"-A", string(kubeForwardChain),
 		"-m", "conntrack",
 		"--ctstate", "INVALID",
@@ -905,7 +941,7 @@ func (t *iptables) sync() {
 	// If the masqueradeMark has been added then we want to forward that same
 	// traffic, this allows NodePort traffic to be forwarded even if the default
 	// FORWARD policy is not accept.
-	WriteLine(t.filterRules,
+	t.filterRules.Write(
 		"-A", string(kubeForwardChain),
 		"-m", "comment", "--comment", `"kubernetes forwarding rules"`,
 		"-m", "mark", "--mark", fmt.Sprintf("%s/%s", t.masqueradeMark, t.masqueradeMark),
@@ -915,14 +951,14 @@ func (t *iptables) sync() {
 	// The following two rules ensure the traffic after the initial packet
 	// accepted by the "kubernetes forwarding rules" rule above will be
 	// accepted.
-	WriteLine(t.filterRules,
+	t.filterRules.Write(
 		"-A", string(kubeForwardChain),
 		"-m", "comment", "--comment", `"kubernetes forwarding conntrack pod source rule"`,
 		"-m", "conntrack",
 		"--ctstate", "RELATED,ESTABLISHED",
 		"-j", "ACCEPT",
 	)
-	WriteLine(t.filterRules,
+	t.filterRules.Write(
 		"-A", string(kubeForwardChain),
 		"-m", "comment", "--comment", `"kubernetes forwarding conntrack pod destination rule"`,
 		"-m", "conntrack",
@@ -931,8 +967,8 @@ func (t *iptables) sync() {
 	)
 
 	// Write the end-of-table markers.
-	WriteLine(t.filterRules, "COMMIT")
-	WriteLine(t.natRules, "COMMIT")
+	t.filterRules.Write( "COMMIT")
+	t.natRules.Write( "COMMIT")
 
 	// Sync rules.
 	// NOTE: NoFlushTables is used so we don't flush non-kubernetes chains in the table
