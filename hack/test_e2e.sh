@@ -156,8 +156,9 @@ function create_cluster {
             - role: worker
             - role: worker
 EOF
-    kind get kubeconfig --internal --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig.conf"
-    export KUBECONFIG="${E2E_ARTIFACTS}/kubeconfig.conf"
+    kind get kubeconfig --internal --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig_internal.conf"
+    kind get kubeconfig --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig_tests.conf"
+    # export KUBECONFIG="${E2E_ARTIFACTS}/kubeconfig_internal.conf"
     echo "cluster is up"
     echo -e "Let's move on.\n"
 }
@@ -228,7 +229,7 @@ function install_kpng {
     # TODO this should be part of the template                
     kubectl -n kube-system create sa kpng
     kubectl create clusterrolebinding kpng --clusterrole=system:node-proxier --serviceaccount=kube-system:kpng
-    kubectl -n kube-system create cm kpng --from-file "${E2E_ARTIFACTS}/kubeconfig.conf"
+    kubectl -n kube-system create cm kpng --from-file "${E2E_ARTIFACTS}/kubeconfig_internal.conf"
     echo "Applying template"
     export IMAGE=kpng:test
     export PULL=IfNotPresent
@@ -244,13 +245,13 @@ function install_kpng {
 }
 
 function run_tests {
-    cp ${E2E_ARTIFACTS}/kubeconfig.conf ${E2E_DIR}/kubeconfig.conf 
+    cp ${E2E_ARTIFACTS}/kubeconfig_tests.conf ${E2E_DIR}/kubeconfig_tests.conf 
     ${E2E_DIR}/ginkgo --nodes=25 \
         --focus="\[Conformance\]|\[sig-network\]" \
         --skip="Feature|Federation|PerformanceDNS|Disruptive|Serial|LoadBalancer|KubeProxy|GCE|Netpol|NetworkPolicy" \
         ${E2E_DIR}/e2e.test \
         -- \
-        --kubeconfig=kubeconfig.conf \
+        --kubeconfig=kubeconfig_tests.conf \
         --provider=local \
         --dump-logs-on-failure=false \
         --report-dir=artifacts/reports \
