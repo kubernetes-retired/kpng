@@ -19,6 +19,7 @@ package iptables
 import (
 	"fmt"
 	"net"
+
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 
 	v1 "k8s.io/api/core/v1"
@@ -69,9 +70,7 @@ type ServicePort interface {
 	// GetPort returns service port if present. If return 0 means not present.
 	Port() int
 	// GetSessionAffinityType returns service session affinity type
-	SessionAffinityType() v1.ServiceAffinity
-	// GetStickyMaxAgeSeconds returns service max connection age
-	StickyMaxAgeSeconds() int
+	SessionAffinity() SessionAffinity
 	// ExternalIPStrings returns service ExternalIPs as a string array.
 	ExternalIPStrings() []string
 	// LoadBalancerIPStrings returns service LoadBalancerIPs as a string array.

@@ -44,7 +44,7 @@ type BaseServiceInfo struct {
 	protocol                 localnetv1.Protocol
 	nodePort                 int
 	loadBalancerIPs          []string
-	sessionAffinityType      v1.ServiceAffinity
+	sessionAffinity          SessionAffinity
 	stickyMaxAgeSeconds      int
 	externalIPs              []string
 	loadBalancerSourceRanges []string
@@ -54,6 +54,11 @@ type BaseServiceInfo struct {
 	internalTrafficPolicy    *v1.ServiceInternalTrafficPolicyType
 	hintsAnnotation          string
 	targetPort               int
+}
+
+// SessionAffinity contains data about assinged session affinity
+type SessionAffinity struct {
+	ClientIP *localnetv1.Service_ClientIP
 }
 
 var _ ServicePort = &BaseServiceInfo{}
@@ -78,14 +83,9 @@ func (info *BaseServiceInfo) TargetPort() int {
 	return info.targetPort
 }
 
-// SessionAffinityType is part of the ServicePort interface.
-func (info *BaseServiceInfo) SessionAffinityType() v1.ServiceAffinity {
-	return info.sessionAffinityType
-}
-
-// StickyMaxAgeSeconds is part of the ServicePort interface
-func (info *BaseServiceInfo) StickyMaxAgeSeconds() int {
-	return info.stickyMaxAgeSeconds
+// SessionAffinity is part of the ServicePort interface.
+func (info *BaseServiceInfo) SessionAffinity() SessionAffinity {
+	return info.sessionAffinity
 }
 
 // Protocol is part of ServicePort interface.
@@ -153,28 +153,20 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localnetv1.PortMapping
 	// 	nodeLocalInternal = apiservice.RequestsOnlyLocalTrafficForInternal(service)
 	// }
 
-	//TODO : CHECK SessionAffinity
-	var stickyMaxAgeSeconds int
-	// if service.Spec.SessionAffinity == v1.ServiceAffinityClientIP {
-	// 	// Kube-apiserver side guarantees SessionAffinityConfig won't be nil when session affinity type is ClientIP
-	// 	stickyMaxAgeSeconds = int(*service.Spec.SessionAffinityConfig.ClientIP.TimeoutSeconds)
-	// }
-
 	clusterIP := GetClusterIPByFamily(sct.ipFamily, service)
 	info := &BaseServiceInfo{
-		clusterIP:  net.ParseIP(clusterIP),
-		port:       int(port.Port),
-		targetPort: int(port.TargetPort),
-		protocol:   port.Protocol,
-		nodePort:   int(port.NodePort),
-		// sessionAffinityType:   service.Spec.SessionAffinity, //TODO : CHECK SessionAffinity
-		stickyMaxAgeSeconds: stickyMaxAgeSeconds,
-		nodeLocalExternal:   nodeLocalExternal,
-		nodeLocalInternal:   nodeLocalInternal,
+		clusterIP:         net.ParseIP(clusterIP),
+		port:              int(port.Port),
+		targetPort:        int(port.TargetPort),
+		protocol:          port.Protocol,
+		nodePort:          int(port.NodePort),
+		nodeLocalExternal: nodeLocalExternal,
+		nodeLocalInternal: nodeLocalInternal,
 		// internalTrafficPolicy: service.Spec.InternalTrafficPolicy, //TODO : CHECK InternalTrafficPolicy
 		hintsAnnotation:          service.Annotations[v1.AnnotationTopologyAwareHints],
 		loadBalancerSourceRanges: getLoadbalancerSourceRanges(service.IPFilters),
 		loadBalancerIPs:          getLoadBalancerIPs(service.IPs.LoadBalancerIPs, sct.ipFamily),
+		sessionAffinity:          getSessionAffinity(service.SessionAffinity),
 	}
 
 	// filter external ips, source ranges and ingress ips
@@ -201,6 +193,15 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localnetv1.PortMapping
 	// }
 
 	return info
+}
+
+func getSessionAffinity(affinity interface{}) SessionAffinity {
+	var sessionAffinity SessionAffinity
+	switch affinity.(type) {
+	case *localnetv1.Service_ClientIP:
+		sessionAffinity.ClientIP = affinity.(*localnetv1.Service_ClientIP)
+	}
+	return sessionAffinity
 }
 
 func getLoadBalancerIPs(ips *localnetv1.IPSet, ipFamily v1.IPFamily) []string {
