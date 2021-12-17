@@ -1,6 +1,10 @@
 
 modd.conf {}
 
+api/**/*.proto {
+    prep: protoc -I ./ --go_out=paths=source_relative:. --go-grpc_out=paths=source_relative:. $(find -name '*.proto')
+}
+
 api/**    { prep: "cd api      && go test ./..." }
 client/** { prep: "cd client   && go test ./..." }
 server/** { prep: "cd server   && go test ./..." }
