@@ -51,7 +51,7 @@ if you have ideas to make it better.
 - One example of a starting contribution might be
 pushing directly to a local registry and configuring kind to use this reg, so dockerhub
 isnt required.  
-- Or a `tilt` recipe which hot reloads all kpng on code changes.
+- Or a `tilt` recipe which hot reloads all kpng on code changes
 
 
 
