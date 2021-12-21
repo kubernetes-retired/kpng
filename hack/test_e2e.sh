@@ -22,6 +22,23 @@ shopt -s expand_aliases
 
 OS=$(uname| tr '[:upper:]' '[:lower:]')
 
+if_error_exit() {
+    ###########################################################################
+    # Description:                                                            #
+    # Validate if previous command failed and show an error msg (if provided) #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   $1 - error message if not provided, it will just exit                 #
+    ###########################################################################
+    if [ "$?" != "0" ]; then
+        if [ -n "$1" ]; then
+            RED="\e[31m"
+            ENDCOLOR="\e[0m"
+            echo -e "[${RED}FAILED${ENDCOLOR}] ${1}"
+        fi
+        exit 1
+    fi
+}
 
 function line {
     echo "+============================================================================+"
@@ -32,8 +49,11 @@ function docker_build {
     echo "   Resolving kpng docker image"
     line
 
+    CMD_BUILD_IMAGE=("docker build -t kpng:test -f Dockerfile .")
     pushd "${0%/*}/.." > /dev/null
-        docker build -t kpng:test -f Dockerfile .
+        ${CMD_BUILD_IMAGE}
+        if_error_exit "Failed to build kpng, command was: ${CMD_BUILD_IMAGE}"
+
         echo "docker image build."
     popd > /dev/null
 
