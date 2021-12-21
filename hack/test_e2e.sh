@@ -116,7 +116,7 @@ function setup_ginkgo {
 }
 
 function apply_ipvx_fixes {
-    if ci_mode = true ; then
+    if "${ci_mode}" = true ; then
         sudo sysctl -w net.ipv6.conf.all.forwarding=1
         sudo sysctl -w net.ipv4.ip_forward=1
     fi
