@@ -21,8 +21,9 @@ shopt -s expand_aliases
 : ${E2E_TIMEOUT_MINUTES:=100}
 
 OS=$(uname| tr '[:upper:]' '[:lower:]')
+CONTAINER_ENGINE="docker"
 
-if_error_exit() {
+function if_error_exit {
     ###########################################################################
     # Description:                                                            #
     # Validate if previous command failed and show an error msg (if provided) #
@@ -40,6 +41,44 @@ if_error_exit() {
     fi
 }
 
+function pass_message {
+    ###########################################################################
+    # Description:                                                            #
+    # show [PASSED] in green and a message as the validation passed.          #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   $1 - message to output                                                #
+    ###########################################################################
+    if ! [ -n "$1" ]; then
+        echo "pass_message() requires a message"
+        exit 1
+    fi
+    GREEN="\e[32m"
+    ENDCOLOR="\e[0m"
+    echo -e "[${GREEN}PASSED${ENDCOLOR}] ${1}"
+}
+
+function detect_container_engine {
+    ###########################################################################
+    # Description:                                                            #
+    # Detect Container Engine, by default it is docker but developers might   #
+    # use real alternatives like podman. The project welcome both.            #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   None                                                                  #
+    ###########################################################################
+
+    echo "* Detecting container engine..."
+    # If docker is not available, let's check if podman exists
+    ${CONTAINER_ENGINE} &> /dev/null
+    if [ "$?" != "0" ]; then
+        CONTAINER_ENGINE="podman"
+        ${CONTAINER_ENGINE} --help &> /dev/null
+        if_error_exit "the e2e tests currently support docker and podman as the container engine. Please install either of them"
+    fi
+    pass_message "Detected Container Engine: ${CONTAINER_ENGINE}"
+}
+
 function line {
     echo "+============================================================================+"
 }
@@ -49,7 +88,7 @@ function docker_build {
     echo "   Resolving kpng docker image"
     line
 
-    CMD_BUILD_IMAGE=("docker build -t kpng:test -f Dockerfile .")
+    CMD_BUILD_IMAGE=("${CONTAINER_ENGINE} build -t kpng:test -f Dockerfile .")
     pushd "${0%/*}/.." > /dev/null
         ${CMD_BUILD_IMAGE}
         if_error_exit "Failed to build kpng, command was: ${CMD_BUILD_IMAGE}"
@@ -296,6 +335,12 @@ function set_e2e_dir {
 }
 
 function main {
+
+    echo "* Starting KPNG E2E testing..."
+
+    # Detect container engine
+    detect_container_engine
+
     # in ci this should fail
     if [ "${ci_mode}" = true ] ; then 
         # REMOVE THIS comment out ON THE REPO WITH A PR WHEN LOCAL TESTS ARE ALL GREEN
