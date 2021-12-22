@@ -301,7 +301,7 @@ function install_kpng {
     echo "deploying kpng daemonset"
     kubectl create -f ${E2E_ARTIFACTS}/kpng-deployment-ds.yaml
     echo "any second now ..."
-    kubectl --namespace=kube-system rollout status daemonset kpng -w --timeout=3m
+    kubectl --namespace=kube-system rollout status daemonset kpng -w --request-timeout=3m
     echo "installation of kpng is done."
 
     echo -e "Let's move on.\n"
