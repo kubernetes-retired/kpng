@@ -23,6 +23,9 @@ shopt -s expand_aliases
 OS=$(uname| tr '[:upper:]' '[:lower:]')
 CONTAINER_ENGINE="docker"
 
+# Users can specify docker.io, quay.io registry
+KINDEST_NODE_IMAGE="docker.io/kindest/node"
+
 function if_error_exit {
     ###########################################################################
     # Description:                                                            #
@@ -204,7 +207,7 @@ function create_cluster {
 
     cat <<EOF | kind create cluster \
         --name ${E2E_CLUSTER_NAME}                     \
-        --image kindest/node:${E2E_K8S_VERSION}    \
+        --image "${KINDEST_NODE_IMAGE}":${E2E_K8S_VERSION}    \
         -v7 --wait 1m --retain --config=-
             kind: Cluster
             apiVersion: kind.x-k8s.io/v1alpha4
