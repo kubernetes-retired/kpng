@@ -218,6 +218,8 @@ function create_cluster {
             - role: worker
             - role: worker
 EOF
+    if_error_exit "cannot create kind cluster ${E2E_CLUSTER_NAME}"
+
     kind get kubeconfig --internal --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig.conf"
     kind get kubeconfig --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig_tests.conf"
     echo "cluster is up"
