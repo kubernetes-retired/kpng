@@ -228,7 +228,9 @@ function wait_until_cluster_is_ready {
 
     kubectl wait --for=condition=ready pods --namespace=kube-system -l k8s-app=kube-dns
     kubectl get nodes -o wide
-    kubectl get pods -A
+
+    kubectl get pods --all-namespaces
+    if_error_exit "error getting pods from all namespaces"
 
     echo -e "Let's move on.\n"
 }
