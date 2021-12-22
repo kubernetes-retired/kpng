@@ -287,7 +287,10 @@ function install_kpng {
     # TODO move this to ci:
     # docker load --input kpng-image.tar
     echo "loading kpng:test docker image"
-    kind load docker-image kpng:test --name ${E2E_CLUSTER_NAME}
+    CMD_KIND_LOAD_KPNG_TEST_IMAGE=("kind load docker-image kpng:test --name ${E2E_CLUSTER_NAME}")
+    ${CMD_BUILD_IMAGE}
+    if_error_exit "error loading image to kind, command was: ${CMD_KIND_LOAD_KPNG_TEST_IMAGE}"
+
 
     # TODO this should be part of the template                
     kubectl -n kube-system create sa kpng
