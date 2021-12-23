@@ -290,7 +290,7 @@ function install_kpng {
     # docker load --input kpng-image.tar
     echo "loading kpng:test docker image"
     CMD_KIND_LOAD_KPNG_TEST_IMAGE=("kind load docker-image kpng:test --name ${E2E_CLUSTER_NAME}")
-    ${CMD_BUILD_IMAGE}
+    ${CMD_KIND_LOAD_KPNG_TEST_IMAGE}
     if_error_exit "error loading image to kind, command was: ${CMD_KIND_LOAD_KPNG_TEST_IMAGE}"
 
 
