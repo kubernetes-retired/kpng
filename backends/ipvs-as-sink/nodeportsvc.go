@@ -21,155 +21,122 @@ import (
 	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
-func (s *Backend) handleNodePortService(svc *localnetv1.Service, op Operation) {
-	svckey := svc.Namespace + "/" + svc.Name
+func (s *Backend) updateNodePortService(svc *localnetv1.Service, serviceIP string, port *localnetv1.PortMapping) {
+	serviceKey := svc.Namespace + "/" + svc.Name
+	s.svcs[serviceKey] = svc
 
-	if op == AddService {
-		isNewService := true
-		if _, ok := s.svcs[svckey]; ok {
-			isNewService = false
-		}
-
-		if isNewService {
-			s.handleNewNodePortService(svckey, svc)
-		} else {
-			s.handleUpdatedNodePortService(svckey, svc)
-		}
-	}
-
-	if op == DeleteService {
-		portList := svc.Ports
-
-		s.AddOrDelNodePortInIPSet(svc, portList, DeleteService)
-		s.AddOrDelClusterIPInIPSet(svc, svc.Ports, DeleteService)
+	ipFamily := getIPFamily(serviceIP)
+	isServiceUpdated := s.isServiceUpdated(svc)
+	if !isServiceUpdated {
+		s.proxiers[ipFamily].handleNewNodePortService(serviceKey, serviceIP, port)
+	} else {
+		s.proxiers[ipFamily].handleUpdatedNodePortService(serviceKey, serviceIP, port)
 	}
 }
 
-func (s *Backend) handleNewNodePortService(key string, svc *localnetv1.Service) {
-	s.svcs[key] = svc
+func (s *Backend) deleteNodePortService(svc *localnetv1.Service, serviceIP string, port *localnetv1.PortMapping) {
+	serviceKey := svc.Namespace + "/" + svc.Name
+	s.svcs[serviceKey] = svc
+	ipFamily := getIPFamily(serviceIP)
+	p := s.proxiers[ipFamily]
+	p.deleteLBSvc(port , serviceIP, serviceKey)
 
-	s.addServiceIPToKubeIPVSIntf(nil, svc)
+	for _, nodeIP := range p.nodeAddresses {
+		p.deleteLBSvc(port, nodeIP, serviceKey)
+	}
 
+	endPointList , isLocalEndPoint := p.deleteIPVSDestForPort(serviceKey, serviceIP, port)
+
+	p.AddOrDelNodePortInIPSet(port, DeleteService)
+	p.AddOrDelClusterIPInIPSet(serviceIP, []*localnetv1.PortMapping{port}, DeleteService)
+	p.AddOrDelEndPointInIPSet(endPointList, []*localnetv1.PortMapping{port}, isLocalEndPoint, DeleteEndPoint)
+
+}
+
+func (p *proxier) handleNewNodePortService(key, clusterIP string, port *localnetv1.PortMapping) {
 	//Node Addresses need to be added as NodePortService
 	//so that in sync(), nodePort is attached to nodeIPs.
-	s.storeLBSvc(svc.Ports, s.nodeAddresses, key, NodePortService)
+	for _, nodeIP := range p.nodeAddresses {
+		p.storeLBSvc(port, nodeIP, key, NodePortService)
+	}
 
-	//NodePort svc clusterIPs need to be added as ClusterIPService
+	//NodePort svc clusterIP need to be added as ClusterIPService
 	//so that in sync(), port is attached to clusterIP.
-	s.storeLBSvc(svc.Ports, svc.IPs.ClusterIPs.All(), key, ClusterIPService)
+	p.storeLBSvc(port, clusterIP, key, ClusterIPService)
 
-	portList := svc.Ports
-	s.AddOrDelNodePortInIPSet(svc, portList, AddService)
+	p.AddOrDelNodePortInIPSet(port, AddService)
 
-	s.AddOrDelClusterIPInIPSet(svc, svc.Ports, AddService)
+	p.AddOrDelClusterIPInIPSet(clusterIP, []*localnetv1.PortMapping{port}, AddService)
 }
 
-func (s *Backend) handleUpdatedNodePortService(svckey string, svc *localnetv1.Service) {
-	// update the svc
-	prevSvc := s.svcs[svckey]
-	s.svcs[svckey] = svc
-
-	s.addServiceIPToKubeIPVSIntf(prevSvc, svc)
-
-	addedPorts, removedPorts := diffInPortMapping(prevSvc, svc)
-
-	if len(addedPorts) > 0 {
-		//Node Addresses need to be added as NodePortService
-		//so that in sync(), nodePort is attached to nodeIPs.
-		s.storeLBSvc(addedPorts, s.nodeAddresses, svckey, NodePortService)
-
-		//NodePort service clusterIPs need to be added as ClusterIPService
-		//so that in sync(), port is attached to clusterIP.
-		s.storeLBSvc(addedPorts, svc.IPs.All().All(), svckey, ClusterIPService)
-
-		s.AddOrDelNodePortInIPSet(svc, addedPorts, AddService)
-
-		for _, epKV := range s.endpoints.GetByPrefix([]byte(svckey + "/")) {
-			endPointIP := epKV.Value.(string)
-
-			for _, lbKV := range s.lbs.GetByPrefix([]byte(svckey + "/")) {
-				lb := lbKV.Value.(ipvsLB)
-
-				if getIPFamily(endPointIP) == getIPFamily(lb.IP) {
-					for _, port := range addedPorts {
-						lbKey := svckey + "/" + lb.IP + "/" + epPortSuffix(port)
-						s.dests.Set([]byte(lbKey+"/"+endPointIP), 0, ipvsSvcDst{
-							Svc: lb.ToService(),
-							Dst: ipvsDestination(endPointIP, port, s.weight),
-						})
-					}
-				}
-			}
-		}
+func (p *proxier) handleUpdatedNodePortService(key, clusterIP string, port *localnetv1.PortMapping) {
+	//Node Addresses need to be added as NodePortService
+	//so that in sync(), nodePort is attached to nodeIPs.
+	for _, nodeIP := range p.nodeAddresses {
+		p.storeLBSvc(port, nodeIP, key, NodePortService)
 	}
 
-	if len(removedPorts) > 0 {
-		for _, epKV := range s.endpoints.GetByPrefix([]byte(svckey + "/")) {
-			endPointIP := epKV.Value.(string)
+	//NodePort service clusterIPs need to be added as ClusterIPService
+	//so that in sync(), port is attached to clusterIP.
+	p.storeLBSvc(port, clusterIP, key, ClusterIPService)
 
-			for _, lbKV := range s.lbs.GetByPrefix([]byte(svckey + "/")) {
-				lb := lbKV.Value.(ipvsLB)
-				if getIPFamily(endPointIP) == getIPFamily(lb.IP) {
-					for _, port := range removedPorts {
-						lbKey := svckey + "/" + lb.IP + "/" + epPortSuffix(port)
-						s.dests.Delete([]byte(lbKey + "/" + endPointIP))
-					}
-				}
-			}
-		}
+	endPointList , isLocalEndPoint := p.updateIPVSDestWithPort(key, clusterIP, port)
 
-		s.deleteLBSvc(removedPorts, s.nodeAddresses, svckey)
+	p.AddOrDelNodePortInIPSet(port, AddService)
 
-		s.deleteLBSvc(removedPorts, svc.IPs.All().All(), svckey)
+	p.AddOrDelClusterIPInIPSet(clusterIP, []*localnetv1.PortMapping{port}, AddService)
 
-		s.AddOrDelNodePortInIPSet(svc, removedPorts, DeleteService)
-	}
+	p.AddOrDelEndPointInIPSet(endPointList, []*localnetv1.PortMapping{port}, isLocalEndPoint, AddEndPoint)
 }
 
-func (s *Backend) SetEndPointForNodePortSvc(svcKey, key string, endpoint *localnetv1.Endpoint) {
+func (s *Backend) handleEndPointForNodePortService(svcKey, key string, service *localnetv1.Service, endpoint *localnetv1.Endpoint, op Operation) {
 	prefix := svcKey + "/" + key + "/"
-	service := s.svcs[svcKey]
-	portList := service.Ports
-
-	for _, endPointIP := range endpoint.IPs.All() {
-		epInfo := endPointInfo{
-			endPointIP: endPointIP,
-			isLocalEndPoint: endpoint.Local,
-		}
-		s.endpoints.Set([]byte(prefix+endPointIP), 0, epInfo)
-
-		// add a destination for every LB of this service
-		for _, lbKV := range s.lbs.GetByPrefix([]byte(svcKey + "/")) {
-			lb := lbKV.Value.(ipvsLB)
-
-			if getIPFamily(endPointIP) == getIPFamily(lb.IP) {
-				destination := ipvsSvcDst{
-					Svc:             lb.ToService(),
-					Dst:             ipvsDestination(endPointIP, lb.Port, s.weight),
-				}
-				s.dests.Set([]byte(string(lbKV.Key)+"/"+endPointIP), 0, destination)
-			}
+	if op == AddEndPoint {
+		// endpoint will have only one family IP, either v4/6.
+		endPointIPs := endpoint.IPs.All()
+		for _, ip := range endPointIPs {
+			ipFamily := getIPFamily(ip)
+			s.proxiers[ipFamily].SetEndPointForNodePortSvc(svcKey, prefix, ip, service, endpoint)
 		}
 	}
 
-	s.AddOrDelEndPointInIPSet(endpoint.IPs.All(), portList, endpoint.Local, AddEndPoint)
+	if op == DeleteEndPoint {
+		for _, proxier := range s.proxiers {
+			proxier.DeleteEndPointForNodePortSvc(svcKey, prefix, service)
+		}
+	}
 }
 
-func (s *Backend) DeleteEndPointForNodePortSvc(svcKey, key string) {
-	prefix := []byte(svcKey + "/" + key + "/")
-	service := s.svcs[svcKey]
-	portList := service.Ports
+func (p *proxier) SetEndPointForNodePortSvc(svcKey, prefix , endPointIP string, service *localnetv1.Service, endpoint *localnetv1.Endpoint) {
+	epInfo := endPointInfo{
+		endPointIP: endPointIP,
+		isLocalEndPoint: endpoint.Local,
+	}
+	p.endpoints.Set([]byte(prefix+endPointIP), 0, epInfo)
+	// add a destination for every LB of this service. Incase of nodePort service ,
+	// the key is just namespace+svcName unlike cluster-ip service.
+	for _, lbKV := range p.lbs.GetByPrefix([]byte(svcKey)) {
+		lb := lbKV.Value.(ipvsLB)
+		destination := ipvsSvcDst{
+			Svc:             lb.ToService(),
+			Dst:             ipvsDestination(endPointIP, lb.Port, p.weight),
+		}
+		p.dests.Set([]byte(string(lbKV.Key) + "/" + endPointIP), 0, destination)
+	}
+
+	p.AddOrDelEndPointInIPSet([]string{endPointIP}, service.Ports, endpoint.Local, AddEndPoint)
+}
+
+func (p *proxier) DeleteEndPointForNodePortSvc(svcKey, prefix string, service *localnetv1.Service) {
 	var endPointList []string
 	var isLocalEndPoint bool
-
-	for _, kv := range s.endpoints.GetByPrefix(prefix) {
+	for _, kv := range p.endpoints.GetByPrefix([]byte(prefix)) {
 		// remove this endpoint from the destinations if the service
 		epInfo := kv.Value.(endPointInfo)
 		suffix := []byte("/" + epInfo.endPointIP)
-
-		for _, destKV := range s.dests.GetByPrefix([]byte(svcKey)) {
+		for _, destKV := range p.dests.GetByPrefix([]byte(svcKey)) {
 			if bytes.HasSuffix(destKV.Key, suffix) {
-				s.dests.Delete(destKV.Key)
+				p.dests.Delete(destKV.Key)
 			}
 		}
 
@@ -178,7 +145,7 @@ func (s *Backend) DeleteEndPointForNodePortSvc(svcKey, key string) {
 	}
 
 	// remove this endpoint from the endpoints
-	s.endpoints.DeleteByPrefix(prefix)
+	p.endpoints.DeleteByPrefix([]byte(prefix))
 
-	s.AddOrDelEndPointInIPSet(endPointList, portList, isLocalEndPoint, DeleteEndPoint)
+	p.AddOrDelEndPointInIPSet(endPointList, service.Ports, isLocalEndPoint, DeleteEndPoint)
 }
