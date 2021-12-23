@@ -22,6 +22,7 @@ shopt -s expand_aliases
 
 OS=$(uname| tr '[:upper:]' '[:lower:]')
 CONTAINER_ENGINE="docker"
+KPNG_IMAGE_TAG_NAME="kpng:test"
 
 # Users can specify docker.io, quay.io registry
 KINDEST_NODE_IMAGE="docker.io/kindest/node"
@@ -58,7 +59,7 @@ function pass_message {
     fi
     GREEN="\e[32m"
     ENDCOLOR="\e[0m"
-    echo -e "[${GREEN}PASSED${ENDCOLOR}] ${1}"
+    echo -e "[ ${GREEN}PASSED${ENDCOLOR} ] ${1}"
 }
 
 function detect_container_engine {
@@ -70,8 +71,6 @@ function detect_container_engine {
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
-
-    echo "* Detecting container engine..."
     # If docker is not available, let's check if podman exists
     ${CONTAINER_ENGINE} &> /dev/null
     if [ "$?" != "0" ]; then
@@ -87,26 +86,17 @@ function line {
 }
 
 function docker_build {
-    line
-    echo "   Resolving kpng docker image"
-    line
+    CMD_BUILD_IMAGE=("${CONTAINER_ENGINE} build -t ${KPNG_IMAGE_TAG_NAME} -f Dockerfile .")
 
-    CMD_BUILD_IMAGE=("${CONTAINER_ENGINE} build -t kpng:test -f Dockerfile .")
     pushd "${0%/*}/.." > /dev/null
         ${CMD_BUILD_IMAGE}
         if_error_exit "Failed to build kpng, command was: ${CMD_BUILD_IMAGE}"
-
-        echo "docker image build."
     popd > /dev/null
 
-    echo -e "Let's move on.\n"
+    pass_message "Image build and tag ${KPNG_IMAGE_TAG_NAME} is set."
 }
 
 function setup_kind {
-    line
-    echo "   Resolving kind bin"
-    line
-
     if ! kind > /dev/null 2>&1 ; then
         echo "kind not found"
         if [ "${ci_mode}" = true ] ; then
@@ -121,18 +111,12 @@ function setup_kind {
             echo "https://kind.sigs.k8s.io/docs/user/quick-start/#installation"
             exit 1
         fi
-    else
-        echo "kind bin found."
     fi
 
-    echo -e "Let's move on.\n"
+    pass_message "The kind tool is set."
 }
 
 function setup_kubectl {
-    line
-    echo "   Resolving kubectl bin"
-    line
-
     if ! kubectl > /dev/null 2>&1 ; then
         echo "kubectl not found"
         if [ "${ci_mode}" = true ] ; then
@@ -140,25 +124,18 @@ function setup_kubectl {
             curl -L https://dl.k8s.io/${E2E_K8S_VERSION}/bin/${OS}/amd64/kubectl -o kubectl
             sudo chmod +x kubectl
             sudo mv kubectl /usr/local/bin/kubectl
-            echo "kubectl was set up."
         else
             line
             echo "please get kubectl and add it to PATH"
             echo "https://kubernetes.io/docs/tasks/tools/#kubectl"
             exit 1
         fi
-    else
-        echo "kubectl bin found."
     fi
 
-    echo -e "Let's move on.\n"
+    pass_message "The kubectl tool is set."
 }
 
 function setup_ginkgo {
-    line
-    echo "   Resolving e2e test bins"
-    line
-
     if ! [ -f ${E2E_DIR}/ginkgo ] || ! [ -f ${E2E_DIR}/e2e.test ] ; then
         echo "ginko and/or e2e.test, pulling binaries ..."
         curl -L https://dl.k8s.io/${E2E_K8S_VERSION}/kubernetes-test-${OS}-amd64.tar.gz \
@@ -169,12 +146,9 @@ function setup_ginkgo {
         rm ${E2E_DIR}/kubernetes-test-${OS}-amd64.tar.gz
         sudo chmod +x "${E2E_DIR}/ginkgo"
         sudo chmod +x "${E2E_DIR}/e2e.test"
-        echo "ginko and e2e.test have been set up."
-    else
-        echo "ginko and e2e.test found."
     fi
 
-    echo -e "Let's move on.\n"
+    pass_message "The tools ginko and e2e.test have been set up."
 }
 
 function apply_ipvx_fixes {
@@ -195,10 +169,6 @@ function setup_environment {
 }
 
 function create_cluster {
-    line
-    echo "  Building the cluster '${E2E_CLUSTER_NAME}'"
-    line
-
     # Get rid of any old cluster with the same name.
     if kind get clusters | grep -q ${E2E_CLUSTER_NAME}; then
         kind delete cluster --name ${E2E_CLUSTER_NAME}
@@ -222,22 +192,18 @@ EOF
 
     kind get kubeconfig --internal --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig.conf"
     kind get kubeconfig --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig_tests.conf"
-    echo "cluster is up"
-    echo -e "Let's move on.\n"
+
+    pass_message "Cluster ${E2E_CLUSTER_NAME} is created."
 }
 
 function wait_until_cluster_is_ready {
-    line
-    echo "  Waiting for the cluster '${E2E_CLUSTER_NAME}' to be ready"
-    line
-
     kubectl wait --for=condition=ready pods --namespace=kube-system -l k8s-app=kube-dns
     kubectl get nodes -o wide
 
     kubectl get pods --all-namespaces
     if_error_exit "error getting pods from all namespaces"
 
-    echo -e "Let's move on.\n"
+    pass_message "Cluster ${E2E_CLUSTER_NAME} is operational."
 }
 
 function workaround_coreDNS_for_IPv6_airgapped {
@@ -251,11 +217,6 @@ function workaround_coreDNS_for_IPv6_airgapped {
     # otherwise pods stops trying to resolve the domain.
 
     # Get the current config
-
-    line
-    echo "  Let's patch CoreDNS"
-    line
-
     original_coredns=$(kubectl get -oyaml -n=kube-system configmap/coredns)
     echo "Original CoreDNS config:"
     echo "${original_coredns}"
@@ -273,14 +234,10 @@ function workaround_coreDNS_for_IPv6_airgapped {
     echo "${fixed_coredns}"
     printf '%s' "${fixed_coredns}" | kubectl apply -f -
 
-    echo -e "Let's move on.\n"
+    pass_message "CoreDNS is patched and ready."
 }
 
 function install_kpng {
-    line
-    echo "   Installing kpng on the cluster ${E2E_CLUSTER_NAME}"
-    line
-    
     # remove kube-proxy
     echo "removing kube-proxy"
     kubectl -n kube-system delete daemonset.apps/kube-proxy
@@ -307,9 +264,8 @@ function install_kpng {
     kubectl create -f ${E2E_ARTIFACTS}/kpng-deployment-ds.yaml
     echo "any second now ..."
     kubectl --namespace=kube-system rollout status daemonset kpng -w --request-timeout=3m
-    echo "installation of kpng is done."
 
-    echo -e "Let's move on.\n"
+    pass_message "Installation of kpng is done."
 }
 
 function run_tests {
@@ -346,7 +302,9 @@ function set_e2e_dir {
 
 function main {
 
-    echo "* Starting KPNG E2E testing..."
+    line
+    echo -e "\t\tStarting KPNG E2E testing"
+    line
 
     # Detect container engine
     detect_container_engine
