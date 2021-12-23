@@ -137,7 +137,7 @@ function setup_kubectl {
         echo "kubectl not found"
         if [ "${ci_mode}" = true ] ; then
             echo "pulling binary ..."
-            curl -L https://dl.k8s.io/${K8S_VERSION}/bin/${OS}/amd64/kubectl -o kubectl
+            curl -L https://dl.k8s.io/${E2E_K8S_VERSION}/bin/${OS}/amd64/kubectl -o kubectl
             sudo chmod +x kubectl
             sudo mv kubectl /usr/local/bin/kubectl
             echo "kubectl was set up."
