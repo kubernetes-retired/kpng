@@ -46,7 +46,7 @@ function if_error_exit {
         if [ -n "$1" ]; then
             RED="\e[31m"
             ENDCOLOR="\e[0m"
-            echo -e "[${RED}FAILED${ENDCOLOR}] ${1}"
+            echo -e "[ ${RED}FAILED${ENDCOLOR} ] ${1}"
         fi
         exit 1
     fi
@@ -92,7 +92,15 @@ function line {
     echo "+============================================================================+"
 }
 
-function docker_build {
+function container_build {
+    ###########################################################################
+    # Description:                                                            #
+    # build a container image for KPNG                                        #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   None                                                                  #
+    ###########################################################################
+    CONTAINER_FILE="Dockerfile"
 
     # Running locally it's not necessary to show all info
     QUIET_MODE="--quiet"
@@ -100,8 +108,10 @@ function docker_build {
         QUIET_MODE=""
     fi
 
-    CMD_BUILD_IMAGE=("${CONTAINER_ENGINE} build ${QUIET_MODE} -t ${KPNG_IMAGE_TAG_NAME} -f Dockerfile .")
+    [ -f "${CONTAINER_FILE}" ]
+    if_error_exit "cannot find ${CONTAINER_FILE}"
 
+    CMD_BUILD_IMAGE=("${CONTAINER_ENGINE} build ${QUIET_MODE} -t ${KPNG_IMAGE_TAG_NAME} -f Dockerfile .")
     pushd "${0%/*}/.." > /dev/null
         ${CMD_BUILD_IMAGE}
         if_error_exit "Failed to build kpng, command was: ${CMD_BUILD_IMAGE}"
@@ -365,7 +375,7 @@ function main {
     fi
     
     setup_environment
-    docker_build
+    container_build
     create_cluster
     wait_until_cluster_is_ready
     workaround_coreDNS_for_IPv6_airgapped
