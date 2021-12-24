@@ -93,7 +93,14 @@ function line {
 }
 
 function docker_build {
-    CMD_BUILD_IMAGE=("${CONTAINER_ENGINE} build -t ${KPNG_IMAGE_TAG_NAME} -f Dockerfile .")
+
+    # Running locally it's not necessary to show all info
+    QUIET_MODE="--quiet"
+    if [ "${ci_mode}" = true ] ; then
+        QUIET_MODE=""
+    fi
+
+    CMD_BUILD_IMAGE=("${CONTAINER_ENGINE} build ${QUIET_MODE} -t ${KPNG_IMAGE_TAG_NAME} -f Dockerfile .")
 
     pushd "${0%/*}/.." > /dev/null
         ${CMD_BUILD_IMAGE}
