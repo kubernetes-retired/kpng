@@ -24,6 +24,13 @@ OS=$(uname| tr '[:upper:]' '[:lower:]')
 CONTAINER_ENGINE="docker"
 KPNG_IMAGE_TAG_NAME="kpng:test"
 
+# system data
+NAMESPACE="kube-system"
+CONFIG_MAP_NAME="kpng"
+SERVICE_ACCOUNT_NAME="kpng"
+CLUSTER_ROLE_NAME="system:node-proxier"
+CLUSTER_ROLE_BINDING_NAME="kpng"
+
 # Users can specify docker.io, quay.io registry
 KINDEST_NODE_IMAGE="docker.io/kindest/node"
 
@@ -172,6 +179,7 @@ function create_cluster {
     # Get rid of any old cluster with the same name.
     if kind get clusters | grep -q ${E2E_CLUSTER_NAME}; then
         kind delete cluster --name ${E2E_CLUSTER_NAME}
+        if_error_exit "cannot delete cluster ${E2E_CLUSTER_NAME}"
     fi
     # create cluster
 
@@ -197,7 +205,7 @@ EOF
 }
 
 function wait_until_cluster_is_ready {
-    kubectl wait --for=condition=ready pods --namespace=kube-system -l k8s-app=kube-dns
+    kubectl wait --for=condition=ready pods --namespace="${NAMESPACE}" -l k8s-app=kube-dns
     kubectl get nodes -o wide
 
     kubectl get pods --all-namespaces
@@ -217,7 +225,7 @@ function workaround_coreDNS_for_IPv6_airgapped {
     # otherwise pods stops trying to resolve the domain.
 
     # Get the current config
-    original_coredns=$(kubectl get -oyaml -n=kube-system configmap/coredns)
+    original_coredns=$(kubectl get -oyaml -n="${NAMESPACE}" configmap/coredns)
     echo "Original CoreDNS config:"
     echo "${original_coredns}"
 
@@ -239,31 +247,48 @@ function workaround_coreDNS_for_IPv6_airgapped {
 
 function install_kpng {
     # remove kube-proxy
-    echo "removing kube-proxy"
-    kubectl -n kube-system delete daemonset.apps/kube-proxy
+    kubectl -n "${NAMESPACE}" delete daemonset.apps/kube-proxy
+    if_error_exit "cannot delete delete daemonset.apps kube-proxy"
+    pass_message "Removed daemonset.apps/kube-proxy."
 
     # preload kpng image
     # TODO move this to ci:
     # docker load --input kpng-image.tar
-    echo "loading kpng:test docker image"
-    CMD_KIND_LOAD_KPNG_TEST_IMAGE=("kind load docker-image kpng:test --name ${E2E_CLUSTER_NAME}")
+    CMD_KIND_LOAD_KPNG_TEST_IMAGE=("kind load docker-image ${KPNG_IMAGE_TAG_NAME} --name ${E2E_CLUSTER_NAME}")
     ${CMD_KIND_LOAD_KPNG_TEST_IMAGE}
     if_error_exit "error loading image to kind, command was: ${CMD_KIND_LOAD_KPNG_TEST_IMAGE}"
-
+    pass_message "Loaded ${KPNG_IMAGE_TAG_NAME} container image."
 
     # TODO this should be part of the template                
-    kubectl -n kube-system create sa kpng
-    kubectl create clusterrolebinding kpng --clusterrole=system:node-proxier --serviceaccount=kube-system:kpng
-    kubectl -n kube-system create cm kpng --from-file "${E2E_ARTIFACTS}/kubeconfig.conf"
+    kubectl create serviceaccount \
+        --namespace "${NAMESPACE}" \
+        "${SERVICE_ACCOUNT_NAME}"
+    if_error_exit "error creating serviceaccount ${SERVICE_ACCOUNT_NAME}"
+    pass_message "Created service account ${SERVICE_ACCOUNT_NAME}"
+
+    kubectl create clusterrolebinding \
+        "${CLUSTER_ROLE_BINDING_NAME}" \
+        --clusterrole="${CLUSTER_ROLE_NAME}" \
+        --serviceaccount="${NAMESPACE}":"${SERVICE_ACCOUNT_NAME}"
+    if_error_exit "error creating clusterrolebinding ${CLUSTER_ROLE_BINDING_NAME}"
+    pass_message "Created clusterrolebinding ${CLUSTER_ROLE_BINDING_NAME}"
+
+    kubectl create configmap \
+        "${CONFIG_MAP_NAME}" \
+        --namespace "${NAMESPACE}" \
+        --from-file "${E2E_ARTIFACTS}/kubeconfig.conf"
+    if_error_exit "error creating configmap ${CONFIG_MAP_NAME}"
+    pass_message "Created configmap $CONFIG_MAP_NAME}"
+
     echo "Applying template"
-    export IMAGE=kpng:test
+    export IMAGE=${KPNG_IMAGE_TAG_NAME}
     export PULL=IfNotPresent
     export BACKEND=${E2E_BACKEND}
     envsubst <${0%/*}/kpng-deployment-ds.yaml.tmpl >${E2E_ARTIFACTS}/kpng-deployment-ds.yaml
     echo "deploying kpng daemonset"
     kubectl create -f ${E2E_ARTIFACTS}/kpng-deployment-ds.yaml
     echo "any second now ..."
-    kubectl --namespace=kube-system rollout status daemonset kpng -w --request-timeout=3m
+    kubectl --namespace="${NAMESPACE}" rollout status daemonset kpng -w --request-timeout=3m
 
     pass_message "Installation of kpng is done."
 }
