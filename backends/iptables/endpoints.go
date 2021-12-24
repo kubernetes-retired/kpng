@@ -83,7 +83,7 @@ type EndpointChangeTracker struct {
 }
 
 // NewEndpointChangeTracker initializes an EndpointsChangeMap
-func NewEndpointChangeTracker(hostname string, ipFamily v1.IPFamily, recorder events.EventRecorder) *EndpointChangeTracker {
+func NewEndpointChangeTracker(hostname string, ipFamily v1.IPFamily, recorder events.EventRecorder) *EndpointChangeTracker {x``
 	return &EndpointChangeTracker{
 		hostname: hostname,
 		// items:                  make(map[types.NamespacedName]*endpointsChange),
