@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2181,SC2155,SC2128
 #
 # Copyright 2021 The Kubernetes Authors.
 # 
@@ -16,9 +17,9 @@
 
 shopt -s expand_aliases
 
-: ${E2E_GO_VERSION:="1.17.3"}
-: ${E2E_K8S_VERSION:="v1.22.2"} 
-: ${E2E_TIMEOUT_MINUTES:=100}
+: "${E2E_GO_VERSION:="1.17.3"}"
+: "${E2E_K8S_VERSION:="v1.22.2"}"
+: "${E2E_TIMEOUT_MINUTES:=100}"
 
 OS=$(uname| tr '[:upper:]' '[:lower:]')
 CONTAINER_ENGINE="docker"
@@ -73,7 +74,7 @@ function pass_message {
     # Arguments:                                                              #
     #   $1 - message to output                                                #
     ###########################################################################
-    if ! [ -n "$1" ]; then
+    if [ -z "${1}" ]; then
         echo "pass_message() requires a message"
         exit 1
     fi
@@ -115,14 +116,13 @@ function container_build {
     QUIET_MODE="--quiet"
     if [ "${ci_mode}" = true ] ; then
         QUIET_MODE=""
-        DEV_NULL=""
     fi
 
     [ -f "${CONTAINER_FILE}" ]
     if_error_exit "cannot find ${CONTAINER_FILE}"
 
     CMD_BUILD_IMAGE=("${CONTAINER_ENGINE} build ${QUIET_MODE} -t ${KPNG_IMAGE_TAG_NAME} -f Dockerfile .")
-    pushd "${0%/*}/.." > /dev/null
+    pushd "${0%/*}/.." > /dev/null || exit
         if [ -z "${QUIET_MODE}" ]; then
             ${CMD_BUILD_IMAGE}
         else
@@ -130,7 +130,7 @@ function container_build {
         
         fi
         if_error_exit "Failed to build kpng, command was: ${CMD_BUILD_IMAGE}"
-    popd > /dev/null
+    popd > /dev/null || exit
 
     pass_message "Image build and tag ${KPNG_IMAGE_TAG_NAME} is set."
 }
@@ -183,17 +183,17 @@ function setup_ginkgo {
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
-    if ! [ -f ${E2E_DIR}/ginkgo ] || ! [ -f ${E2E_DIR}/e2e.test ] ; then
+    if ! [ -f "${E2E_DIR}"/ginkgo ] || ! [ -f "${E2E_DIR}"/e2e.test ] ; then
         echo -e "\nDownloading ginkgo and e2e.test ..."
-        curl -L https://dl.k8s.io/${E2E_K8S_VERSION}/kubernetes-test-${OS}-amd64.tar.gz \
-            -o ${E2E_DIR}/kubernetes-test-${OS}-amd64.tar.gz
+        curl -L https://dl.k8s.io/"${E2E_K8S_VERSION}"/kubernetes-test-"${OS}"-amd64.tar.gz \
+            -o "${E2E_DIR}"/kubernetes-test-"${OS}"-amd64.tar.gz
         if_error_exit "cannot download kubernetes-test package"
 
-        tar xvzf ${E2E_DIR}/kubernetes-test-${OS}-amd64.tar.gz \
-            --directory ${E2E_DIR} \
+        tar xvzf "${E2E_DIR}"/kubernetes-test-"${OS}"-amd64.tar.gz \
+            --directory "${E2E_DIR}" \
             --strip-components=3 kubernetes/test/bin/ginkgo kubernetes/test/bin/e2e.test &> /dev/null
 
-        rm ${E2E_DIR}/kubernetes-test-${OS}-amd64.tar.gz
+        rm "${E2E_DIR}"/kubernetes-test-"${OS}"-amd64.tar.gz
         sudo chmod +x "${E2E_DIR}/ginkgo"
         sudo chmod +x "${E2E_DIR}/e2e.test"
     fi
@@ -241,14 +241,14 @@ function create_cluster {
     #   None                                                                  #
     ###########################################################################
     # Get rid of any old cluster with the same name.
-    if kind get clusters | grep -q ${E2E_CLUSTER_NAME} &> /dev/null; then
-        kind delete cluster --name ${E2E_CLUSTER_NAME} &> /dev/null
+    if kind get clusters | grep -q "${E2E_CLUSTER_NAME}" &> /dev/null; then
+        kind delete cluster --name "${E2E_CLUSTER_NAME}" &> /dev/null
         if_error_exit "cannot delete cluster ${E2E_CLUSTER_NAME}"
 
         pass_message "Previous cluster ${E2E_CLUSTER_NAME} deleted."
     fi
 
-    KIND_VERBOSE_MODE=""
+    KIND_VERBOSE_MODE="-v0"
     if [ "${ci_mode}" = true ] ; then
         KIND_VERBOSE_MODE="-v7"
     fi
@@ -256,13 +256,13 @@ function create_cluster {
     echo -e "\nPreparing to setup ${E2E_CLUSTER_NAME} cluster ..."
     # create cluster
     cat <<EOF | kind create cluster \
-        --name ${E2E_CLUSTER_NAME}                     \
-        --image "${KINDEST_NODE_IMAGE}":${E2E_K8S_VERSION}    \
-        ${VERBOSE_MODE} --wait 1m --retain --config=-
+        --name "${E2E_CLUSTER_NAME}"                     \
+        --image "${KINDEST_NODE_IMAGE}":"${E2E_K8S_VERSION}"    \
+        "${KIND_VERBOSE_MODE}" --wait 1m --retain --config=-
             kind: Cluster
             apiVersion: kind.x-k8s.io/v1alpha4
             networking:
-                ipFamily: ${E2E_IP_FAMILY}
+                ipFamily: "${E2E_IP_FAMILY}"
             nodes:
             - role: control-plane
             - role: worker
@@ -270,8 +270,8 @@ function create_cluster {
 EOF
     if_error_exit "cannot create kind cluster ${E2E_CLUSTER_NAME}"
 
-    kind get kubeconfig --internal --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/kubeconfig.conf"
-    kind get kubeconfig --name ${E2E_CLUSTER_NAME} > "${E2E_ARTIFACTS}/${KUBECONFIG_TESTS}"
+    kind get kubeconfig --internal --name "${E2E_CLUSTER_NAME}" > "${E2E_ARTIFACTS}/kubeconfig.conf"
+    kind get kubeconfig --name "${E2E_CLUSTER_NAME}" > "${E2E_ARTIFACTS}/${KUBECONFIG_TESTS}"
 
     pass_message "Cluster ${E2E_CLUSTER_NAME} is created."
 }
@@ -396,7 +396,7 @@ function install_kpng {
     export CONFIG_MAP_NAME
     export SERVICE_ACCOUNT_NAME
     export NAMESPACE
-    envsubst <${0%/*}/kpng-deployment-ds.yaml.tmpl >${E2E_ARTIFACTS}/kpng-deployment-ds.yaml
+    envsubst <"${0%/*}"/kpng-deployment-ds.yaml.tmpl > "${E2E_ARTIFACTS}"/kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 
     kubectl create -f "${E2E_ARTIFACTS}"/kpng-deployment-ds.yaml 1> /dev/null
@@ -417,10 +417,10 @@ function run_tests {
     #   None                                                                  #
     ###########################################################################
     cp "${E2E_ARTIFACTS}/${KUBECONFIG_TESTS}" "${E2E_DIR}/${KUBECONFIG_TESTS}"
-    ${E2E_DIR}/ginkgo --nodes="${GINKGO_NUMBER_OF_NODES}" \
+    "${E2E_DIR}"/ginkgo --nodes="${GINKGO_NUMBER_OF_NODES}" \
         --focus="${GINKGO_FOCUS}" \
         --skip="${GINKGO_SKIP_TESTS}" \
-        ${E2E_DIR}/e2e.test \
+        "${E2E_DIR}"/e2e.test \
         -- \
         --kubeconfig="${KUBECONFIG_TESTS}" \
         --provider="${GINKGO_PROVIDER}" \
@@ -440,7 +440,7 @@ function clean_artifacts {
     ###########################################################################
     kind export \
         logs \
-        --name="$(cat $E2E_FILE)" \
+        --name="$(cat "${E2E_FILE}")" \
         --loglevel="debug" \
         "${E2E_LOGS}"
     if_error_exit "cannot export kind logs"
@@ -459,12 +459,12 @@ function set_e2e_dir {
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
-    pushd "${0%/*}" > /dev/null
+    pushd "${0%/*}" > /dev/null || exit
         export E2E_DIR="$(pwd)/temp/e2e"
-        export E2E_ARTIFACTS=${E2E_DIR}/artifacts
-        mkdir -p ${E2E_DIR}
-        mkdir -p ${E2E_ARTIFACTS}
-    popd > /dev/null
+        export E2E_ARTIFACTS="${E2E_DIR}"/artifacts
+        mkdir -p "${E2E_DIR}"
+        mkdir -p "${E2E_ARTIFACTS}"
+    popd > /dev/null || exit
 }
 
 function main {
@@ -491,18 +491,18 @@ function main {
 
     # setting up variables
     set_e2e_dir
-    local ip_family=${1}
-    local backend=${2}
-    local ci_mode=${3}
+    local ip_family="${1}"
+    local backend="${2}"
+    local ci_mode="${3}"
     export E2E_CLUSTER_NAME="kpng-e2e-${ip_family}-${backend}"
-    export E2E_IP_FAMILY=${ip_family}
-    export E2E_BACKEND=${backend}
-    mkdir -p ${E2E_ARTIFACTS}
+    export E2E_IP_FAMILY="${ip_family}"
+    export E2E_BACKEND="${backend}"
+    mkdir -p "${E2E_ARTIFACTS}"
 
     if [ "${ci_mode}" = true ] ; then
         # store the clustername for other scripts in ci 
         echo "${E2E_CLUSTER_NAME}" 
-        echo "${E2E_CLUSTER_NAME}" > ${E2E_DIR}/clustername
+        echo "${E2E_CLUSTER_NAME}" > "${E2E_DIR}"/clustername
     fi
     
     setup_environment
@@ -536,7 +536,7 @@ function help {
     printf "\t-i set ip_family(ipv4/ipv6/dual) name in the e2e test runs.\n"
     printf "\t-b set backend (iptables/nft/ipvs) name in the e2e test runs.\n"
     printf "\t-c flag allows for ci_mode. Please don't run on local systems. \n"
-    printf "\nExample:\n\t ${0} -i ipv4 -b iptables\n"
+    printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}"
     exit 1 # Exit script after printing help
 }
 
@@ -551,7 +551,7 @@ do
     esac
 done
 
-if [[ ! -z "${ip_family}" &&  ! -z "${backend}" ]]; then
+if [[ -n "${ip_family}" && -n "${backend}" ]]; then
    main "${ip_family}" "${backend}" "${ci_mode}"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
