@@ -390,13 +390,16 @@ function install_kpng {
     pass_message "Created configmap ${CONFIG_MAP_NAME}."
 
     # Setting vars for generate the kpng deployment based on template
-    export IMAGE=${KPNG_IMAGE_TAG_NAME}
+    export IMAGE="${KPNG_IMAGE_TAG_NAME}"
     export PULL=IfNotPresent
-    export BACKEND=${E2E_BACKEND}
+    export E2E_BACKEND
+    export CONFIG_MAP_NAME
+    export SERVICE_ACCOUNT_NAME
+    export NAMESPACE
     envsubst <${0%/*}/kpng-deployment-ds.yaml.tmpl >${E2E_ARTIFACTS}/kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 
-    kubectl create -f ${E2E_ARTIFACTS}/kpng-deployment-ds.yaml 1> /dev/null
+    kubectl create -f "${E2E_ARTIFACTS}"/kpng-deployment-ds.yaml 1> /dev/null
     if_error_exit "error creating kpng deployment"
 
     kubectl --namespace="${NAMESPACE}" rollout status daemonset kpng -w --request-timeout=3m 1> /dev/null
