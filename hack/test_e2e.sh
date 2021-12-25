@@ -509,7 +509,11 @@ function main {
     container_build
     create_cluster
     wait_until_cluster_is_ready
-    workaround_coreDNS_for_IPv6_airgapped
+
+    if [ "${ci_mode}" = true ] ; then
+        workaround_coreDNS_for_IPv6_airgapped
+    fi
+
     install_kpng
 
     run_tests
