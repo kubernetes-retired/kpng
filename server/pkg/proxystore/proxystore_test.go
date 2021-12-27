@@ -19,6 +19,7 @@ package proxystore
 import (
 	"fmt"
 	"sort"
+	"testing"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 )
@@ -76,4 +77,46 @@ func Example() {
 	// - IPs:{V4:"10.0.0.1"} [  ]
 	// - IPs:{V4:"10.0.0.2"} [  ]
 
+}
+
+// TestSessionAffinitySetClientIP creates scenario to validate SessionAffinity
+// Ref: https://github.com/kubernetes-sigs/kpng/issues/156
+func UnCommentMeAmimTestSessionAffinitySetClientIP(t *testing.T) {
+	store := New()
+	store.Update(func(tx *Tx) {
+		tx.SetService(&localnetv1.Service{
+			Namespace: "test",
+			Name:      "session-affinity-service",
+			Type:      "NodePort",
+			IPs:       &localnetv1.ServiceIPs{ClusterIPs: localnetv1.NewIPSet("10.1.2.5")},
+			SessionAffinity: &localnetv1.Service_ClientIP{
+				ClientIP: &localnetv1.ClientIPAffinity{
+					TimeoutSeconds: 10800,
+				}},
+			ExternalTrafficToLocal: false,
+			Labels:                 map[string]string{"selector-48a01edd-8df9-4826-868a-945ccf3e932a": "true"},
+			Ports: []*localnetv1.PortMapping{
+				{Name: "http",
+					NodePort:   31279,
+					Protocol:   localnetv1.Protocol_TCP,
+					Port:       80,
+					TargetPort: 8083},
+				{Name: "udp",
+					NodePort:   30024,
+					Protocol:   localnetv1.Protocol_UDP,
+					Port:       90,
+					TargetPort: 8081},
+			},
+		}, []string{"*"})
+
+		tx.SetEndpointsOfSource("test", "test-abcde", []*localnetv1.EndpointInfo{
+			{
+				Namespace:   "test",
+				SourceName:  "test-abcde",
+				ServiceName: "session-affinity-service",
+				Endpoint:    &localnetv1.Endpoint{IPs: localnetv1.NewIPSet("10.2.0.1")},
+				Conditions:  &localnetv1.EndpointConditions{Ready: true},
+			},
+		})
+	})
 }
