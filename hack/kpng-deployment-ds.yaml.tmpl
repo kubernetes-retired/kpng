@@ -5,7 +5,7 @@ metadata:
   labels:
     app: kpng
   name: kpng
-  namespace: kube-system
+  namespace: ${NAMESPACE}
 spec:
   selector:
     matchLabels:
@@ -19,7 +19,7 @@ spec:
       #nodeSelector:
       #  kpng: kpng
 
-      serviceAccountName: kpng
+      serviceAccountName: ${SERVICE_ACCOUNT_NAME}
       hostNetwork: true
       # so that kpng always runs on the controlplane nodes...
       tolerations:
@@ -42,7 +42,7 @@ spec:
         - --listen=unix:///k8s/proxy.sock
       - image: ${IMAGE}
         imagePullPolicy: ${PULL}
-        name: kpng-${BACKEND}
+        name: kpng-${E2E_BACKEND}
         securityContext:
           capabilities:
            add:
@@ -53,7 +53,7 @@ spec:
         - name: modules
           mountPath: /lib/modules
           readOnly: true
-        args: [ "local", "--api=unix:///k8s/proxy.sock", "to-${BACKEND}" ]
+        args: [ "local", "--api=unix:///k8s/proxy.sock", "to-${E2E_BACKEND}" ]
         #- --v=2
         #- --dry-run
       volumes:
@@ -64,4 +64,4 @@ spec:
           path: /lib/modules
       - name: kpng-config
         configMap:
-          name: kpng
+          name: ${CONFIG_MAP_NAME}
