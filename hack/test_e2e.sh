@@ -519,6 +519,11 @@ function main {
 
     install_kpng
 
+    if [ "${devel_mode}" = true ] ; then
+	pass_message "KPNG development env created, use kubectl in the namespace ${NAMESPACE} to manage it."
+	exit 0
+    fi
+
     run_tests
 
     if [ "${ci_mode}" = false ] ; then
@@ -538,18 +543,21 @@ function help {
     printf "Usage: %s [-i ip_family] [-b backend]\n" "$0"
     printf "\t-i set ip_family(ipv4/ipv6/dual) name in the e2e test runs.\n"
     printf "\t-b set backend (iptables/nft/ipvs) name in the e2e test runs.\n"
-    printf "\t-c flag allows for ci_mode. Please don't run on local systems. \n"
+    printf "\t-c flag allows for ci_mode. Please don't run on local systems.\n"
+    printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
     printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}"
     exit 1 # Exit script after printing help
 }
 
 ci_mode=false
-while getopts "i:b:c" flag
+devel_mode=false
+while getopts "i:b:cd" flag
 do
     case "${flag}" in
         i ) ip_family="${OPTARG}" ;;
         b ) backend="${OPTARG}" ;;
         c ) ci_mode=true ;;
+        d ) devel_mode=true ;;
         ? ) help ;; #Print help
     esac
 done
