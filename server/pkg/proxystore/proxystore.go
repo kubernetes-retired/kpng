@@ -22,8 +22,8 @@ import (
 	"sync"
 
 	"github.com/cespare/xxhash"
-	"github.com/gogo/protobuf/proto"
 	"github.com/google/btree"
+	"google.golang.org/protobuf/proto"
 	"k8s.io/klog"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
@@ -38,8 +38,6 @@ type Store struct {
 
 	// set sync info
 	sync map[Set]bool
-
-	pb *proto.Buffer
 }
 
 type Set = localnetv1.Set
@@ -61,17 +59,15 @@ func New() *Store {
 		c:    sync.NewCond(&sync.Mutex{}),
 		tree: btree.New(2),
 		sync: map[Set]bool{},
-		pb:   proto.NewBuffer(make([]byte, 0)),
 	}
 }
 
 func (s *Store) hashOf(m proto.Message) (h uint64) {
-	if err := s.pb.Marshal(m); err != nil {
+	message, err := proto.Marshal(m)
+	if err != nil {
 		panic(err) // should not happen
 	}
-	h = xxhash.Sum64(s.pb.Bytes())
-	s.pb.Reset()
-	return h
+	return xxhash.Sum64(message)
 }
 
 func (s *Store) Close() {
