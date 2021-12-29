@@ -255,19 +255,15 @@ function create_cluster {
 
     echo -e "\nPreparing to setup ${E2E_CLUSTER_NAME} cluster ..."
     # create cluster
-    cat <<EOF | kind create cluster \
+
+    export E2E_IP_FAMILY
+    envsubst <"${0%/*}"/kindYAMLTemplate/"${cni_selected}"/kindConfig.yaml.tmpl > hack/kindYAMLTemplate/"${cni_selected}"/kindConfig.yaml
+    if_error_exit "cannot find kindconfig template for CNI: ${cni_selected}"
+
+    kind create cluster \
         --name "${E2E_CLUSTER_NAME}"                     \
         --image "${KINDEST_NODE_IMAGE}":"${E2E_K8S_VERSION}"    \
-        "${KIND_VERBOSE_MODE}" --wait 1m --retain --config=-
-            kind: Cluster
-            apiVersion: kind.x-k8s.io/v1alpha4
-            networking:
-                ipFamily: "${E2E_IP_FAMILY}"
-            nodes:
-            - role: control-plane
-            - role: worker
-            - role: worker
-EOF
+        "${KIND_VERBOSE_MODE}" --wait 1m --retain --config hack/kindYAMLTemplate/"${cni_selected}"/kindConfig.yaml
     if_error_exit "cannot create kind cluster ${E2E_CLUSTER_NAME}"
 
     kind get kubeconfig --internal --name "${E2E_CLUSTER_NAME}" > "${E2E_ARTIFACTS}/kubeconfig.conf"
@@ -540,27 +536,40 @@ function help {
     #   None                                                                  #
     ###########################################################################
     printf "\n"
-    printf "Usage: %s [-i ip_family] [-b backend]\n" "$0"
+    printf "Usage: %s [-i ip_family] [-b backend] [-n CNI name]\n" "$0"
     printf "\t-i set ip_family(ipv4/ipv6/dual) name in the e2e test runs.\n"
     printf "\t-b set backend (iptables/nft/ipvs) name in the e2e test runs.\n"
     printf "\t-c flag allows for ci_mode. Please don't run on local systems.\n"
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
-    printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}"
+    printf "\t-n CNI name (kindnet(default)).\n"
+    printf "\nExample:\n\t %s -i ipv4 -b iptables -n kindnet\n" "${0}"
     exit 1 # Exit script after printing help
 }
 
 ci_mode=false
 devel_mode=false
-while getopts "i:b:cd" flag
+cni_selected=false
+while getopts "i:b:cdn:" flag
 do
     case "${flag}" in
         i ) ip_family="${OPTARG}" ;;
         b ) backend="${OPTARG}" ;;
         c ) ci_mode=true ;;
         d ) devel_mode=true ;;
+        n ) cni_selected="${OPTARG}" ;;
         ? ) help ;; #Print help
     esac
 done
+
+if [[ "${cni_selected}" = false ]]; then
+    cni_selected="kindnet"
+fi
+
+if ! [[ "${cni_selected}" =~ ^(kindnet)$ ]]; then
+    echo "user must specify the supported CNI"
+    help
+fi
+
 
 if ! [[ "${ip_family}" =~ ^(ipv4|ipv6|dual)$ ]]; then
     echo "user must specify the supported ip_family"
