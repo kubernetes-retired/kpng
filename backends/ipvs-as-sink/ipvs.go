@@ -139,7 +139,10 @@ func (s *Backend) createIPVSDummyInterface() {
 
 	for _, ip := range addrs {
 		cidr := ip.String()
-		ip, _, _ := net.ParseCIDR(cidr)
+		ip, _, err := net.ParseCIDR(cidr)
+		if err != nil {
+			klog.Fatalf("failed to parse ip/net %q: %v", ip, err)
+		}
 		if ip.IsLinkLocalUnicast() {
 			continue
 		}
