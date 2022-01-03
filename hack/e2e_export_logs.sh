@@ -19,8 +19,9 @@
 
 set -e
 pushd "${0%/*}" > /dev/null
-E2E_DIR="$(pwd)/temp/e2e/"
+E2E_DIR="$(pwd)/temp/e2e"
 popd > /dev/null
-E2E_FILE="${E2E_DIR}/clustername"
+CLUSTERNAME=$(kind get clusters | head -1)
+E2E_FILE="${E2E_DIR}/${CLUSTERNAME}"
 E2E_LOGS="${E2E_DIR}/artifacts/logs"
-kind export logs --name="$(cat $E2E_FILE)" --loglevel="debug" "${E2E_LOGS}"
+kind export logs --name="${CLUSTERNAME}" -v=3 "${E2E_LOGS}"
