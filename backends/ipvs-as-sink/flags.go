@@ -30,7 +30,8 @@ func (s *Backend) BindFlags(flags *pflag.FlagSet) {
 	flags.StringSliceVar(&s.nodeAddresses, "node-address", interfaceAddresses(), "A comma-separated list of IPs to associate when using NodePort type. Defaults to all the Node addresses")
 	flags.StringVar(&s.schedulingMethod, "scheduling-method", "rr", "Algorithm for allocating TCP conn & UDP datagrams to real servers. Values: rr,wrr,lc,wlc,lblc,lblcr,dh,sh,seq,nq")
 	flags.Int32Var(&s.weight, "weight", 1, "An integer specifying the capacity of server relative to others in the pool")
-
+	//flags.Int32Var(s.masqueradeBit, "iptables-masquerade-bit", Int32PtrDerefOr(s.masqueradeBit, 14), "If using the pure iptables proxy, the bit of the fwmark space to mark packets requiring SNAT with.  Must be within the range [0, 31].")
+	flags.BoolVar(&s.masqueradeAll, "masquerade-all", s.masqueradeAll, "If using the pure iptables proxy, SNAT all traffic sent via Service cluster IPs (this not commonly needed)")
 }
 
 func interfaceAddresses() []string {

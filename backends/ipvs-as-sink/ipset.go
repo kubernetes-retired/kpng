@@ -18,6 +18,7 @@ package ipvssink
 
 import (
 	"fmt"
+	v1 "k8s.io/api/core/v1"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -28,68 +29,52 @@ import (
 
 const (
 	kubeLoopBackIPSetComment = "Kubernetes endpoints dst ip:port, source ip for solving hairpin purpose"
-	kubeLoopBackIPv4Set      = "KUBE-LOOP-BACK"
-	kubeLoopBackIPv6Set      = "KUBE-6-LOOP-BACK"
+	kubeLoopBackIPSet        = "KUBE-LOOP-BACK"
 
 	kubeClusterIPSetComment = "Kubernetes service cluster ip + port for masquerade purpose"
-	kubeClusterIPv4Set      = "KUBE-CLUSTER-IP"
-	kubeClusterIPv6Set      = "KUBE-6-CLUSTER-IP"
+	kubeClusterIPSet        = "KUBE-CLUSTER-IP"
 
 	kubeExternalIPSetComment = "Kubernetes service external ip + port for masquerade and filter purpose"
-	kubeExternalIPv4Set      = "KUBE-EXTERNAL-IP"
-	kubeExternalIPv6Set      = "KUBE-6-EXTERNAL-IP"
+	kubeExternalIPSet        = "KUBE-EXTERNAL-IP"
 
 	kubeExternalIPLocalSetComment = "Kubernetes service external ip + port with externalTrafficPolicy=local"
-	kubeExternalIPv4LocalSet      = "KUBE-EXTERNAL-IP-LOCAL"
-	kubeExternalIPv6LocalSet      = "KUBE-6-EXTERNAL-IP-LOCAL"
+	kubeExternalIPLocalSet        = "KUBE-EXTERNAL-IP-LOCAL"
 
 	kubeLoadBalancerSetComment = "Kubernetes service lb portal"
-	kubeLoadBalancerIPv4Set    = "KUBE-LOAD-BALANCER"
-	kubeLoadBalancerIPv6Set    = "KUBE-6-LOAD-BALANCER"
+	kubeLoadBalancerSet        = "KUBE-LOAD-BALANCER"
 
 	kubeLoadBalancerLocalSetComment = "Kubernetes service load balancer ip + port with externalTrafficPolicy=local"
-	kubeLoadBalancerLocalIPv4Set    = "KUBE-LOAD-BALANCER-LOCAL"
-	kubeLoadBalancerLocalIPv6Set    = "KUBE-6-LOAD-BALANCER-LOCAL"
+	kubeLoadBalancerLocalSet        = "KUBE-LOAD-BALANCER-LOCAL"
 
 	kubeLoadbalancerFWSetComment = "Kubernetes service load balancer ip + port for load balancer with sourceRange"
-	kubeLoadbalancerFWIPv4Set    = "KUBE-LOAD-BALANCER-FW"
-	kubeLoadbalancerFWIPv6Set    = "KUBE-6-LOAD-BALANCER-FW"
+	kubeLoadbalancerFWSet        = "KUBE-LOAD-BALANCER-FW"
 
 	kubeLoadBalancerSourceIPSetComment = "Kubernetes service load balancer ip + port + source IP for packet filter purpose"
-	kubeLoadBalancerSourceIPv4Set      = "KUBE-LOAD-BALANCER-SOURCE-IP"
-	kubeLoadBalancerSourceIPv6Set      = "KUBE-6-LOAD-BALANCER-SOURCE-IP"
+	kubeLoadBalancerSourceIPSet        = "KUBE-LOAD-BALANCER-SOURCE-IP"
 
 	kubeLoadBalancerSourceCIDRSetComment = "Kubernetes service load balancer ip + port + source cidr for packet filter purpose"
-	kubeLoadBalancerSourceCIDRIPv4Set    = "KUBE-LOAD-BALANCER-SOURCE-CIDR"
-	kubeLoadBalancerSourceCIDRIPv6Set    = "KUBE-6-LOAD-BALANCER-SOURCE-CIDR"
+	kubeLoadBalancerSourceCIDRSet        = "KUBE-LOAD-BALANCER-SOURCE-CIDR"
 
 	kubeNodePortSetTCPComment = "Kubernetes nodeport TCP port for masquerade purpose"
-	kubeNodePortIPv4SetTCP    = "KUBE-NODE-PORT-TCP"
-	kubeNodePortIPv6SetTCP    = "KUBE-6-NODE-PORT-TCP"
+	kubeNodePortSetTCP        = "KUBE-NODE-PORT-TCP"
 
 	kubeNodePortLocalSetTCPComment = "Kubernetes nodeport TCP port with externalTrafficPolicy=local"
-	kubeNodePortLocalIPv4SetTCP    = "KUBE-NODE-PORT-LOCAL-TCP"
-	kubeNodePortLocalIPv6SetTCP    = "KUBE-6-NODE-PORT-LOCAL-TCP"
+	kubeNodePortLocalSetTCP        = "KUBE-NODE-PORT-LOCAL-TCP"
 
 	kubeNodePortSetUDPComment = "Kubernetes nodeport UDP port for masquerade purpose"
-	kubeNodePortIPv4SetUDP    = "KUBE-NODE-PORT-UDP"
-	kubeNodePortIPv6SetUDP    = "KUBE-6-NODE-PORT-UDP"
+	kubeNodePortSetUDP        = "KUBE-NODE-PORT-UDP"
 
 	kubeNodePortLocalSetUDPComment = "Kubernetes nodeport UDP port with externalTrafficPolicy=local"
-	kubeNodePortLocalIPv4SetUDP    = "KUBE-NODE-PORT-LOCAL-UDP"
-	kubeNodePortLocalIPv6SetUDP    = "KUBE-6-NODE-PORT-LOCAL-UDP"
+	kubeNodePortLocalSetUDP        = "KUBE-NODE-PORT-LOCAL-UDP"
 
 	kubeNodePortSetSCTPComment = "Kubernetes nodeport SCTP port for masquerade purpose with type 'hash ip:port'"
-	kubeNodePortIPv4SetSCTP    = "KUBE-NODE-PORT-SCTP-HASH"
-	kubeNodePortIPv6SetSCTP    = "KUBE-6-NODE-PORT-SCTP-HASH"
+	kubeNodePortSetSCTP        = "KUBE-NODE-PORT-SCTP-HASH"
 
 	kubeNodePortLocalSetSCTPComment = "Kubernetes nodeport SCTP port with externalTrafficPolicy=local with type 'hash ip:port'"
-	kubeNodePortLocalIPv4SetSCTP    = "KUBE-NODE-PORT-LOCAL-SCTP-HASH"
-	kubeNodePortLocalIPv6SetSCTP    = "KUBE-6-NODE-PORT-LOCAL-SCTP-HASH"
+	kubeNodePortLocalSetSCTP        = "KUBE-NODE-PORT-LOCAL-SCTP-HASH"
 
 	kubeHealthCheckNodePortSetComment = "Kubernetes health check node port"
-	kubeHealthCheckNodePortIPv4Set    = "KUBE-HEALTH-CHECK-NODE-PORT"
-	kubeHealthCheckNodePortIPv6Set    = "KUBE-6-HEALTH-CHECK-NODE-PORT"
+	kubeHealthCheckNodePortSet        = "KUBE-HEALTH-CHECK-NODE-PORT"
 )
 
 // ipsetInfo is all ipset we needed in ipvs proxier
@@ -98,22 +83,22 @@ var ipsetInfo = []struct {
 	setType ipsetutil.Type
 	comment string
 }{
-	{kubeLoopBackIPv4Set, ipsetutil.HashIPPortIP, kubeLoopBackIPSetComment},
-	{kubeClusterIPv4Set, ipsetutil.HashIPPort, kubeClusterIPSetComment},
-	{kubeExternalIPv4Set, ipsetutil.HashIPPort, kubeExternalIPSetComment},
-	{kubeExternalIPv4LocalSet, ipsetutil.HashIPPort, kubeExternalIPLocalSetComment},
-	{kubeLoadBalancerIPv4Set, ipsetutil.HashIPPort, kubeLoadBalancerSetComment},
-	{kubeLoadbalancerFWIPv4Set, ipsetutil.HashIPPort, kubeLoadbalancerFWSetComment},
-	{kubeLoadBalancerLocalIPv4Set, ipsetutil.HashIPPort, kubeLoadBalancerLocalSetComment},
-	{kubeLoadBalancerSourceIPv4Set, ipsetutil.HashIPPortIP, kubeLoadBalancerSourceIPSetComment},
-	{kubeLoadBalancerSourceCIDRIPv4Set, ipsetutil.HashIPPortNet, kubeLoadBalancerSourceCIDRSetComment},
-	{kubeNodePortIPv4SetTCP, ipsetutil.BitmapPort, kubeNodePortSetTCPComment},
-	{kubeNodePortLocalIPv4SetTCP, ipsetutil.BitmapPort, kubeNodePortLocalSetTCPComment},
-	{kubeNodePortIPv4SetUDP, ipsetutil.BitmapPort, kubeNodePortSetUDPComment},
-	{kubeNodePortLocalIPv4SetUDP, ipsetutil.BitmapPort, kubeNodePortLocalSetUDPComment},
-	{kubeNodePortIPv4SetSCTP, ipsetutil.HashIPPort, kubeNodePortSetSCTPComment},
-	{kubeNodePortLocalIPv4SetSCTP, ipsetutil.HashIPPort, kubeNodePortLocalSetSCTPComment},
-	{kubeHealthCheckNodePortIPv4Set, ipsetutil.BitmapPort, kubeHealthCheckNodePortSetComment},
+	{kubeLoopBackIPSet, ipsetutil.HashIPPortIP, kubeLoopBackIPSetComment},
+	{kubeClusterIPSet, ipsetutil.HashIPPort, kubeClusterIPSetComment},
+	{kubeExternalIPSet, ipsetutil.HashIPPort, kubeExternalIPSetComment},
+	{kubeExternalIPLocalSet, ipsetutil.HashIPPort, kubeExternalIPLocalSetComment},
+	{kubeLoadBalancerSet, ipsetutil.HashIPPort, kubeLoadBalancerSetComment},
+	{kubeLoadbalancerFWSet, ipsetutil.HashIPPort, kubeLoadbalancerFWSetComment},
+	{kubeLoadBalancerLocalSet, ipsetutil.HashIPPort, kubeLoadBalancerLocalSetComment},
+	{kubeLoadBalancerSourceIPSet, ipsetutil.HashIPPortIP, kubeLoadBalancerSourceIPSetComment},
+	{kubeLoadBalancerSourceCIDRSet, ipsetutil.HashIPPortNet, kubeLoadBalancerSourceCIDRSetComment},
+	{kubeNodePortSetTCP, ipsetutil.BitmapPort, kubeNodePortSetTCPComment},
+	{kubeNodePortLocalSetTCP, ipsetutil.BitmapPort, kubeNodePortLocalSetTCPComment},
+	{kubeNodePortSetUDP, ipsetutil.BitmapPort, kubeNodePortSetUDPComment},
+	{kubeNodePortLocalSetUDP, ipsetutil.BitmapPort, kubeNodePortLocalSetUDPComment},
+	{kubeNodePortSetSCTP, ipsetutil.HashIPPort, kubeNodePortSetSCTPComment},
+	{kubeNodePortLocalSetSCTP, ipsetutil.HashIPPort, kubeNodePortLocalSetSCTPComment},
+	{kubeHealthCheckNodePortSet, ipsetutil.BitmapPort, kubeHealthCheckNodePortSetComment},
 }
 
 // IPSetVersioner can query the current ipset version.
@@ -130,40 +115,28 @@ type IPSet struct {
 	deleteEntries sets.String
 	// handle is the util ipset interface handle.
 	handle ipsetutil.Interface
+
+	refCountOfSvc int
 }
 
 // NewIPSet initialize a new IPSet struct
-func newIPv4Set(handle ipsetutil.Interface, name string, setType ipsetutil.Type, comment string) *IPSet {
+func newIPSet(handle ipsetutil.Interface, name string, setType ipsetutil.Type, ipFamily v1.IPFamily, comment string) *IPSet {
 	hashFamily := ipsetutil.ProtocolFamilyIPV4
-	set := &IPSet{
-		IPSet: ipsetutil.IPSet{
-			Name:       name,
-			SetType:    setType,
-			HashFamily: hashFamily,
-			Comment:    comment,
-		},
-		newEntries:    sets.NewString(),
-		deleteEntries: sets.NewString(),
-		handle:        handle,
-	}
-	return set
-}
-
-// NewIPSet initialize a new IPSet struct
-func newIPv6Set(handle ipsetutil.Interface, name string, setType ipsetutil.Type, comment string) *IPSet {
-	hashFamily := ipsetutil.ProtocolFamilyIPV6
-	// In dual-stack both ipv4 and ipv6 ipset's can co-exist. To
-	// ensure unique names the prefix for ipv6 is changed from
-	// "KUBE-" to "KUBE-6-". The "KUBE-" prefix is kept for
-	// backward compatibility. The maximum name length of an ipset
-	// is 31 characters which must be taken into account.  The
-	// ipv4 names are not altered to minimize the risk for
-	// problems on upgrades.
-	if strings.HasPrefix(name, "KUBE-") {
-		name = strings.Replace(name, "KUBE-", "KUBE-6-", 1)
-		if len(name) > 31 {
-			klog.Warningf("ipset name truncated; [%s] -> [%s]", name, name[:31])
-			name = name[:31]
+	if ipFamily == v1.IPv6Protocol {
+		hashFamily = ipsetutil.ProtocolFamilyIPV6
+		// In dual-stack both ipv4 and ipv6 ipset's can co-exist. To
+		// ensure unique names the prefix for ipv6 is changed from
+		// "KUBE-" to "KUBE-6-". The "KUBE-" prefix is kept for
+		// backward compatibility. The maximum name length of an ipset
+		// is 31 characters which must be taken into account.  The
+		// ipv4 names are not altered to minimize the risk for
+		// problems on upgrades.
+		if strings.HasPrefix(name, "KUBE-") {
+			name = strings.Replace(name, "KUBE-", "KUBE-6-", 1)
+			if len(name) > 31 {
+				klog.InfoS("Ipset name truncated", "ipSetName", name, "truncatedName", name[:31])
+				name = name[:31]
+			}
 		}
 	}
 	set := &IPSet{
@@ -178,6 +151,15 @@ func newIPv6Set(handle ipsetutil.Interface, name string, setType ipsetutil.Type,
 		handle:        handle,
 	}
 	return set
+}
+
+
+func (set *IPSet) isEmpty() bool {
+	return len(set.newEntries.UnsortedList()) == 0
+}
+
+func (set *IPSet) isRefCountZero() bool {
+	return set.refCountOfSvc == 0
 }
 
 func (set *IPSet) validateEntry(entry *ipsetutil.Entry) bool {
