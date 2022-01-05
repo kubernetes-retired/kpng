@@ -81,7 +81,7 @@ func Example() {
 
 // TestSessionAffinitySetClientIP creates scenario to validate SessionAffinity
 // Ref: https://github.com/kubernetes-sigs/kpng/issues/156
-func UnCommentMeAmimTestSessionAffinitySetClientIP(t *testing.T) {
+func TestSessionAffinitySetClientIP(t *testing.T) {
 	store := New()
 	store.Update(func(tx *Tx) {
 		tx.SetService(&localnetv1.Service{

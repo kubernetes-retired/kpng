@@ -19,9 +19,9 @@ package watchstate
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/pkg/diffstore"
@@ -31,7 +31,6 @@ type WatchState struct {
 	res   localnetv1.OpSink
 	sets  []localnetv1.Set
 	diffs []*diffstore.DiffStore
-	pb    *proto.Buffer
 	Err   error
 }
 
@@ -45,7 +44,6 @@ func New(res localnetv1.OpSink, sets []localnetv1.Set) *WatchState {
 		res:   res,
 		sets:  sets,
 		diffs: diffs,
-		pb:    proto.NewBuffer(make([]byte, 0)),
 	}
 }
 
@@ -101,8 +99,8 @@ func (w *WatchState) send(item *localnetv1.OpItem) {
 }
 
 func (w *WatchState) sendSet(set localnetv1.Set, path string, m proto.Message) {
-	w.pb.Reset()
-	if err := w.pb.Marshal(m); err != nil {
+	message, err := proto.Marshal(m)
+	if err != nil {
 		panic("protobuf Marshal failed: " + err.Error())
 	}
 
@@ -110,7 +108,7 @@ func (w *WatchState) sendSet(set localnetv1.Set, path string, m proto.Message) {
 		Op: &localnetv1.OpItem_Set{
 			Set: &localnetv1.Value{
 				Ref:   &localnetv1.Ref{Set: set, Path: path},
-				Bytes: w.pb.Bytes(),
+				Bytes: message,
 			},
 		},
 	})
