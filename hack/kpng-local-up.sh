@@ -21,8 +21,11 @@
 : ${KIND:="kindest/node:v1.22.0@sha256:b8bda84bb3a190e6e028b1760d277454a72267a5454b57db34437c34a588d047"}
 : ${IMAGE:="jayunit100/kpng:2"}
 : ${PULL:=IfNotPresent}
-: ${BACKEND:=iptables}
-export IMAGE PULL BACKEND
+: ${E2E_BACKEND:=iptables}
+: ${CONFIG_MAP_NAME:=kpng}
+: ${SERVICE_ACCOUNT_NAME:=kpng}
+: ${NAMESPACE:=kube-system}
+export IMAGE PULL E2E_BACKEND CONFIG_MAP_NAME SERVICE_ACCOUNT_NAME NAMESPACE
 
 echo -n "this will deploy kpng with docker image $IMAGE, pull policy $PULL and the $BACKEND backend. Press enter to confirm, C-c to cancel"
 read
@@ -70,10 +73,11 @@ function install_kpng {
     # todo(jayunit100) support antrea as a secondary CNI option to test
 
     kubectl -n kube-system create sa kpng
-    kubectl create clusterrolebinding kpng --clusterrole=system:node-proxier --serviceaccount=kube-system:kpng
+    kubectl create clusterrolebinding kpng --clusterrole=system:node-proxier --serviceaccount="${NAMESPACE}:${SERVICE_ACCOUNT_NAME}"
     kubectl -n kube-system create cm kpng --from-file kubeconfig.conf
 
-    kubectl delete -f kpng-deployment-ds.yaml
+    # Deleting any previous daemonsets.apps kpng
+    kubectl delete -f kpng-deployment-ds.yaml 2> /dev/null
     kubectl create -f kpng-deployment-ds.yaml
 }
 
