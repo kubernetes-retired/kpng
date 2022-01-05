@@ -34,8 +34,8 @@ There are many ways to get started, but here's a good set of guidelines.
 ### First, make sure you understand the basics of K8s networking.
 
 In particular, you should be able to differentiate:
-- CNI providers (i.e. calico, antrea, cillium, and so on)
-- Service Proxies (i.e. kube-proxy, AntreaProxy, CilliumProxy, various service-mesh's, and so on)
+- CNI providers (i.e. calico, antrea, cilium, and so on)
+- Service Proxies (i.e. kube-proxy, AntreaProxy, CiliumProxy, various service-mesh's, and so on)
 - LoadBalancers (i.e. serviceType=LoadBalancer)
 
 There are about 20 or 30 great youtube videos about Kubernetes networking and the Kube proxy that you can easily search for and study.
