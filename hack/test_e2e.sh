@@ -108,9 +108,12 @@ function container_build {
     # build a container image for KPNG                                        #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
+    # arg1: Path for E2E installation dicrectory, or the empty string         #
     ###########################################################################
-    CONTAINER_FILE="Dockerfile"
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    CONTAINER_FILE=${1}
 
     # Running locally it's not necessary to show all info
     QUIET_MODE="--quiet"
@@ -118,10 +121,10 @@ function container_build {
         QUIET_MODE=""
     fi
 
-    [ -f "${CONTAINER_FILE}" ]
+    # -f "${CONTAINER_FILE}" ]
     if_error_exit "cannot find ${CONTAINER_FILE}"
 
-    CMD_BUILD_IMAGE=("${CONTAINER_ENGINE} build ${QUIET_MODE} -t ${KPNG_IMAGE_TAG_NAME} -f Dockerfile .")
+    CMD_BUILD_IMAGE=("${CONTAINER_ENGINE} build ${QUIET_MODE} -t ${KPNG_IMAGE_TAG_NAME} -f ${CONTAINER_FILE} .")
     pushd "${0%/*}/.." > /dev/null || exit
         if [ -z "${QUIET_MODE}" ]; then
             ${CMD_BUILD_IMAGE}
@@ -144,7 +147,7 @@ function setup_kind {
     # arg1: installation dicrectory, path to where kind will be installed     #
     ###########################################################################
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to setup_kind"
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     local install_directory=$1
 
@@ -176,7 +179,7 @@ function setup_kubectl {
     ###########################################################################
 
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to setup_kubectl"
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     local install_directory=$1
 
@@ -533,6 +536,7 @@ function main {
     local backend="${2}"
     local ci_mode="${3}"
     local e2e_dir="${4}"
+    local dockerfile="${5}"
 
     set_e2e_dir "${e2e_dir}"
 
@@ -548,9 +552,9 @@ function main {
         echo "${E2E_CLUSTER_NAME}" 
         echo "${E2E_CLUSTER_NAME}" > "${E2E_DIR}"/clustername
     fi
-    
+
     setup_environment
-    container_build
+    container_build ${dockerfile}
     create_cluster
     wait_until_cluster_is_ready
 
@@ -586,22 +590,28 @@ function help {
     printf "\t-b set backend (iptables/nft/ipvs) name in the e2e test runs.\n"
     printf "\t-c flag allows for ci_mode. Please don't run on local systems.\n"
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
+    printf "\t-D Dockerfile, specifies the path of the Dockerfile to use\n"
     printf "\t-E set E2E directory, specifies the path for the E2E directory\n"
     printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}"
     exit 1 # Exit script after printing help
 }
 
+base_dir=$(cd `dirname $0` && pwd)
 ci_mode=false
 devel_mode=false
 e2e_dir=""
+dockerfile=""`dirname ${base_dir}`/Dockerfile""
 
-while getopts "i:b:cdE:" flag
+
+
+while getopts "i:b:cdD:E:" flag
 do
     case "${flag}" in
         i ) ip_family="${OPTARG}" ;;
         b ) backend="${OPTARG}" ;;
         c ) ci_mode=true ;;
         d ) devel_mode=true ;;
+        D ) dockerfile="${OPTARG}" ;;
         E ) e2e_dir="${OPTARG}" ;;
         ? ) help ;; #Print help
     esac
@@ -618,7 +628,7 @@ if ! [[ "${backend}" =~ ^(iptables|nft|ipvs)$ ]]; then
 fi
 
 if [[ -n "${ip_family}" && -n "${backend}" ]]; then
-   main "${ip_family}" "${backend}" "${ci_mode}" "$e2e_dir"
+   main "${ip_family}" "${backend}" "${ci_mode}" "$e2e_dir" "${dockerfile}"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help
