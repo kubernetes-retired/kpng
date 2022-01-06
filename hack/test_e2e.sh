@@ -244,7 +244,11 @@ function setup_environment {
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
-    mkdir -p "${E2E_DIR}"
+    [ -d ${E2E_DIR} ]
+    if_error_exit "Directory \"${E2E_DIR}\" does not exist"
+
+    [ -d ${E2E_BIN} ]
+    if_error_exit "Directory \"${E2E_BIN}\" does not exist"
 
     setup_kind ${E2E_BIN}
     setup_kubectl ${E2E_BIN}
@@ -483,10 +487,12 @@ function set_e2e_dir {
     # Set E2E directory                                                       #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
+    # arg1: Path for E2E installation dicrectory, or the empty string         #
     ###########################################################################
+    e2e_dir="${1}"
+    e2e_dir=${e2e_dir:="$(pwd)/temp/e2e"}
     pushd "${0%/*}" > /dev/null || exit
-        export E2E_DIR="$(pwd)/temp/e2e"
+        export E2E_DIR="${e2e_dir}"
         export E2E_ARTIFACTS="${E2E_DIR}"/artifacts
         E2E_BIN="${E2E_DIR}"/bin
         mkdir -p "${E2E_DIR}"
@@ -523,14 +529,19 @@ function main {
     fi
 
     # setting up variables
-    set_e2e_dir
     local ip_family="${1}"
     local backend="${2}"
     local ci_mode="${3}"
+    local e2e_dir="${4}"
+
+    set_e2e_dir "${e2e_dir}"
+
     export E2E_CLUSTER_NAME="kpng-e2e-${ip_family}-${backend}"
     export E2E_IP_FAMILY="${ip_family}"
     export E2E_BACKEND="${backend}"
-    mkdir -p "${E2E_ARTIFACTS}"
+
+    [ -d ${E2E_ARTIFACTS} ]
+    if_error_exit "Directory \"${E2E_ARTIFACTS}\" does not exist"
 
     if [ "${ci_mode}" = true ] ; then
         # store the clustername for other scripts in ci 
@@ -575,19 +586,23 @@ function help {
     printf "\t-b set backend (iptables/nft/ipvs) name in the e2e test runs.\n"
     printf "\t-c flag allows for ci_mode. Please don't run on local systems.\n"
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
+    printf "\t-E set E2E directory, specifies the path for the E2E directory\n"
     printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}"
     exit 1 # Exit script after printing help
 }
 
 ci_mode=false
 devel_mode=false
-while getopts "i:b:cd" flag
+e2e_dir=""
+
+while getopts "i:b:cdE:" flag
 do
     case "${flag}" in
         i ) ip_family="${OPTARG}" ;;
         b ) backend="${OPTARG}" ;;
         c ) ci_mode=true ;;
         d ) devel_mode=true ;;
+        E ) e2e_dir="${OPTARG}" ;;
         ? ) help ;; #Print help
     esac
 done
@@ -603,8 +618,9 @@ if ! [[ "${backend}" =~ ^(iptables|nft|ipvs)$ ]]; then
 fi
 
 if [[ -n "${ip_family}" && -n "${backend}" ]]; then
-   main "${ip_family}" "${backend}" "${ci_mode}"
+   main "${ip_family}" "${backend}" "${ci_mode}" "$e2e_dir"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help
 fi
+
