@@ -141,15 +141,26 @@ function setup_kind {
     # setup kind if not available in the system                               #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
+    # arg1: installation dicrectory, path to where kind will be installed     #
     ###########################################################################
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to setup_kind"
+
+    local install_directory=$1
+
+    [ -d ${install_directory} ]
+    if_error_exit "Directory \"${install_directory}\" does not exist"
+
+
     if ! kind > /dev/null 2>&1 ; then
         echo -e "\nDownloading kind ..."
-        curl -L https://kind.sigs.k8s.io/dl/"${KIND_VERSION}"/kind-"${OS}"-amd64 -o kind
+        curl -L https://kind.sigs.k8s.io/dl/"${KIND_VERSION}"/kind-"${OS}"-amd64 -o /tmp/kind-$$
         if_error_exit "cannot download kind"
 
-        sudo chmod +x kind
-        sudo mv kind /usr/local/bin/kind
+        sudo mv /tmp/kind-$$ ${install_directory}/kind
+        sudo chmod +x ${install_directory}/kind
+        sudo chown root.root ${install_directory}/kind
+        # Use install instead?
     fi
 
     pass_message "The kind tool is set."
@@ -161,15 +172,27 @@ function setup_kubectl {
     # setup kubectl if not available in the system                            #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
+    # arg1: installation dicrectory, path to where kubectl will be installed  #
     ###########################################################################
+
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to setup_kubectl"
+
+    local install_directory=$1
+
+    [ -d ${install_directory} ]
+    if_error_exit "Directory \"${install_directory}\" does not exist"
+
+
     if ! kubectl > /dev/null 2>&1 ; then
         echo -e "\nDownloading kubectl ..."
-        curl -L https://dl.k8s.io/"${E2E_K8S_VERSION}"/bin/"${OS}"/amd64/kubectl -o kubectl
+        curl -L https://dl.k8s.io/"${E2E_K8S_VERSION}"/bin/"${OS}"/amd64/kubectl -o /tmp/kubectl-$$
         if_error_exit "cannot download kubectl"
 
-        sudo chmod +x kubectl
-        sudo mv kubectl /usr/local/bin/kubectl
+        sudo mv /tmp/kubectl-$$ ${install_directory}/kubectl
+        sudo chmod +x ${install_directory}/kubectl
+        sudo chown root.root ${install_directory}/kubectl
+        # Use install instead?
     fi
 
     pass_message "The kubectl tool is set."
@@ -223,8 +246,8 @@ function setup_environment {
     ###########################################################################
     mkdir -p "${E2E_DIR}"
 
-    setup_kind
-    setup_kubectl
+    setup_kind ${E2E_BIN}
+    setup_kubectl ${E2E_BIN}
     setup_ginkgo
 
     if [ "${ci_mode}" = true ] ; then
@@ -465,9 +488,16 @@ function set_e2e_dir {
     pushd "${0%/*}" > /dev/null || exit
         export E2E_DIR="$(pwd)/temp/e2e"
         export E2E_ARTIFACTS="${E2E_DIR}"/artifacts
+        E2E_BIN="${E2E_DIR}"/bin
         mkdir -p "${E2E_DIR}"
         mkdir -p "${E2E_ARTIFACTS}"
-    popd > /dev/null || exit
+        mkdir -p "${E2E_BIN}"
+   popd > /dev/null || exit
+
+   case ":${PATH:-}:" in
+        *:${E2E_BIN}:*) ;;
+        *) PATH="${E2E_BIN}${PATH:+:$PATH}" ;;
+   esac
 }
 
 function main {
