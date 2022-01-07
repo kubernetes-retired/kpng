@@ -501,11 +501,13 @@ function set_e2e_dir {
     #   arg1: Path for E2E installation dicrectory, or the empty string         #
     ###########################################################################
     e2e_dir="${1}"
+    bin_dir="${2}"
     e2e_dir=${e2e_dir:="$(pwd)/temp/e2e"}
-    pushd "${0%/*}" > /dev/null || exit
+
+  pushd "${0%/*}" > /dev/null || exit
         export E2E_DIR="${e2e_dir}"
         export E2E_ARTIFACTS="${E2E_DIR}"/artifacts
-        E2E_BIN="${E2E_DIR}"/bin
+        E2E_BIN=${bin_dir:="${E2E_DIR}/bin"}
         mkdir -p "${E2E_DIR}"
         mkdir -p "${E2E_ARTIFACTS}"
         mkdir -p "${E2E_BIN}"
@@ -544,9 +546,10 @@ function main {
     local backend="${2}"
     local ci_mode="${3}"
     local e2e_dir="${4}"
-    local dockerfile="${5}"
+    local bin_dir="${5}"
+    local dockerfile="${6}"
 
-    set_e2e_dir "${e2e_dir}"
+    set_e2e_dir "${e2e_dir}" "${bin_dir}"
 
     export E2E_CLUSTER_NAME="kpng-e2e-${ip_family}-${backend}"
     export E2E_IP_FAMILY="${ip_family}"
@@ -598,6 +601,7 @@ function help {
     printf "\t-b set backend (iptables/nft/ipvs) name in the e2e test runs.\n"
     printf "\t-c flag allows for ci_mode. Please don't run on local systems.\n"
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
+    printf "\t-B binary directory, specifies the path for the directory where binaries will be installed\n"
     printf "\t-D Dockerfile, specifies the path of the Dockerfile to use\n"
     printf "\t-E set E2E directory, specifies the path for the E2E directory\n"
     printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}"
@@ -609,16 +613,17 @@ ci_mode=false
 devel_mode=false
 e2e_dir=""
 dockerfile="$(dirname "${base_dir}")/Dockerfile"
+bin_dir=""
 
 
-
-while getopts "i:b:cdD:E:" flag
+while getopts "i:b:B:cdD:E:" flag
 do
     case "${flag}" in
         i ) ip_family="${OPTARG}" ;;
         b ) backend="${OPTARG}" ;;
         c ) ci_mode=true ;;
         d ) devel_mode=true ;;
+        B ) bin_dir="${OPTARG}" ;;
         D ) dockerfile="${OPTARG}" ;;
         E ) e2e_dir="${OPTARG}" ;;
         ? ) help ;; #Print help
@@ -636,7 +641,7 @@ if ! [[ "${backend}" =~ ^(iptables|nft|ipvs)$ ]]; then
 fi
 
 if [[ -n "${ip_family}" && -n "${backend}" ]]; then
-   main "${ip_family}" "${backend}" "${ci_mode}" "${$e2e_dir}" "${dockerfile}"
+   main "${ip_family}" "${backend}" "${ci_mode}" "${e2e_dir}" "${bin_dir}" "${dockerfile}"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help
