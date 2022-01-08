@@ -101,7 +101,7 @@ func NewIptables() *iptables {
 		natChains:                util.LineBuffer{},
 		natRules:                 util.LineBuffer{},
 		portsMap:                 make(map[utilnet.LocalPort]utilnet.Closeable),
-		masqueradeAll:            true,
+		masqueradeAll:            false,
 		masqueradeMark:           fmt.Sprintf("%#08x", masqueradeValue),
 		localDetector:            NewNoOpLocalDetector(),
 	}
