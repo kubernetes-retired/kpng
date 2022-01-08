@@ -2,6 +2,7 @@ package iptables
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"net"
 	"strconv"
@@ -22,13 +23,14 @@ import (
 )
 
 var (
-	flag = &pflag.FlagSet{}
-
-	OnlyOutput = flag.Bool("only-output", false, "Only output the ipvsadm-restore file instead of calling ipvsadm-restore")
+	onlyOutput    bool
+	masqueradeAll bool
 )
 
 func BindFlags(flags *pflag.FlagSet) {
-	flags.AddFlagSet(flag)
+	flag.BoolVar(&onlyOutput, "only-output", false, "Only output the ipvsadm-restore file instead of calling ipvsadm-restore")
+	flag.BoolVar(&masqueradeAll, "masquerade-all", false, "Set this flag to set the masq rule for all traffic")
+
 }
 
 type iptables struct {
@@ -101,7 +103,7 @@ func NewIptables() *iptables {
 		natChains:                util.LineBuffer{},
 		natRules:                 util.LineBuffer{},
 		portsMap:                 make(map[utilnet.LocalPort]utilnet.Closeable),
-		masqueradeAll:            true,
+		masqueradeAll:            masqueradeAll,
 		masqueradeMark:           fmt.Sprintf("%#08x", masqueradeValue),
 		localDetector:            NewNoOpLocalDetector(),
 	}
