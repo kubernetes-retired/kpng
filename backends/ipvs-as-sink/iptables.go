@@ -407,7 +407,8 @@ func (p *proxier) syncIPTableRules() {
 	p.iptablesData.Write(p.filterChains.Bytes())
 	p.iptablesData.Write(p.filterRules.Bytes())
 
-	klog.V(5).InfoS("Restoring iptables", "rules", string(p.iptablesData.Bytes()))
+	//klog.V(5).InfoS("Restoring iptables", "rules", string(p.iptablesData.Bytes()))
+	//klog.InfoS("Restoring iptables", "rules", string(p.iptablesData.Bytes()))
 	err := p.iptables.RestoreAll(p.iptablesData.Bytes(), iptablesutil.NoFlushTables, iptablesutil.RestoreCounters)
 	if err != nil {
 		klog.ErrorS(err, "Failed to execute iptables-restore", "rules", string(p.iptablesData.Bytes()))
