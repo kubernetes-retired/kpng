@@ -108,9 +108,12 @@ function container_build {
     # build a container image for KPNG                                        #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
+    #   arg1: Path for E2E installation directory, or the empty string         #
     ###########################################################################
-    CONTAINER_FILE="Dockerfile"
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    CONTAINER_FILE=${1}
 
     # Running locally it's not necessary to show all info
     QUIET_MODE="--quiet"
@@ -121,7 +124,7 @@ function container_build {
     [ -f "${CONTAINER_FILE}" ]
     if_error_exit "cannot find ${CONTAINER_FILE}"
 
-    CMD_BUILD_IMAGE=("${CONTAINER_ENGINE} build ${QUIET_MODE} -t ${KPNG_IMAGE_TAG_NAME} -f Dockerfile .")
+    CMD_BUILD_IMAGE=("${CONTAINER_ENGINE} build ${QUIET_MODE} -t ${KPNG_IMAGE_TAG_NAME} -f ${CONTAINER_FILE} .")
     pushd "${0%/*}/.." > /dev/null || exit
         if [ -z "${QUIET_MODE}" ]; then
             ${CMD_BUILD_IMAGE}
@@ -141,15 +144,30 @@ function setup_kind {
     # setup kind if not available in the system                               #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
+    #   arg1: installation directory, path to where kind will be installed     #
     ###########################################################################
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local install_directory=$1
+
+    [ -d "${install_directory}" ]
+    if_error_exit "Directory \"${install_directory}\" does not exist"
+
+
     if ! kind > /dev/null 2>&1 ; then
         echo -e "\nDownloading kind ..."
-        curl -L https://kind.sigs.k8s.io/dl/"${KIND_VERSION}"/kind-"${OS}"-amd64 -o kind
+
+        local tmp_file=$(mktemp -q)
+        if_error_exit "Could not create temp file, mktemp failed"
+
+        curl -L https://kind.sigs.k8s.io/dl/"${KIND_VERSION}"/kind-"${OS}"-amd64 -o "${tmp_file}"
         if_error_exit "cannot download kind"
 
-        sudo chmod +x kind
-        sudo mv kind /usr/local/bin/kind
+        sudo mv "${tmp_file}" "${install_directory}"/kind
+        sudo chmod +rx "${install_directory}"/kind
+        sudo chown root.root "${install_directory}"/kind
+        # Use install instead?
     fi
 
     pass_message "The kind tool is set."
@@ -161,15 +179,31 @@ function setup_kubectl {
     # setup kubectl if not available in the system                            #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
+    #   arg1: installation directory, path to where kubectl will be installed  #
     ###########################################################################
+
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local install_directory=$1
+
+    [ -d "${install_directory}" ]
+    if_error_exit "Directory \"${install_directory}\" does not exist"
+
+
     if ! kubectl > /dev/null 2>&1 ; then
         echo -e "\nDownloading kubectl ..."
-        curl -L https://dl.k8s.io/"${E2E_K8S_VERSION}"/bin/"${OS}"/amd64/kubectl -o kubectl
+
+        local tmp_file=$(mktemp -q)
+        if_error_exit "Could not create temp file, mktemp failed"
+
+        curl -L https://dl.k8s.io/"${E2E_K8S_VERSION}"/bin/"${OS}"/amd64/kubectl -o "${tmp_file}"
         if_error_exit "cannot download kubectl"
 
-        sudo chmod +x kubectl
-        sudo mv kubectl /usr/local/bin/kubectl
+        sudo mv "${tmp_file}" "${install_directory}"/kubectl
+        sudo chmod +rx "${install_directory}"/kubectl
+        sudo chown root.root "${install_directory}"/kubectl
+        # Use install instead?
     fi
 
     pass_message "The kubectl tool is set."
@@ -221,10 +255,14 @@ function setup_environment {
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
-    mkdir -p "${E2E_DIR}"
+    [ -d "${E2E_DIR}" ]
+    if_error_exit "Directory \"${E2E_DIR}\" does not exist"
 
-    setup_kind
-    setup_kubectl
+    [ -d "${E2E_BIN}" ]
+    if_error_exit "Directory \"${E2E_BIN}\" does not exist"
+
+    setup_kind "${E2E_BIN}"
+    setup_kubectl "${E2E_BIN}"
     setup_ginkgo
 
     if [ "${ci_mode}" = true ] ; then
@@ -460,14 +498,25 @@ function set_e2e_dir {
     # Set E2E directory                                                       #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
+    #   arg1: Path for E2E installation dicrectory, or the empty string         #
     ###########################################################################
-    pushd "${0%/*}" > /dev/null || exit
-        export E2E_DIR="$(pwd)/temp/e2e"
+    e2e_dir="${1}"
+    bin_dir="${2}"
+    e2e_dir=${e2e_dir:="$(pwd)/temp/e2e"}
+
+  pushd "${0%/*}" > /dev/null || exit
+        export E2E_DIR="${e2e_dir}"
         export E2E_ARTIFACTS="${E2E_DIR}"/artifacts
+        E2E_BIN=${bin_dir:="${E2E_DIR}/bin"}
         mkdir -p "${E2E_DIR}"
         mkdir -p "${E2E_ARTIFACTS}"
+        mkdir -p "${E2E_BIN}"
     popd > /dev/null || exit
+
+    case ":${PATH:-}:" in
+        *:${E2E_BIN}:*) ;;
+        *) PATH="${E2E_BIN}${PATH:+:$PATH}" ;;
+    esac
 }
 
 function main {
@@ -493,23 +542,30 @@ function main {
     fi
 
     # setting up variables
-    set_e2e_dir
     local ip_family="${1}"
     local backend="${2}"
     local ci_mode="${3}"
+    local e2e_dir="${4}"
+    local bin_dir="${5}"
+    local dockerfile="${6}"
+
+    set_e2e_dir "${e2e_dir}" "${bin_dir}"
+
     export E2E_CLUSTER_NAME="kpng-e2e-${ip_family}-${backend}"
     export E2E_IP_FAMILY="${ip_family}"
     export E2E_BACKEND="${backend}"
-    mkdir -p "${E2E_ARTIFACTS}"
+
+    [ -d "${E2E_ARTIFACTS}" ]
+    if_error_exit "Directory \"${E2E_ARTIFACTS}\" does not exist"
 
     if [ "${ci_mode}" = true ] ; then
         # store the clustername for other scripts in ci 
         echo "${E2E_CLUSTER_NAME}" 
         echo "${E2E_CLUSTER_NAME}" > "${E2E_DIR}"/clustername
     fi
-    
+
     setup_environment
-    container_build
+    container_build "${dockerfile}"
     create_cluster
     wait_until_cluster_is_ready
 
@@ -545,19 +601,31 @@ function help {
     printf "\t-b set backend (iptables/nft/ipvs) name in the e2e test runs.\n"
     printf "\t-c flag allows for ci_mode. Please don't run on local systems.\n"
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
+    printf "\t-B binary directory, specifies the path for the directory where binaries will be installed\n"
+    printf "\t-D Dockerfile, specifies the path of the Dockerfile to use\n"
+    printf "\t-E set E2E directory, specifies the path for the E2E directory\n"
     printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}"
     exit 1 # Exit script after printing help
 }
-
+tmp_dir=$(dirname "$0")
+base_dir=$(cd "${tmp_dir}" && pwd)
 ci_mode=false
 devel_mode=false
-while getopts "i:b:cd" flag
+e2e_dir=""
+dockerfile="$(dirname "${base_dir}")/Dockerfile"
+bin_dir=""
+
+
+while getopts "i:b:B:cdD:E:" flag
 do
     case "${flag}" in
         i ) ip_family="${OPTARG}" ;;
         b ) backend="${OPTARG}" ;;
         c ) ci_mode=true ;;
         d ) devel_mode=true ;;
+        B ) bin_dir="${OPTARG}" ;;
+        D ) dockerfile="${OPTARG}" ;;
+        E ) e2e_dir="${OPTARG}" ;;
         ? ) help ;; #Print help
     esac
 done
@@ -573,8 +641,9 @@ if ! [[ "${backend}" =~ ^(iptables|nft|ipvs)$ ]]; then
 fi
 
 if [[ -n "${ip_family}" && -n "${backend}" ]]; then
-   main "${ip_family}" "${backend}" "${ci_mode}"
+   main "${ip_family}" "${backend}" "${ci_mode}" "${e2e_dir}" "${bin_dir}" "${dockerfile}"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help
 fi
+
