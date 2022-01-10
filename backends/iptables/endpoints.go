@@ -54,8 +54,8 @@ var supportedEndpointSliceAddressTypes = sets.NewString(
 //		StabilityLevel: metrics.ALPHA,
 //	},
 //)
-
-
+// EndpointsMap maps a service name to a list of all its Endpoints.
+type EndpointsMap map[types.NamespacedName]*endpointsInfoByName
 
 // EndpointChangeTracker carries state about uncommitted changes to an arbitrary number of
 // Endpoints, keyed by their namespace and name.
@@ -165,12 +165,9 @@ func (em EndpointsMap) Update(changes *EndpointChangeTracker) (result UpdateEndp
 	for nsn, ips := range localIPs {
 		result.HCEndpointsLocalIPSize[nsn] = len(ips)
 	}
-	changes.endpointsCache.trackerByServiceMap = map[types.NamespacedName]*endpointsInfoByName{}
+	changes.endpointsCache.trackerByServiceMap = EndpointsMap{}
 	return result
 }
-
-// EndpointsMap maps a service name to a list of all its Endpoints.
-type EndpointsMap map[types.NamespacedName]*endpointsInfoByName
 
 // apply the changes to EndpointsMap and updates stale endpoints and service-endpoints pair. The `staleEndpoints` argument
 // is passed in to store the stale udp endpoints and `staleServiceNames` argument is passed in to store the stale udp service.
@@ -191,7 +188,7 @@ func (em EndpointsMap) apply(ect *EndpointChangeTracker, staleEndpoints *[]Servi
 }
 
 // Merge ensures that the current EndpointsMap contains all <service, endpoints> pairs from the EndpointsMap passed in.
-func (em EndpointsMap) merge(other map[types.NamespacedName]*endpointsInfoByName) {
+func (em EndpointsMap) merge(other EndpointsMap) {
 	for svcPortName, epInfo := range other {
 		for name, ep := range *(epInfo) {
 			if ep == nil {
