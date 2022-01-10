@@ -44,7 +44,7 @@ type endpointsInfoByName map[string]*localnetv1.Endpoint
 // NewEndpointsCache initializes an EndpointCache.
 func NewEndpointsCache(hostname string, ipFamily v1.IPFamily, recorder events.EventRecorder) *EndpointsCache {
 	return &EndpointsCache{
-		trackerByServiceMap: map[types.NamespacedName]*endpointsInfoByName{},
+		trackerByServiceMap: EndpointsMap{},
 		hostname:            hostname,
 		ipFamily:            ipFamily,
 		recorder:            recorder,
