@@ -111,7 +111,8 @@ func (from *IPSet) Diff(to *IPSet) (added, removed *IPSet) {
 	return
 }
 
-func diffStrings(from, to []string) (added, removed []string) {
+// compareSlices returns the difference between the two slices
+func compareSlices(from, to []string) (diff []string) {
 	for _, s1 := range from {
 		found := false
 		for _, s2 := range to {
@@ -122,23 +123,17 @@ func diffStrings(from, to []string) (added, removed []string) {
 		}
 
 		if !found {
-			removed = append(removed, s1)
+			diff = append(diff, s1)
 		}
 	}
-
-	for _, s1 := range to {
-		found := false
-		for _, s2 := range from {
-			if s1 == s2 {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			added = append(added, s1)
-		}
-	}
-
 	return
+}
+
+// diffStrings will compare two slices and will return the strings
+// added and removed at the same time.
+func diffStrings(from, to []string) (added, removed []string) {
+	added = compareSlices(to, from)
+	removed = compareSlices(from, to)
+	return added, removed
+
 }
