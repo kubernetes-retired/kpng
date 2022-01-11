@@ -18,35 +18,61 @@ package ipvssink
 
 import (
 	"bytes"
+	"k8s.io/klog"
 	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/client/serviceevents"
 )
 
-func (s *Backend) updateClusterIPService(svc *localnetv1.Service, serviceIP string, port *localnetv1.PortMapping) {
-	serviceKey := svc.Namespace + "/" + svc.Name
+func (s *Backend) updateClusterIPService(svc *localnetv1.Service, serviceIP string, IPKind serviceevents.IPKind, port *localnetv1.PortMapping) {
+	serviceKey := serviceKey(svc)
 	s.svcs[serviceKey] = svc
-
 	ipFamily := getIPFamily(serviceIP)
-	isServiceUpdated := s.isServiceUpdated(svc)
-	if !isServiceUpdated {
-		s.proxiers[ipFamily].handleNewClusterIPService(serviceKey, serviceIP, port)
-	} else {
-		s.proxiers[ipFamily].handleUpdatedClusterIPService(serviceKey, serviceIP, port)
+
+	// Handle Cluster-IP for the service
+	if IPKind == serviceevents.ClusterIP {
+		isServiceUpdated := s.isServiceUpdated(svc)
+		if !isServiceUpdated {
+			s.proxiers[ipFamily].handleNewClusterIPService(serviceKey, serviceIP, port)
+		} else {
+			s.proxiers[ipFamily].handleUpdatedClusterIPService(serviceKey, serviceIP, port)
+		}
+	}
+
+	// Handle External-IP for the service
+	if IPKind == serviceevents.ExternalIP {
+		isServiceUpdated := s.isServiceUpdated(svc)
+		if !isServiceUpdated {
+			s.proxiers[ipFamily].handleNewExternalIP(serviceKey, serviceIP, ClusterIPService, port)
+		} else {
+			s.proxiers[ipFamily].handleUpdatedExternalIP(serviceKey, serviceIP, ClusterIPService, port)
+		}
 	}
 }
 
-func (s *Backend) deleteClusterIPService(svc *localnetv1.Service, serviceIP string, port *localnetv1.PortMapping) {
-	serviceKey := svc.Namespace + "/" + svc.Name
+func (s *Backend) deleteClusterIPService(svc *localnetv1.Service, serviceIP string, IPKind serviceevents.IPKind, port *localnetv1.PortMapping) {
+	serviceKey := serviceKey(svc)
 	s.svcs[serviceKey] = svc
 	ipFamily := getIPFamily(serviceIP)
 	p := s.proxiers[ipFamily]
 
-	p.deleteLBSvc(port , serviceIP, serviceKey)
+	// Delete Cluster-IP for the service
+	if IPKind == serviceevents.ClusterIP {
+		p.deleteLBSvc(port, serviceIP, serviceKey)
 
-	endPointList , isLocalEndPoint := p.deleteIPVSDestForPort(serviceKey, serviceIP, port)
+		endPointList, isLocalEndPoint := p.deleteIPVSDestForPort(serviceKey, serviceIP, port)
 
-	p.AddOrDelClusterIPInIPSet(serviceIP, []*localnetv1.PortMapping{port}, DeleteService)
+		p.AddOrDelClusterIPInIPSet(serviceIP, []*localnetv1.PortMapping{port}, DeleteService)
+		p.AddOrDelEndPointInIPSet(endPointList, []*localnetv1.PortMapping{port}, isLocalEndPoint, DeleteEndPoint)
+	}
 
-	p.AddOrDelEndPointInIPSet(endPointList, []*localnetv1.PortMapping{port}, isLocalEndPoint, DeleteEndPoint)
+	// Delete External-IP for the service
+	if IPKind == serviceevents.ExternalIP {
+		p.deleteLBSvc(port, serviceIP, serviceKey)
+
+		p.deleteIPVSDestForPort(serviceKey, serviceIP, port)
+
+		p.AddOrDelExternalIPInIPSet(serviceIP, []*localnetv1.PortMapping{port}, DeleteService)
+	}
 }
 
 func (p *proxier) handleNewClusterIPService(key , clusterIP string, port *localnetv1.PortMapping) {
@@ -107,6 +133,22 @@ func (p *proxier) SetEndPointForClusterIPSvc(svcKey, prefix , endPointIP string,
 	}
 
 	p.AddOrDelEndPointInIPSet([]string{endPointIP}, service.Ports, endpoint.Local, AddEndPoint)
+
+
+	// Get External-IP if its configured for service.
+	err, externalIP := getExternalIPForIPFamily(p.ipFamily, service)
+	if err != nil {
+		klog.Info(err)
+		return
+	}
+	for _, lbKV := range p.lbs.GetByPrefix([]byte(svcKey + "/" + externalIP)) {
+		lb := lbKV.Value.(ipvsLB)
+		destination := ipvsSvcDst{
+			Svc:             lb.ToService(),
+			Dst:             ipvsDestination(endPointIP, lb.Port, p.weight),
+		}
+		p.dests.Set([]byte(string(lbKV.Key) + "/" + endPointIP), 0, destination)
+	}
 }
 
 func (p *proxier) DeleteEndPointForClusterIPSvc(svcKey, prefix string, service *localnetv1.Service) {

@@ -22,7 +22,7 @@ import (
 )
 
 func (s *Backend) updateNodePortService(svc *localnetv1.Service, serviceIP string, port *localnetv1.PortMapping) {
-	serviceKey := svc.Namespace + "/" + svc.Name
+	serviceKey := serviceKey(svc)
 	s.svcs[serviceKey] = svc
 
 	ipFamily := getIPFamily(serviceIP)
@@ -35,7 +35,7 @@ func (s *Backend) updateNodePortService(svc *localnetv1.Service, serviceIP strin
 }
 
 func (s *Backend) deleteNodePortService(svc *localnetv1.Service, serviceIP string, port *localnetv1.PortMapping) {
-	serviceKey := svc.Namespace + "/" + svc.Name
+	serviceKey := serviceKey(svc)
 	s.svcs[serviceKey] = svc
 	ipFamily := getIPFamily(serviceIP)
 	p := s.proxiers[ipFamily]

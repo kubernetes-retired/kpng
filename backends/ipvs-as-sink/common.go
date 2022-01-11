@@ -20,6 +20,7 @@ import (
 	"errors"
 	"github.com/google/seesaw/ipvs"
 	"sigs.k8s.io/kpng/client/pkg/diffstore"
+	"strconv"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -30,16 +31,56 @@ import (
 	ipsetutil "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
 )
 
+const (
+	ClusterIPService = "ClusterIP"
+	NodePortService  = "NodePort"
+	LoadBalancerService  = "LoadBalancer"
+)
+
+var protocolIPSetMap = map[string]string{
+	ipsetutil.ProtocolTCP: kubeNodePortSetTCP,
+	ipsetutil.ProtocolUDP: kubeNodePortSetUDP,
+	ipsetutil.ProtocolSCTP: kubeNodePortSetSCTP,
+}
+
+type Operation int32
+
+const (
+	AddService     Operation = 0
+	DeleteService  Operation = 1
+	AddEndPoint    Operation = 2
+	DeleteEndPoint Operation = 3
+)
+
 type endPointInfo struct {
 	endPointIP      string
 	isLocalEndPoint bool
+}
+
+func asDummyIPs(ip string, ipFamily v1.IPFamily) string {
+	if ipFamily == v1.IPv4Protocol {
+		return  ip + "/32"
+	}
+
+	if ipFamily == v1.IPv6Protocol {
+		return  ip + "/128"
+	}
+	return  ip + "/32"
+}
+
+func epPortSuffix(port *localnetv1.PortMapping) string {
+	return port.Protocol.String() + ":" + strconv.Itoa(int(port.Port))
+}
+
+func serviceKey(svc *localnetv1.Service) string {
+	return svc.Namespace + "/" + svc.Name
 }
 
 // Any service event (ip or port update) received after
 // EP creation is considered as service update. Else
 // its a new service creation.
 func (s *Backend) isServiceUpdated(svc *localnetv1.Service) bool {
-	serviceKey := svc.Namespace + "/" + svc.Name
+	serviceKey := serviceKey(svc)
 	if s.svcEPMap[serviceKey] >=1 {
 		return true
 	}
@@ -164,6 +205,21 @@ func getIPSetEntry(svcIP,srcAddr string, port *localnetv1.PortMapping) *ipsetuti
 		Protocol: strings.ToLower(port.Protocol.String()),
 		SetType:  ipsetutil.HashIPPort,
 	}
+}
+
+func getExternalIPForIPFamily(ipFamily v1.IPFamily, svc *localnetv1.Service) (error, string) {
+	var externalIP string
+	if svc.IPs.ExternalIPs == nil {
+		return errors.New("external IPs are not configured"), externalIP
+	}
+
+	if ipFamily == v1.IPv4Protocol && len(svc.IPs.ExternalIPs.V4) > 0{
+		externalIP = svc.IPs.ExternalIPs.V4[0]
+	}
+	if ipFamily == v1.IPv6Protocol && len(svc.IPs.ExternalIPs.V6) > 0{
+		externalIP = svc.IPs.ExternalIPs.V6[0]
+	}
+	return nil, externalIP
 }
 
 func getServiceIPForIPFamily(ipFamily v1.IPFamily, svc *localnetv1.Service) string {

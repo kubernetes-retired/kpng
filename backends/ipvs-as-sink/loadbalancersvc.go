@@ -25,7 +25,7 @@ import (
 )
 
 func (s *Backend) updateLbIPService(svc *localnetv1.Service, serviceIP string, IPKind serviceevents.IPKind, port *localnetv1.PortMapping) {
-	serviceKey := svc.Namespace + "/" + svc.Name
+	serviceKey := serviceKey(svc)
 	s.svcs[serviceKey] = svc
 
 	ipFamily := getIPFamily(serviceIP)
@@ -38,7 +38,7 @@ func (s *Backend) updateLbIPService(svc *localnetv1.Service, serviceIP string, I
 }
 
 func (s *Backend) deleteLbService(svc *localnetv1.Service, serviceIP string, IPKind serviceevents.IPKind, port *localnetv1.PortMapping) {
-	serviceKey := svc.Namespace + "/" + svc.Name
+	serviceKey := serviceKey(svc)
 	s.svcs[serviceKey] = svc
 	ipFamily := getIPFamily(serviceIP)
 	p := s.proxiers[ipFamily]

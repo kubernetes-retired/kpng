@@ -79,9 +79,9 @@ func (s *Backend) Sink() localsink.Sink {
 var _ serviceevents.IPPortsListener = &Backend{}
 
 func (s *Backend) AddIPPort(svc *localnetv1.Service, ip string, IPKind serviceevents.IPKind, port *localnetv1.PortMapping) {
-	klog.V(2).Infof("AddIPPort (svc : %v, svc-ip: %v, port: %v)", svc, ip, port)
+	klog.V(2).Infof("AddIPPort (svc: %v, svc-ip: %v, port: %v)", svc, ip, port)
 	if svc.Type == ClusterIPService {
-		s.updateClusterIPService(svc, ip, port)
+		s.updateClusterIPService(svc, ip, IPKind, port)
 	}
 
 	if svc.Type == NodePortService {
@@ -96,7 +96,7 @@ func (s *Backend) AddIPPort(svc *localnetv1.Service, ip string, IPKind serviceev
 func (s *Backend) DeleteIPPort(svc *localnetv1.Service, ip string, IPKind serviceevents.IPKind, port *localnetv1.PortMapping) {
 	klog.V(2).Infof("DeleteIPPort (svc: %v, svc-ip: %v, port: %v)", svc, ip, port)
 	if svc.Type == ClusterIPService {
-		s.deleteClusterIPService(svc, ip, port)
+		s.deleteClusterIPService(svc, ip, IPKind, port)
 	}
 
 	if svc.Type == NodePortService {
