@@ -189,24 +189,27 @@ func (em EndpointsMap) apply(ect *EndpointChangeTracker, staleEndpoints *[]Servi
 
 // Merge ensures that the current EndpointsMap contains all <service, endpoints> pairs from the EndpointsMap passed in.
 func (em EndpointsMap) merge(other EndpointsMap) {
-	for svcPortName, epInfo := range other {
-		for name, ep := range *(epInfo) {
-			if ep == nil {
+	for service, endpoints := range other {
+		for hash, endpointEntry := range *(endpoints) {
+			if endpointEntry == nil {
 				//TODO : if servicemap contains UDP port , then save the namespace, name ,protocol and epip
 				//  in cache as stale
-				delete(*(em[svcPortName]), name)
-				if len(*em[svcPortName]) <= 0 {
-					delete(em, svcPortName)
+				delete(*(em[service]), hash)
+				if len(*em[service]) <= 0 {
+					delete(em, service)
 				}
 				continue
 			}
-			var epInfoMap *endpointsInfoByName
+
+			var endpointMap *endpointsInfoByName
 			var ok bool
-			if epInfoMap, ok = em[svcPortName]; !ok {
-				epInfoMap = &endpointsInfoByName{}
-				em[svcPortName] = epInfoMap
+
+			// Check if EndPointsMap exists, if not, create a fresh map
+			if endpointMap, ok = em[service]; !ok {
+				endpointMap = &endpointsInfoByName{}
+				em[service] = endpointMap
 			}
-			(*(epInfoMap))[name] = ep
+			(*(endpointMap))[hash] = endpointEntry
 		}
 	}
 }
@@ -214,8 +217,8 @@ func (em EndpointsMap) merge(other EndpointsMap) {
 // GetLocalEndpointIPs returns endpoints IPs if given endpoint is local - local means the endpoint is running in same host as kube-proxy.
 func (em EndpointsMap) getLocalReadyEndpointIPs() map[types.NamespacedName]sets.String {
 	localIPs := make(map[types.NamespacedName]sets.String)
-	for svcPortName, epList := range em {
-		for _, ep := range *epList {
+	for service, endpoints := range em {
+		for _, endpointEntry := range *endpoints {
 			// Only add ready endpoints for health checking. Terminating endpoints may still serve traffic
 			// but the health check signal should fail if there are only terminating endpoints on a node.
 			//TODO: CHECK no endpoint.Topology and endpoint.Conditions Endpointslicecache.go
@@ -223,12 +226,12 @@ func (em EndpointsMap) getLocalReadyEndpointIPs() map[types.NamespacedName]sets.
 			// 	continue
 			// }
 
-			if ep.Local {
-				nsn := svcPortName
+			if endpointEntry.Local {
+				nsn := service
 				if localIPs[nsn] == nil {
 					localIPs[nsn] = sets.NewString()
 				}
-				localIPs[nsn].Insert(ep.IPs.All()...)
+				localIPs[nsn].Insert(endpointEntry.IPs.All()...)
 			}
 		}
 	}
@@ -238,34 +241,34 @@ func (em EndpointsMap) getLocalReadyEndpointIPs() map[types.NamespacedName]sets.
 // TODO:detectStaleConnections modifies <staleEndpoints> and <staleServices> with detected stale connections. <staleServiceNames>
 // is used to store stale udp service in order to clear udp conntrack later.
 // func detectStaleConnections(oldEndpointsMap, newEndpointsMap EndpointsMap, staleEndpoints *[]ServiceEndpoint, staleServiceNames *[]ServicePortName) {
-// 	for svcPortName, epList := range oldEndpointsMap {
-// 		if svcPortName.Protocol != v1.ProtocolUDP {
+// 	for service, endpoint := range oldEndpointsMap {
+// 		if service.Protocol != v1.ProtocolUDP {
 // 			continue
 // 		}
 
-// 		for _, ep := range epList {
+// 		for _, ep := range endpoint {
 // 			stale := true
-// 			for i := range newEndpointsMap[svcPortName] {
-// 				if newEndpointsMap[svcPortName][i].Equal(ep) {
+// 			for i := range newEndpointsMap[service] {
+// 				if newEndpointsMap[service][i].Equal(ep) {
 // 					stale = false
 // 					break
 // 				}
 // 			}
 // 			if stale {
-// 				klog.V(4).Infof("Stale endpoint %v -> %v", svcPortName, ep.String())
-// 				*staleEndpoints = append(*staleEndpoints, ServiceEndpoint{Endpoint: ep.String(), ServicePortName: svcPortName})
+// 				klog.V(4).Infof("Stale endpoint %v -> %v", service, ep.String())
+// 				*staleEndpoints = append(*staleEndpoints, ServiceEndpoint{Endpoint: ep.String(), ServicePortName: service})
 // 			}
 // 		}
 // 	}
 
-// 	for svcPortName, epList := range newEndpointsMap {
-// 		if svcPortName.Protocol != v1.ProtocolUDP {
+// 	for service, endpoint := range newEndpointsMap {
+// 		if service.Protocol != v1.ProtocolUDP {
 // 			continue
 // 		}
 
 // 		// For udp service, if its backend changes from 0 to non-0. There may exist a conntrack entry that could blackhole traffic to the service.
-// 		if len(epList) > 0 && len(oldEndpointsMap[svcPortName]) == 0 {
-// 			*staleServiceNames = append(*staleServiceNames, svcPortName)
+// 		if len(endpoint) > 0 && len(oldEndpointsMap[service]) == 0 {
+// 			*staleServiceNames = append(*staleServiceNames, service)
 // 		}
 // 	}
 // }
