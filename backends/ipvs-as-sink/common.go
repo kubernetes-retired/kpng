@@ -37,6 +37,13 @@ const (
 	LoadBalancerService = "LoadBalancer"
 )
 
+const (
+	// FlagPersistent specify IPVS service session affinity
+	FlagPersistent = 0x1
+	// FlagHashed specify IPVS service hash flag
+	FlagHashed = 0x2
+)
+
 var protocolIPSetMap = map[string]string{
 	ipsetutil.ProtocolTCP:  kubeNodePortSetTCP,
 	ipsetutil.ProtocolUDP:  kubeNodePortSetUDP,
@@ -248,10 +255,19 @@ func (p *proxier) getLbIPForIPFamily(svc *localnetv1.Service) (error, string) {
 	return nil, svcIP
 }
 
-func (p *proxier) storeLBSvc(port *localnetv1.PortMapping, svcIP, key, svcType string) {
+func (p *proxier) storeLBSvc(port *localnetv1.PortMapping, sa SessionAffinity, svcIP, key, svcType string) {
 	prefix := key + "/" + svcIP + "/"
 	lbKey := prefix + epPortSuffix(port)
-	p.lbs.Set([]byte(lbKey), 0, ipvsLB{IP: svcIP, ServiceKey: key, Port: port, SchedulingMethod: p.schedulingMethod, ServiceType: svcType})
+	ipvsServ := ipvsLB{IP: svcIP, ServiceKey: key, Port: port,
+		SchedulingMethod: p.schedulingMethod, ServiceType: svcType}
+
+	// Set session affinity flag and timeout for IPVS service
+	if sa.ClientIP != nil {
+		ipvsServ.Flags |= FlagPersistent
+		ipvsServ.Timeout = uint32(sa.ClientIP.ClientIP.TimeoutSeconds)
+	}
+
+	p.lbs.Set([]byte(lbKey), 0, ipvsServ)
 }
 
 func (p *proxier) deleteLBSvc(port *localnetv1.PortMapping, svcIP, key string) {
@@ -379,4 +395,18 @@ func (p *proxier) updateRefCountForIPSet(setName string, op Operation) {
 	if op == DeleteService || op == DeleteEndPoint {
 		p.ipsetList[setName].refCountOfSvc--
 	}
+}
+
+// SessionAffinity contains data about assinged session affinity
+type SessionAffinity struct {
+	ClientIP *localnetv1.Service_ClientIP
+}
+
+func getSessionAffinity(affinity interface{}) SessionAffinity {
+	var sessionAffinity SessionAffinity
+	switch affinity.(type) {
+	case *localnetv1.Service_ClientIP:
+		sessionAffinity.ClientIP = affinity.(*localnetv1.Service_ClientIP)
+	}
+	return sessionAffinity
 }
