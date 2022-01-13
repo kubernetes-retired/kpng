@@ -111,6 +111,24 @@ kpng/e2e2>./ginkgo --nodes="25" \
         --disable-log-dump=true
 ```
 
+# Conntrack Notes
+
+**Watching conntrack table**:
+
+The following example keep listening for `UDP packages` with orig port as `12345`
+```
+#node> watch conntrack -L -p udp --orig-port-src=12345` 
+udp      17 115 src=10.244.2.2 dst=10.96.237.45 sport=12345 dport=80 src=10.244.2.4 dst=10.244.2.2 sport=80 dport=12345
+```
+
+**Deleting all UDP entries**:
+```
+#node> conntrack -D conntrack --proto udp
+udp      17 118 src=10.244.2.2 dst=10.96.237.45 sport=12345 dport=80 src=10.244.2.3 dst=10.244.2.2
+                sport=80 dport=12345 [ASSURED] mark=0 use=1
+conntrack v1.4.6 (conntrack-tools): 1 flow entries have been deleted.
+```
+
 # Contribute
 
 This is just an initial recipe for learning how kpng works.  Please contribute updates
