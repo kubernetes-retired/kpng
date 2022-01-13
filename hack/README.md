@@ -43,6 +43,42 @@ thus the recipe has separate 'functions' for each phase of running KPNG.
 - build: compile kpng and push it to a registry
 - install: delete the kpng daemonset and redeploy it
 
+# Joining a kind node
+When developing `kpng` in certain scenarios it might be required to join a [kind](https://github.com/kubernetes-sigs/kind)
+node for better debugging, below the steps:
+
+*<ins>Example: Cluster running with kind and kpng</ins>*:
+
+1. Creating the cluster:  
+`kpng> ./hack/test_e2e.sh -i ipv4 -b iptables`
+
+2. Check all nodes are Ready
+```
+# kubectl get node
+NAME                                   STATUS   ROLES                  AGE   VERSION
+kpng-e2e-ipv4-iptables-control-plane   Ready    control-plane,master   94m   v1.22.2
+kpng-e2e-ipv4-iptables-worker          Ready    <none>                 93m   v1.22.2
+kpng-e2e-ipv4-iptables-worker2         Ready    <none>                 94m   v1.22.2
+```
+
+3. List docker process name
+```
+# docker ps --format '{{.Names}}'
+kpng-e2e-ipv4-iptables-worker
+kpng-e2e-ipv4-iptables-control-plane
+kpng-e2e-ipv4-iptables-worker2
+```
+
+4. Join the kind node
+
+`# docker exec -it ${NODE_NAME_HERE} sh`
+
+```
+# docker exec -it kpng-e2e-ipv4-ipvs-worker sh
+# hostname
+kpng-e2e-ipv4-iptables-control-plane
+```
+
 # E2E - Testing a single scenario of failure
 As soon the `./hack/test_e2e.sh -i IP_FAMILY -b BACKEND` finish, it will create a kubernetes cluster based in `kind + kpng`.  
 This cluster will keep running until the developer decide to manually remove it with all files generated in the kpng tree.
