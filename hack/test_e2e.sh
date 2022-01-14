@@ -39,7 +39,7 @@ CLUSTER_ROLE_BINDING_NAME="kpng"
 # ginkgo
 GINKGO_NUMBER_OF_NODES=25
 GINKGO_FOCUS="\[Conformance\]|\[sig-network\]"
-GINKGO_SKIP_TESTS="Feature|Federation|PerformanceDNS|Disruptive|Serial|LoadBalancer|KubeProxy|GCE|Netpol|NetworkPolicy"
+GINKGO_SKIP_TESTS="machinery|Feature|Federation|PerformanceDNS|Disruptive|Serial|LoadBalancer|KubeProxy|GCE|Netpol|NetworkPolicy"
 GINKGO_REPORT_DIR="artifacts/reports"
 GINKGO_DUMP_LOGS_ON_FAILURE=false
 GINKGO_DISABLE_LOG_DUMP=true
