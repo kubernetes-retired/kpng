@@ -33,7 +33,12 @@ read
 function build_kpng {
     cd ../
 
-    docker build -t $IMAGE ./
+    if docker build -t $IMAGE ./ ; then
+	echo "passed build"
+    else
+	echo "failed build"
+        exit 123
+    fi
     docker push $IMAGE
     cd hack/
 }
