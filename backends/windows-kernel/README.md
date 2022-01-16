@@ -27,4 +27,13 @@ kpng.exe --kubeconfig=C:/doug/blah.yaml --to-local=to-windows
 
 remote GRPC as opposed to local file socket this will prevent the windows node
 from needing to run a kpng server
-- 
+
+### phase 3: port the exe from phase 1, into pod
+
+using host-process containers, windows can run kpng proxy probably as a pod entirely
+that will be something we can do once we finish the initial merge of this backend.
+
+
+
+
+
