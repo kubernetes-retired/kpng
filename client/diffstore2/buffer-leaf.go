@@ -6,6 +6,10 @@ import (
 	"github.com/cespare/xxhash"
 )
 
+func NewBufferStore() *Store[string, *BufferLeaf] {
+	return New[string](NewBufferLeaf)
+}
+
 type BufferLeaf struct {
 	bytes.Buffer
 }
