@@ -35,7 +35,7 @@ that will be something we can do once we finish the initial merge of this backen
 
 
 # homework
-
+- https://github.com/vmware-tanzu/tgik/tree/master/episodes/144
 - https://github.com/kubernetes-sigs/sig-windows-dev-tools
 - Windows host-process containers https://www.youtube.com/watch?v=fSmDmwKwFfQ
 
