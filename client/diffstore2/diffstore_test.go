@@ -6,7 +6,7 @@ import (
 )
 
 func ExampleStore() {
-	store := New[string](NewBufferLeaf)
+	store := NewBufferStore()
 
 	printDiff := func() {
 		fmt.Println("-----")
