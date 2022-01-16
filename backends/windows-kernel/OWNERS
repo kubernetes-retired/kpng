@@ -1,0 +1,15 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+approvers:
+  - feiskyer
+  - sbangari
+reviewers:
+  - feiskyer
+  - sbangari
+labels:
+  - sig/network
+emeritus_approvers:
+  - dineshgovindasamy
+  - ksubrmnn
+  - kumarvin123
+  - madhanrm
