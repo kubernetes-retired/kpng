@@ -2,12 +2,13 @@ package diffstore2
 
 import (
 	"bytes"
+    "constraints"
 
 	"github.com/cespare/xxhash"
 )
 
-func NewBufferStore() *Store[string, *BufferLeaf] {
-	return New[string](NewBufferLeaf)
+func NewBufferStore[K constraints.Ordered]() *Store[K, *BufferLeaf] {
+	return New[K](NewBufferLeaf)
 }
 
 type BufferLeaf struct {
