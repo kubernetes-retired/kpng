@@ -34,6 +34,13 @@ using host-process containers, windows can run kpng proxy probably as a pod enti
 that will be something we can do once we finish the initial merge of this backend.
 
 
+# homework
+
+- https://github.com/kubernetes-sigs/sig-windows-dev-tools
+- Windows host-process containers https://www.youtube.com/watch?v=fSmDmwKwFfQ
+
+
+
 
 
 
