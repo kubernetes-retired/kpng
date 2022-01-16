@@ -1,6 +1,6 @@
 module sigs.k8s.io/kpng/client
 
-go 1.17
+go 1.18
 
 require (
 	github.com/cespare/xxhash v1.1.0
