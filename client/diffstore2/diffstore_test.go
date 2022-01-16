@@ -6,38 +6,13 @@ import (
 )
 
 func ExampleStore() {
-	store := NewBufferStore()
-
-	printDiff := func() {
-		fmt.Println("-----")
-		hasChanges := false
-
-		for _, i := range store.Changed() {
-			hasChanges = true
-
-			s := "U"
-			if i.Created() {
-				s = "C"
-			}
-			fmt.Printf("%s %s => %q\n", s, i.Key(), i.Value())
-		}
-
-		for _, i := range store.Deleted() {
-			hasChanges = true
-
-			fmt.Printf("D %s\n", i.Key())
-		}
-
-		if !hasChanges {
-			fmt.Println("<same>")
-		}
-	}
+	store := NewBufferStore[string]()
 
 	{
 		fmt.Fprint(store.Get("a"), "hello a")
 
 		store.Done()
-		printDiff()
+		store.printDiff()
 	}
 
 	{
@@ -46,7 +21,7 @@ func ExampleStore() {
 		fmt.Fprint(store.Get("a"), "hello a")
 
 		store.Done()
-		printDiff()
+		store.printDiff()
 	}
 
 	{
@@ -56,7 +31,7 @@ func ExampleStore() {
 		fmt.Fprint(store.Get("b"), "hello b")
 
 		store.Done()
-		printDiff()
+		store.printDiff()
 	}
 
 	{
@@ -65,7 +40,7 @@ func ExampleStore() {
 		fmt.Fprint(store.Get("a"), "hi a")
 
 		store.Done()
-		printDiff()
+		store.printDiff()
 	}
 
 	{
@@ -74,14 +49,14 @@ func ExampleStore() {
 		fmt.Fprint(store.Get("b"), "hi b")
 
 		store.Done()
-		printDiff()
+		store.printDiff()
 	}
 
 	{
 		store.Reset()
 
 		store.Done()
-		printDiff()
+        store.printDiff()
 	}
 
 	// Output:
