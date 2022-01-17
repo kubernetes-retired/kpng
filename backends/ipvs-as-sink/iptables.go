@@ -202,7 +202,6 @@ func (p *proxier) writeIptablesRules() {
 		}
 	}
 
-
 	if !p.ipsetList[kubeClusterIPSet].isRefCountZero() {
 		args = append(args[:0],
 			"-A", string(kubeServicesChain),

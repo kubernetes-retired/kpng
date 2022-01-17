@@ -75,7 +75,7 @@ func (s *Backend) deleteClusterIPService(svc *localnetv1.Service, serviceIP stri
 	}
 }
 
-func (p *proxier) handleNewClusterIPService(key , clusterIP string, port *localnetv1.PortMapping) {
+func (p *proxier) handleNewClusterIPService(key, clusterIP string, port *localnetv1.PortMapping) {
 	//Cluster service IP is stored in LB tree
 	p.storeLBSvc(port, clusterIP, key, ClusterIPService)
 
@@ -83,11 +83,11 @@ func (p *proxier) handleNewClusterIPService(key , clusterIP string, port *localn
 	p.AddOrDelClusterIPInIPSet(clusterIP, []*localnetv1.PortMapping{port}, AddService)
 }
 
-func (p *proxier) handleUpdatedClusterIPService(key , clusterIP string, port *localnetv1.PortMapping) {
+func (p *proxier) handleUpdatedClusterIPService(key, clusterIP string, port *localnetv1.PortMapping) {
 	//Update the service with added ports into LB tree
 	p.storeLBSvc(port, clusterIP, key, ClusterIPService)
 
-	endPointList , isLocalEndPoint := p.updateIPVSDestWithPort(key, clusterIP, port)
+	endPointList, isLocalEndPoint := p.updateIPVSDestWithPort(key, clusterIP, port)
 
 	//Cluster service IP needs to be programmed in ipset with added ports.
 	p.AddOrDelClusterIPInIPSet(clusterIP, []*localnetv1.PortMapping{port}, AddService)
@@ -114,26 +114,25 @@ func (s *Backend) handleEndPointForClusterIP(svcKey, key string, service *localn
 	}
 }
 
-func (p *proxier) SetEndPointForClusterIPSvc(svcKey, prefix , endPointIP string, service *localnetv1.Service, endpoint *localnetv1.Endpoint) {
+func (p *proxier) SetEndPointForClusterIPSvc(svcKey, prefix, endPointIP string, service *localnetv1.Service, endpoint *localnetv1.Endpoint) {
 	epInfo := endPointInfo{
-		endPointIP: endPointIP,
+		endPointIP:      endPointIP,
 		isLocalEndPoint: endpoint.Local,
 	}
 
-	p.endpoints.Set([]byte(prefix + endPointIP), 0, epInfo)
+	p.endpoints.Set([]byte(prefix+endPointIP), 0, epInfo)
 	serviceIP := getServiceIPForIPFamily(p.ipFamily, service)
 	// add a destination for every LB of this service
 	for _, lbKV := range p.lbs.GetByPrefix([]byte(svcKey + "/" + serviceIP)) {
 		lb := lbKV.Value.(ipvsLB)
 		destination := ipvsSvcDst{
-			Svc:             lb.ToService(),
-			Dst:             ipvsDestination(endPointIP, lb.Port, p.weight),
+			Svc: lb.ToService(),
+			Dst: ipvsDestination(endPointIP, lb.Port, p.weight),
 		}
-		p.dests.Set([]byte(string(lbKV.Key) + "/" + endPointIP), 0, destination)
+		p.dests.Set([]byte(string(lbKV.Key)+"/"+endPointIP), 0, destination)
 	}
 
 	p.AddOrDelEndPointInIPSet([]string{endPointIP}, service.Ports, endpoint.Local, AddEndPoint)
-
 
 	// Get External-IP if its configured for service.
 	err, externalIP := getExternalIPForIPFamily(p.ipFamily, service)
@@ -144,10 +143,10 @@ func (p *proxier) SetEndPointForClusterIPSvc(svcKey, prefix , endPointIP string,
 	for _, lbKV := range p.lbs.GetByPrefix([]byte(svcKey + "/" + externalIP)) {
 		lb := lbKV.Value.(ipvsLB)
 		destination := ipvsSvcDst{
-			Svc:             lb.ToService(),
-			Dst:             ipvsDestination(endPointIP, lb.Port, p.weight),
+			Svc: lb.ToService(),
+			Dst: ipvsDestination(endPointIP, lb.Port, p.weight),
 		}
-		p.dests.Set([]byte(string(lbKV.Key) + "/" + endPointIP), 0, destination)
+		p.dests.Set([]byte(string(lbKV.Key)+"/"+endPointIP), 0, destination)
 	}
 }
 

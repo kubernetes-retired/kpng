@@ -1,9 +1,9 @@
 package diffstore2
 
 func ExampleJSONLeafStore() {
-    type myT struct {
-        V string
-    }
+	type myT struct {
+		V string
+	}
 
 	store := NewJSONStore[string, myT]()
 

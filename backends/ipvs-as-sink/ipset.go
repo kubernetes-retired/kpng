@@ -153,7 +153,6 @@ func newIPSet(handle ipsetutil.Interface, name string, setType ipsetutil.Type, i
 	return set
 }
 
-
 func (set *IPSet) isEmpty() bool {
 	return len(set.newEntries.UnsortedList()) == 0
 }

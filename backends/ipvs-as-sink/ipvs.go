@@ -44,7 +44,7 @@ func init() {
 
 type Backend struct {
 	localsink.Config
-	svcs map[string]*localnetv1.Service
+	svcs     map[string]*localnetv1.Service
 	proxiers map[v1.IPFamily]*proxier
 	svcEPMap map[string]int
 
@@ -64,7 +64,7 @@ var _ decoder.Interface = &Backend{}
 func New() *Backend {
 	return &Backend{
 		proxiers: make(map[v1.IPFamily]*proxier),
-		svcs: map[string]*localnetv1.Service{},
+		svcs:     map[string]*localnetv1.Service{},
 		svcEPMap: map[string]int{},
 	}
 }
@@ -164,7 +164,7 @@ func (s *Backend) DeleteEndpoint(namespace, serviceName, key string) {
 	service := s.svcs[svcKey]
 	s.svcEPMap[svcKey]--
 	if service.Type == ClusterIPService {
-		s.handleEndPointForClusterIP(svcKey, key, service,nil, DeleteEndPoint)
+		s.handleEndPointForClusterIP(svcKey, key, service, nil, DeleteEndPoint)
 	}
 
 	if service.Type == NodePortService {
@@ -191,7 +191,7 @@ func (s *Backend) Setup() {
 	execer := exec.New()
 	ipsetInterface := ipsetutil.New(execer)
 
-	for _, ipFamily := range []v1.IPFamily {v1.IPv4Protocol, v1.IPv6Protocol} {
+	for _, ipFamily := range []v1.IPFamily{v1.IPv4Protocol, v1.IPv6Protocol} {
 		var nodeIPs []string
 
 		for _, nodeIP := range s.nodeAddresses {
@@ -277,7 +277,8 @@ func (s *Backend) createIPVSDummyInterface() {
 
 // WaitRequest see localsink.Sink#WaitRequest
 func (s *Backend) WaitRequest() (nodeName string, err error) {
-	name, _ := os.Hostname(); return name, nil
+	name, _ := os.Hostname()
+	return name, nil
 }
 
 func (s *Backend) Reset() { /* noop, we're wrapped in filterreset */ }
@@ -298,7 +299,7 @@ func (s *Backend) Sync() {
 func (s *Backend) addServiceIPToKubeIPVSIntf(serviceIP string) {
 	ipFamily := getIPFamily(serviceIP)
 
-    ip := asDummyIPs(serviceIP, ipFamily)
+	ip := asDummyIPs(serviceIP, ipFamily)
 
 	_, ipNet, err := net.ParseCIDR(ip)
 	if err != nil {

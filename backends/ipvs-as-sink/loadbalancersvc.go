@@ -97,7 +97,7 @@ func (p *proxier) handleUpdatedLBService(serviceKey, serviceIP string, svc *loca
 		p.storeLBSvc(port, nodeIP, serviceKey, NodePortService)
 	}
 
-	endPointList , isLocalEndPoint := p.updateIPVSDestWithPort(serviceKey, serviceIP, port)
+	endPointList, isLocalEndPoint := p.updateIPVSDestWithPort(serviceKey, serviceIP, port)
 
 	// Added port need to updated in clusterIP, NodePort , LB service
 	// related ipsets , along with endpoint ipset.
@@ -128,19 +128,19 @@ func (s *Backend) handleEndPointForLBService(svcKey, key string, service *localn
 
 func (p *proxier) SetEndPointForLBSvc(svcKey, prefix, endPointIP string, service *localnetv1.Service, endpoint *localnetv1.Endpoint) {
 	epInfo := endPointInfo{
-		endPointIP: endPointIP,
+		endPointIP:      endPointIP,
 		isLocalEndPoint: endpoint.Local,
 	}
 
-	p.endpoints.Set([]byte(prefix + endPointIP), 0, epInfo)
+	p.endpoints.Set([]byte(prefix+endPointIP), 0, epInfo)
 
 	// add a destination for every LB of this service. Incase of LB service ,
 	// the key is just namespace+svcName unlike cluster-ip service.
 	for _, lbKV := range p.lbs.GetByPrefix([]byte(svcKey)) {
 		lb := lbKV.Value.(ipvsLB)
 		destination := ipvsSvcDst{
-			Svc:             lb.ToService(),
-			Dst:             ipvsDestination(endPointIP, lb.Port, p.weight),
+			Svc: lb.ToService(),
+			Dst: ipvsDestination(endPointIP, lb.Port, p.weight),
 		}
 		p.dests.Set([]byte(string(lbKV.Key)+"/"+endPointIP), 0, destination)
 	}
@@ -173,7 +173,7 @@ func (p *proxier) DeleteEndPointForLBSvc(svcKey, prefix string, service *localne
 
 func (p *proxier) AddOrDelLbIPInIPSet(svc *localnetv1.Service, lbIP string, port *localnetv1.PortMapping, op Operation) {
 	var entry *ipsetutil.Entry
-	entry = getIPSetEntry(lbIP, "",port)
+	entry = getIPSetEntry(lbIP, "", port)
 	// add service load balancer ingressIP:Port to kubeServiceAccess ip set for the purpose of solving hairpin.
 	// proxier.kubeServiceAccessSet.activeEntries.Insert(entry.String())
 	// If we are proxying globally, we need to masquerade in case we cross nodes.
@@ -188,7 +188,7 @@ func (p *proxier) AddOrDelLbIPInIPSet(svc *localnetv1.Service, lbIP string, port
 	var isSourceRangeConfigured bool = false
 	if len(svc.IPFilters) > 0 {
 		for _, ip := range svc.IPFilters {
-			if len (ip.SourceRanges) > 0 {
+			if len(ip.SourceRanges) > 0 {
 				isSourceRangeConfigured = true
 			}
 			for _, srcIP := range ip.SourceRanges {

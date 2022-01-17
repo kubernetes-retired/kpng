@@ -39,13 +39,13 @@ func (s *Backend) deleteNodePortService(svc *localnetv1.Service, serviceIP strin
 	s.svcs[serviceKey] = svc
 	ipFamily := getIPFamily(serviceIP)
 	p := s.proxiers[ipFamily]
-	p.deleteLBSvc(port , serviceIP, serviceKey)
+	p.deleteLBSvc(port, serviceIP, serviceKey)
 
 	for _, nodeIP := range p.nodeAddresses {
 		p.deleteLBSvc(port, nodeIP, serviceKey)
 	}
 
-	endPointList , isLocalEndPoint := p.deleteIPVSDestForPort(serviceKey, serviceIP, port)
+	endPointList, isLocalEndPoint := p.deleteIPVSDestForPort(serviceKey, serviceIP, port)
 
 	p.AddOrDelNodePortInIPSet(port, DeleteService)
 	p.AddOrDelClusterIPInIPSet(serviceIP, []*localnetv1.PortMapping{port}, DeleteService)
@@ -80,7 +80,7 @@ func (p *proxier) handleUpdatedNodePortService(key, clusterIP string, port *loca
 	//so that in sync(), port is attached to clusterIP.
 	p.storeLBSvc(port, clusterIP, key, ClusterIPService)
 
-	endPointList , isLocalEndPoint := p.updateIPVSDestWithPort(key, clusterIP, port)
+	endPointList, isLocalEndPoint := p.updateIPVSDestWithPort(key, clusterIP, port)
 
 	p.AddOrDelNodePortInIPSet(port, AddService)
 
@@ -107,9 +107,9 @@ func (s *Backend) handleEndPointForNodePortService(svcKey, key string, service *
 	}
 }
 
-func (p *proxier) SetEndPointForNodePortSvc(svcKey, prefix , endPointIP string, service *localnetv1.Service, endpoint *localnetv1.Endpoint) {
+func (p *proxier) SetEndPointForNodePortSvc(svcKey, prefix, endPointIP string, service *localnetv1.Service, endpoint *localnetv1.Endpoint) {
 	epInfo := endPointInfo{
-		endPointIP: endPointIP,
+		endPointIP:      endPointIP,
 		isLocalEndPoint: endpoint.Local,
 	}
 	p.endpoints.Set([]byte(prefix+endPointIP), 0, epInfo)
@@ -118,10 +118,10 @@ func (p *proxier) SetEndPointForNodePortSvc(svcKey, prefix , endPointIP string, 
 	for _, lbKV := range p.lbs.GetByPrefix([]byte(svcKey)) {
 		lb := lbKV.Value.(ipvsLB)
 		destination := ipvsSvcDst{
-			Svc:             lb.ToService(),
-			Dst:             ipvsDestination(endPointIP, lb.Port, p.weight),
+			Svc: lb.ToService(),
+			Dst: ipvsDestination(endPointIP, lb.Port, p.weight),
 		}
-		p.dests.Set([]byte(string(lbKV.Key) + "/" + endPointIP), 0, destination)
+		p.dests.Set([]byte(string(lbKV.Key)+"/"+endPointIP), 0, destination)
 	}
 
 	p.AddOrDelEndPointInIPSet([]string{endPointIP}, service.Ports, endpoint.Local, AddEndPoint)

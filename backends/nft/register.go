@@ -8,8 +8,8 @@ import (
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
 )
 
-type backend struct{
-    cfg localsink.Config
+type backend struct {
+	cfg localsink.Config
 }
 
 func init() {
@@ -17,7 +17,7 @@ func init() {
 }
 
 func (b *backend) BindFlags(flags *pflag.FlagSet) {
-    b.cfg.BindFlags(flags)
+	b.cfg.BindFlags(flags)
 	BindFlags(flags)
 }
 
