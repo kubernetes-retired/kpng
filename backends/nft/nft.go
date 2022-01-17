@@ -99,12 +99,10 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	epCount := 0
 	doComments := !*skipComments && bool(klog.V(1))
 
-	{
-		start := time.Now()
-		defer func() {
-			klog.V(1).Infof("%d services and %d endpoints applied in %v", svcCount, epCount, time.Since(start))
-		}()
-	}
+	start := time.Now()
+	defer func() {
+		klog.V(1).Infof("%d services and %d endpoints applied in %v", svcCount, epCount, time.Since(start))
+	}()
 
 	defer table4.Reset()
 	defer table6.Reset()
@@ -197,13 +195,15 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 
 			// add endpoints to the map
 			if len(endpointIPs) != 0 {
-				epMap := chainBuffers.Get("map", endpointsMap)
+				item := chainBuffers.Maps.GetItem(endpointsMap)
+				epMap := item.Value()
+
 				if epMap.Len() == 0 {
 					epMap.WriteString("  typeof numgen random mod 1 : ")
 					epMap.WriteString(family)
 					epMap.WriteString(" daddr\n")
 					epMap.WriteString("  elements = {")
-					epMap.Defer(func(m *chainBuffer) { m.WriteString("}\n") })
+					item.Defer(func(m *Leaf) { m.WriteString("}\n") })
 				} else {
 					epMap.WriteString(", ")
 				}
@@ -265,7 +265,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 					continue
 				}
 
-				rule.WriteTo(chainBuffers.Get("chain", svc_chain))
+				rule.WriteTo(chainBuffers.Chains.Get(svc_chain))
 				hasRules = true
 
 				// hande node ports
@@ -276,7 +276,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 					continue
 				}
 
-				rule.WriteTo(chainBuffers.Get("chain", "nodeports"))
+				rule.WriteTo(chainBuffers.Chains.Get("nodeports"))
 			}
 
 			if !hasRules {
@@ -303,7 +303,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 					chain := prefix + "net_" + hex.EncodeToString(ip)
 
 					// add service chain in dispatch
-					vmapAdd(chainBuffers.Get("chain", chain), family+" daddr", fmt.Sprintf("%s: jump %s", ipStr, svc_chain))
+					vmapAdd(chainBuffers.Chains.GetItem(chain), family+" daddr", ipStr+": jump "+svc_chain)
 
 					// reference the dispatch chain from the global dispatch (of not already done) (ie: z_dnat_all)
 					if set.v6 && !chain6Nets[chain] || !set.v6 && !chain4Nets[chain] {
@@ -312,7 +312,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 							Mask: mask,
 						}
 
-						vmapAdd(chainBuffers.Get("chain", "z_"+prefix+"all"), daddrMatch, ipNet.String()+": jump "+chain)
+						vmapAdd(chainBuffers.Chains.GetItem("z_"+prefix+"all"), daddrMatch, ipNet.String()+": jump "+chain)
 
 						if set.v6 {
 							chain6Nets[chain] = true
@@ -324,7 +324,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			}
 
 			// handle external IPs dispatch
-            extIPsSet := svc.IPs.AllIngress()
+			extIPsSet := svc.IPs.AllIngress()
 
 			extIPs := extIPsSet.V4
 			if set.v6 {
@@ -332,7 +332,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			}
 
 			if len(extIPs) != 0 {
-				extChain := chainBuffers.Get("chain", prefix+"external")
+				extChain := chainBuffers.Chains.GetItem(prefix + "external")
 				for _, extIP := range extIPs {
 					// XXX should this be by protocol and port to allow external IP mutualization between services?
 					vmapAdd(extChain, daddrMatch, extIP+": jump "+svc_chain)
@@ -342,7 +342,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 		}
 	}
 
-	// run deferred actions
+	// run deferred rendering
 	table4.RunDeferred()
 	table6.RunDeferred()
 
@@ -354,11 +354,17 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	addPostroutingChain(table4, clusterCIDRsV4, localEndpointIPsV4)
 	addPostroutingChain(table6, clusterCIDRsV6, localEndpointIPsV6)
 
+	// we're done
+	table4.Done()
+	table6.Done()
+
 	// check if we have changes to apply
 	if !fullResync && !table4.Changed() && !table6.Changed() {
 		klog.V(1).Info("no changes to apply")
 		return
 	}
+
+	klog.V(1).Infof("nft rules generated (%s)", time.Since(start))
 
 	// render the rule set
 	//retry:
@@ -426,35 +432,35 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 }
 
 func addDispatchChains(table *nftable) {
-	dnatAll := table.Get("chain", "z_dnat_all")
+	dnatAll := table.Chains.Get("z_dnat_all")
 	if *withTrace {
 		dnatAll.WriteString("  meta nftrace set 1\n")
 	}
 
 	// DNAT
-	if table.Get("chain", "dnat_external").Len() != 0 {
+	if table.Chains.Get("dnat_external").Len() != 0 {
 		fmt.Fprint(dnatAll, "  jump dnat_external\n")
 	}
 
-	if table.Get("chain", "nodeports").Len() != 0 {
+	if table.Chains.Get("nodeports").Len() != 0 {
 		dnatAll.WriteString("  fib daddr type local jump nodeports\n")
 	}
 
 	if dnatAll.Len() != 0 {
 		for _, hook := range []string{"prerouting", "output"} {
-			fmt.Fprintf(table.Get("chain", "hook_nat_"+hook),
+			fmt.Fprintf(table.Chains.Get("hook_nat_"+hook),
 				"  type nat hook "+hook+" priority %d;\n  jump z_dnat_all\n", *hookPrio)
 		}
 	}
 
 	// filtering
-	if table.Get("chain", "filter_external").Len() != 0 {
-		fmt.Fprint(table.Get("chain", "z_filter_all"), "  jump filter_external\n")
+	if table.Chains.Get("filter_external").Len() != 0 {
+		fmt.Fprint(table.Chains.Get("z_filter_all"), "  jump filter_external\n")
 	}
-	if table.Get("chain", "z_filter_all").Len() != 0 {
-		fmt.Fprintf(table.Get("chain", "hook_filter_forward"),
+	if table.Chains.Get("z_filter_all").Len() != 0 {
+		fmt.Fprintf(table.Chains.Get("hook_filter_forward"),
 			"  type filter hook forward priority %d;\n  jump z_filter_all\n", *hookPrio)
-		fmt.Fprintf(table.Get("chain", "hook_filter_output"),
+		fmt.Fprintf(table.Chains.Get("hook_filter_output"),
 			"  type filter hook output priority %d;\n  jump z_filter_all\n", *hookPrio)
 	}
 }
@@ -467,7 +473,7 @@ func addPostroutingChain(table *nftable, clusterCIDRs []string, localEndpointIPs
 		return
 	}
 
-	chain := table.Get("chain", "hook_nat_postrouting")
+	chain := table.Chains.Get("hook_nat_postrouting")
 	fmt.Fprintf(chain, "  type nat hook postrouting priority %d;\n", *hookPrio)
 	if hasCIDRs {
 		chain.Writeln()
@@ -513,51 +519,46 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 
 	out := bufio.NewWriter(io.MultiWriter(outputs...))
 
-	for _, table := range []*nftable{table4, table6} {
-		chains := table.List()
-
+	for _, table := range allTables {
+		// flush/delete previous state
 		if fullResync {
 			fmt.Fprintf(out, "table %s %s\n", table.Family, table.Name)
 			fmt.Fprintf(out, "delete table %s %s\n", table.Family, table.Name)
 
 		} else {
-			if !table.Changed() {
-				continue
-			}
-
-			// flush deleted elements
-			for _, chain := range table.Deleted() {
-				fmt.Fprintf(out, "flush %s %s %s %s\n", chain.kind, table.Family, table.Name, chain.name)
-			}
-
-			// update only changed rules
-			changedChains := make([]string, 0, len(chains))
-
-			// flush changed chains
-			for _, chain := range chains {
-				c := table.Get("", chain)
-				if !c.Changed() {
-					continue
+			for _, ks := range table.KindStores() {
+				// flush deleted elements
+				for _, item := range ks.Store.Deleted() {
+					fmt.Fprintf(out, "flush %s %s %s %s\n", ks.Kind, table.Family, table.Name, item.Key())
 				}
 
-				if !c.Created() {
-					fmt.Fprintf(out, "flush %s %s %s %s\n", c.kind, table.Family, table.Name, chain)
+				// flush changed elements
+				for _, item := range ks.Store.Changed() {
+					if item.Created() {
+						continue
+					}
+					fmt.Fprintf(out, "flush %s %s %s %s\n", ks.Kind, table.Family, table.Name, item.Key())
 				}
-
-				changedChains = append(changedChains, chain)
 			}
-
-			chains = changedChains
 		}
 
 		// create/update changed chains
-		if len(chains) != 0 {
-			fmt.Fprintf(out, "table %s %s {\n", table.Family, table.Name)
-			for _, chain := range chains {
-				c := table.Get("", chain)
+		for _, ks := range table.KindStores() {
+			var items []*Item
+			if fullResync {
+				items = ks.Store.List()
+			} else {
+				items = ks.Store.Changed()
+			}
 
-				fmt.Fprintf(out, " %s %s {\n", c.kind, chain)
-				io.Copy(out, c)
+			if len(items) == 0 {
+				continue
+			}
+
+			fmt.Fprintf(out, "table %s %s {\n", table.Family, table.Name)
+			for _, item := range items {
+				fmt.Fprintf(out, " %s %s {\n", ks.Kind, item.Key())
+				io.Copy(out, item.Value())
 				fmt.Fprintln(out, " }")
 			}
 
@@ -572,8 +573,10 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 				if deferDelete {
 					out = deferred
 				}
-				for _, chain := range table.Deleted() {
-					fmt.Fprintf(out, "delete %s %s %s %s\n", chain.kind, table.Family, table.Name, chain.name)
+				for _, ks := range table.KindStores() {
+					for _, item := range ks.Store.Deleted() {
+						fmt.Fprintf(out, "delete %s %s %s %s\n", ks.Kind, table.Family, table.Name, item.Key())
+					}
 				}
 			}
 		}

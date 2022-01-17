@@ -30,6 +30,10 @@ func (i *Item[K,V]) Value() V {
     return i.v
 }
 
+func (i *Item[K,V]) Changed() bool {
+    return i.Created() || i.Updated()
+}
+
 func (i *Item[K,V]) Created() bool {
     return i.touched && i.previousHash == 0
 }

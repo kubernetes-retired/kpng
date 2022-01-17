@@ -16,16 +16,21 @@ limitations under the License.
 
 package nft
 
-import "fmt"
+import (
+	"fmt"
+)
 
-func vmapAdd(chain *chainBuffer, match string, kv string) {
-	if chain.Len() == 0 {
-		fmt.Fprintf(chain, "  %s vmap { ", match)
-		chain.Defer(func(c *chainBuffer) {
+func vmapAdd(item *Item, match string, kv string) {
+	v := item.Value()
+
+	if v.Len() == 0 {
+		fmt.Fprintf(v, "  %s vmap { ", match)
+		item.Defer(func(c *Leaf) {
 			fmt.Fprintln(c, "}")
 		})
 	} else {
-		chain.Write([]byte(", "))
+		v.Write([]byte(", "))
 	}
-	fmt.Fprint(chain, kv)
+
+	fmt.Fprint(v, kv)
 }
