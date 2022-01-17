@@ -182,7 +182,7 @@ func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
 				},
 				Added:   func(ci int) { sl.IPPortsListener.AddIPPort(currSvc, currs[ci].ip, ext.ipKind, currs[ci].port) },
 				Updated: func(_, _ int) {},
-				Deleted: func(pi int) { sl.IPPortsListener.DeleteIPPort(currSvc, prevs[pi].ip, ext.ipKind, prevs[pi].port) },
+				Deleted: func(pi int) { sl.IPPortsListener.DeleteIPPort(prevSvc, prevs[pi].ip, ext.ipKind, prevs[pi].port) },
 			}.SlicesLen(len(prevs), len(currs))
 		}
 	}
