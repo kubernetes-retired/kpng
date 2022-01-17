@@ -1,6 +1,6 @@
 module sigs.k8s.io/kpng/backends/ipvs-as-sink
 
-go 1.17
+go 1.18
 
 replace (
 	sigs.k8s.io/kpng/api => ../../api

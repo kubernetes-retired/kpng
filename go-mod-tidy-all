@@ -16,7 +16,7 @@
 #
 # -compat was introduced in go version 1.17
 #
-MIN_GO_VERSION="1.17"
+MIN_GO_VERSION="1.18"
 
 go_version=$(go version | { read _ _ v _; echo ${v#go}; })
 if [ "$?" != "0" ]; then

@@ -1,6 +1,6 @@
 module sigs.k8s.io/kpng/examples/iptables-extip
 
-go 1.17
+go 1.18
 
 require (
 	k8s.io/klog/v2 v2.20.0

@@ -1,6 +1,6 @@
 module sigs.k8s.io/kpng/api
 
-go 1.17
+go 1.18
 
 require (
 	github.com/golang/protobuf v1.5.2
