@@ -23,5 +23,5 @@ func Register(use string, new func() Cmd) {
 }
 
 func Registered() []UseCmd {
-    return registry
+	return registry
 }

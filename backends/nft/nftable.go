@@ -24,20 +24,20 @@ var (
 	table4 = newNftable("ip", "k8s_svc")
 	table6 = newNftable("ip6", "k8s_svc6")
 
-    allTables = []*nftable{table4, table6}
+	allTables = []*nftable{table4, table6}
 )
 
-type Leaf  = diffstore2.BufferLeaf
-type Item  = diffstore2.Item[string, *Leaf]
+type Leaf = diffstore2.BufferLeaf
+type Item = diffstore2.Item[string, *Leaf]
 type Store = diffstore2.Store[string, *Leaf]
 
 func newNftable(family, name string) *nftable {
-    return &nftable{
-        Family: family,
-        Name:   name,
-        Chains: diffstore2.NewBufferStore[string](),
-        Maps:   diffstore2.NewBufferStore[string](),
-    }
+	return &nftable{
+		Family: family,
+		Name:   name,
+		Chains: diffstore2.NewBufferStore[string](),
+		Maps:   diffstore2.NewBufferStore[string](),
+	}
 }
 
 type nftable struct {
@@ -48,32 +48,32 @@ type nftable struct {
 }
 
 func (n *nftable) Reset() {
-    n.Chains.Reset()
-    n.Maps.Reset()
+	n.Chains.Reset()
+	n.Maps.Reset()
 }
 
 func (n *nftable) RunDeferred() {
-    n.Chains.RunDeferred()
-    n.Maps.RunDeferred()
+	n.Chains.RunDeferred()
+	n.Maps.RunDeferred()
 }
 
 func (n *nftable) Done() {
-    n.Chains.Done()
-    n.Maps.Done()
+	n.Chains.Done()
+	n.Maps.Done()
 }
 
 type KindStore struct {
-    Kind string
-    Store *Store
+	Kind  string
+	Store *Store
 }
 
 func (n *nftable) KindStores() []KindStore {
-    return []KindStore{
-        { "map", n.Maps },
-        { "chain", n.Chains },
-    }
+	return []KindStore{
+		{"map", n.Maps},
+		{"chain", n.Chains},
+	}
 }
 
 func (n *nftable) Changed() bool {
-    return n.Chains.HasChanges() || n.Maps.HasChanges()
+	return n.Chains.HasChanges() || n.Maps.HasChanges()
 }

@@ -32,14 +32,14 @@ import (
 )
 
 const (
-	ClusterIPService = "ClusterIP"
-	NodePortService  = "NodePort"
-	LoadBalancerService  = "LoadBalancer"
+	ClusterIPService    = "ClusterIP"
+	NodePortService     = "NodePort"
+	LoadBalancerService = "LoadBalancer"
 )
 
 var protocolIPSetMap = map[string]string{
-	ipsetutil.ProtocolTCP: kubeNodePortSetTCP,
-	ipsetutil.ProtocolUDP: kubeNodePortSetUDP,
+	ipsetutil.ProtocolTCP:  kubeNodePortSetTCP,
+	ipsetutil.ProtocolUDP:  kubeNodePortSetUDP,
 	ipsetutil.ProtocolSCTP: kubeNodePortSetSCTP,
 }
 
@@ -59,13 +59,13 @@ type endPointInfo struct {
 
 func asDummyIPs(ip string, ipFamily v1.IPFamily) string {
 	if ipFamily == v1.IPv4Protocol {
-		return  ip + "/32"
+		return ip + "/32"
 	}
 
 	if ipFamily == v1.IPv6Protocol {
-		return  ip + "/128"
+		return ip + "/128"
 	}
-	return  ip + "/32"
+	return ip + "/32"
 }
 
 func epPortSuffix(port *localnetv1.PortMapping) string {
@@ -81,7 +81,7 @@ func serviceKey(svc *localnetv1.Service) string {
 // its a new service creation.
 func (s *Backend) isServiceUpdated(svc *localnetv1.Service) bool {
 	serviceKey := serviceKey(svc)
-	if s.svcEPMap[serviceKey] >=1 {
+	if s.svcEPMap[serviceKey] >= 1 {
 		return true
 	}
 	return false
@@ -132,7 +132,7 @@ func getEndPointEntry(endPointIP string, port *localnetv1.PortMapping) *ipsetuti
 	}
 }
 
-func (p *proxier) AddOrDelClusterIPInIPSet(clusterIP  string, portList []*localnetv1.PortMapping, op Operation) {
+func (p *proxier) AddOrDelClusterIPInIPSet(clusterIP string, portList []*localnetv1.PortMapping, op Operation) {
 	for _, port := range portList {
 		// Capture the clusterIP.
 		entry := getIPSetEntry(clusterIP, "", port)
@@ -154,7 +154,7 @@ func (p *proxier) AddOrDelClusterIPInIPSet(clusterIP  string, portList []*localn
 	}
 }
 
-func (p *proxier) updateIPVSDestWithPort(key , clusterIP string, port *localnetv1.PortMapping) ([]string, bool) {
+func (p *proxier) updateIPVSDestWithPort(key, clusterIP string, port *localnetv1.PortMapping) ([]string, bool) {
 	var endPointList []string
 	var isLocalEndPoint bool
 
@@ -165,7 +165,7 @@ func (p *proxier) updateIPVSDestWithPort(key , clusterIP string, port *localnetv
 
 		lbKey := key + "/" + clusterIP + "/" + epPortSuffix(port)
 		ipvslb := p.lbs.GetByPrefix([]byte(lbKey))
-		p.dests.Set([]byte(lbKey + "/" + epInfo.endPointIP), 0, ipvsSvcDst{
+		p.dests.Set([]byte(lbKey+"/"+epInfo.endPointIP), 0, ipvsSvcDst{
 			Svc: ipvslb[0].Value.(ipvsLB).ToService(),
 			Dst: ipvsDestination(epInfo.endPointIP, port, p.weight),
 		})
@@ -174,7 +174,7 @@ func (p *proxier) updateIPVSDestWithPort(key , clusterIP string, port *localnetv
 	return endPointList, isLocalEndPoint
 }
 
-func (p *proxier) deleteIPVSDestForPort(key , clusterIP string, port *localnetv1.PortMapping) ([]string, bool) {
+func (p *proxier) deleteIPVSDestForPort(key, clusterIP string, port *localnetv1.PortMapping) ([]string, bool) {
 	var endPointList []string
 	var isLocalEndPoint bool
 
@@ -189,14 +189,14 @@ func (p *proxier) deleteIPVSDestForPort(key , clusterIP string, port *localnetv1
 	return endPointList, isLocalEndPoint
 }
 
-func getIPSetEntry(svcIP,srcAddr string, port *localnetv1.PortMapping) *ipsetutil.Entry {
+func getIPSetEntry(svcIP, srcAddr string, port *localnetv1.PortMapping) *ipsetutil.Entry {
 	if srcAddr != "" {
 		return &ipsetutil.Entry{
 			IP:       svcIP,
 			Port:     int(port.Port),
 			Protocol: strings.ToLower(port.Protocol.String()),
 			SetType:  ipsetutil.HashIPPort,
-			Net: srcAddr,
+			Net:      srcAddr,
 		}
 	}
 	return &ipsetutil.Entry{
@@ -213,10 +213,10 @@ func getExternalIPForIPFamily(ipFamily v1.IPFamily, svc *localnetv1.Service) (er
 		return errors.New("external IPs are not configured"), externalIP
 	}
 
-	if ipFamily == v1.IPv4Protocol && len(svc.IPs.ExternalIPs.V4) > 0{
+	if ipFamily == v1.IPv4Protocol && len(svc.IPs.ExternalIPs.V4) > 0 {
 		externalIP = svc.IPs.ExternalIPs.V4[0]
 	}
-	if ipFamily == v1.IPv6Protocol && len(svc.IPs.ExternalIPs.V6) > 0{
+	if ipFamily == v1.IPv6Protocol && len(svc.IPs.ExternalIPs.V6) > 0 {
 		externalIP = svc.IPs.ExternalIPs.V6[0]
 	}
 	return nil, externalIP
@@ -233,28 +233,28 @@ func getServiceIPForIPFamily(ipFamily v1.IPFamily, svc *localnetv1.Service) stri
 	return svcIP
 }
 
-func (p *proxier) getLbIPForIPFamily(svc *localnetv1.Service) (error, string)  {
+func (p *proxier) getLbIPForIPFamily(svc *localnetv1.Service) (error, string) {
 	var svcIP string
 	if svc.IPs.LoadBalancerIPs == nil {
 		return errors.New("LB IPs are not configured"), svcIP
 	}
 
-	if p.ipFamily == v1.IPv4Protocol && len(svc.IPs.LoadBalancerIPs.V4) > 0{
+	if p.ipFamily == v1.IPv4Protocol && len(svc.IPs.LoadBalancerIPs.V4) > 0 {
 		svcIP = svc.IPs.LoadBalancerIPs.V4[0]
 	}
-	if p.ipFamily == v1.IPv6Protocol && len(svc.IPs.LoadBalancerIPs.V6) > 0{
+	if p.ipFamily == v1.IPv6Protocol && len(svc.IPs.LoadBalancerIPs.V6) > 0 {
 		svcIP = svc.IPs.LoadBalancerIPs.V6[0]
 	}
 	return nil, svcIP
 }
 
-func (p *proxier) storeLBSvc(port *localnetv1.PortMapping, svcIP , key, svcType string) {
+func (p *proxier) storeLBSvc(port *localnetv1.PortMapping, svcIP, key, svcType string) {
 	prefix := key + "/" + svcIP + "/"
 	lbKey := prefix + epPortSuffix(port)
 	p.lbs.Set([]byte(lbKey), 0, ipvsLB{IP: svcIP, ServiceKey: key, Port: port, SchedulingMethod: p.schedulingMethod, ServiceType: svcType})
 }
 
-func (p *proxier) deleteLBSvc(port *localnetv1.PortMapping, svcIP , key string) {
+func (p *proxier) deleteLBSvc(port *localnetv1.PortMapping, svcIP, key string) {
 	prefix := key + "/" + svcIP + "/"
 	lbKey := prefix + epPortSuffix(port)
 	p.lbs.Delete([]byte(lbKey))
@@ -280,12 +280,12 @@ func (p *proxier) AddOrDelNodePortInIPSet(port *localnetv1.PortMapping, op Opera
 		}
 	default:
 		// It should never hit
-		klog.Errorf( "Unsupported protocol type %v protocol ", protocol)
+		klog.Errorf("Unsupported protocol type %v protocol ", protocol)
 	}
 	if nodePortSet != nil {
 		for _, entry := range entries {
 			if valid := nodePortSet.validateEntry(entry); !valid {
-				klog.Errorf( "error adding entry (%v) to ipset (%v)", entry.String(),  nodePortSet.Name)
+				klog.Errorf("error adding entry (%v) to ipset (%v)", entry.String(), nodePortSet.Name)
 			}
 			if op == AddService {
 				nodePortSet.newEntries.Insert(entry.String())
@@ -360,7 +360,6 @@ func (p *proxier) sync() {
 
 	// sync iptable rules
 	p.syncIPTableRules()
-
 
 	// reset ipset entries
 	for _, set := range p.ipsetList {

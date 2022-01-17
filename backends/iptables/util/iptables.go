@@ -240,10 +240,9 @@ func newInternal(exec utilexec.Interface, protocol Protocol, lockfilePath14x, lo
 	return runner
 }
 
-
 // NewIPTableExec returns a new Interface which will exec iptables.
 func NewIPTableExec(exec utilexec.Interface, protocol Protocol) Interface {
-		return newInternal(exec, protocol, "", "")
+	return newInternal(exec, protocol, "", "")
 }
 
 // New returns a new Interface which will exec iptables.

@@ -2,7 +2,7 @@ package diffstore2
 
 import (
 	"bytes"
-    "constraints"
+	"constraints"
 
 	"github.com/cespare/xxhash"
 )
@@ -29,6 +29,6 @@ func (l *BufferLeaf) Hash() uint64 {
 	return xxhash.Sum64(l.Bytes())
 }
 
-func (l *BufferLeaf) Writeln()  {
-    l.WriteByte('\n')
+func (l *BufferLeaf) Writeln() {
+	l.WriteByte('\n')
 }

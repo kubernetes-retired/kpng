@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"net"
 
-	utiliptables "sigs.k8s.io/kpng/backends/iptables/util"
 	"k8s.io/klog/v2"
 	utilnet "k8s.io/utils/net"
+	utiliptables "sigs.k8s.io/kpng/backends/iptables/util"
 )
 
 // LocalTrafficDetector in a interface to take action (jump) based on whether traffic originated locally

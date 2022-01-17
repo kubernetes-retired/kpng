@@ -7,8 +7,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/utils/exec"
 
-	"sigs.k8s.io/kpng/backends/iptables/util"
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/backends/iptables/util"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
 	"sigs.k8s.io/kpng/client/localsink/filterreset"
@@ -17,7 +17,6 @@ import (
 type Backend struct {
 	localsink.Config
 }
-
 
 var wg = sync.WaitGroup{}
 var IptablesImpl map[v1.IPFamily]*iptables

@@ -1,10 +1,10 @@
 package diffstore2
 
 import (
-    "fmt"
+	"fmt"
 )
 
-func (store *Store[K,V]) printDiff() {
+func (store *Store[K, V]) printDiff() {
 	fmt.Println("-----")
 	hasChanges := false
 

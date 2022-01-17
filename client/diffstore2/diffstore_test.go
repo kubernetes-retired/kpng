@@ -56,7 +56,7 @@ func ExampleStore() {
 		store.Reset()
 
 		store.Done()
-        store.printDiff()
+		store.printDiff()
 	}
 
 	// Output:
@@ -88,15 +88,15 @@ func TestStoreCleanup(t *testing.T) {
 	// the node should persist after 1 reset
 	store.Reset()
 	store.Done()
-    if !hasKey("a") {
-        t.Error("key not found")
-    }
+	if !hasKey("a") {
+		t.Error("key not found")
+	}
 
-    // the node should fade after 2 more resets
+	// the node should fade after 2 more resets
 	store.Reset()
 	store.Done()
 	store.Reset()
-    if hasKey("a") {
-        t.Error("key still there")
-    }
+	if hasKey("a") {
+		t.Error("key still there")
+	}
 }

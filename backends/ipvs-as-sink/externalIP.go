@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
-func (p *proxier) handleNewExternalIP(key , externalIP, svcType string, port *localnetv1.PortMapping) {
+func (p *proxier) handleNewExternalIP(key, externalIP, svcType string, port *localnetv1.PortMapping) {
 	// External IP is stored in LB tree
 	p.storeLBSvc(port, externalIP, key, svcType)
 
@@ -29,7 +29,7 @@ func (p *proxier) handleNewExternalIP(key , externalIP, svcType string, port *lo
 	p.AddOrDelExternalIPInIPSet(externalIP, []*localnetv1.PortMapping{port}, AddService)
 }
 
-func (p *proxier) handleUpdatedExternalIP(key , externalIP, svcType string, port *localnetv1.PortMapping) {
+func (p *proxier) handleUpdatedExternalIP(key, externalIP, svcType string, port *localnetv1.PortMapping) {
 	//Update the externalIP with added ports into LB tree
 	p.storeLBSvc(port, externalIP, key, svcType)
 
@@ -39,7 +39,7 @@ func (p *proxier) handleUpdatedExternalIP(key , externalIP, svcType string, port
 	p.AddOrDelExternalIPInIPSet(externalIP, []*localnetv1.PortMapping{port}, AddService)
 }
 
-func (p *proxier) AddOrDelExternalIPInIPSet(externalIP  string, portList []*localnetv1.PortMapping, op Operation) {
+func (p *proxier) AddOrDelExternalIPInIPSet(externalIP string, portList []*localnetv1.PortMapping, op Operation) {
 	for _, port := range portList {
 		entry := getIPSetEntry(externalIP, "", port)
 		// We have to SNAT packets to external IPs.

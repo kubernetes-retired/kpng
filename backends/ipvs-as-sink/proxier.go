@@ -33,16 +33,16 @@ type proxier struct {
 	nodeAddresses    []string
 	schedulingMethod string
 	weight           int32
-	masqueradeMark string
-	masqueradeAll bool
+	masqueradeMark   string
+	masqueradeAll    bool
 
 	dummy netlink.Link
 
 	dummyIPsRefCounts map[string]int
 
-	iptables       iptablesutil.Interface
-	ipset          ipsetutil.Interface
-	exec           utilexec.Interface
+	iptables iptablesutil.Interface
+	ipset    ipsetutil.Interface
+	exec     utilexec.Interface
 	//ipvs           util.Interface
 	//localDetector  proxyutiliptables.LocalTrafficDetector
 	//portMapper     netutils.PortOpener
@@ -78,26 +78,26 @@ func NewProxier(ipFamily v1.IPFamily,
 	masqueradeAll bool,
 	weight int32) *proxier {
 	return &proxier{
-		ipFamily: ipFamily,
-		dummy: dummy,
-		nodeAddresses: nodeIPs,
-		schedulingMethod: schedulingMethod,
-		weight: weight,
-		ipset: ipsetInterface,
-		iptables: iptInterface,
-		masqueradeMark : masqueradeMark,
-		masqueradeAll: masqueradeAll,
+		ipFamily:          ipFamily,
+		dummy:             dummy,
+		nodeAddresses:     nodeIPs,
+		schedulingMethod:  schedulingMethod,
+		weight:            weight,
+		ipset:             ipsetInterface,
+		iptables:          iptInterface,
+		masqueradeMark:    masqueradeMark,
+		masqueradeAll:     masqueradeAll,
 		dummyIPsRefCounts: map[string]int{},
-		ipsetList: make(map[string]*IPSet),
-		lbs:       diffstore.New(),
-		endpoints: diffstore.New(),
-		dests:     diffstore.New(),
-		iptablesData:          bytes.NewBuffer(nil),
-		filterChainsData:      bytes.NewBuffer(nil),
-		natChains:             iptablesutil.LineBuffer{},
-		natRules:              iptablesutil.LineBuffer{},
-		filterChains:          iptablesutil.LineBuffer{},
-		filterRules:           iptablesutil.LineBuffer{},
+		ipsetList:         make(map[string]*IPSet),
+		lbs:               diffstore.New(),
+		endpoints:         diffstore.New(),
+		dests:             diffstore.New(),
+		iptablesData:      bytes.NewBuffer(nil),
+		filterChainsData:  bytes.NewBuffer(nil),
+		natChains:         iptablesutil.LineBuffer{},
+		natRules:          iptablesutil.LineBuffer{},
+		filterChains:      iptablesutil.LineBuffer{},
+		filterRules:       iptablesutil.LineBuffer{},
 	}
 }
 
