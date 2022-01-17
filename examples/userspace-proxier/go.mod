@@ -1,6 +1,6 @@
 module sigs.k8s.io/kpng/examples/userspace-proxier
 
-go 1.17
+go 1.18
 
 require (
 	sigs.k8s.io/kpng/api v0.0.0-20211016163122-10ddff77b5bd

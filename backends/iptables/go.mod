@@ -1,6 +1,6 @@
 module sigs.k8s.io/kpng/backends/iptables
 
-go 1.17
+go 1.18
 
 replace (
 	k8s.io/apiserver => k8s.io/apiserver v0.22.2 // indirect
