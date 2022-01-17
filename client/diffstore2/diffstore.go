@@ -26,7 +26,7 @@ func New[K constraints.Ordered, V Leaf](newValue func() V) *Store[K,V] {
     }
 }
 
-func (s *Store[K,V]) Get(key K) V {
+func (s *Store[K,V]) GetItem(key K) *Item[K,V] {
     var item *Item[K,V]
 
     i := s.data.Get(&Item[K,V]{k: key})
@@ -44,7 +44,24 @@ func (s *Store[K,V]) Get(key K) V {
         s.touched++
     }
 
+    return item
+}
+
+func (s *Store[K,V]) Get(key K) V {
+    item := s.GetItem(key)
     return item.v
+}
+
+func (s *Store[K,V]) RunDeferred()  {
+    s.data.Ascend(func(item btree.Item) bool {
+        i := item.(*Item[K,V])
+
+        if i.touched {
+            i.RunDeferred()
+        }
+
+        return true
+    })
 }
 
 // Done must be called at the end of the filling process. It will compute hashes of every node to allow diff functions to work.
@@ -53,7 +70,6 @@ func (s *Store[K,V]) Done()  {
         i := item.(*Item[K,V])
 
         if i.touched {
-            i.RunDeferred()
             i.currentHash = i.v.Hash()
         }
 
@@ -110,11 +126,25 @@ func (s *Store[K,V]) Changed() (ret []*Item[K,V]) {
     s.data.Ascend(func(item btree.Item) bool {
         i := item.(*Item[K,V])
 
-        if i.touched && i.previousHash != i.currentHash {
+        if i.Changed() {
             ret = append(ret, i)
         }
 
         return true
+    })
+
+    return
+}
+
+func (s *Store[K,V]) HasChanges() (changed bool) {
+    if !s.done {
+        panic("Done() not called!")
+    }
+
+    s.data.Ascend(func(item btree.Item) bool {
+        i := item.(*Item[K,V])
+        changed = i.Changed()
+        return !changed
     })
 
     return

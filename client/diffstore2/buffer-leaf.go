@@ -28,3 +28,7 @@ func (l *BufferLeaf) Reset() {
 func (l *BufferLeaf) Hash() uint64 {
 	return xxhash.Sum64(l.Bytes())
 }
+
+func (l *BufferLeaf) Writeln()  {
+    l.WriteByte('\n')
+}
