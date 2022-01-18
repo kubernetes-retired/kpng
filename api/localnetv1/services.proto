@@ -88,6 +88,8 @@ message Service {
     oneof SessionAffinity {
         ClientIPAffinity ClientIP = 11;
     };
+
+    bool InternalTrafficToLocal = 12;
 }
 
 message IPFilter {
