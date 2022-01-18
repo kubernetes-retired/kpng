@@ -14,6 +14,8 @@ eventually will be replaced with https://github.com/kubernetes-sigs/kpng/issues/
 - cp this file into sig-windows-dev-tools/ and mount vagrant as shared into windows node
 - `vagrant ssh` into windows node, and run this file
 
+Ref: [make: add support for build multi-arch bin](https://github.com/kubernetes-sigs/kpng/pull/219)
+
 ### phase 2a: test if kpng server can run as windows process
 
 probably easier to start - mimic existing kube proxy by running kpng brain and kpng win backend in same windows
@@ -35,11 +37,13 @@ that will be something we can do once we finish the initial merge of this backen
 
 
 # homework
-- https://github.com/vmware-tanzu/tgik/tree/master/episodes/144
-- https://github.com/kubernetes-sigs/sig-windows-dev-tools
-- Windows host-process containers https://www.youtube.com/watch?v=fSmDmwKwFfQ
-
-
+- [Episode 144 : Exploring The State of K8s on Windows](https://github.com/vmware-tanzu/tgik/tree/master/episodes/144)
+- [sig-windows-dev-tools](https://github.com/kubernetes-sigs/sig-windows-dev-tools)
+- [Windows host-process containers](https://www.youtube.com/watch?v=fSmDmwKwFfQ)
+- [Alpha in v1.22: Windows HostProcess](Containers https://kubernetes.io/blog/2021/08/16/windows-hostprocess-containers/)
+- [Create a Windows HostProcess Pod](https://kubernetes.io/docs/tasks/configure-pod-container/create-hostprocess-pod/)
+- [Introducing the Host Compute Service (HCS)](https://techcommunity.microsoft.com/t5/containers/introducing-the-host-compute-service-hcs/ba-p/382332)
+- [Golang interface for using the Windows Host Compute Service (HCS)](https://github.com/microsoft/hcsshim)
 
 
 
