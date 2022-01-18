@@ -42,6 +42,7 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 			ExternalIPs: localnetv1.NewIPSet(svc.Spec.ExternalIPs...),
 		},
 		ExternalTrafficToLocal: svc.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal,
+		InternalTrafficToLocal: *svc.Spec.InternalTrafficPolicy == v1.ServiceInternalTrafficPolicyLocal,
 	}
 
 	// extract cluster IPs with backward compatibility (k8s before ClusterIPs)
