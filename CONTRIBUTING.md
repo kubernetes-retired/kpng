@@ -1,31 +1,33 @@
-# Contributing Guidelines
+# Contributing to KPNG
 
-Welcome to Kubernetes. We are excited about the prospect of you joining our [community](https://git.k8s.io/community)! The Kubernetes community abides by the CNCF [code of conduct](code-of-conduct.md). Here is an excerpt:
+## Join the team
 
-_As contributors and maintainers of this project, and in the interest of fostering an open and welcoming community, we pledge to respect all people who contribute through reporting issues, posting feature requests, updating documentation, submitting pull requests or patches, and other activities._
+Since KPNG has a very lofty goal, replacing the kube-proxy, working together is important.
+We pair program at our meetings and in general, encourage people to own large problems, end to end.
 
-## Getting Started
+## What type of contributions are needed 
 
-We have full documentation on how to get started contributing here:
+We need feature owners, for specific backends especially, which fix features that will bring KPNG to parity
+with the upstream kube proxy.
 
-<!---
-If your repo has certain guidelines for contribution, put them here ahead of the general k8s resources
--->
+## Can i add a new backend? 
 
-- [Contributor License Agreement](https://git.k8s.io/community/CLA.md) Kubernetes projects require that you sign a Contributor License Agreement (CLA) before we can accept your pull requests
-- [Kubernetes Contributor Guide](https://git.k8s.io/community/contributors/guide) - Main contributor documentation, or you can just jump directly to the [contributing section](https://git.k8s.io/community/contributors/guide#contributing)
-- [Contributor Cheat Sheet](https://git.k8s.io/community/contributors/guide/contributor-cheatsheet) - Common resources for existing developers
+Sure ! if you plan on owning it.  Right now we don't know what backends will and won't make it into the standard
+k8s proxy, but, in general we have an examples/ and backends/ directory both of which can be used to hold
+a new KPNG implementation  .  Join the india or USA pairing sessions (wednesdays, fridays) to discuss your backend.
 
-## Mentorship
+Worst case, due to KPNGs pluggable architecture, you can do what lars did and just make a blog post with a link to your
+external backend, and vendor KPNG in where needed for testing/running...
 
-- [Mentoring Initiatives](https://git.k8s.io/community/mentoring) - We have a diverse set of mentorship programs available that are always looking for volunteers!
+https://kubernetes.io/blog/2021/10/18/use-kpng-to-write-specialized-kube-proxiers/
 
-<!---
-Custom Information - if you're copying this template for the first time you can add custom content here, for example:
+## What about minutia?
 
-## Contact Information
+Reviewer bandwidth, rebases, and so on are really alot of work.
 
-- [Slack channel](https://kubernetes.slack.com/messages/kubernetes-users) - Replace `kubernetes-users` with your slack channel string, this will send users directly to your channel. 
-- [Mailing list](URL)
+Large commits which fix obvious glaring holes in the dataplane of KPNG are what we need at this time.
 
--->
+See Kelsey's notes on minutia :
+
+https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/CONTRIBUTING.md#notes-on-minutiae
+
