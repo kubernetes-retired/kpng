@@ -101,21 +101,6 @@ type loadBalancerFlags struct {
 	isIPv6          bool
 }
 
-// internal struct for string service information
-type serviceInfo struct {
-	*proxy.BaseServiceInfo
-	targetPort             int
-	externalIPs            []*externalIPInfo
-	loadBalancerIngressIPs []*loadBalancerIngressInfo
-	hnsID                  string
-	nodePorthnsID          string
-	policyApplied          bool
-	remoteEndpoint         *endpoints
-	hns                    HostNetworkService
-	preserveDIP            bool
-	localTrafficDSR        bool
-}
-
 type hnsNetworkInfo struct {
 	name          string
 	id            string
@@ -639,43 +624,6 @@ func NewDualStackProxier(
 	// Return a meta-proxier that dispatch calls between the two
 	// single-stack proxier instances
 	return metaproxier.NewMetaProxier(ipv4Proxier, ipv6Proxier), nil
-}
-
-func (svcInfo *serviceInfo) cleanupAllPolicies(proxyEndpoints []proxy.Endpoint) {
-	klog.V(3).InfoS("Service cleanup", "serviceInfo", svcInfo)
-	// Skip the svcInfo.policyApplied check to remove all the policies
-	svcInfo.deleteAllHnsLoadBalancerPolicy()
-	// Cleanup Endpoints references
-	for _, ep := range proxyEndpoints {
-		epInfo, ok := ep.(*endpoints)
-		if ok {
-			epInfo.Cleanup()
-		}
-	}
-	if svcInfo.remoteEndpoint != nil {
-		svcInfo.remoteEndpoint.Cleanup()
-	}
-
-	svcInfo.policyApplied = false
-}
-
-func (svcInfo *serviceInfo) deleteAllHnsLoadBalancerPolicy() {
-	// Remove the Hns Policy corresponding to this service
-	hns := svcInfo.hns
-	hns.deleteLoadBalancer(svcInfo.hnsID)
-	svcInfo.hnsID = ""
-
-	hns.deleteLoadBalancer(svcInfo.nodePorthnsID)
-	svcInfo.nodePorthnsID = ""
-
-	for _, externalIP := range svcInfo.externalIPs {
-		hns.deleteLoadBalancer(externalIP.hnsID)
-		externalIP.hnsID = ""
-	}
-	for _, lbIngressIP := range svcInfo.loadBalancerIngressIPs {
-		hns.deleteLoadBalancer(lbIngressIP.hnsID)
-		lbIngressIP.hnsID = ""
-	}
 }
 
 func deleteAllHnsLoadBalancerPolicy() {
