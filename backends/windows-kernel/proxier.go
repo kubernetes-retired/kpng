@@ -641,17 +641,6 @@ func NewDualStackProxier(
 	return metaproxier.NewMetaProxier(ipv4Proxier, ipv6Proxier), nil
 }
 
-// CleanupLeftovers removes all hns rules created by the Proxier
-// It returns true if an error was encountered. Errors are logged.
-func CleanupLeftovers() (encounteredError bool) {
-	// Delete all Hns Load Balancer Policies
-	deleteAllHnsLoadBalancerPolicy()
-	// TODO
-	// Delete all Hns Remote endpoints
-
-	return encounteredError
-}
-
 func (svcInfo *serviceInfo) cleanupAllPolicies(proxyEndpoints []proxy.Endpoint) {
 	klog.V(3).InfoS("Service cleanup", "serviceInfo", svcInfo)
 	// Skip the svcInfo.policyApplied check to remove all the policies
