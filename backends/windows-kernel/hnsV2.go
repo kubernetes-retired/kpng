@@ -68,12 +68,12 @@ func (hns hnsV2) getNetworkByName(name string) (*hnsNetworkInfo, error) {
 		remoteSubnets: remoteSubnets,
 	}, nil
 }
-func (hns hnsV2) getEndpointByID(id string) (*endpointsInfo, error) {
+func (hns hnsV2) getEndpointByID(id string) (*endpoints, error) {
 	hnsendpoint, err := hcn.GetEndpointByID(id)
 	if err != nil {
 		return nil, err
 	}
-	return &endpointsInfo{ //TODO: fill out PA
+	return &endpoints{ //TODO: fill out PA
 		ip:         hnsendpoint.IpConfigurations[0].IpAddress,
 		isLocal:    uint32(hnsendpoint.Flags&hcn.EndpointFlagsRemoteEndpoint) == 0, //TODO: Change isLocal to isRemote
 		macAddress: hnsendpoint.MacAddress,
@@ -81,18 +81,18 @@ func (hns hnsV2) getEndpointByID(id string) (*endpointsInfo, error) {
 		hns:        hns,
 	}, nil
 }
-func (hns hnsV2) getEndpointByIpAddress(ip string, networkName string) (*endpointsInfo, error) {
+func (hns hnsV2) getEndpointByIpAddress(ip string, networkName string) (*endpoints, error) {
 	hnsnetwork, err := hcn.GetNetworkByName(networkName)
 	if err != nil {
 		klog.ErrorS(err, "Error getting network by name")
 		return nil, err
 	}
 
-	endpoints, err := hcn.ListEndpoints()
+	hcnEndpoints, err := hcn.ListEndpoints()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list endpoints: %w", err)
 	}
-	for _, endpoint := range endpoints {
+	for _, endpoint := range hcnEndpoints {
 		equal := false
 		if endpoint.IpConfigurations != nil && len(endpoint.IpConfigurations) > 0 {
 			equal = endpoint.IpConfigurations[0].IpAddress == ip
@@ -102,7 +102,7 @@ func (hns hnsV2) getEndpointByIpAddress(ip string, networkName string) (*endpoin
 			}
 		}
 		if equal && strings.EqualFold(endpoint.HostComputeNetwork, hnsnetwork.Id) {
-			return &endpointsInfo{
+			return &endpoints{
 				ip:         ip,
 				isLocal:    uint32(endpoint.Flags&hcn.EndpointFlagsRemoteEndpoint) == 0, //TODO: Change isLocal to isRemote
 				macAddress: endpoint.MacAddress,
@@ -114,7 +114,7 @@ func (hns hnsV2) getEndpointByIpAddress(ip string, networkName string) (*endpoin
 
 	return nil, fmt.Errorf("Endpoint %v not found on network %s", ip, networkName)
 }
-func (hns hnsV2) createEndpoint(ep *endpointsInfo, networkName string) (*endpointsInfo, error) {
+func (hns hnsV2) createEndpoint(ep *endpoints, networkName string) (*endpoints, error) {
 	hnsNetwork, err := hcn.GetNetworkByName(networkName)
 	if err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ func (hns hnsV2) createEndpoint(ep *endpointsInfo, networkName string) (*endpoin
 			return nil, err
 		}
 	}
-	return &endpointsInfo{
+	return &endpoints{
 		ip:              createdEndpoint.IpConfigurations[0].IpAddress,
 		isLocal:         uint32(createdEndpoint.Flags&hcn.EndpointFlagsRemoteEndpoint) == 0,
 		macAddress:      createdEndpoint.MacAddress,
@@ -182,7 +182,7 @@ func (hns hnsV2) deleteEndpoint(hnsID string) error {
 	}
 	return err
 }
-func (hns hnsV2) getLoadBalancer(endpoints []endpointsInfo, flags loadBalancerFlags, sourceVip string, vip string, protocol uint16, internalPort uint16, externalPort uint16) (*loadBalancerInfo, error) {
+func (hns hnsV2) getLoadBalancer(endpoints []endpoints, flags loadBalancerFlags, sourceVip string, vip string, protocol uint16, internalPort uint16, externalPort uint16) (*loadBalancerInfo, error) {
 	plists, err := hcn.ListLoadBalancers()
 	if err != nil {
 		return nil, err
