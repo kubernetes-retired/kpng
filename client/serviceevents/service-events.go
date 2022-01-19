@@ -1,6 +1,8 @@
 package serviceevents
 
-import "sigs.k8s.io/kpng/api/localnetv1"
+import (
+	"sigs.k8s.io/kpng/api/localnetv1"
+)
 
 type PortsListener interface {
 	AddPort(svc *localnetv1.Service, port *localnetv1.PortMapping)
@@ -15,6 +17,16 @@ type IPsListener interface {
 type IPPortsListener interface {
 	AddIPPort(svc *localnetv1.Service, ip string, ipKind IPKind, port *localnetv1.PortMapping)
 	DeleteIPPort(svc *localnetv1.Service, ip string, ipKind IPKind, port *localnetv1.PortMapping)
+}
+
+type TrafficPolicyListener interface {
+	EnableTrafficPolicy(svc *localnetv1.Service, policyKind TrafficPolicyKind)
+	DisableTrafficPolicy(svc *localnetv1.Service, policyKind TrafficPolicyKind)
+}
+
+type SessionAffinityListener interface {
+	EnableSessionAffinity(svc *localnetv1.Service, sessionAffinity SessionAffinity)
+	DisableSessionAffinity(svc *localnetv1.Service)
 }
 
 // ServicesListener analyzes updates to the Service set and produced detailed
@@ -32,9 +44,11 @@ type IPPortsListener interface {
 // - DeleteIP
 //
 type ServicesListener struct {
-	PortsListener   PortsListener
-	IPsListener     IPsListener
-	IPPortsListener IPPortsListener
+	PortsListener           PortsListener
+	IPsListener             IPsListener
+	IPPortsListener         IPPortsListener
+	TrafficPolicyListener   TrafficPolicyListener
+	SessionAffinityListener SessionAffinityListener
 
 	services map[string]*localnetv1.Service
 }
@@ -187,6 +201,34 @@ func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
 		}
 	}
 
+	if sl.TrafficPolicyListener != nil {
+		// ServiceInternalTrafficPolicy is applicable only to ClusterIP
+		// TODO feature gate code needs to be added. Currently it throws error
+		// due to old k8s version
+		sl.checkTrafficPolicy(prevSvc, currSvc, TrafficPolicyInternal)
+
+		// ServiceExternalTrafficPolicy is applicable to all service IPs
+		// except ClusterIP
+		sl.checkTrafficPolicy(prevSvc, currSvc, TrafficPolicyExternal)
+	}
+
+	if sl.SessionAffinityListener != nil {
+		var prevSessAff, currSessAff SessionAffinity
+		if prevSvc != nil {
+			prevSessAff = getSessionAffinity(prevSvc.SessionAffinity)
+		}
+		if currSvc != nil {
+			currSessAff = getSessionAffinity(currSvc.SessionAffinity)
+		}
+		if prevSessAff.ClientIP == nil && currSessAff.ClientIP != nil {
+			sl.SessionAffinityListener.EnableSessionAffinity(currSvc, currSessAff)
+		}
+
+		if prevSessAff.ClientIP != nil && currSessAff.ClientIP == nil {
+			sl.SessionAffinityListener.DisableSessionAffinity(currSvc)
+		}
+	}
+
 	for _, deferredCall := range deferredCalls {
 		deferredCall()
 	}
@@ -194,4 +236,48 @@ func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
 
 func samePort(p1, p2 *localnetv1.PortMapping) bool {
 	return p1.Protocol == p2.Protocol && p1.Port == p2.Port
+}
+
+// SessionAffinity contains data about assinged session affinity
+type SessionAffinity struct {
+	ClientIP *localnetv1.Service_ClientIP
+}
+
+func getSessionAffinity(affinity interface{}) SessionAffinity {
+	var sessionAffinity SessionAffinity
+	switch affinity.(type) {
+	case *localnetv1.Service_ClientIP:
+		sessionAffinity.ClientIP = affinity.(*localnetv1.Service_ClientIP)
+	}
+	return sessionAffinity
+}
+
+func (sl *ServicesListener) checkTrafficPolicy(prev, curr *localnetv1.Service, polKind TrafficPolicyKind) {
+	var previousPolicy, currentPolicy bool = false, false
+	switch polKind {
+	case TrafficPolicyInternal:
+		if prev != nil {
+			previousPolicy = prev.InternalTrafficToLocal
+		}
+		if curr != nil {
+			currentPolicy = curr.InternalTrafficToLocal
+		}
+		break
+	case TrafficPolicyExternal:
+		if prev != nil {
+			previousPolicy = prev.ExternalTrafficToLocal
+		}
+		if curr != nil {
+			currentPolicy = curr.ExternalTrafficToLocal
+		}
+		break
+	}
+
+	if previousPolicy == false && currentPolicy == true {
+		sl.TrafficPolicyListener.EnableTrafficPolicy(curr, polKind)
+	}
+
+	if previousPolicy == true && currentPolicy == false {
+		sl.TrafficPolicyListener.DisableTrafficPolicy(curr, polKind)
+	}
 }
