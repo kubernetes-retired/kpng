@@ -29,6 +29,22 @@ import (
 	"k8s.io/klog/v2"
 )
 
+func Enum(p v1.Protocol) uint16 {
+        if p == v1.ProtocolTCP {
+                return 6
+        }
+        if p == v1.ProtocolUDP {
+                return 17
+        }
+        if p == v1.ProtocolSCTP {
+                return 132
+        }
+        return 0
+}
+
+type closeable interface {
+        Close() error
+}
 //Uses mac prefix and IPv4 address to return a mac address
 //This ensures mac addresses are unique for proper load balancing
 //There is a possibility of MAC collisions but this Mac address is used for remote endpoints only

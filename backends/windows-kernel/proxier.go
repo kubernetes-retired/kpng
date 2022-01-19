@@ -46,6 +46,9 @@ import (
 	"k8s.io/kubernetes/pkg/util/async"
 )
 
+// Proxier implements proxy.Provider
+var _ proxy.Provider = &Proxier{}
+
 // KernelCompatTester tests whether the required kernel capabilities are
 // present to run the windows kernel proxier.
 type KernelCompatTester interface {
@@ -250,26 +253,6 @@ type localPort struct {
 func (lp *localPort) String() string {
 	return fmt.Sprintf("%q (%s:%d/%s)", lp.desc, lp.ip, lp.port, lp.protocol)
 }
-
-func Enum(p v1.Protocol) uint16 {
-	if p == v1.ProtocolTCP {
-		return 6
-	}
-	if p == v1.ProtocolUDP {
-		return 17
-	}
-	if p == v1.ProtocolSCTP {
-		return 132
-	}
-	return 0
-}
-
-type closeable interface {
-	Close() error
-}
-
-// Proxier implements proxy.Provider
-var _ proxy.Provider = &Proxier{}
 
 // NewProxier returns a new Proxier
 func NewProxier(
