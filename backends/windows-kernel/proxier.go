@@ -2,7 +2,7 @@
 // +build windows
 
 /*
-Copyright 2017 The Kubernetes Authors.
+Copyright 2017-2022 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -242,17 +242,6 @@ func (proxier *Proxier) newServiceInfo(port *v1.ServicePort, service *v1.Service
 	return info
 }
 
-
-type localPort struct {
-	desc     string
-	ip       string
-	port     int
-	protocol string
-}
-
-func (lp *localPort) String() string {
-	return fmt.Sprintf("%q (%s:%d/%s)", lp.desc, lp.ip, lp.port, lp.protocol)
-}
 
 // NewProxier returns a new Proxier
 func NewProxier(
