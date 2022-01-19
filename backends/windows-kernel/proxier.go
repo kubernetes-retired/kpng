@@ -22,9 +22,7 @@ package winkernel
 import (
 	"fmt"
 	"net"
-	"os"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -41,12 +39,11 @@ import (
 	kubefeatures "k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/proxy"
 	"k8s.io/kubernetes/pkg/proxy/apis/config"
-	proxyconfig "k8s.io/kubernetes/pkg/proxy/config"
+	netutils "k8s.io/utils/net"
 	"k8s.io/kubernetes/pkg/proxy/healthcheck"
 	"k8s.io/kubernetes/pkg/proxy/metaproxier"
 	"k8s.io/kubernetes/pkg/proxy/metrics"
 	"k8s.io/kubernetes/pkg/util/async"
-	netutils "k8s.io/utils/net"
 )
 
 // KernelCompatTester tests whether the required kernel capabilities are
@@ -101,52 +98,11 @@ type loadBalancerFlags struct {
 	isIPv6          bool
 }
 
-type hnsNetworkInfo struct {
-	name          string
-	id            string
-	networkType   string
-	remoteSubnets []*remoteSubnetInfo
-}
-
 type remoteSubnetInfo struct {
 	destinationPrefix string
 	isolationID       uint16
 	providerAddress   string
 	drMacAddress      string
-}
-
-const NETWORK_TYPE_OVERLAY = "overlay"
-
-func newHostNetworkService() (HostNetworkService, hcn.SupportedFeatures) {
-	var hns HostNetworkService
-	hns = hnsV1{}
-	supportedFeatures := hcn.GetSupportedFeatures()
-	if supportedFeatures.Api.V2 {
-		hns = hnsV2{}
-	}
-
-	return hns, supportedFeatures
-}
-
-func getNetworkName(hnsNetworkName string) (string, error) {
-	if len(hnsNetworkName) == 0 {
-		klog.V(3).InfoS("Flag --network-name not set, checking environment variable")
-		hnsNetworkName = os.Getenv("KUBE_NETWORK")
-		if len(hnsNetworkName) == 0 {
-			return "", fmt.Errorf("Environment variable KUBE_NETWORK and network-flag not initialized")
-		}
-	}
-	return hnsNetworkName, nil
-}
-
-func getNetworkInfo(hns HostNetworkService, hnsNetworkName string) (*hnsNetworkInfo, error) {
-	hnsNetworkInfo, err := hns.getNetworkByName(hnsNetworkName)
-	for err != nil {
-		klog.ErrorS(err, "Unable to find HNS Network specified, please check network name and CNI deployment", "hnsNetworkName", hnsNetworkName)
-		time.Sleep(1 * time.Second)
-		hnsNetworkInfo, err = hns.getNetworkByName(hnsNetworkName)
-	}
-	return hnsNetworkInfo, err
 }
 
 func (proxier *Proxier) endpointsMapChange(oldEndpointsMap, newEndpointsMap proxy.EndpointsMap) {
@@ -249,30 +205,6 @@ func (proxier *Proxier) newEndpointInfo(baseInfo *proxy.BaseEndpointInfo) proxy.
 	return info
 }
 
-func newSourceVIP(hns HostNetworkService, network string, ip string, mac string, providerAddress string) (*endpoints, error) {
-	hnsEndpoint := &endpoints{
-		ip:              ip,
-		isLocal:         true,
-		macAddress:      mac,
-		providerAddress: providerAddress,
-
-		ready:       true,
-		serving:     true,
-		terminating: false,
-	}
-	ep, err := hns.createEndpoint(hnsEndpoint, network)
-	return ep, err
-}
-
-func (refCountMap endPointsReferenceCountMap) getRefCount(hnsID string) *uint16 {
-	refCount, exists := refCountMap[hnsID]
-	if !exists {
-		refCountMap[hnsID] = new(uint16)
-		refCount = refCountMap[hnsID]
-	}
-	return refCount
-}
-
 // returns a new proxy.ServicePort which abstracts a serviceInfo
 func (proxier *Proxier) newServiceInfo(port *v1.ServicePort, service *v1.Service, baseInfo *proxy.BaseServiceInfo) proxy.ServicePort {
 	info := &serviceInfo{BaseServiceInfo: baseInfo}
@@ -307,73 +239,6 @@ func (proxier *Proxier) newServiceInfo(port *v1.ServicePort, service *v1.Service
 	return info
 }
 
-func (network hnsNetworkInfo) findRemoteSubnetProviderAddress(ip string) string {
-	var providerAddress string
-	for _, rs := range network.remoteSubnets {
-		_, ipNet, err := netutils.ParseCIDRSloppy(rs.destinationPrefix)
-		if err != nil {
-			klog.ErrorS(err, "Failed to parse CIDR")
-		}
-		if ipNet.Contains(netutils.ParseIPSloppy(ip)) {
-			providerAddress = rs.providerAddress
-		}
-		if ip == rs.providerAddress {
-			providerAddress = rs.providerAddress
-		}
-	}
-
-	return providerAddress
-}
-
-type endPointsReferenceCountMap map[string]*uint16
-
-// Proxier is an hns based proxy for connections between a localhost:lport
-// and services that provide the actual backends.
-type Proxier struct {
-	// TODO(imroc): implement node handler for winkernel proxier.
-	proxyconfig.NoopNodeHandler
-
-	// endpointsChanges and serviceChanges contains all changes to endpoints and
-	// services that happened since policies were synced. For a single object,
-	// changes are accumulated, i.e. previous is state from before all of them,
-	// current is state after applying all of those.
-	endpointsChanges  *proxy.EndpointChangeTracker
-	serviceChanges    *proxy.ServiceChangeTracker
-	endPointsRefCount endPointsReferenceCountMap
-	mu                sync.Mutex // protects the following fields
-	serviceMap        proxy.ServiceMap
-	endpointsMap      proxy.EndpointsMap
-	// endpointSlicesSynced and servicesSynced are set to true when corresponding
-	// objects are synced after startup. This is used to avoid updating hns policies
-	// with some partial data after kube-proxy restart.
-	endpointSlicesSynced bool
-	servicesSynced       bool
-	isIPv6Mode           bool
-	initialized          int32
-	syncRunner           *async.BoundedFrequencyRunner // governs calls to syncProxyRules
-	// These are effectively const and do not need the mutex to be held.
-	masqueradeAll  bool
-	masqueradeMark string
-	clusterCIDR    string
-	hostname       string
-	nodeIP         net.IP
-	recorder       events.EventRecorder
-
-	serviceHealthServer healthcheck.ServiceHealthServer
-	healthzServer       healthcheck.ProxierHealthUpdater
-
-	// Since converting probabilities (floats) to strings is expensive
-	// and we are using only probabilities in the format of 1/n, we are
-	// precomputing some number of those and cache for future reuse.
-	precomputedProbabilities []string
-
-	hns               HostNetworkService
-	network           hnsNetworkInfo
-	sourceVip         string
-	hostMac           string
-	isDSR             bool
-	supportedFeatures hcn.SupportedFeatures
-}
 
 type localPort struct {
 	desc     string
@@ -579,35 +444,6 @@ func NewDualStackProxier(
 	return metaproxier.NewMetaProxier(ipv4Proxier, ipv6Proxier), nil
 }
 
-func deleteAllHnsLoadBalancerPolicy() {
-	plists, err := hcsshim.HNSListPolicyListRequest()
-	if err != nil {
-		return
-	}
-	for _, plist := range plists {
-		klog.V(3).InfoS("Remove policy", "policies", plist)
-		_, err = plist.Delete()
-		if err != nil {
-			klog.ErrorS(err, "Failed to delete policy list")
-		}
-	}
-
-}
-
-func getHnsNetworkInfo(hnsNetworkName string) (*hnsNetworkInfo, error) {
-	hnsnetwork, err := hcsshim.GetHNSNetworkByName(hnsNetworkName)
-	if err != nil {
-		klog.ErrorS(err, "Failed to get HNS Network by name")
-		return nil, err
-	}
-
-	return &hnsNetworkInfo{
-		id:          hnsnetwork.Id,
-		name:        hnsnetwork.Name,
-		networkType: hnsnetwork.Type,
-	}, nil
-}
-
 // Sync is called to synchronize the proxier state to hns as soon as possible.
 func (proxier *Proxier) Sync() {
 	if proxier.healthzServer != nil {
@@ -734,19 +570,6 @@ func (proxier *Proxier) cleanupAllPolicies() {
 		}
 		svcInfo.cleanupAllPolicies(proxier.endpointsMap[svcName])
 	}
-}
-
-func isNetworkNotFoundError(err error) bool {
-	if err == nil {
-		return false
-	}
-	if _, ok := err.(hcn.NetworkNotFoundError); ok {
-		return true
-	}
-	if _, ok := err.(hcsshim.NetworkNotFoundError); ok {
-		return true
-	}
-	return false
 }
 
 // This is where all of the hns save/restore calls happen.
