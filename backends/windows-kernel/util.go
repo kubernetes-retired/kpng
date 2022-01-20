@@ -23,13 +23,9 @@ import (
 	"net"
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/pkg/apis/core/v1/helper"
-
 	"github.com/Microsoft/hcsshim"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
 )
 
 type externalIPInfo struct {
@@ -58,6 +54,7 @@ func Enum(p v1.Protocol) uint16 {
 type closeable interface {
         Close() error
 }
+
 //Uses mac prefix and IPv4 address to return a mac address
 //This ensures mac addresses are unique for proper load balancing
 //There is a possibility of MAC collisions but this Mac address is used for remote endpoints only
@@ -71,21 +68,6 @@ func conjureMac(macPrefix string, ip net.IP) string {
                 return fmt.Sprintf("%v-%02x-%02x-%02x-%02x", macPrefix, a, b, c, d)
         }
         return "02-11-22-33-44-55"
-}
-
-
-func shouldSkipService(svcName types.NamespacedName, service *v1.Service) bool {
-        // if ClusterIP is "None" or empty, skip proxying
-        if !helper.IsServiceIPSet(service) {
-                klog.V(3).InfoS("Skipping service due to clusterIP", "serviceName", svcName, "clusterIP", service.Spec.ClusterIP)
-                return true
-        }
-        // Even if ClusterIP is set, ServiceTypeExternalName services don't get proxied
-        if service.Spec.Type == v1.ServiceTypeExternalName {
-                klog.V(3).InfoS("Skipping service due to Type=ExternalName", "serviceName", svcName)
-                return true
-        }
-        return false
 }
 
 // KernelCompatTester tests whether the required kernel capabilities are
