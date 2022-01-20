@@ -76,3 +76,34 @@ func (t DualStackCompatTester) DualStackCompatible(networkName string) bool {
         return true
 }
 
+func NewDualStackProxier(
+        syncPeriod time.Duration,
+        minSyncPeriod time.Duration,
+        masqueradeAll bool,
+        masqueradeBit int,
+        clusterCIDR string,
+        hostname string,
+        nodeIP [2]net.IP,
+        recorder events.EventRecorder,
+        healthzServer healthcheck.ProxierHealthUpdater,
+        config config.KubeProxyWinkernelConfiguration,
+) (proxy.Provider, error) {
+
+        // Create an ipv4 instance of the single-stack proxier
+        ipv4Proxier, err := NewProxier(syncPeriod, minSyncPeriod, masqueradeAll, masqueradeBit,
+                clusterCIDR, hostname, nodeIP[0], recorder, healthzServer, config)
+
+        if err != nil {
+                return nil, fmt.Errorf("unable to create ipv4 proxier: %v, hostname: %s, clusterCIDR : %s, nodeIP:%v", err, hostname, clusterCIDR, nodeIP[0])
+        }
+
+        ipv6Proxier, err := NewProxier(syncPeriod, minSyncPeriod, masqueradeAll, masqueradeBit,
+                clusterCIDR, hostname, nodeIP[1], recorder, healthzServer, config)
+        if err != nil {
+                return nil, fmt.Errorf("unable to create ipv6 proxier: %v, hostname: %s, clusterCIDR : %s, nodeIP:%v", err, hostname, clusterCIDR, nodeIP[1])
+        }
+
+        // Return a meta-proxier that dispatch calls between the two
+        // single-stack proxier instances
+        return metaproxier.NewMetaProxier(ipv4Proxier, ipv6Proxier), nil
+}
