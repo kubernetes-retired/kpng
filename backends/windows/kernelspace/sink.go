@@ -22,6 +22,8 @@ package winkernel
 import (
 	"os"
 
+	 "k8s.io/klog/v2"
+
 	"sigs.k8s.io/kpng/client/serviceevents"
 	"sigs.k8s.io/kpng/client/backendcmd"
         "sigs.k8s.io/kpng/api/localnetv1"
@@ -56,13 +58,20 @@ func (s *Backend) SetService(svc *localnetv1.Service) {}
 
 func (s *Backend) DeleteService(namespace, name string) {}
 
-func (s *Backend) Reset() {}
+func (s *Backend) Reset() { /* noop */ }
 
 func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint){}
 
-func (s *Backend) Setup() {}
+func (s *Backend) Setup() {
+	//var err error
 
-func (s *Backend) Sync() {}
+	klog.V(0).InfoS("Using Windows Kernel Proxier.")
+
+}
+
+func (s *Backend) Sync() {
+    //proxier.Sync()
+}
 
 func (s *Backend) WaitRequest() (nodeName string, err error) {
         name, _ := os.Hostname()

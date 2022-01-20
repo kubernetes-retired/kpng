@@ -49,6 +49,11 @@ type StackCompatTester interface {
 
 type DualStackCompatTester struct{}
 
+func getDualStackMode(networkname string, compatTester StackCompatTester) bool {
+        return compatTester.DualStackCompatible(networkname)
+}
+
+
 func (t DualStackCompatTester) DualStackCompatible(networkName string) bool {
         // First tag of hcsshim that has a proper check for dual stack support is v0.8.22 due to a bug.
         if err := hcn.IPv6DualStackSupported(); err != nil {

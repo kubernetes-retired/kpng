@@ -3,14 +3,13 @@ module sigs.k8s.io/kpng/backends/windows-kernel
 go 1.18
 
 replace (
-	sigs.k8s.io/kpng => ../../empty
-	sigs.k8s.io/kpng/api => ../../api
-	sigs.k8s.io/kpng/client => ../../client
+	sigs.k8s.io/kpng => ../../../empty
+	sigs.k8s.io/kpng/api => ../../../api
+	sigs.k8s.io/kpng/client => ../../../client
 )
 
 require (
 	github.com/Microsoft/hcsshim v0.9.1
-	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	k8s.io/api v0.23.1
 	k8s.io/apimachinery v0.23.1
 	k8s.io/apiserver v0.22.4
@@ -50,7 +49,6 @@ require (
 	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae // indirect
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63 // indirect
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f // indirect
