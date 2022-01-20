@@ -45,31 +45,6 @@ import (
 // Proxier implements proxy.Provider
 var _ proxy.Provider = &Proxier{}
 
-type externalIPInfo struct {
-	ip    string
-	hnsID string
-}
-
-type loadBalancerIngressInfo struct {
-	ip    string
-	hnsID string
-}
-
-type loadBalancerInfo struct {
-	hnsID string
-}
-
-type loadBalancerFlags struct {
-	isILB           bool
-	isDSR           bool
-	localRoutedVIP  bool
-	useMUX          bool
-	preserveDIP     bool
-	sessionAffinity bool
-	isIPv6          bool
-}
-
-
 // NewProxier returns a new Proxier
 func NewProxier(
 	syncPeriod time.Duration,
@@ -229,14 +204,6 @@ func (proxier *Proxier) SyncLoop() {
 	// synthesize "last change queued" time as the informers are syncing.
 	metrics.SyncProxyRulesLastQueuedTimestamp.SetToCurrentTime()
 	proxier.syncRunner.Loop(wait.NeverStop)
-}
-
-func (proxier *Proxier) setInitialized(value bool) {
-	var initialized int32
-	if value {
-		initialized = 1
-	}
-	atomic.StoreInt32(&proxier.initialized, initialized)
 }
 
 func (proxier *Proxier) isInitialized() bool {

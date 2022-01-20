@@ -39,6 +39,20 @@ type hnsNetworkInfo struct {
         remoteSubnets []*remoteSubnetInfo
 }
 
+type loadBalancerInfo struct {
+        hnsID string
+}
+
+type loadBalancerFlags struct {
+        isILB           bool
+        isDSR           bool
+        localRoutedVIP  bool
+        useMUX          bool
+        preserveDIP     bool
+        sessionAffinity bool
+        isIPv6          bool
+}
+
 func deleteAllHnsLoadBalancerPolicy() {
         plists, err := hcsshim.HNSListPolicyListRequest()
         if err != nil {

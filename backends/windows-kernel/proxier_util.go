@@ -60,3 +60,14 @@ type Proxier struct {
 	isDSR             bool
 	supportedFeatures hcn.SupportedFeatures
 }
+
+type endPointsReferenceCountMap map[string]*uint16
+
+func (refCountMap endPointsReferenceCountMap) getRefCount(hnsID string) *uint16 {
+        refCount, exists := refCountMap[hnsID]
+        if !exists {
+                refCountMap[hnsID] = new(uint16)
+                refCount = refCountMap[hnsID]
+        }
+        return refCount
+}

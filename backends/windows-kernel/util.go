@@ -32,6 +32,16 @@ import (
 	"k8s.io/klog/v2"
 )
 
+type externalIPInfo struct {
+        ip    string
+        hnsID string
+}
+
+type loadBalancerIngressInfo struct {
+        ip    string
+        hnsID string
+}
+
 func Enum(p v1.Protocol) uint16 {
         if p == v1.ProtocolTCP {
                 return 6
@@ -77,18 +87,6 @@ func shouldSkipService(svcName types.NamespacedName, service *v1.Service) bool {
         }
         return false
 }
-
-type endPointsReferenceCountMap map[string]*uint16
-
-func (refCountMap endPointsReferenceCountMap) getRefCount(hnsID string) *uint16 {
-        refCount, exists := refCountMap[hnsID]
-        if !exists {
-                refCountMap[hnsID] = new(uint16)
-                refCount = refCountMap[hnsID]
-        }
-        return refCount
-}
-
 
 // KernelCompatTester tests whether the required kernel capabilities are
 // present to run the windows kernel proxier.

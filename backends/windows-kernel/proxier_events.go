@@ -1,6 +1,8 @@
 package winkernel
 
 import (
+	"sync/atomic"
+
 	v1 "k8s.io/api/core/v1"
 	discovery "k8s.io/api/discovery/v1"
 	netutils "k8s.io/utils/net"
@@ -230,3 +232,10 @@ func (proxier *Proxier) newServiceInfo(port *v1.ServicePort, service *v1.Service
 }
 
 
+func (proxier *Proxier) setInitialized(value bool) {
+        var initialized int32
+        if value {
+                initialized = 1
+        }
+        atomic.StoreInt32(&proxier.initialized, initialized)
+}
