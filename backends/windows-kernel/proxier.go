@@ -26,7 +26,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Microsoft/hcsshim"
 	"github.com/Microsoft/hcsshim/hcn"
 	v1 "k8s.io/api/core/v1"
 	apiutil "k8s.io/apimachinery/pkg/util/net"
@@ -45,34 +44,6 @@ import (
 
 // Proxier implements proxy.Provider
 var _ proxy.Provider = &Proxier{}
-
-// KernelCompatTester tests whether the required kernel capabilities are
-// present to run the windows kernel proxier.
-type KernelCompatTester interface {
-	IsCompatible() error
-}
-
-// CanUseWinKernelProxier returns true if we should use the Kernel Proxier
-// instead of the "classic" userspace Proxier.  This is determined by checking
-// the windows kernel version and for the existence of kernel features.
-func CanUseWinKernelProxier(kcompat KernelCompatTester) (bool, error) {
-	// Check that the kernel supports what we need.
-	if err := kcompat.IsCompatible(); err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-type WindowsKernelCompatTester struct{}
-
-// IsCompatible returns true if winkernel can support this mode of proxy
-func (lkct WindowsKernelCompatTester) IsCompatible() error {
-	_, err := hcsshim.HNSListPolicyListRequest()
-	if err != nil {
-		return fmt.Errorf("Windows kernel is not compatible for Kernel mode")
-	}
-	return nil
-}
 
 type externalIPInfo struct {
 	ip    string

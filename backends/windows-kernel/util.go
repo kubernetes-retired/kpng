@@ -25,6 +25,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/apis/core/v1/helper"
+
+	"github.com/Microsoft/hcsshim"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 )
@@ -84,4 +87,33 @@ func (refCountMap endPointsReferenceCountMap) getRefCount(hnsID string) *uint16 
                 refCount = refCountMap[hnsID]
         }
         return refCount
+}
+
+
+// KernelCompatTester tests whether the required kernel capabilities are
+// present to run the windows kernel proxier.
+type KernelCompatTester interface {
+        IsCompatible() error
+}
+
+// CanUseWinKernelProxier returns true if we should use the Kernel Proxier
+// instead of the "classic" userspace Proxier.  This is determined by checking
+// the windows kernel version and for the existence of kernel features.
+func CanUseWinKernelProxier(kcompat KernelCompatTester) (bool, error) {
+        // Check that the kernel supports what we need.
+        if err := kcompat.IsCompatible(); err != nil {
+                return false, err
+        }
+        return true, nil
+}
+
+type WindowsKernelCompatTester struct{}
+
+// IsCompatible returns true if winkernel can support this mode of proxy
+func (lkct WindowsKernelCompatTester) IsCompatible() error {
+        _, err := hcsshim.HNSListPolicyListRequest()
+        if err != nil {
+                return fmt.Errorf("Windows kernel is not compatible for Kernel mode")
+        }
+        return nil
 }
