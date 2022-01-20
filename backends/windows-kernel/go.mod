@@ -1,9 +1,16 @@
 module sigs.k8s.io/kpng/backends/windows-kernel
 
-go 1.17
+go 1.18
+
+replace (
+	sigs.k8s.io/kpng => ../../empty
+	sigs.k8s.io/kpng/api => ../../api
+	sigs.k8s.io/kpng/client => ../../client
+)
 
 require (
 	github.com/Microsoft/hcsshim v0.9.1
+	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	k8s.io/api v0.23.1
 	k8s.io/apimachinery v0.23.1
 	k8s.io/apiserver v0.22.4
@@ -12,12 +19,15 @@ require (
 	k8s.io/klog/v2 v2.30.0
 	k8s.io/kubernetes v1.22.5
 	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b
+	sigs.k8s.io/kpng/api v0.0.0-00010101000000-000000000000
+	sigs.k8s.io/kpng/client v0.0.0-00010101000000-000000000000
 )
 
 require (
 	github.com/Microsoft/go-winio v0.4.17 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
+	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/containerd/cgroups v1.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -40,6 +50,7 @@ require (
 	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae // indirect
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63 // indirect
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f // indirect
@@ -48,6 +59,8 @@ require (
 	golang.org/x/text v0.3.6 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	google.golang.org/appengine v1.6.7 // indirect
+	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c // indirect
+	google.golang.org/grpc v1.41.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
