@@ -27,13 +27,14 @@ import (
 func (s *Backend) updateLbIPService(svc *localnetv1.Service, serviceIP string, IPKind serviceevents.IPKind, port *localnetv1.PortMapping) {
 	serviceKey := serviceKey(svc)
 	s.svcs[serviceKey] = svc
-
 	ipFamily := getIPFamily(serviceIP)
 	isServiceUpdated := s.isServiceUpdated(svc)
+	sessionAffinity := getSessionAffinity(svc.SessionAffinity)
+
 	if !isServiceUpdated {
-		s.proxiers[ipFamily].handleNewLBService(serviceKey, serviceIP, IPKind, svc, port)
+		s.proxiers[ipFamily].handleNewLBService(serviceKey, serviceIP, IPKind, svc, port, sessionAffinity)
 	} else {
-		s.proxiers[ipFamily].handleUpdatedLBService(serviceKey, serviceIP, svc, port)
+		s.proxiers[ipFamily].handleUpdatedLBService(serviceKey, serviceIP, svc, port, sessionAffinity)
 	}
 }
 
@@ -62,12 +63,17 @@ func (s *Backend) deleteLbService(svc *localnetv1.Service, serviceIP string, IPK
 	}
 }
 
-func (p *proxier) handleNewLBService(serviceKey, serviceIP string, IPKind serviceevents.IPKind, svc *localnetv1.Service, port *localnetv1.PortMapping) {
+func (p *proxier) handleNewLBService(serviceKey, serviceIP string,
+	IPKind serviceevents.IPKind,
+	svc *localnetv1.Service,
+	port *localnetv1.PortMapping,
+	sessAff SessionAffinity,
+) {
 	// clusterIP , nodeIPs , lb IPs need to be programmed in IPVS table
 	if IPKind == serviceevents.ClusterIP {
-		p.storeLBSvc(port, serviceIP, serviceKey, ClusterIPService)
+		p.storeLBSvc(port, sessAff, serviceIP, serviceKey, ClusterIPService)
 		for _, nodeIP := range p.nodeAddresses {
-			p.storeLBSvc(port, nodeIP, serviceKey, NodePortService)
+			p.storeLBSvc(port, sessAff, nodeIP, serviceKey, NodePortService)
 		}
 
 		// clusterIP , nodeIPs , lb IPs need to be programmed in ipset.
@@ -79,22 +85,26 @@ func (p *proxier) handleNewLBService(serviceKey, serviceIP string, IPKind servic
 	// LB ingress IP could be updated after service creation.
 	// So LB IP needs to be programmed in IPVS, iptable once its available.
 	if IPKind == serviceevents.LoadBalancerIP {
-		p.storeLBSvc(port, serviceIP, serviceKey, LoadBalancerService)
+		p.storeLBSvc(port, sessAff, serviceIP, serviceKey, LoadBalancerService)
 		p.AddOrDelLbIPInIPSet(svc, serviceIP, port, AddService)
 	}
 }
 
-func (p *proxier) handleUpdatedLBService(serviceKey, serviceIP string, svc *localnetv1.Service, port *localnetv1.PortMapping) {
+func (p *proxier) handleUpdatedLBService(serviceKey, serviceIP string,
+	svc *localnetv1.Service,
+	port *localnetv1.PortMapping,
+	sessAff SessionAffinity,
+) {
 	err, lbIP := p.getLbIPForIPFamily(svc)
 	if err != nil {
 		klog.Error(err)
 	}
 
 	//Update the service with added ports into LB tree
-	p.storeLBSvc(port, serviceIP, serviceKey, ClusterIPService)
-	p.storeLBSvc(port, lbIP, serviceKey, LoadBalancerService)
+	p.storeLBSvc(port, sessAff, serviceIP, serviceKey, ClusterIPService)
+	p.storeLBSvc(port, sessAff, lbIP, serviceKey, LoadBalancerService)
 	for _, nodeIP := range p.nodeAddresses {
-		p.storeLBSvc(port, nodeIP, serviceKey, NodePortService)
+		p.storeLBSvc(port, sessAff, nodeIP, serviceKey, NodePortService)
 	}
 
 	endPointList, isLocalEndPoint := p.updateIPVSDestWithPort(serviceKey, serviceIP, port)

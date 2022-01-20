@@ -31,6 +31,8 @@ type ipvsLB struct {
 	ServiceType      string
 	Port             *localnetv1.PortMapping
 	SchedulingMethod string
+	Flags 			 ipvs.ServiceFlags
+	Timeout 		 uint32
 }
 
 func (lb ipvsLB) String() string {
@@ -53,6 +55,8 @@ func (lb ipvsLB) ToService() ipvs.Service {
 		Address:   net.ParseIP(lb.IP),
 		Port:      port,
 		Scheduler: lb.SchedulingMethod,
+		Flags: lb.Flags,
+		Timeout: lb.Timeout,
 	}
 
 	switch lb.Port.Protocol {

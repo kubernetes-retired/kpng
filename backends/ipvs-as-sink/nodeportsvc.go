@@ -24,13 +24,14 @@ import (
 func (s *Backend) updateNodePortService(svc *localnetv1.Service, serviceIP string, port *localnetv1.PortMapping) {
 	serviceKey := serviceKey(svc)
 	s.svcs[serviceKey] = svc
-
 	ipFamily := getIPFamily(serviceIP)
+	sessionAffinity := getSessionAffinity(svc.SessionAffinity)
+
 	isServiceUpdated := s.isServiceUpdated(svc)
 	if !isServiceUpdated {
-		s.proxiers[ipFamily].handleNewNodePortService(serviceKey, serviceIP, port)
+		s.proxiers[ipFamily].handleNewNodePortService(serviceKey, serviceIP, sessionAffinity, port)
 	} else {
-		s.proxiers[ipFamily].handleUpdatedNodePortService(serviceKey, serviceIP, port)
+		s.proxiers[ipFamily].handleUpdatedNodePortService(serviceKey, serviceIP, sessionAffinity, port)
 	}
 }
 
@@ -53,32 +54,32 @@ func (s *Backend) deleteNodePortService(svc *localnetv1.Service, serviceIP strin
 
 }
 
-func (p *proxier) handleNewNodePortService(key, clusterIP string, port *localnetv1.PortMapping) {
+func (p *proxier) handleNewNodePortService(key, clusterIP string, sessAff SessionAffinity, port *localnetv1.PortMapping) {
 	//Node Addresses need to be added as NodePortService
 	//so that in sync(), nodePort is attached to nodeIPs.
 	for _, nodeIP := range p.nodeAddresses {
-		p.storeLBSvc(port, nodeIP, key, NodePortService)
+		p.storeLBSvc(port, sessAff, nodeIP, key, NodePortService)
 	}
 
 	//NodePort svc clusterIP need to be added as ClusterIPService
 	//so that in sync(), port is attached to clusterIP.
-	p.storeLBSvc(port, clusterIP, key, ClusterIPService)
+	p.storeLBSvc(port, sessAff, clusterIP, key, ClusterIPService)
 
 	p.AddOrDelNodePortInIPSet(port, AddService)
 
 	p.AddOrDelClusterIPInIPSet(clusterIP, []*localnetv1.PortMapping{port}, AddService)
 }
 
-func (p *proxier) handleUpdatedNodePortService(key, clusterIP string, port *localnetv1.PortMapping) {
+func (p *proxier) handleUpdatedNodePortService(key, clusterIP string, sessAff SessionAffinity, port *localnetv1.PortMapping) {
 	//Node Addresses need to be added as NodePortService
 	//so that in sync(), nodePort is attached to nodeIPs.
 	for _, nodeIP := range p.nodeAddresses {
-		p.storeLBSvc(port, nodeIP, key, NodePortService)
+		p.storeLBSvc(port, sessAff, nodeIP, key, NodePortService)
 	}
 
 	//NodePort service clusterIPs need to be added as ClusterIPService
 	//so that in sync(), port is attached to clusterIP.
-	p.storeLBSvc(port, clusterIP, key, ClusterIPService)
+	p.storeLBSvc(port, sessAff, clusterIP, key, ClusterIPService)
 
 	endPointList, isLocalEndPoint := p.updateIPVSDestWithPort(key, clusterIP, port)
 

@@ -27,14 +27,15 @@ func (s *Backend) updateClusterIPService(svc *localnetv1.Service, serviceIP stri
 	serviceKey := serviceKey(svc)
 	s.svcs[serviceKey] = svc
 	ipFamily := getIPFamily(serviceIP)
+	sessionAffinity := getSessionAffinity(svc.SessionAffinity)
 
 	// Handle Cluster-IP for the service
 	if IPKind == serviceevents.ClusterIP {
 		isServiceUpdated := s.isServiceUpdated(svc)
 		if !isServiceUpdated {
-			s.proxiers[ipFamily].handleNewClusterIPService(serviceKey, serviceIP, port)
+			s.proxiers[ipFamily].handleNewClusterIPService(serviceKey, serviceIP, sessionAffinity, port)
 		} else {
-			s.proxiers[ipFamily].handleUpdatedClusterIPService(serviceKey, serviceIP, port)
+			s.proxiers[ipFamily].handleUpdatedClusterIPService(serviceKey, serviceIP, sessionAffinity, port)
 		}
 	}
 
@@ -42,9 +43,9 @@ func (s *Backend) updateClusterIPService(svc *localnetv1.Service, serviceIP stri
 	if IPKind == serviceevents.ExternalIP {
 		isServiceUpdated := s.isServiceUpdated(svc)
 		if !isServiceUpdated {
-			s.proxiers[ipFamily].handleNewExternalIP(serviceKey, serviceIP, ClusterIPService, port)
+			s.proxiers[ipFamily].handleNewExternalIP(serviceKey, serviceIP, ClusterIPService, port, sessionAffinity)
 		} else {
-			s.proxiers[ipFamily].handleUpdatedExternalIP(serviceKey, serviceIP, ClusterIPService, port)
+			s.proxiers[ipFamily].handleUpdatedExternalIP(serviceKey, serviceIP, ClusterIPService, port, sessionAffinity)
 		}
 	}
 }
@@ -75,17 +76,17 @@ func (s *Backend) deleteClusterIPService(svc *localnetv1.Service, serviceIP stri
 	}
 }
 
-func (p *proxier) handleNewClusterIPService(key, clusterIP string, port *localnetv1.PortMapping) {
+func (p *proxier) handleNewClusterIPService(key, clusterIP string, sessAff SessionAffinity, port *localnetv1.PortMapping) {
 	//Cluster service IP is stored in LB tree
-	p.storeLBSvc(port, clusterIP, key, ClusterIPService)
+	p.storeLBSvc(port, sessAff, clusterIP, key, ClusterIPService)
 
 	//Cluster service IP needs to be programmed in ipset.
 	p.AddOrDelClusterIPInIPSet(clusterIP, []*localnetv1.PortMapping{port}, AddService)
 }
 
-func (p *proxier) handleUpdatedClusterIPService(key, clusterIP string, port *localnetv1.PortMapping) {
+func (p *proxier) handleUpdatedClusterIPService(key, clusterIP string, sessAff SessionAffinity, port *localnetv1.PortMapping) {
 	//Update the service with added ports into LB tree
-	p.storeLBSvc(port, clusterIP, key, ClusterIPService)
+	p.storeLBSvc(port, sessAff, clusterIP, key, ClusterIPService)
 
 	endPointList, isLocalEndPoint := p.updateIPVSDestWithPort(key, clusterIP, port)
 

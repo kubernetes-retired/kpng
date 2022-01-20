@@ -21,17 +21,17 @@ import (
 	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
-func (p *proxier) handleNewExternalIP(key, externalIP, svcType string, port *localnetv1.PortMapping) {
+func (p *proxier) handleNewExternalIP(key, externalIP, svcType string, port *localnetv1.PortMapping, sessAff SessionAffinity) {
 	// External IP is stored in LB tree
-	p.storeLBSvc(port, externalIP, key, svcType)
+	p.storeLBSvc(port, sessAff, externalIP, key, svcType)
 
 	// External IP needs to be programmed in ipset.
 	p.AddOrDelExternalIPInIPSet(externalIP, []*localnetv1.PortMapping{port}, AddService)
 }
 
-func (p *proxier) handleUpdatedExternalIP(key, externalIP, svcType string, port *localnetv1.PortMapping) {
+func (p *proxier) handleUpdatedExternalIP(key, externalIP, svcType string, port *localnetv1.PortMapping, sessAff SessionAffinity) {
 	//Update the externalIP with added ports into LB tree
-	p.storeLBSvc(port, externalIP, key, svcType)
+	p.storeLBSvc(port, sessAff, externalIP, key, svcType)
 
 	p.updateIPVSDestWithPort(key, externalIP, port)
 
