@@ -29,6 +29,13 @@ import (
 	"strings"
 )
 
+type remoteSubnetInfo struct {
+        destinationPrefix string
+        isolationID       uint16
+        providerAddress   string
+        drMacAddress      string
+}
+
 type hnsV2 struct{}
 
 var (
@@ -286,6 +293,7 @@ func (hns hnsV2) getLoadBalancer(endpoints []endpoints, flags loadBalancerFlags,
 		hnsID: lb.Id,
 	}, err
 }
+
 func (hns hnsV2) deleteLoadBalancer(hnsID string) error {
 	lb, err := hcn.GetLoadBalancerByID(hnsID)
 	if err != nil {
