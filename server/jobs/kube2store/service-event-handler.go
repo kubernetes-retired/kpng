@@ -30,6 +30,10 @@ type serviceEventHandler struct{ eventHandler }
 func (h *serviceEventHandler) onChange(obj interface{}) {
 	svc := obj.(*v1.Service)
 
+	internalTrafficPolicy := v1.ServiceInternalTrafficPolicyCluster
+	if svc.Spec.InternalTrafficPolicy != nil {
+		internalTrafficPolicy = *svc.Spec.InternalTrafficPolicy
+	}
 	// build the service
 	service := &localnetv1.Service{
 		Namespace:   svc.Namespace,
@@ -42,7 +46,7 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 			ExternalIPs: localnetv1.NewIPSet(svc.Spec.ExternalIPs...),
 		},
 		ExternalTrafficToLocal: svc.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal,
-		InternalTrafficToLocal: *svc.Spec.InternalTrafficPolicy == v1.ServiceInternalTrafficPolicyLocal,
+		InternalTrafficToLocal: internalTrafficPolicy == v1.ServiceInternalTrafficPolicyLocal,
 	}
 
 	// extract cluster IPs with backward compatibility (k8s before ClusterIPs)
