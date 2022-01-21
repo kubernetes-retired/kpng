@@ -463,7 +463,7 @@ func (t *iptables) writeExternalIPRules(svcInfo *serviceInfo, svcName types.Name
 				"-A", string(kubeExternalServicesChain),
 				"-m", "comment", "--comment", fmt.Sprintf(`"%s has no endpoints"`, svcInfo.serviceNameString),
 				"-m", protocol, "-p", protocol,
-				"-d", net.ParseIP(externalIP),
+				"-d", ToCIDR(net.ParseIP(externalIP)),
 				"--dport", strconv.Itoa(svcInfo.Port()),
 				"-j", "REJECT",
 			)
