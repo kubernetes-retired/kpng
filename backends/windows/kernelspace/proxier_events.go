@@ -18,52 +18,17 @@ import (
 // is observed.
 func (Proxier *Proxier) OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service) {}
 
-// OnEndpointsDelete is called whenever deletion of an existing endpoints
-// object is observed. Service object
-func (Proxier *Proxier) OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
-	//
-}
-
 // OnEndpointsUpdate is called whenever modification of an existing
 // endpoints object is observed.
-func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *localnetv1.Endpoint) {
-	//proxier.loadBalancer.OnEndpointsUpdate(oldEndpoints, endpoints)
-}
+func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *localnetv1.Endpoint) {}
+
+// OnEndpointsDelete is called whenever deletion of an existing endpoints
+// object is observed. Service object
+func (Proxier *Proxier) OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service) {}
 
 // OnEndpointsSynced is called once all the initial event handlers were
 // called and the state is fully propagated to local cache.
 func (Proxier *Proxier) OnEndpointsSynced() {}
-
-// OnServiceAdd is called whenever creation of new service object
-// is observed.
-func (proxier *Proxier) OnServiceAdd(service *localnetv1.Service) {
-	//Proxier.OnServiceUpdate(nil, service)
-}
-
-// OnServiceUpdate is called whenever modification of an existing
-// service object is observed.
-func (proxier *Proxier) OnServiceUpdate(oldService, service *localnetv1.Service) {
-	//        existingPortPortals := proxier.mergeService(service)
-	//        proxier.unmergeService(oldService, existingPortPortals)
-}
-
-// OnServiceDelete is called whenever deletion of an existing service
-// object is observed.
-func (proxier *Proxier) OnServiceDelete(service *localnetv1.Service) {
-	//Proxier.OnServiceUpdate(service, nil)
-}
-
-// OnServiceSynced is called once all the initial event handlers were
-// called and the state is fully propagated to local cache.
-func (Proxier *Proxier) OnServiceSynced() {
-	Proxier.mu.Lock()
-	Proxier.servicesSynced = true
-	Proxier.setInitialized(Proxier.endpointSlicesSynced)
-	Proxier.mu.Unlock()
-
-	// Sync unconditionally - this is called once per lifetime.
-	Proxier.syncProxyRules()
-}
 
 // OnEndpointSliceAdd is called whenever creation of a new endpoint slice object
 // is observed.
@@ -84,9 +49,9 @@ func (Proxier *Proxier) OnEndpointSliceUpdate(_, endpointSlice *discovery.Endpoi
 // OnEndpointSliceDelete is called whenever deletion of an existing endpoint slice
 // object is observed.
 func (Proxier *Proxier) OnEndpointSliceDelete(endpointSlice *discovery.EndpointSlice) {
-	//if Proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, true) && Proxier.isInitialized() {
-	Proxier.Sync()
-	//}
+	if Proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, true) && Proxier.isInitialized() {
+		proxier.Sync()
+	}
 }
 
 // OnEndpointSlicesSynced is called once all the initial event handlers were
@@ -95,6 +60,36 @@ func (Proxier *Proxier) OnEndpointSlicesSynced() {
 	Proxier.mu.Lock()
 	Proxier.endpointSlicesSynced = true
 	Proxier.setInitialized(Proxier.servicesSynced)
+	Proxier.mu.Unlock()
+
+	// Sync unconditionally - this is called once per lifetime.
+	Proxier.syncProxyRules()
+}
+
+// OnServiceAdd is called whenever creation of new service object
+// is observed.
+func (proxier *Proxier) OnServiceAdd(service *localnetv1.Service) {
+	proxier.OnServiceUpdate(nil, service)
+}
+
+// OnServiceUpdate is called whenever modification of an existing
+// service object is observed.
+func (proxier *Proxier) OnServiceUpdate(oldService, service *localnetv1.Service) {
+	proxier.Sync()
+}
+
+// OnServiceDelete is called whenever deletion of an existing service
+// object is observed.
+func (proxier *Proxier) OnServiceDelete(service *localnetv1.Service) {
+	proxier.OnServiceUpdate(service, nil)
+}
+
+// OnServiceSynced is called once all the initial event handlers were
+// called and the state is fully propagated to local cache.
+func (Proxier *Proxier) OnServiceSynced() {
+	Proxier.mu.Lock()
+	Proxier.servicesSynced = true
+	Proxier.setInitialized(Proxier.endpointSlicesSynced)
 	Proxier.mu.Unlock()
 
 	// Sync unconditionally - this is called once per lifetime.
