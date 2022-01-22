@@ -4,21 +4,54 @@ import (
 	"net"
 	"sync"
 
-	"k8s.io/kubernetes/pkg/proxy"
-	"k8s.io/kubernetes/pkg/util/async"
-	"k8s.io/kubernetes/pkg/proxy/healthcheck"
 	"k8s.io/client-go/tools/events"
-	proxyconfig "k8s.io/kubernetes/pkg/proxy/config"
+	"k8s.io/kubernetes/pkg/proxy"
+	"k8s.io/kubernetes/pkg/proxy/healthcheck"
+	"k8s.io/kubernetes/pkg/util/async"
+	//proxyconfig "k8s.io/kubernetes/pkg/proxy/config"
 
 	"github.com/Microsoft/hcsshim/hcn"
+	"sigs.k8s.io/kpng/api/localnetv1"
 )
+
+// Provider is a proxy interface enforcing services and endpoints methods
+// implementations
+type Provider interface {
+	// OnEndpointsAdd is called whenever creation of new endpoints object
+	// is observed.
+	OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service)
+	// OnEndpointsDelete is called whenever deletion of an existing endpoints
+	// object is observed.
+	OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service)
+	// OnEndpointsSynced is called once all the initial event handlers were
+	// called and the state is fully propagated to local cache.
+	OnEndpointsSynced()
+	// OnServiceAdd is called whenever creation of new service object
+	// is observed.
+	OnServiceAdd(service *localnetv1.Service)
+	// OnServiceUpdate is called whenever modification of an existing
+	// service object is observed.
+	OnServiceUpdate(oldService, service *localnetv1.Service)
+	// OnServiceDelete is called whenever deletion of an existing service
+	// object is observed.
+	OnServiceDelete(service *localnetv1.Service)
+	// OnServiceSynced is called once all the initial event handlers were
+	// called and the state is fully propagated to local cache.
+	OnServiceSynced()
+
+	// Sync immediately synchronizes the Provider's current state to proxy rules.
+	Sync()
+	// SyncLoop runs periodic work.
+	// This is expected to run as a goroutine or as the main loop of the app.
+	// It does not return.
+	SyncLoop()
+}
 
 // Proxier is an hns based proxy for connections between a localhost:lport
 // and services that provide the actual backends.
 type Proxier struct {
 	// TODO(imroc): implement node handler for winkernel proxier.
-	proxyconfig.NoopNodeHandler
-
+	//proxyconfig.NoopNodeHandler
 	// endpointsChanges and serviceChanges contains all changes to endpoints and
 	// services that happened since policies were synced. For a single object,
 	// changes are accumulated, i.e. previous is state from before all of them,
@@ -64,10 +97,10 @@ type Proxier struct {
 type endPointsReferenceCountMap map[string]*uint16
 
 func (refCountMap endPointsReferenceCountMap) getRefCount(hnsID string) *uint16 {
-        refCount, exists := refCountMap[hnsID]
-        if !exists {
-                refCountMap[hnsID] = new(uint16)
-                refCount = refCountMap[hnsID]
-        }
-        return refCount
+	refCount, exists := refCountMap[hnsID]
+	if !exists {
+		refCountMap[hnsID] = new(uint16)
+		refCount = refCountMap[hnsID]
+	}
+	return refCount
 }

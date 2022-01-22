@@ -21,75 +21,96 @@ package winkernel
 
 import (
 	"strings"
-	"time"
-	"net"
-	"fmt"
+	//"time"
+	//"net"
+	//"fmt"
 	"k8s.io/klog/v2"
 
 	"github.com/Microsoft/hcsshim/hcn"
-	"k8s.io/client-go/tools/events"
-	"k8s.io/kubernetes/pkg/proxy/metaproxier"
-	"k8s.io/kubernetes/pkg/proxy/healthcheck"
-	"k8s.io/kubernetes/pkg/proxy"
-	"k8s.io/kubernetes/pkg/proxy/apis/config"
+	// "k8s.io/client-go/tools/events"
+	//"k8s.io/kubernetes/pkg/proxy/metaproxier"
+	// "k8s.io/kubernetes/pkg/proxy/healthcheck"
+	//"k8s.io/kubernetes/pkg/proxy"
+	//"k8s.io/kubernetes/pkg/proxy/apis/config"
 
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-        kubefeatures "k8s.io/kubernetes/pkg/features"
-
+	kubefeatures "k8s.io/kubernetes/pkg/features"
 )
 
 func isOverlay(hnsNetworkInfo *hnsNetworkInfo) bool {
-        return strings.EqualFold(hnsNetworkInfo.networkType, NETWORK_TYPE_OVERLAY)
+	return strings.EqualFold(hnsNetworkInfo.networkType, NETWORK_TYPE_OVERLAY)
 }
 
 // StackCompatTester tests whether the required kernel and network are dualstack capable
 type StackCompatTester interface {
-        DualStackCompatible(networkName string) bool
+	DualStackCompatible(networkName string) bool
 }
 
 type DualStackCompatTester struct{}
 
 func getDualStackMode(networkname string, compatTester StackCompatTester) bool {
-        return compatTester.DualStackCompatible(networkname)
+	return compatTester.DualStackCompatible(networkname)
 }
 
+func getProxyMode(string, kcompat KernelCompatTester) string {
+	return tryWinKernelSpaceProxy(kcompat)
+}
+
+func tryWinKernelSpaceProxy(kcompat KernelCompatTester) string {
+	// Check for Windows Kernel Version if we can support Kernel Space proxy
+	// Check for Windows Version
+
+	// guaranteed false on error, error only necessary for debugging
+	useWinKernelProxy, err := CanUseWinKernelProxier(kcompat)
+	if err != nil {
+		klog.ErrorS(err, "Can't determine whether to use windows kernel proxy, using userspace proxier")
+		return "userspace"
+	}
+	if useWinKernelProxy {
+		return "kernelspace"
+	}
+	// Fallback.
+	klog.V(1).InfoS("Can't use winkernel proxy, using userspace proxier")
+	return "userspace" // TODO must return error
+}
 
 func (t DualStackCompatTester) DualStackCompatible(networkName string) bool {
-        // First tag of hcsshim that has a proper check for dual stack support is v0.8.22 due to a bug.
-        if err := hcn.IPv6DualStackSupported(); err != nil {
-                // Hcn *can* fail the query to grab the version of hcn itself (which this call will do internally before parsing
-                // to see if dual stack is supported), but the only time this can happen, at least that can be discerned, is if the host
-                // is pre-1803 and hcn didn't exist. hcsshim should truthfully return a known error if this happened that we can
-                // check against, and the case where 'err != this known error' would be the 'this feature isn't supported' case, as is being
-                // used here. For now, seeming as how nothing before ws2019 (1809) is listed as supported for k8s we can pretty much assume
-                // any error here isn't because the query failed, it's just that dualstack simply isn't supported on the host. With all
-                // that in mind, just log as info and not error to let the user know we're falling back.
-                klog.InfoS("This version of Windows does not support dual-stack, falling back to single-stack", "err", err.Error())
-                return false
-        }
+	// First tag of hcsshim that has a proper check for dual stack support is v0.8.22 due to a bug.
+	if err := hcn.IPv6DualStackSupported(); err != nil {
+		// Hcn *can* fail the query to grab the version of hcn itself (which this call will do internally before parsing
+		// to see if dual stack is supported), but the only time this can happen, at least that can be discerned, is if the host
+		// is pre-1803 and hcn didn't exist. hcsshim should truthfully return a known error if this happened that we can
+		// check against, and the case where 'err != this known error' would be the 'this feature isn't supported' case, as is being
+		// used here. For now, seeming as how nothing before ws2019 (1809) is listed as supported for k8s we can pretty much assume
+		// any error here isn't because the query failed, it's just that dualstack simply isn't supported on the host. With all
+		// that in mind, just log as info and not error to let the user know we're falling back.
+		klog.InfoS("This version of Windows does not support dual-stack, falling back to single-stack", "err", err.Error())
+		return false
+	}
 
-        // check if network is using overlay
-        hns, _ := newHostNetworkService()
-        networkName, err := getNetworkName(networkName)
-        if err != nil {
-                klog.ErrorS(err, "Unable to determine dual-stack status, falling back to single-stack")
-                return false
-        }
-        networkInfo, err := getNetworkInfo(hns, networkName)
-        if err != nil {
-                klog.ErrorS(err, "Unable to determine dual-stack status, falling back to single-stack")
-                return false
-        }
+	// check if network is using overlay
+	hns, _ := newHostNetworkService()
+	networkName, err := getNetworkName(networkName)
+	if err != nil {
+		klog.ErrorS(err, "Unable to determine dual-stack status, falling back to single-stack")
+		return false
+	}
+	networkInfo, err := getNetworkInfo(hns, networkName)
+	if err != nil {
+		klog.ErrorS(err, "Unable to determine dual-stack status, falling back to single-stack")
+		return false
+	}
 
-        if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinOverlay) && isOverlay(networkInfo) {
-                // Overlay (VXLAN) networks on Windows do not support dual-stack networking today
-                klog.InfoS("Winoverlay does not support dual-stack, falling back to single-stack")
-                return false
-        }
+	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinOverlay) && isOverlay(networkInfo) {
+		// Overlay (VXLAN) networks on Windows do not support dual-stack networking today
+		klog.InfoS("Winoverlay does not support dual-stack, falling back to single-stack")
+		return false
+	}
 
-        return true
+	return true
 }
 
+/*
 func NewDualStackProxier(
         syncPeriod time.Duration,
         minSyncPeriod time.Duration,
@@ -121,3 +142,4 @@ func NewDualStackProxier(
         // single-stack proxier instances
         return metaproxier.NewMetaProxier(ipv4Proxier, ipv6Proxier), nil
 }
+*/

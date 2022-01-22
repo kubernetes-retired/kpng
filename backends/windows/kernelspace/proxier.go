@@ -33,13 +33,10 @@ import (
 	kubefeatures "k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/proxy"
 	"k8s.io/kubernetes/pkg/proxy/apis/config"
-        "k8s.io/kubernetes/pkg/proxy/healthcheck"
-        "k8s.io/kubernetes/pkg/util/async"
+	"k8s.io/kubernetes/pkg/proxy/healthcheck"
+	"k8s.io/kubernetes/pkg/util/async"
 	netutils "k8s.io/utils/net"
 )
-
-// Proxier implements proxy.Provider
-var _ proxy.Provider = &Proxier{}
 
 // NewProxier returns a new Proxier
 func NewProxier(
@@ -67,8 +64,8 @@ func NewProxier(
 	}
 
 	serviceHealthServer := healthcheck.NewServiceHealthServer(
-					hostname,
-					recorder) /* windows listen to all node addresses */
+		hostname,
+		recorder) /* windows listen to all node addresses */
 
 	hns, supportedFeatures := newHostNetworkService()
 	hnsNetworkName, err := getNetworkName(config.NetworkName)
@@ -146,7 +143,7 @@ func NewProxier(
 	}
 
 	isIPv6 := netutils.IsIPv6(nodeIP)
-	proxier := &Proxier{
+	Proxier := &Proxier{
 		endPointsRefCount:   make(endPointsReferenceCountMap),
 		serviceMap:          make(proxy.ServiceMap),
 		endpointsMap:        make(proxy.EndpointsMap),
@@ -171,13 +168,13 @@ func NewProxier(
 	if isIPv6 {
 		ipFamily = v1.IPv6Protocol
 	}
-	serviceChanges := proxy.NewServiceChangeTracker(proxier.newServiceInfo, ipFamily, recorder, proxier.serviceMapChange)
-	endPointChangeTracker := proxy.NewEndpointChangeTracker(hostname, proxier.newEndpointInfo, ipFamily, recorder, proxier.endpointsMapChange)
-	proxier.endpointsChanges = endPointChangeTracker
-	proxier.serviceChanges = serviceChanges
+	serviceChanges := proxy.NewServiceChangeTracker(Proxier.newServiceInfo, ipFamily, recorder, Proxier.serviceMapChange)
+	endPointChangeTracker := proxy.NewEndpointChangeTracker(hostname, Proxier.newEndpointInfo, ipFamily, recorder, Proxier.endpointsMapChange)
+	Proxier.endpointsChanges = endPointChangeTracker
+	Proxier.serviceChanges = serviceChanges
 
 	burstSyncs := 2
 	klog.V(3).InfoS("Record sync param", "minSyncPeriod", minSyncPeriod, "syncPeriod", syncPeriod, "burstSyncs", burstSyncs)
-	proxier.syncRunner = async.NewBoundedFrequencyRunner("sync-runner", proxier.syncProxyRules, minSyncPeriod, syncPeriod, burstSyncs)
-	return proxier, nil
+	Proxier.syncRunner = async.NewBoundedFrequencyRunner("sync-runner", Proxier.syncProxyRules, minSyncPeriod, syncPeriod, burstSyncs)
+	return Proxier, nil
 }

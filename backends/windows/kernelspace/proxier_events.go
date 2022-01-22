@@ -7,235 +7,237 @@ import (
 	discovery "k8s.io/api/discovery/v1"
 	netutils "k8s.io/utils/net"
 
+	"github.com/Microsoft/hcsshim/hcn"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
-        "k8s.io/kubernetes/pkg/proxy"
-	"github.com/Microsoft/hcsshim/hcn"
+	"k8s.io/kubernetes/pkg/proxy"
+	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
 // OnEndpointsAdd is called whenever creation of new endpoints object
 // is observed.
-func (proxier *Proxier) OnEndpointsAdd(endpoints *v1.Endpoints) {}
+func (Proxier *Proxier) OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service) {}
 
 // OnEndpointsDelete is called whenever deletion of an existing endpoints
-// object is observed.
-func (proxier *Proxier) OnEndpointsDelete(endpoints *v1.Endpoints) {}
-
-// OnServiceAdd is called whenever creation of new service object
-// is observed.
-func (proxier *Proxier) OnServiceAdd(service *v1.Service) {
-        proxier.OnServiceUpdate(nil, service)
+// object is observed. Service object
+func (Proxier *Proxier) OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
+	//
 }
 
 // OnEndpointsUpdate is called whenever modification of an existing
 // endpoints object is observed.
-func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {}
-
+func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *localnetv1.Endpoint) {
+	//proxier.loadBalancer.OnEndpointsUpdate(oldEndpoints, endpoints)
+}
 
 // OnEndpointsSynced is called once all the initial event handlers were
 // called and the state is fully propagated to local cache.
-func (proxier *Proxier) OnEndpointsSynced() {}
+func (Proxier *Proxier) OnEndpointsSynced() {}
+
+// OnServiceAdd is called whenever creation of new service object
+// is observed.
+func (proxier *Proxier) OnServiceAdd(service *localnetv1.Service) {
+	//Proxier.OnServiceUpdate(nil, service)
+}
 
 // OnServiceUpdate is called whenever modification of an existing
 // service object is observed.
-func (proxier *Proxier) OnServiceUpdate(oldService, service *v1.Service) {
-        if proxier.serviceChanges.Update(oldService, service) && proxier.isInitialized() {
-                proxier.Sync()
-        }
+func (proxier *Proxier) OnServiceUpdate(oldService, service *localnetv1.Service) {
+	//        existingPortPortals := proxier.mergeService(service)
+	//        proxier.unmergeService(oldService, existingPortPortals)
 }
 
 // OnServiceDelete is called whenever deletion of an existing service
 // object is observed.
-func (proxier *Proxier) OnServiceDelete(service *v1.Service) {
-        proxier.OnServiceUpdate(service, nil)
+func (proxier *Proxier) OnServiceDelete(service *localnetv1.Service) {
+	//Proxier.OnServiceUpdate(service, nil)
 }
 
 // OnServiceSynced is called once all the initial event handlers were
 // called and the state is fully propagated to local cache.
-func (proxier *Proxier) OnServiceSynced() {
-        proxier.mu.Lock()
-        proxier.servicesSynced = true
-        proxier.setInitialized(proxier.endpointSlicesSynced)
-        proxier.mu.Unlock()
+func (Proxier *Proxier) OnServiceSynced() {
+	Proxier.mu.Lock()
+	Proxier.servicesSynced = true
+	Proxier.setInitialized(Proxier.endpointSlicesSynced)
+	Proxier.mu.Unlock()
 
-        // Sync unconditionally - this is called once per lifetime.
-        proxier.syncProxyRules()
+	// Sync unconditionally - this is called once per lifetime.
+	Proxier.syncProxyRules()
 }
 
 // OnEndpointSliceAdd is called whenever creation of a new endpoint slice object
 // is observed.
-func (proxier *Proxier) OnEndpointSliceAdd(endpointSlice *discovery.EndpointSlice) {
-        if proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, false) && proxier.isInitialized() {
-                proxier.Sync()
-        }
+func (Proxier *Proxier) OnEndpointSliceAdd(endpointSlice *discovery.EndpointSlice) {
+	if Proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, false) && Proxier.isInitialized() {
+		Proxier.Sync()
+	}
 }
 
 // OnEndpointSliceUpdate is called whenever modification of an existing endpoint
 // slice object is observed.
-func (proxier *Proxier) OnEndpointSliceUpdate(_, endpointSlice *discovery.EndpointSlice) {
-        if proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, false) && proxier.isInitialized() {
-                proxier.Sync()
-        }
+func (Proxier *Proxier) OnEndpointSliceUpdate(_, endpointSlice *discovery.EndpointSlice) {
+	if Proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, false) && Proxier.isInitialized() {
+		Proxier.Sync()
+	}
 }
 
 // OnEndpointSliceDelete is called whenever deletion of an existing endpoint slice
 // object is observed.
-func (proxier *Proxier) OnEndpointSliceDelete(endpointSlice *discovery.EndpointSlice) {
-        if proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, true) && proxier.isInitialized() {
-                proxier.Sync()
-        }
+func (Proxier *Proxier) OnEndpointSliceDelete(endpointSlice *discovery.EndpointSlice) {
+	//if Proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, true) && Proxier.isInitialized() {
+	Proxier.Sync()
+	//}
 }
 
 // OnEndpointSlicesSynced is called once all the initial event handlers were
 // called and the state is fully propagated to local cache.
-func (proxier *Proxier) OnEndpointSlicesSynced() {
-        proxier.mu.Lock()
-        proxier.endpointSlicesSynced = true
-        proxier.setInitialized(proxier.servicesSynced)
-        proxier.mu.Unlock()
+func (Proxier *Proxier) OnEndpointSlicesSynced() {
+	Proxier.mu.Lock()
+	Proxier.endpointSlicesSynced = true
+	Proxier.setInitialized(Proxier.servicesSynced)
+	Proxier.mu.Unlock()
 
-        // Sync unconditionally - this is called once per lifetime.
-        proxier.syncProxyRules()
+	// Sync unconditionally - this is called once per lifetime.
+	Proxier.syncProxyRules()
 }
 
-func (proxier *Proxier) endpointsMapChange(oldEndpointsMap, newEndpointsMap proxy.EndpointsMap) {
-        for svcPortName := range oldEndpointsMap {
-                proxier.onEndpointsMapChange(&svcPortName)
-        }
+func (Proxier *Proxier) endpointsMapChange(oldEndpointsMap, newEndpointsMap proxy.EndpointsMap) {
+	for svcPortName := range oldEndpointsMap {
+		Proxier.onEndpointsMapChange(&svcPortName)
+	}
 
-        for svcPortName := range newEndpointsMap {
-                proxier.onEndpointsMapChange(&svcPortName)
-        }
+	for svcPortName := range newEndpointsMap {
+		Proxier.onEndpointsMapChange(&svcPortName)
+	}
 }
 
-func (proxier *Proxier) onEndpointsMapChange(svcPortName *proxy.ServicePortName) {
+func (Proxier *Proxier) onEndpointsMapChange(svcPortName *proxy.ServicePortName) {
 
-        svc, exists := proxier.serviceMap[*svcPortName]
+	svc, exists := Proxier.serviceMap[*svcPortName]
 
-        if exists {
-                svcInfo, ok := svc.(*serviceInfo)
+	if exists {
+		svcInfo, ok := svc.(*serviceInfo)
 
-                if !ok {
-                        klog.ErrorS(nil, "Failed to cast serviceInfo", "servicePortName", svcPortName)
-                        return
-                }
+		if !ok {
+			klog.ErrorS(nil, "Failed to cast serviceInfo", "servicePortName", svcPortName)
+			return
+		}
 
-                klog.V(3).InfoS("Endpoints are modified. Service is stale", "servicePortName", svcPortName)
-                svcInfo.cleanupAllPolicies(proxier.endpointsMap[*svcPortName])
-        } else {
-                // If no service exists, just cleanup the remote endpoints
-                klog.V(3).InfoS("Endpoints are orphaned, cleaning up")
-                // Cleanup Endpoints references
-                epInfos, exists := proxier.endpointsMap[*svcPortName]
+		klog.V(3).InfoS("Endpoints are modified. Service is stale", "servicePortName", svcPortName)
+		svcInfo.cleanupAllPolicies(Proxier.endpointsMap[*svcPortName])
+	} else {
+		// If no service exists, just cleanup the remote endpoints
+		klog.V(3).InfoS("Endpoints are orphaned, cleaning up")
+		// Cleanup Endpoints references
+		epInfos, exists := Proxier.endpointsMap[*svcPortName]
 
-                if exists {
-                        // Cleanup Endpoints references
-                        for _, ep := range epInfos {
-                                epInfo, ok := ep.(*endpoints)
+		if exists {
+			// Cleanup Endpoints references
+			for _, ep := range epInfos {
+				epInfo, ok := ep.(*endpoints)
 
-                                if ok {
-                                        epInfo.Cleanup()
-                                }
+				if ok {
+					epInfo.Cleanup()
+				}
 
-                        }
-                }
-        }
+			}
+		}
+	}
 }
 
-func (proxier *Proxier) serviceMapChange(previous, current proxy.ServiceMap) {
-        for svcPortName := range current {
-                proxier.onServiceMapChange(&svcPortName)
-        }
+func (Proxier *Proxier) serviceMapChange(previous, current proxy.ServiceMap) {
+	for svcPortName := range current {
+		Proxier.onServiceMapChange(&svcPortName)
+	}
 
-        for svcPortName := range previous {
-                if _, ok := current[svcPortName]; ok {
-                        continue
-                }
-                proxier.onServiceMapChange(&svcPortName)
-        }
+	for svcPortName := range previous {
+		if _, ok := current[svcPortName]; ok {
+			continue
+		}
+		Proxier.onServiceMapChange(&svcPortName)
+	}
 }
 
-func (proxier *Proxier) onServiceMapChange(svcPortName *proxy.ServicePortName) {
+func (Proxier *Proxier) onServiceMapChange(svcPortName *proxy.ServicePortName) {
 
-        svc, exists := proxier.serviceMap[*svcPortName]
+	svc, exists := Proxier.serviceMap[*svcPortName]
 
-        if exists {
-                svcInfo, ok := svc.(*serviceInfo)
+	if exists {
+		svcInfo, ok := svc.(*serviceInfo)
 
-                if !ok {
-                        klog.ErrorS(nil, "Failed to cast serviceInfo", "servicePortName", svcPortName)
-                        return
-                }
+		if !ok {
+			klog.ErrorS(nil, "Failed to cast serviceInfo", "servicePortName", svcPortName)
+			return
+		}
 
-                klog.V(3).InfoS("Updating existing service port", "servicePortName", svcPortName, "clusterIP", svcInfo.ClusterIP(), "port", svcInfo.Port(), "protocol", svcInfo.Protocol())
-                svcInfo.cleanupAllPolicies(proxier.endpointsMap[*svcPortName])
-        }
+		klog.V(3).InfoS("Updating existing service port", "servicePortName", svcPortName, "clusterIP", svcInfo.ClusterIP(), "port", svcInfo.Port(), "protocol", svcInfo.Protocol())
+		svcInfo.cleanupAllPolicies(Proxier.endpointsMap[*svcPortName])
+	}
 }
 
 // returns a new proxy.Endpoint which abstracts a endpointsInfo
-func (proxier *Proxier) newEndpointInfo(baseInfo *proxy.BaseEndpointInfo) proxy.Endpoint {
-        portNumber, err := baseInfo.Port()
+func (Proxier *Proxier) newEndpointInfo(baseInfo *proxy.BaseEndpointInfo) proxy.Endpoint {
+	portNumber, err := baseInfo.Port()
 
-        if err != nil {
-                portNumber = 0
-        }
+	if err != nil {
+		portNumber = 0
+	}
 
-        info := &endpoints{
-                ip:         baseInfo.IP(),
-                port:       uint16(portNumber),
-                isLocal:    baseInfo.GetIsLocal(),
-                macAddress: conjureMac("02-11", netutils.ParseIPSloppy(baseInfo.IP())),
-                refCount:   new(uint16),
-                hnsID:      "",
-                hns:        proxier.hns,
+	info := &endpoints{
+		ip:         baseInfo.IP(),
+		port:       uint16(portNumber),
+		isLocal:    baseInfo.GetIsLocal(),
+		macAddress: conjureMac("02-11", netutils.ParseIPSloppy(baseInfo.IP())),
+		refCount:   new(uint16),
+		hnsID:      "",
+		hns:        Proxier.hns,
 
-                ready:       baseInfo.Ready,
-                serving:     baseInfo.Serving,
-                terminating: baseInfo.Terminating,
-        }
+		ready:       baseInfo.Ready,
+		serving:     baseInfo.Serving,
+		terminating: baseInfo.Terminating,
+	}
 
-        return info
+	return info
 }
 
 // returns a new proxy.ServicePort which abstracts a serviceInfo
-func (proxier *Proxier) newServiceInfo(port *v1.ServicePort, service *v1.Service, baseInfo *proxy.BaseServiceInfo) proxy.ServicePort {
-        info := &serviceInfo{BaseServiceInfo: baseInfo}
-        preserveDIP := service.Annotations["preserve-destination"] == "true"
-        localTrafficDSR := service.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal
-        err := hcn.DSRSupported()
-        if err != nil {
-                preserveDIP = false
-                localTrafficDSR = false
-        }
-        // targetPort is zero if it is specified as a name in port.TargetPort.
-        // Its real value would be got later from endpoints.
-        targetPort := 0
-        if port.TargetPort.Type == intstr.Int {
-                targetPort = port.TargetPort.IntValue()
-        }
+func (Proxier *Proxier) newServiceInfo(port *v1.ServicePort, service *v1.Service, baseInfo *proxy.BaseServiceInfo) proxy.ServicePort {
+	info := &serviceInfo{BaseServiceInfo: baseInfo}
+	preserveDIP := service.Annotations["preserve-destination"] == "true"
+	localTrafficDSR := service.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal
+	err := hcn.DSRSupported()
+	if err != nil {
+		preserveDIP = false
+		localTrafficDSR = false
+	}
+	// targetPort is zero if it is specified as a name in port.TargetPort.
+	// Its real value would be got later from endpoints.
+	targetPort := 0
+	if port.TargetPort.Type == intstr.Int {
+		targetPort = port.TargetPort.IntValue()
+	}
 
-        info.preserveDIP = preserveDIP
-        info.targetPort = targetPort
-        info.hns = proxier.hns
-        info.localTrafficDSR = localTrafficDSR
+	info.preserveDIP = preserveDIP
+	info.targetPort = targetPort
+	info.hns = Proxier.hns
+	info.localTrafficDSR = localTrafficDSR
 
-        for _, eip := range service.Spec.ExternalIPs {
-                info.externalIPs = append(info.externalIPs, &externalIPInfo{ip: eip})
-        }
+	for _, eip := range service.Spec.ExternalIPs {
+		info.externalIPs = append(info.externalIPs, &externalIPInfo{ip: eip})
+	}
 
-        for _, ingress := range service.Status.LoadBalancer.Ingress {
-                if netutils.ParseIPSloppy(ingress.IP) != nil {
-                        info.loadBalancerIngressIPs = append(info.loadBalancerIngressIPs, &loadBalancerIngressInfo{ip: ingress.IP})
-                }
-        }
-        return info
+	for _, ingress := range service.Status.LoadBalancer.Ingress {
+		if netutils.ParseIPSloppy(ingress.IP) != nil {
+			info.loadBalancerIngressIPs = append(info.loadBalancerIngressIPs, &loadBalancerIngressInfo{ip: ingress.IP})
+		}
+	}
+	return info
 }
 
-
-func (proxier *Proxier) setInitialized(value bool) {
-        var initialized int32
-        if value {
-                initialized = 1
-        }
-        atomic.StoreInt32(&proxier.initialized, initialized)
+func (Proxier *Proxier) setInitialized(value bool) {
+	var initialized int32
+	if value {
+		initialized = 1
+	}
+	atomic.StoreInt32(&Proxier.initialized, initialized)
 }
