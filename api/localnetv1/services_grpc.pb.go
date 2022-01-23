@@ -131,7 +131,7 @@ var Endpoints_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: "api/localnetv1/services.proto",
+	Metadata: "services.proto",
 }
 
 // GlobalClient is the client API for Global service.
@@ -249,5 +249,5 @@ var Global_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: "api/localnetv1/services.proto",
+	Metadata: "services.proto",
 }

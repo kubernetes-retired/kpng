@@ -43,9 +43,10 @@ func (h *endpointsEventHandler) OnAdd(obj interface{}) {
 			for _, set := range []struct {
 				ready     bool
 				addresses []v1.EndpointAddress
+				ports     []v1.EndpointPort
 			}{
-				{true, subset.Addresses},
-				{false, subset.NotReadyAddresses},
+				{true, subset.Addresses, subset.Ports},
+				{false, subset.NotReadyAddresses, subset.Ports},
 			} {
 				for _, addr := range set.addresses {
 					info := &localnetv1.EndpointInfo{
@@ -54,6 +55,7 @@ func (h *endpointsEventHandler) OnAdd(obj interface{}) {
 						SourceName:  sourceName,
 						Endpoint: &localnetv1.Endpoint{
 							Hostname: addr.Hostname,
+							//		Ports:    set.ports,
 						},
 						Conditions: &localnetv1.EndpointConditions{
 							Ready: set.ready,
@@ -75,6 +77,10 @@ func (h *endpointsEventHandler) OnAdd(obj interface{}) {
 					}
 
 					infos = append(infos, info)
+				}
+				for i, port := range set.ports {
+					infos[i].Endpoint.Ports[i].Name = port.Name
+					infos[i].Endpoint.Ports[i].Port = port.Port
 				}
 			}
 		}
