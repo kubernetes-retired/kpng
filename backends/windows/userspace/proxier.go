@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/kubernetes/pkg/proxy"
 	"net"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/kubernetes/pkg/proxy"
 
 	"k8s.io/apimachinery/pkg/types"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
@@ -224,7 +225,7 @@ func (proxier *Proxier) addServicePortPortal(servicePortPortalName ServicePortPo
 		if existed, err := proxier.netsh.EnsureIPAddress(args, serviceIP); err != nil {
 			return nil, err
 		} else if !existed {
-			klog.V(3).InfoS("Added ip address to fowarder interface for service", "servicePortPortalName", servicePortPortalName.String(), "addr", net.JoinHostPort(listenIP, strconv.Itoa(port)), "protocol", protocol)
+			klog.V(3).InfoS("Added ip address to fowarder interface for service", "servicePortPortalName", servicePortPortalName.String(), "addr", net.JoinHostPort(listenIP, strconv.Itoa(port)), "protocol", protocol.String())
 		}
 	}
 
@@ -316,7 +317,7 @@ func (proxier *Proxier) mergeService(service *localnetv1.Service) map[ServicePor
 
 		listenIPPortMap := getListenIPPortMap(service, int((*servicePort).GetPort()), int((*servicePort).GetNodePort()))
 		protocol := (*servicePort).Protocol
-		//
+
 		for listenIP, listenPort := range listenIPPortMap {
 			servicePortPortalName := ServicePortPortalName{
 				NamespacedName: svcName,

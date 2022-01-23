@@ -33,8 +33,8 @@ type userspaceBackend struct {
 func (b *userspaceBackend) BindFlags() {
 	flag.StringVar(&bindAddress, "bind-address", "0.0.0.0", "bind address")
 	flag.StringVar(&portRange, "port-range", "36000-37000", "port range")
-	flag.DurationVar(&syncPeriodDuration, "sync-period-duration", 15 * time.Second, "sync period duration")
-	flag.DurationVar(&udpIdleTimeout, "udp-idle-timeout", 10 * time.Second, "UDP idle timeout")
+	flag.DurationVar(&syncPeriodDuration, "sync-period-duration", 15*time.Second, "sync period duration")
+	flag.DurationVar(&udpIdleTimeout, "udp-idle-timeout", 10*time.Second, "UDP idle timeout")
 }
 
 func (b *userspaceBackend) Setup() {
@@ -85,7 +85,7 @@ func (b *userspaceBackend) SetService(svc *localnetv1.Service) {
 
 // DeleteService is called when a service is deleted
 func (b *userspaceBackend) DeleteService(namespace, name string) {
-	key := namespace+"/"+name
+	key := namespace + "/" + name
 	proxier.OnServiceDelete(b.services[key].internalSvc)
 	delete(b.services, key)
 }
@@ -99,7 +99,7 @@ func (b *userspaceBackend) SetEndpoint(namespace, serviceName, epKey string, end
 
 // DeleteEndpoint is called when an endpoint is deleted
 func (b *userspaceBackend) DeleteEndpoint(namespace, serviceName, epKey string) {
-	key := namespace+"/"+serviceName
+	key := namespace + "/" + serviceName
 	svc := b.services[key]
 	if ep := svc.GetEndpoint(epKey); ep.key == epKey {
 		proxier.OnEndpointsDelete(ep.internalEp, svc.internalSvc)

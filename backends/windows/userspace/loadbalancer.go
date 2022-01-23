@@ -36,7 +36,6 @@ type EndpointsHandler interface {
 	OnEndpointsSynced()
 }
 
-
 // LoadBalancer is an interface for distributing incoming requests to service endpoints.
 type LoadBalancer interface {
 	// NextEndpoint returns the endpoint to handle a request for the given
