@@ -4,6 +4,7 @@ import (
 	"flag"
 	"io"
 
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/kpng/client"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
 	"sigs.k8s.io/kpng/client/localsink/filterreset"
@@ -22,6 +23,8 @@ func main() {
 		listeners: map[string]io.Closer{},
 	}
 	backend.BindFlags()
+
+	klog.InitFlags(nil)
 
 	// parse command line flags
 	flag.Parse()

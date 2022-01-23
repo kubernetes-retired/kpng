@@ -250,7 +250,6 @@ func (lb *LoadBalancerRR) OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localn
 	}
 }
 
-
 func (lb *LoadBalancerRR) OnEndpointsSynced() {
 }
 

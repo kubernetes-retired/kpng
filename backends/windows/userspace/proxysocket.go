@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sigs.k8s.io/kpng/api/localnetv1"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"sigs.k8s.io/kpng/api/localnetv1"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -36,7 +37,7 @@ func newProxySocket(protocol localnetv1.Protocol, ip net.IP, port int) (proxySoc
 		host = ip.String()
 	}
 
-	switch strings.ToUpper(string(protocol)) {
+	switch strings.ToUpper(protocol.String()) {
 	case "TCP":
 		listener, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 		if err != nil {

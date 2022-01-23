@@ -2,8 +2,9 @@ package main
 
 import (
 	"net"
-	"sigs.k8s.io/kpng/api/localnetv1"
 	"strconv"
+
+	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
 // BuildPortsToEndpointsMap builds a map of portname -> all ip:ports for that
@@ -14,7 +15,7 @@ func buildPortsToEndpointsMap(ep *localnetv1.Endpoint, svc *localnetv1.Service) 
 	for _, ip := range ep.IPs.GetV4() {
 		for _, port := range svc.Ports {
 			if isValidEndpoint(ip, int(port.Port)) {
-				portsToEndpoints[port.Name] = append(portsToEndpoints[port.Name], net.JoinHostPort(ip, strconv.Itoa(int(port.Port))))
+				portsToEndpoints[port.Name] = append(portsToEndpoints[port.Name], net.JoinHostPort(ip, strconv.Itoa(int(port.TargetPort))))
 
 			}
 		}
