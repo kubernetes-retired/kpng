@@ -155,7 +155,7 @@ function setup_kind {
     if_error_exit "Directory \"${install_directory}\" does not exist"
 
 
-    if ! kind > /dev/null 2>&1 ; then
+    if ! [ -f "${install_directory}"/kind ] ; then
         echo -e "\nDownloading kind ..."
 
         local tmp_file=$(mktemp -q)
@@ -167,7 +167,6 @@ function setup_kind {
         sudo mv "${tmp_file}" "${install_directory}"/kind
         sudo chmod +rx "${install_directory}"/kind
         sudo chown root.root "${install_directory}"/kind
-        # Use install instead?
     fi
 
     pass_message "The kind tool is set."
@@ -191,7 +190,7 @@ function setup_kubectl {
     if_error_exit "Directory \"${install_directory}\" does not exist"
 
 
-    if ! kubectl > /dev/null 2>&1 ; then
+    if ! [ -f "${install_directory}"/kubectl ] ; then
         echo -e "\nDownloading kubectl ..."
 
         local tmp_file=$(mktemp -q)
@@ -203,7 +202,6 @@ function setup_kubectl {
         sudo mv "${tmp_file}" "${install_directory}"/kubectl
         sudo chmod +rx "${install_directory}"/kubectl
         sudo chown root.root "${install_directory}"/kubectl
-        # Use install instead?
     fi
 
     pass_message "The kubectl tool is set."
@@ -212,62 +210,38 @@ function setup_kubectl {
 function setup_ginkgo {
     ###########################################################################
     # Description:                                                            #
-    # setup ginkgo and e2e.test                                                #
+    # setup ginkgo and e2e.test                                               #
     #                                                                         #
-    # Arguments:                                                              #
-    #   None                                                                  #
+    # # Arguments:                                                            #
+    #   arg1: binary directory, path to where ginko will be installed         #
+    #   arg2: Kubernetes version                                              #
+    #   arg3: OS, name of the operating system                                #
     ###########################################################################
-    if ! [ -f "${E2E_DIR}"/ginkgo ] || ! [ -f "${E2E_DIR}"/e2e.test ] ; then
+
+    [ $# -eq 3 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local bin_directory=${1}
+    local k8s_version=${2}
+    local os=${3}
+    local temp_directory=$(mktemp -qd)
+
+    if ! [ -f "${bin_directory}"/ginkgo ] || ! [ -f "${bin_directory}"/e2e.test ] ; then
         echo -e "\nDownloading ginkgo and e2e.test ..."
-        curl -L https://dl.k8s.io/"${E2E_K8S_VERSION}"/kubernetes-test-"${OS}"-amd64.tar.gz \
-            -o "${E2E_DIR}"/kubernetes-test-"${OS}"-amd64.tar.gz
+        curl -L https://dl.k8s.io/"${k8s_version}"/kubernetes-test-"${os}"-amd64.tar.gz \
+            -o "${temp_directory}"/kubernetes-test-"${os}"-amd64.tar.gz
         if_error_exit "cannot download kubernetes-test package"
 
-        tar xvzf "${E2E_DIR}"/kubernetes-test-"${OS}"-amd64.tar.gz \
-            --directory "${E2E_DIR}" \
+        tar xvzf "${temp_directory}"/kubernetes-test-"${os}"-amd64.tar.gz \
+            --directory "${bin_directory}" \
             --strip-components=3 kubernetes/test/bin/ginkgo kubernetes/test/bin/e2e.test &> /dev/null
 
-        rm "${E2E_DIR}"/kubernetes-test-"${OS}"-amd64.tar.gz
-        sudo chmod +x "${E2E_DIR}/ginkgo"
-        sudo chmod +x "${E2E_DIR}/e2e.test"
+        rm -rf "${temp_directory}"
+        sudo chmod +rx "${bin_directory}/ginkgo"
+        sudo chmod +rx "${bin_directory}/e2e.test"
     fi
 
     pass_message "The tools ginko and e2e.test have been set up."
-}
-
-function apply_ipvx_fixes {
-    ###########################################################################
-    # Description:                                                            #
-    # apply ipvx fixe                                                         #
-    #                                                                         #
-    # Arguments:                                                              #
-    #   None                                                                  #
-    ###########################################################################
-    sudo sysctl -w net.ipv6.conf.all.forwarding=1
-    sudo sysctl -w net.ipv4.ip_forward=1
-}
-
-function setup_environment {
-    ###########################################################################
-    # Description:                                                            #
-    # Setup Initial Environment                                               #
-    #                                                                         #
-    # Arguments:                                                              #
-    #   None                                                                  #
-    ###########################################################################
-    [ -d "${E2E_DIR}" ]
-    if_error_exit "Directory \"${E2E_DIR}\" does not exist"
-
-    [ -d "${E2E_BIN}" ]
-    if_error_exit "Directory \"${E2E_BIN}\" does not exist"
-
-    setup_kind "${E2E_BIN}"
-    setup_kubectl "${E2E_BIN}"
-    setup_ginkgo
-
-    if [ "${ci_mode}" = true ] ; then
-        apply_ipvx_fixes
-    fi
 }
 
 function create_cluster {
@@ -276,14 +250,23 @@ function create_cluster {
     # Create kind cluster                                                     #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
-    ###########################################################################
-    # Get rid of any old cluster with the same name.
-    if kind get clusters | grep -q "${E2E_CLUSTER_NAME}" &> /dev/null; then
-        kind delete cluster --name "${E2E_CLUSTER_NAME}" &> /dev/null
-        if_error_exit "cannot delete cluster ${E2E_CLUSTER_NAME}"
+    #   arg1: cluster name                                                    #
+    #   arg2: IP family                                                   #
+    #   arg3: artifacts directory                                                    #
+   ###########################################################################
+    [ $# -eq 3 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
-        pass_message "Previous cluster ${E2E_CLUSTER_NAME} deleted."
+    local cluster_name=$1
+    local ip_family=$2
+    local artifacts_directory=$3
+
+    # Get rid of any old cluster with the same name.
+    if kind get clusters | grep -q "${cluster_name}" &> /dev/null; then
+        kind delete cluster --name "${cluster_name}" &> /dev/null
+        if_error_exit "cannot delete cluster ${cluster_name}"
+
+        pass_message "Previous cluster ${cluster_name} deleted."
     fi
 
     KIND_VERBOSE_MODE="-v0"
@@ -291,27 +274,27 @@ function create_cluster {
         KIND_VERBOSE_MODE="-v7"
     fi
 
-    echo -e "\nPreparing to setup ${E2E_CLUSTER_NAME} cluster ..."
+    echo -e "\nPreparing to setup ${cluster_name} cluster ..."
     # create cluster
-    cat <<EOF | kind create cluster \
-        --name "${E2E_CLUSTER_NAME}"                     \
+ cat <<EOF | kind create cluster \
+        --name "${cluster_name}"                     \
         --image "${KINDEST_NODE_IMAGE}":"${E2E_K8S_VERSION}"    \
         "${KIND_VERBOSE_MODE}" --wait 1m --retain --config=-
             kind: Cluster
             apiVersion: kind.x-k8s.io/v1alpha4
             networking:
-                ipFamily: "${E2E_IP_FAMILY}"
+                ipFamily: "${ip_family}"
             nodes:
             - role: control-plane
             - role: worker
             - role: worker
 EOF
-    if_error_exit "cannot create kind cluster ${E2E_CLUSTER_NAME}"
+    if_error_exit "cannot create kind cluster ${cluster_name}"
 
-    kind get kubeconfig --internal --name "${E2E_CLUSTER_NAME}" > "${E2E_ARTIFACTS}/kubeconfig.conf"
-    kind get kubeconfig --name "${E2E_CLUSTER_NAME}" > "${E2E_ARTIFACTS}/${KUBECONFIG_TESTS}"
+    kind get kubeconfig --internal --name "${cluster_name}" > "${artifacts_directory}/kubeconfig.conf"
+    kind get kubeconfig --name "${cluster_name}" > "${artifacts_directory}/${KUBECONFIG_TESTS}"
 
-    pass_message "Cluster ${E2E_CLUSTER_NAME} is created."
+    pass_message "Cluster ${cluster_name} is created."
 }
 
 function wait_until_cluster_is_ready {
@@ -320,23 +303,30 @@ function wait_until_cluster_is_ready {
     # Wait pods with selector k8s-app=kube-dns be ready and operational       #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
-    ###########################################################################
-    kubectl wait \
+    #   arg1: cluster name                                                    #
+   ###########################################################################
+
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local cluster_name=$1
+    local k8s_context="kind-${cluster_name}"
+
+    kubectl --context "${k8s_context}" wait \
         --for=condition=ready \
         pods \
         --namespace="${NAMESPACE}" \
         --selector k8s-app=kube-dns 1> /dev/null
 
     if [ "${ci_mode}" = true ] ; then
-        kubectl get nodes -o wide
+        kubectl --context "${k8s_context}" get nodes -o wide
         if_error_exit "unable to show nodes"
 
-        kubectl get pods --all-namespaces
+        kubectl --context "${k8s_context}" get pods --all-namespaces
         if_error_exit "error getting pods from all namespaces"
     fi
 
-    pass_message "${E2E_CLUSTER_NAME} is operational."
+    pass_message "${cluster_name} is operational."
 }
 
 function workaround_coreDNS_for_IPv6_airgapped {
@@ -351,10 +341,19 @@ function workaround_coreDNS_for_IPv6_airgapped {
     # .net.                                                                   #
     # CoreDNS should handle those domains and answer with NXDOMAIN instead of #
     # SERVFAIL otherwise pods stops trying to resolve the domain.             #
+    #                                                                         #
+    #   arg1: cluster name                                                    #
+   ###########################################################################
+
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local cluster_name=$1
+    local k8s_context="kind-${cluster_name}"
     ###########################################################################
 
     # Get the current config
-    original_coredns=$(kubectl get -oyaml -n="${NAMESPACE}" configmap/coredns)
+    original_coredns=$(kubectl --context "${k8s_context}" get -oyaml -n="${NAMESPACE}" configmap/coredns)
     if [ "${ci_mode}" = true ] ; then
         echo "Original CoreDNS config:"
         echo "${original_coredns}"
@@ -389,10 +388,16 @@ function install_kpng {
     #   - deploy kpng from the template generated                             #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
-    ###########################################################################
+    #   arg1: cluster name                                                    #
+   ###########################################################################
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local cluster_name=$1
+    local k8s_context="kind-${cluster_name}"
+
     # remove kube-proxy
-    kubectl delete \
+    kubectl --context "${k8s_context}" delete \
         --namespace "${NAMESPACE}" \
         daemonset.apps/kube-proxy 1> /dev/null
     if_error_exit "cannot delete delete daemonset.apps kube-proxy"
@@ -401,29 +406,29 @@ function install_kpng {
     # preload kpng image
     # TODO move this to ci:
     # docker load --input kpng-image.tar
-    CMD_KIND_LOAD_KPNG_TEST_IMAGE=("kind load docker-image ${KPNG_IMAGE_TAG_NAME} --name ${E2E_CLUSTER_NAME}")
+    CMD_KIND_LOAD_KPNG_TEST_IMAGE=("kind load docker-image ${KPNG_IMAGE_TAG_NAME} --name ${cluster_name}")
     ${CMD_KIND_LOAD_KPNG_TEST_IMAGE} &> /dev/null
     if_error_exit "error loading image to kind, command was: ${CMD_KIND_LOAD_KPNG_TEST_IMAGE}"
     pass_message "Loaded ${KPNG_IMAGE_TAG_NAME} container image."
 
     # TODO this should be part of the template                
-    kubectl create serviceaccount \
+    kubectl --context "${k8s_context}" create serviceaccount \
         --namespace "${NAMESPACE}" \
         "${SERVICE_ACCOUNT_NAME}" 1> /dev/null
     if_error_exit "error creating serviceaccount ${SERVICE_ACCOUNT_NAME}"
     pass_message "Created service account ${SERVICE_ACCOUNT_NAME}."
 
-    kubectl create clusterrolebinding \
+    kubectl --context "${k8s_context}" create clusterrolebinding \
         "${CLUSTER_ROLE_BINDING_NAME}" \
         --clusterrole="${CLUSTER_ROLE_NAME}" \
         --serviceaccount="${NAMESPACE}":"${SERVICE_ACCOUNT_NAME}" 1> /dev/null
     if_error_exit "error creating clusterrolebinding ${CLUSTER_ROLE_BINDING_NAME}"
     pass_message "Created clusterrolebinding ${CLUSTER_ROLE_BINDING_NAME}."
 
-    kubectl create configmap \
+    kubectl --context "${k8s_context}" create configmap \
         "${CONFIG_MAP_NAME}" \
         --namespace "${NAMESPACE}" \
-        --from-file "${E2E_ARTIFACTS}/kubeconfig.conf" 1> /dev/null
+        --from-file "${artifacts_directory}/kubeconfig.conf" 1> /dev/null
     if_error_exit "error creating configmap ${CONFIG_MAP_NAME}"
     pass_message "Created configmap ${CONFIG_MAP_NAME}."
 
@@ -434,13 +439,13 @@ function install_kpng {
     export CONFIG_MAP_NAME
     export SERVICE_ACCOUNT_NAME
     export NAMESPACE
-    envsubst <"${0%/*}"/kpng-deployment-ds.yaml.tmpl > "${E2E_ARTIFACTS}"/kpng-deployment-ds.yaml
+    envsubst <"${0%/*}"/kpng-deployment-ds.yaml.tmpl > "${artifacts_directory}"/kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 
-    kubectl create -f "${E2E_ARTIFACTS}"/kpng-deployment-ds.yaml 1> /dev/null
+    kubectl --context "${k8s_context}" create -f "${artifacts_directory}"/kpng-deployment-ds.yaml 1> /dev/null
     if_error_exit "error creating kpng deployment"
 
-    kubectl --namespace="${NAMESPACE}" rollout status daemonset kpng -w --request-timeout=3m 1> /dev/null
+    kubectl --context "${k8s_context}" --namespace="${NAMESPACE}" rollout status daemonset kpng -w --request-timeout=3m 1> /dev/null
     if_error_exit "timeout waiting kpng rollout"
 
     pass_message "Installation of kpng is done.\n"
@@ -452,19 +457,25 @@ function run_tests {
     # Execute the tests with ginkgo                                           #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
-    ###########################################################################
-    cp "${E2E_ARTIFACTS}/${KUBECONFIG_TESTS}" "${E2E_DIR}/${KUBECONFIG_TESTS}"
-    "${E2E_DIR}"/ginkgo --nodes="${GINKGO_NUMBER_OF_NODES}" \
-        --focus="${GINKGO_FOCUS}" \
-        --skip="${GINKGO_SKIP_TESTS}" \
-        "${E2E_DIR}"/e2e.test \
-        -- \
-        --kubeconfig="${KUBECONFIG_TESTS}" \
-        --provider="${GINKGO_PROVIDER}" \
-        --dump-logs-on-failure="${GINKGO_DUMP_LOGS_ON_FAILURE}" \
-        --report-dir="${GINKGO_REPORT_DIR}" \
-        --disable-log-dump="${GINKGO_DISABLE_LOG_DUMP}"
+    #   arg1: e2e directory                                                   #
+     ###########################################################################
+    [ $# -eq 1 ]
+     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local e2e_dir="${1}"
+    local artifacts_directory="${e2e_dir}/artifacts"
+
+    cp "${artifacts_directory}/${KUBECONFIG_TESTS}" "${e2e_dir}/${KUBECONFIG_TESTS}"
+    ginkgo --nodes="${GINKGO_NUMBER_OF_NODES}" \
+           --focus="${GINKGO_FOCUS}" \
+           --skip="${GINKGO_SKIP_TESTS}" \
+           "${E2E_DIR}"/e2e.test \
+           -- \
+           --kubeconfig="${KUBECONFIG_TESTS}" \
+           --provider="${GINKGO_PROVIDER}" \
+           --dump-logs-on-failure="${GINKGO_DUMP_LOGS_ON_FAILURE}" \
+           --report-dir="${GINKGO_REPORT_DIR}" \
+           --disable-log-dump="${GINKGO_DISABLE_LOG_DUMP}"
 
     # FIXME: until all tests are green, let's keep the exit 0
     #if_error_exit "ginkgo: one or more tests failed"
@@ -477,11 +488,17 @@ function clean_artifacts {
     # Clean all artifacts and export kind logs                                #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
+    #   arg1: Path for E2E installation directory                             #
     ###########################################################################
+
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local e2e_dir="${1}"
+
     kind export \
         logs \
-        --name="$(cat "${E2E_FILE}")" \
+        --name="$(cat "${e2e_dir}/clustername")" \
         --loglevel="debug" \
         "${E2E_LOGS}"
     if_error_exit "cannot export kind logs"
@@ -492,31 +509,157 @@ function clean_artifacts {
     pass_message "make sure to safe your result before the next run."
 }
 
+
+function apply_ipvx_fixes {
+    ###########################################################################
+    # Description:                                                            #
+    # apply ipvx fixe                                                         #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   None                                                                  #
+    ###########################################################################
+    sudo sysctl -w net.ipv6.conf.all.forwarding=1
+    sudo sysctl -w net.ipv4.ip_forward=1
+}
+
+function install_binaries {
+    ###########################################################################
+    # Description:                                                            #
+    # Copy binaries from the net to binaries directory                         #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1: binary directory, path to where ginko will be installed         #
+    #   arg2: Kubernetes version                                              #
+    #   arg3: OS, name of the operating system                                #
+    ###########################################################################
+
+    [ $# -eq 3 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local bin_directory="${1}"
+    local k8s_version="${2}"
+    local os="${3}"
+
+    pushd "${0%/*}" > /dev/null || exit
+          mkdir -p "${bin_directory}"
+    popd > /dev/null || exit
+
+    case ":${PATH:-}:" in
+        *:${bin_directory}:*) ;;
+        *) PATH="${bin_directory}${PATH:+:$PATH}" ;;
+    esac
+
+    [ -d "${bin_directory}" ]
+    if_error_exit "Directory \"${bin_directory}\" does not exist"
+
+    setup_kind "${bin_directory}"
+    setup_kubectl "${bin_directory}"
+    setup_ginkgo "${bin_directory}" "${k8s_version}" "${os}"
+}
+
 function set_e2e_dir {
     ###########################################################################
     # Description:                                                            #
     # Set E2E directory                                                       #
     #                                                                         #
     # Arguments:                                                              #
-    #   arg1: Path for E2E installation dicrectory, or the empty string         #
+    #   arg1: Path for E2E installation directory                             #
+    #   arg2: binary directory, path to where ginko will be installed         #
     ###########################################################################
-    e2e_dir="${1}"
-    bin_dir="${2}"
-    e2e_dir=${e2e_dir:="$(pwd)/temp/e2e"}
 
-  pushd "${0%/*}" > /dev/null || exit
-        export E2E_DIR="${e2e_dir}"
-        export E2E_ARTIFACTS="${E2E_DIR}"/artifacts
-        E2E_BIN=${bin_dir:="${E2E_DIR}/bin"}
-        mkdir -p "${E2E_DIR}"
-        mkdir -p "${E2E_ARTIFACTS}"
-        mkdir -p "${E2E_BIN}"
+    [ $# -eq 2 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local e2e_dir="${1}"
+    local bin_dir="${2}"
+
+    [ -d "${bin_dir}" ]
+    if_error_exit "Directory \"${bin_dir}\" does not exist"
+
+    pushd "${0%/*}" > /dev/null || exit
+        mkdir -p "${e2e_dir}"
+        mkdir -p "${e2e_dir}/artifacts"
+        # e2e.test must be placed in the E2E directory when called by ginkgo
+        if ! [ -f "${e2e_dir}"/e2e.test ] ; then
+            sudo cp "${bin_dir}/e2e.test" "${e2e_dir}/e2e.test"
+            sudo chmod +rx "${e2e_dir}/e2e.test"
+        fi
     popd > /dev/null || exit
+}
 
-    case ":${PATH:-}:" in
-        *:${E2E_BIN}:*) ;;
-        *) PATH="${E2E_BIN}${PATH:+:$PATH}" ;;
-    esac
+function prepare_container {
+    ###########################################################################
+    # Description:                                                            #
+    # Prepare container                                                       #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1: Path of dockerfile                                              #
+    ###########################################################################
+    local dockerfile="${1}"
+
+    # Detect container engine
+    detect_container_engine
+    container_build "${dockerfile}"
+}
+
+function create_infrastructure_and_run_tests {
+    ###########################################################################
+    # Description:                                                            #
+    # create_infrastructure_and_run_tests                                     #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1: Path for E2E installation directory                             #
+    #   arg2: ip_family                                                       #
+    #   arg3: backend                                                         #
+    #   arg5: suffix                                                          #
+    #   arg4: developer_mode                                                  #
+    #   arg6: ci_mode                                                          #
+   ###########################################################################
+
+    [ $# -eq 6 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local e2e_dir="${1}"
+    local ip_family="${2}"
+    local backend="${3}"
+    local suffix="${4}"
+    local devel_mode="${5}"
+    local ci_mode="${6}"
+
+    local artifacts_directory="${e2e_dir}/artifacts"
+    local cluster_name="kpng-e2e-${ip_family}-${backend}${suffix}"
+
+    export E2E_DIR="${e2e_dir}"
+    export E2E_ARTIFACTS="${artifacts_directory}"
+    export E2E_CLUSTER_NAME="${cluster_name}"
+    export E2E_IP_FAMILY="${ip_family}"
+    export E2E_BACKEND="${backend}"
+    export E2E_DIR="${e2e_dir}"
+    export E2E_ARTIFACTS="${artifacts_directory}"
+
+    [ -d "${artifacts_directory}" ]
+    if_error_exit "Directory \"${artifacts_directory}\" does not exist"
+
+    if [ "${ci_mode}" = true ] ; then
+        # store the clustername for other scripts in ci
+        echo "${cluster_name}"
+        echo "${cluster_name}" > "${e2e_dir}"/clustername
+    fi
+
+    create_cluster "${cluster_name}" "${ip_family}" "${artifacts_directory}"
+    wait_until_cluster_is_ready "${cluster_name}"
+
+    if [ "${ci_mode}" = true ] ; then
+        workaround_coreDNS_for_IPv6_airgapped "${cluster_name}"
+    fi
+
+    install_kpng "${cluster_name}"
+    run_tests "${e2e_dir}"
+
+    #need to clean this up
+    if [ "${ci_mode}" = false ] ; then
+          clean_artifacts "${e2e_dir}"
+    fi
 }
 
 function main {
@@ -531,15 +674,8 @@ function main {
     echo -e "\t\tStarting KPNG E2E testing"
     echo "+==================================================================+"
 
-    # Detect container engine
-    detect_container_engine
-
-    # in ci this should fail
-    if [ "${ci_mode}" = true ] ; then 
-        # REMOVE THIS comment out ON THE REPO WITH A PR WHEN LOCAL TESTS ARE ALL GREEN
-        # set -e
-        echo "this tests can't fail now in ci"
-    fi
+    [ $# -eq 8 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
     local ip_family="${1}"
@@ -548,42 +684,53 @@ function main {
     local e2e_dir="${4}"
     local bin_dir="${5}"
     local dockerfile="${6}"
+    local suffix="${7}"
+    local test_run_count="${8}"
 
-    set_e2e_dir "${e2e_dir}" "${bin_dir}"
+    [ "${test_run_count}" -ge "1" ]
+    if_error_exit "test_run_count must be larger or equal to one"
 
-    export E2E_CLUSTER_NAME="kpng-e2e-${ip_family}-${backend}"
-    export E2E_IP_FAMILY="${ip_family}"
-    export E2E_BACKEND="${backend}"
 
-    [ -d "${E2E_ARTIFACTS}" ]
-    if_error_exit "Directory \"${E2E_ARTIFACTS}\" does not exist"
+    e2e_dir=${e2e_dir:="$(pwd)/temp/e2e"}
+    bin_dir=${bin_dir:="${e2e_dir}/bin"}
 
-    if [ "${ci_mode}" = true ] ; then
-        # store the clustername for other scripts in ci 
-        echo "${E2E_CLUSTER_NAME}" 
-        echo "${E2E_CLUSTER_NAME}" > "${E2E_DIR}"/clustername
+    # in ci this should fail
+    if [ "${ci_mode}" = true ] ; then 
+        # REMOVE THIS comment out ON THE REPO WITH A PR WHEN LOCAL TESTS ARE ALL GREEN
+        # set -e
+        echo "this tests can't fail now in ci"
+        apply_ipvx_fixes
     fi
 
-    setup_environment
-    container_build "${dockerfile}"
-    create_cluster
-    wait_until_cluster_is_ready
+    prepare_container "${dockerfile}"
+    install_binaries "${bin_dir}" "${E2E_K8S_VERSION}" "${OS}"
 
-    if [ "${ci_mode}" = true ] ; then
-        workaround_coreDNS_for_IPv6_airgapped
+    if [ "${test_run_count}" -eq "1" ] ; then
+        local tmp_suffix=${suffix:+"-${suffix}"}
+        set_e2e_dir "${e2e_dir}${tmp_suffix}" "${bin_dir}"
+    else
+        for i in $(seq "${test_run_count}"); do
+            local tmp_suffix=${suffix:+"-${suffix}${i}"}
+            set_e2e_dir "${e2e_dir}${tmp_suffix}" "${bin_dir}"
+        done
     fi
 
-    install_kpng
-
-    if [ "${devel_mode}" = true ] ; then
-	pass_message "KPNG development env created, use kubectl in the namespace ${NAMESPACE} to manage it."
-	exit 0
-    fi
-
-    run_tests
-
-    if [ "${ci_mode}" = false ] ; then
-        clean_artifacts
+    # preparation completed, time to setup infrastructure and run tests
+    if [ "${test_run_count}" -eq "1" ] ; then
+        local tmp_suffix=${suffix:+"-${suffix}"}
+        create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
+              "${tmp_suffix}" "${devel_mode}" "${ci_mode}"
+    else
+        local pids
+        for i in $(seq "${test_run_count}"); do
+            local tmp_suffix=${suffix:+"-${suffix}${i}"}
+            create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
+                  "${tmp_suffix}" "${devel_mode}" "${ci_mode}" > "${e2e_dir}${tmp_suffix}/output.log" &
+            pids[${i}]=$!
+        done
+        for pid in ${pids[*]}; do
+              wait ${pid}
+        done
     fi
 }
 
@@ -601,6 +748,8 @@ function help {
     printf "\t-b set backend (iptables/nft/ipvs) name in the e2e test runs.\n"
     printf "\t-c flag allows for ci_mode. Please don't run on local systems.\n"
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
+    printf "\t-n number of parallel test runs.\n"
+    printf "\t-s suffix, will be appended to the E2@ directory and kind cluster name (makes it possible to run parallel tests.\n"
     printf "\t-B binary directory, specifies the path for the directory where binaries will be installed\n"
     printf "\t-D Dockerfile, specifies the path of the Dockerfile to use\n"
     printf "\t-E set E2E directory, specifies the path for the E2E directory\n"
@@ -614,15 +763,18 @@ devel_mode=false
 e2e_dir=""
 dockerfile="$(dirname "${base_dir}")/Dockerfile"
 bin_dir=""
+suffix=""
+test_run_count="1"
 
-
-while getopts "i:b:B:cdD:E:" flag
+while getopts "i:b:B:cdD:E:n:s:" flag
 do
     case "${flag}" in
         i ) ip_family="${OPTARG}" ;;
         b ) backend="${OPTARG}" ;;
         c ) ci_mode=true ;;
         d ) devel_mode=true ;;
+        n ) test_run_count="${OPTARG}" ;;
+        s ) suffix="${OPTARG}" ;;
         B ) bin_dir="${OPTARG}" ;;
         D ) dockerfile="${OPTARG}" ;;
         E ) e2e_dir="${OPTARG}" ;;
@@ -630,8 +782,8 @@ do
     esac
 done
 
-if ! [[ "${ip_family}" =~ ^(ipv4|ipv6|dual)$ ]]; then
-    echo "user must specify the supported ip_family"
+if  [[ "${test_run_count}" -lt "1" ]]; then
+    echo "test runs must be larger or equal to 1"
     help
 fi
 
@@ -641,9 +793,8 @@ if ! [[ "${backend}" =~ ^(iptables|nft|ipvs)$ ]]; then
 fi
 
 if [[ -n "${ip_family}" && -n "${backend}" ]]; then
-   main "${ip_family}" "${backend}" "${ci_mode}" "${e2e_dir}" "${bin_dir}" "${dockerfile}"
+    main "${ip_family}" "${backend}" "${ci_mode}" "${e2e_dir}" "${bin_dir}" "${dockerfile}" "${suffix}" "$test_run_count"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help
 fi
-
