@@ -122,7 +122,29 @@ func (s *Backend) DeleteIP(svc *localnetv1.Service, ip string, ipKind serviceeve
 	s.deleteServiceIPToKubeIPVSIntf(ip)
 }
 
-// -------------------------------------------------------------------------
+// Handle session affinity
+var _ serviceevents.SessionAffinityListener = &Backend{}
+
+func (s *Backend) EnableSessionAffinity(svc *localnetv1.Service, sessionAffinity serviceevents.SessionAffinity) {
+	klog.V(2).Infof("EnableSessionAffinity (svc: %v, sessionAffinity: %v)", svc, sessionAffinity)
+}
+
+func (s *Backend) DisableSessionAffinity(svc *localnetv1.Service) {
+	klog.V(2).Infof("DisableSessionAffinity (svc: %v,)", svc)
+}
+
+// Handle traffic policy
+var _ serviceevents.TrafficPolicyListener = &Backend{}
+
+func (s *Backend) EnableTrafficPolicy(svc *localnetv1.Service, policyKind serviceevents.TrafficPolicyKind) {
+	klog.V(2).Infof("EnableTrafficPolicy (svc: %v, policyKind: %v)", svc, policyKind)
+}
+
+func (s *Backend) DisableTrafficPolicy(svc *localnetv1.Service, policyKind serviceevents.TrafficPolicyKind) {
+	klog.V(2).Infof("DisableTrafficPolicy (svc: %v, policyKind: %v)", svc, policyKind)
+}
+
+// SetService ------------------------------------------------------
 // Service
 //
 func (s *Backend) SetService(svc *localnetv1.Service) {}

@@ -38,6 +38,12 @@ func Wrap(backend decoder.Interface) decoder.Interface {
 	if v, ok := backend.(IPPortsListener); ok {
 		l.IPPortsListener = v
 	}
+	if v, ok := backend.(SessionAffinityListener); ok {
+		l.SessionAffinityListener = v
+	}
+	if v, ok := backend.(TrafficPolicyListener); ok {
+		l.TrafficPolicyListener = v
+	}
 
 	wrap := wrapper{
 		Interface: backend,
