@@ -66,6 +66,23 @@ function if_error_exit {
     fi
 }
 
+function if_error_warning {
+    ###########################################################################
+    # Description:                                                            #
+    # Validate if previous command failed and show an error msg (if provided) #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   $1 - error message if not provided, it will just exit                 #
+    ###########################################################################
+    if [ "$?" != "0" ]; then
+        if [ -n "$1" ]; then
+            RED="\e[31m"
+            ENDCOLOR="\e[0m"
+            echo -e "[ ${RED}FAILED${ENDCOLOR} ] ${1}"
+        fi
+    fi
+}
+
 function pass_message {
     ###########################################################################
     # Description:                                                            #
@@ -378,6 +395,27 @@ function workaround_coreDNS_for_IPv6_airgapped {
     pass_message "CoreDNS is patched and ready."
 }
 
+function delete_kind_cluster {
+    ###########################################################################
+    # Description:                                                            #
+    # delete kind cluster                                                     #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1: cluster name                                                    #
+    ###########################################################################
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local cluster_name="${1}"
+
+    if kind get clusters | grep -q "${cluster_name}" &> /dev/null; then
+        kind delete cluster --name "${cluster_name}" &> /dev/null
+        if_error_warning "cannot delete cluster ${cluster_name}"
+
+        pass_message "Cluster ${cluster_name} deleted."
+    fi
+}
+
 function install_kpng {
     ###########################################################################
     # Description:                                                            #
@@ -522,6 +560,29 @@ function apply_ipvx_fixes {
     sudo sysctl -w net.ipv4.ip_forward=1
 }
 
+function add_to_path {
+    ###########################################################################
+    # Description:                                                            #
+    # Add directory to path                                                   #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1:  directory                                                      #
+    ###########################################################################
+
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local directory="${1}"
+
+    [ -d "${directory}" ]
+    if_error_exit "Directory \"${directory}\" does not exist"
+
+    case ":${PATH:-}:" in
+        *:${directory}:*) ;;
+        *) PATH="${directory}${PATH:+:$PATH}" ;;
+    esac
+}
+
 function install_binaries {
     ###########################################################################
     # Description:                                                            #
@@ -544,13 +605,7 @@ function install_binaries {
           mkdir -p "${bin_directory}"
     popd > /dev/null || exit
 
-    case ":${PATH:-}:" in
-        *:${bin_directory}:*) ;;
-        *) PATH="${bin_directory}${PATH:+:$PATH}" ;;
-    esac
-
-    [ -d "${bin_directory}" ]
-    if_error_exit "Directory \"${bin_directory}\" does not exist"
+    add_to_path "${bin_directory}"
 
     setup_kind "${bin_directory}"
     setup_kubectl "${bin_directory}"
@@ -611,8 +666,8 @@ function create_infrastructure_and_run_tests {
     #   arg1: Path for E2E installation directory                             #
     #   arg2: ip_family                                                       #
     #   arg3: backend                                                         #
-    #   arg5: suffix                                                          #
-    #   arg4: developer_mode                                                  #
+    #   arg4: suffix                                                          #
+    #   arg5: developer_mode                                                  #
     #   arg6: ci_mode                                                          #
    ###########################################################################
 
@@ -662,6 +717,98 @@ function create_infrastructure_and_run_tests {
     fi
 }
 
+function delete_kind_clusters {
+    ###########################################################################
+    # Description:                                                            #
+    # create_infrastructure_and_run_tests                                     #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1: bin_directory                                                   #
+    #   arg2: ip_family                                                       #
+    #   arg3: backend                                                         #
+    #   arg4: suffix                                                          #
+    #   arg5: cluser_count                                                    #
+    ###########################################################################
+    echo "+==================================================================+"
+    echo -e "\t\tErasing kind clusters"
+    echo "+==================================================================+"
+
+    [ $# -eq 5 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    # setting up variables
+    local bin_directory="${1}"
+    local ip_family="${2}"
+    local backend="${3}"
+    local suffix="${4}"
+    local cluster_count="${5}"
+
+    add_to_path "${bin_directory}"
+
+    [ "${cluster_count}" -ge "1" ]
+    if_error_exit "cluster_count must be larger or equal to one"
+
+    local cluster_name_base="kpng-e2e-${ip_family}-${backend}"
+
+    if [ "${cluster_count}" -eq "1" ] ; then
+        local tmp_suffix=${suffix:+"-${suffix}"}
+        delete_kind_cluster "${cluster_name_base}${tmp_suffix}"
+    else
+        for i in $(seq "${cluster_count}"); do
+            local tmp_suffix="-${suffix}${i}"
+            delete_kind_cluster "${cluster_name_base}${tmp_suffix}"
+        done
+    fi
+}
+
+function print_reports {
+    ###########################################################################
+    # Description:                                                            #
+    # create_infrastructure_and_run_tests                                     #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1: e2e_directory                                                   #
+    #   arg2: suffix                                                       #
+    #   arg3: cluster_count                                                         #
+    ###########################################################################
+
+    [ $# -eq 3 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    # setting up variables
+    local e2e_directory="${1}"
+    local suffix="${2}"
+    local cluster_count="${3}"
+
+    echo "+==================================================================+"
+    echo -e "\t\tTest Report from running test on ${cluster_count}" clusters.
+    echo "+==================================================================+"
+
+    local combined_output_file=$(mktemp -q)
+    if_error_exit "Could not create temp file, mktemp failed"
+
+    for i in $(seq "${cluster_count}"); do
+       local test_directory="${e2e_dir}${suffix}${i}"
+
+       if ! [ -d "${test_directory}" ] ; then
+          echo "directory \"${test_directory}\" not found, skipping"
+          continue
+       fi
+
+       echo -e "Summary report from cluster \"${i}\" in directory: \"${test_directory}\""
+       local output_file="${test_directory}/output.log"
+       cat "${output_file}" >> "${combined_output_file}"
+
+       sed -nE '/Ran[[:space:]]+[[:digit:]]+[[:space:]]+of[[:space:]]+[[:digit:]]/{N;p}' "${output_file}"
+    done
+
+    echo -e "\nOccurence\tFailure"
+    awk '/Summarizing/,0' "${combined_output_file}" | awk 'ORS=/\[Fail\]/?", ":RS' | awk '/\[Fail\]/' | \
+          sed 's/\x1b\[90m//g' |sort | uniq -c | sort -nr  | sed 's/\,/\n\t\t/g'
+
+    rm -f "${combined_output_file}"
+}
+
 function main {
     ###########################################################################
     # Description:                                                            #
@@ -670,11 +817,8 @@ function main {
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
-    echo "+==================================================================+"
-    echo -e "\t\tStarting KPNG E2E testing"
-    echo "+==================================================================+"
 
-    [ $# -eq 8 ]
+    [ $# -eq 10 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
@@ -685,14 +829,30 @@ function main {
     local bin_dir="${5}"
     local dockerfile="${6}"
     local suffix="${7}"
-    local test_run_count="${8}"
+    local cluster_count="${8}"
+    local erase_clusters="${9}"
+    local print_report="${10}"
 
-    [ "${test_run_count}" -ge "1" ]
-    if_error_exit "test_run_count must be larger or equal to one"
+    [ "${cluster_count}" -ge "1" ]
+    if_error_exit "cluster_count must be larger or equal to one"
 
 
     e2e_dir=${e2e_dir:="$(pwd)/temp/e2e"}
     bin_dir=${bin_dir:="${e2e_dir}/bin"}
+
+    if ${erase_clusters} ; then
+        delete_kind_clusters "${bin_dir}" "${ip_family}" "${backend}" "${suffix}" "${cluster_count}"
+        exit 1
+    fi
+
+    if ${print_report} ; then
+        print_reports "${e2e_dir}" "-${suffix}" "${cluster_count}"
+        exit 1
+    fi
+
+    echo "+==================================================================+"
+    echo -e "\t\tStarting KPNG E2E testing"
+    echo "+==================================================================+"
 
     # in ci this should fail
     if [ "${ci_mode}" = true ] ; then 
@@ -705,34 +865,44 @@ function main {
     prepare_container "${dockerfile}"
     install_binaries "${bin_dir}" "${E2E_K8S_VERSION}" "${OS}"
 
-    if [ "${test_run_count}" -eq "1" ] ; then
+    if [ "${cluster_count}" -eq "1" ] ; then
         local tmp_suffix=${suffix:+"-${suffix}"}
         set_e2e_dir "${e2e_dir}${tmp_suffix}" "${bin_dir}"
     else
-        for i in $(seq "${test_run_count}"); do
-            local tmp_suffix=${suffix:+"-${suffix}${i}"}
+        for i in $(seq "${cluster_count}"); do
+            local tmp_suffix="-${suffix}${i}"
             set_e2e_dir "${e2e_dir}${tmp_suffix}" "${bin_dir}"
         done
     fi
 
     # preparation completed, time to setup infrastructure and run tests
-    if [ "${test_run_count}" -eq "1" ] ; then
+    if [ "${cluster_count}" -eq "1" ] ; then
         local tmp_suffix=${suffix:+"-${suffix}"}
         create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
               "${tmp_suffix}" "${devel_mode}" "${ci_mode}"
     else
         local pids
-        for i in $(seq "${test_run_count}"); do
-            local tmp_suffix=${suffix:+"-${suffix}${i}"}
+
+       echo -e "\n+=====================================================================================+"
+       echo -e "\t\tRunning parallel KPNG E2E tests in background on ${cluster_count} kind clusters."
+       echo -e "+=====================================================================================+\n"
+
+        for i in $(seq "${cluster_count}"); do
+            local tmp_suffix="-${suffix}${i}"
+            local output_file="${e2e_dir}${tmp_suffix}/output.log"
+            rm -f "${output_file}"
             create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
-                  "${tmp_suffix}" "${devel_mode}" "${ci_mode}" > "${e2e_dir}${tmp_suffix}/output.log" &
+                  "${tmp_suffix}" "${devel_mode}" "${ci_mode}"  &> "${e2e_dir}${tmp_suffix}/output.log" &
             pids[${i}]=$!
         done
-        for pid in ${pids[*]}; do
+        for pid in ${pids[*]}; do # not possible to use quotes here
               wait ${pid}
         done
+       print_reports "${e2e_dir}" "-${suffix}" "${cluster_count}"
     fi
 }
+
+
 
 function help {
     ###########################################################################
@@ -748,7 +918,8 @@ function help {
     printf "\t-b set backend (iptables/nft/ipvs) name in the e2e test runs.\n"
     printf "\t-c flag allows for ci_mode. Please don't run on local systems.\n"
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
-    printf "\t-n number of parallel test runs.\n"
+    printf "\t-e erase kind clusters.\n"
+    printf "\t-n number of parallel test clusters.\n"
     printf "\t-s suffix, will be appended to the E2@ directory and kind cluster name (makes it possible to run parallel tests.\n"
     printf "\t-B binary directory, specifies the path for the directory where binaries will be installed\n"
     printf "\t-D Dockerfile, specifies the path of the Dockerfile to use\n"
@@ -764,16 +935,20 @@ e2e_dir=""
 dockerfile="$(dirname "${base_dir}")/Dockerfile"
 bin_dir=""
 suffix=""
-test_run_count="1"
+cluster_count="1"
+erase_clusters=false
+print_report=false
 
-while getopts "i:b:B:cdD:E:n:s:" flag
+while getopts "i:b:B:cdD:eE:n:ps:" flag
 do
     case "${flag}" in
         i ) ip_family="${OPTARG}" ;;
         b ) backend="${OPTARG}" ;;
         c ) ci_mode=true ;;
         d ) devel_mode=true ;;
-        n ) test_run_count="${OPTARG}" ;;
+        e ) erase_clusters=true ;;
+        n ) cluster_count="${OPTARG}" ;;
+        p ) print_report=true ;;
         s ) suffix="${OPTARG}" ;;
         B ) bin_dir="${OPTARG}" ;;
         D ) dockerfile="${OPTARG}" ;;
@@ -782,8 +957,12 @@ do
     esac
 done
 
-if  [[ "${test_run_count}" -lt "1" ]]; then
-    echo "test runs must be larger or equal to 1"
+if  [[ "${cluster_count}" -lt "1" ]]; then
+    echo "Cluster count must be larger or equal to 1"
+    help
+fi
+if  [[ "${cluster_count}" -lt "2" ]] && ${print_report}; then
+    echo "Cluster count must be larger or equal to 2 when printing reports"
     help
 fi
 
@@ -793,7 +972,8 @@ if ! [[ "${backend}" =~ ^(iptables|nft|ipvs)$ ]]; then
 fi
 
 if [[ -n "${ip_family}" && -n "${backend}" ]]; then
-    main "${ip_family}" "${backend}" "${ci_mode}" "${e2e_dir}" "${bin_dir}" "${dockerfile}" "${suffix}" "$test_run_count"
+    main "${ip_family}" "${backend}" "${ci_mode}" "${e2e_dir}" "${bin_dir}" "${dockerfile}" \
+         "${suffix}" "${cluster_count}" "${erase_clusters}" "${print_report}"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help
