@@ -24,8 +24,10 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/klog/v2"
-	utilexec "k8s.io/utils/exec"
+	"k8s.io/apimachinery/pkg/util/version"
+	"sigs.k8s.io/kpng/backends/ipvs-as-sink/exec"
+
+	"k8s.io/klog"
 )
 
 // Interface is an injectable interface for running ipset commands.  Implementations must be goroutine-safe.
@@ -259,11 +261,11 @@ func (e *Entry) checkIPandProtocol(set *IPSet) bool {
 }
 
 type runner struct {
-	exec utilexec.Interface
+	exec exec.Interface
 }
 
 // New returns a new Interface which will exec ipset.
-func New(exec utilexec.Interface) Interface {
+func New(exec exec.Interface) Interface {
 	return &runner{
 		exec: exec,
 	}
@@ -404,7 +406,7 @@ func (runner *runner) GetVersion() (string, error) {
 
 // getIPSetVersionString runs "ipset --version" to get the version string
 // in the form of "X.Y", i.e "6.19"
-func getIPSetVersionString(exec utilexec.Interface) (string, error) {
+func getIPSetVersionString(exec exec.Interface) (string, error) {
 	cmd := exec.Command(IPSetCmd, "--version")
 	cmd.SetStdin(bytes.NewReader([]byte{}))
 	bytes, err := cmd.CombinedOutput()
@@ -461,25 +463,6 @@ func validateHashFamily(family string) bool {
 	return false
 }
 
-// IsNotFoundError returns true if the error indicates "not found".  It parses
-// the error string looking for known values, which is imperfect but works in
-// practice.
-func IsNotFoundError(err error) bool {
-	es := err.Error()
-	if strings.Contains(es, "does not exist") {
-		// set with the same name already exists
-		// xref: https://github.com/Olipro/ipset/blob/master/lib/errcode.c#L32-L33
-		return true
-	}
-	if strings.Contains(es, "element is missing") {
-		// entry is missing from the set
-		// xref: https://github.com/Olipro/ipset/blob/master/lib/parse.c#L1904
-		// https://github.com/Olipro/ipset/blob/master/lib/parse.c#L1925
-		return true
-	}
-	return false
-}
-
 // checks if given protocol is supported in entry
 func validateProtocol(protocol string) bool {
 	if protocol == ProtocolTCP || protocol == ProtocolUDP || protocol == ProtocolSCTP {
@@ -526,3 +509,29 @@ func parsePortRange(portRange string) (beginPort int, endPort int, err error) {
 }
 
 var _ = Interface(&runner{})
+
+// IPVS required kernel modules.
+const (
+	// KernelModuleIPVS is the kernel module "ip_vs"
+	KernelModuleIPVS string = "ip_vs"
+	// KernelModuleIPVSRR is the kernel module "ip_vs_rr"
+	KernelModuleIPVSRR string = "ip_vs_rr"
+	// KernelModuleIPVSWRR is the kernel module "ip_vs_wrr"
+	KernelModuleIPVSWRR string = "ip_vs_wrr"
+	// KernelModuleIPVSSH is the kernel module "ip_vs_sh"
+	KernelModuleIPVSSH string = "ip_vs_sh"
+	// KernelModuleNfConntrackIPV4 is the module "nf_conntrack_ipv4"
+	KernelModuleNfConntrackIPV4 string = "nf_conntrack_ipv4"
+	// KernelModuleNfConntrack is the kernel module "nf_conntrack"
+	KernelModuleNfConntrack string = "nf_conntrack"
+)
+
+// GetRequiredIPVSModules returns the required ipvs modules for the given linux kernel version.
+func GetRequiredIPVSModules(kernelVersion *version.Version) []string {
+	// "nf_conntrack_ipv4" has been removed since v4.19
+	// see https://github.com/torvalds/linux/commit/a0ae2562c6c4b2721d9fddba63b7286c13517d9f
+	if kernelVersion.LessThan(version.MustParseGeneric("4.19")) {
+		return []string{KernelModuleIPVS, KernelModuleIPVSRR, KernelModuleIPVSWRR, KernelModuleIPVSSH, KernelModuleNfConntrackIPV4}
+	}
+	return []string{KernelModuleIPVS, KernelModuleIPVSRR, KernelModuleIPVSWRR, KernelModuleIPVSSH, KernelModuleNfConntrack}
+}

@@ -19,20 +19,28 @@ package ipvssink
 import (
 	"encoding/json"
 	"net"
-	"sigs.k8s.io/kpng/api/localnetv1"
 	"syscall"
+
+	"sigs.k8s.io/kpng/api/localnetv1"
 
 	"github.com/google/seesaw/ipvs"
 )
+
+type ipvsSvcDst struct {
+	Svc ipvs.Service
+	Dst ipvs.Destination
+}
 
 type ipvsLB struct {
 	IP               string
 	ServiceKey       string
 	ServiceType      string
-	Port             *localnetv1.PortMapping
 	SchedulingMethod string
-	Flags 			 ipvs.ServiceFlags
-	Timeout 		 uint32
+	Flags            ipvs.ServiceFlags
+	Timeout          uint32
+	Port             uint16
+	NodePort         uint16
+	Protocol         localnetv1.Protocol
 }
 
 func (lb ipvsLB) String() string {
@@ -43,23 +51,23 @@ func (lb ipvsLB) String() string {
 func (lb ipvsLB) ToService() ipvs.Service {
 	var port uint16
 	if lb.ServiceType == ClusterIPService {
-		port = uint16(lb.Port.Port)
+		port = lb.Port
 	}
 	if lb.ServiceType == NodePortService {
-		port = uint16(lb.Port.NodePort)
+		port = lb.NodePort
 	}
 	if lb.ServiceType == LoadBalancerService {
-		port = uint16(lb.Port.Port)
+		port = lb.Port
 	}
 	s := ipvs.Service{
 		Address:   net.ParseIP(lb.IP),
 		Port:      port,
 		Scheduler: lb.SchedulingMethod,
-		Flags: lb.Flags,
-		Timeout: lb.Timeout,
+		Flags:     lb.Flags,
+		Timeout:   lb.Timeout,
 	}
 
-	switch lb.Port.Protocol {
+	switch lb.Protocol {
 	case localnetv1.Protocol_TCP:
 		s.Protocol = syscall.IPPROTO_TCP
 	case localnetv1.Protocol_UDP:
@@ -71,15 +79,14 @@ func (lb ipvsLB) ToService() ipvs.Service {
 	return s
 }
 
-func ipvsDestination(targetIP string, port *localnetv1.PortMapping, epWeight int32) ipvs.Destination {
-	return ipvs.Destination{
-		Address: net.ParseIP(targetIP),
-		Port:    uint16(port.TargetPort),
-		Weight:  epWeight,
+func ipvsDestination(epInfo endPointInfo, port *BaseServicePortInfo) ipvs.Destination {
+	targetPort := port.TargetPort()
+	if port.targetPort == 0 {
+		targetPort = epInfo.portMap[port.TargetPortName()]
 	}
-}
-
-type ipvsSvcDst struct {
-	Svc ipvs.Service
-	Dst ipvs.Destination
+	return ipvs.Destination{
+		Address: net.ParseIP(epInfo.endPointIP),
+		Port:    uint16(targetPort),
+		Weight:  port.weight,
+	}
 }

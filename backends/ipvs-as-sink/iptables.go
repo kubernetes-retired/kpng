@@ -20,73 +20,72 @@ import (
 	"bytes"
 	"fmt"
 
-	"k8s.io/klog/v2"
+	"k8s.io/klog"
 
-	iptablesutil "sigs.k8s.io/kpng/backends/iptables/util"
-	ipsetutil "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
+	"sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
 )
 
 const (
 	// kubeServicesChain is the services portal chain
-	kubeServicesChain iptablesutil.Chain = "KUBE-SERVICES"
+	kubeServicesChain util.Chain = "KUBE-SERVICES"
 
 	// KubeFireWallChain is the kubernetes firewall chain.
-	KubeFireWallChain iptablesutil.Chain = "KUBE-FIREWALL"
+	KubeFireWallChain util.Chain = "KUBE-FIREWALL"
 
 	// kubePostroutingChain is the kubernetes postrouting chain
-	kubePostroutingChain iptablesutil.Chain = "KUBE-POSTROUTING"
+	kubePostroutingChain util.Chain = "KUBE-POSTROUTING"
 
 	// KubeMarkMasqChain is the mark-for-masquerade chain
-	KubeMarkMasqChain iptablesutil.Chain = "KUBE-MARK-MASQ"
+	KubeMarkMasqChain util.Chain = "KUBE-MARK-MASQ"
 
 	// KubeNodePortChain is the kubernetes node port chain
-	KubeNodePortChain iptablesutil.Chain = "KUBE-NODE-PORT"
+	KubeNodePortChain util.Chain = "KUBE-NODE-PORT"
 
 	// KubeMarkDropChain is the mark-for-drop chain
-	KubeMarkDropChain iptablesutil.Chain = "KUBE-MARK-DROP"
+	KubeMarkDropChain util.Chain = "KUBE-MARK-DROP"
 
 	// KubeForwardChain is the kubernetes forward chain
-	KubeForwardChain iptablesutil.Chain = "KUBE-FORWARD"
+	KubeForwardChain util.Chain = "KUBE-FORWARD"
 
 	// KubeLoadBalancerChain is the kubernetes chain for loadbalancer type service
-	KubeLoadBalancerChain iptablesutil.Chain = "KUBE-LOAD-BALANCER"
+	KubeLoadBalancerChain util.Chain = "KUBE-LOAD-BALANCER"
 )
 
 var iptablesEnsureChains = []struct {
-	table iptablesutil.Table
-	chain iptablesutil.Chain
+	table util.Table
+	chain util.Chain
 }{
-	{iptablesutil.TableNAT, KubeMarkDropChain},
+	{util.TableNAT, KubeMarkDropChain},
 }
 
 var iptablesChains = []struct {
-	table iptablesutil.Table
-	chain iptablesutil.Chain
+	table util.Table
+	chain util.Chain
 }{
-	{iptablesutil.TableNAT, kubeServicesChain},
-	{iptablesutil.TableNAT, kubePostroutingChain},
-	{iptablesutil.TableNAT, KubeFireWallChain},
-	{iptablesutil.TableNAT, KubeNodePortChain},
-	{iptablesutil.TableNAT, KubeLoadBalancerChain},
-	{iptablesutil.TableNAT, KubeMarkMasqChain},
-	{iptablesutil.TableFilter, KubeForwardChain},
-	{iptablesutil.TableFilter, KubeNodePortChain},
+	{util.TableNAT, kubeServicesChain},
+	{util.TableNAT, kubePostroutingChain},
+	{util.TableNAT, KubeFireWallChain},
+	{util.TableNAT, KubeNodePortChain},
+	{util.TableNAT, KubeLoadBalancerChain},
+	{util.TableNAT, KubeMarkMasqChain},
+	{util.TableFilter, KubeForwardChain},
+	{util.TableFilter, KubeNodePortChain},
 }
 
 // iptablesJumpChain is tables of iptables chains that ipvs proxier used to install iptables or cleanup iptables.
 // `to` is the iptables chain we want to operate.
 // `from` is the source iptables chain
 var iptablesJumpChain = []struct {
-	table   iptablesutil.Table
-	from    iptablesutil.Chain
-	to      iptablesutil.Chain
+	table   util.Table
+	from    util.Chain
+	to      util.Chain
 	comment string
 }{
-	{iptablesutil.TableNAT, iptablesutil.ChainOutput, kubeServicesChain, "kubernetes service portals"},
-	{iptablesutil.TableNAT, iptablesutil.ChainPrerouting, kubeServicesChain, "kubernetes service portals"},
-	{iptablesutil.TableNAT, iptablesutil.ChainPostrouting, kubePostroutingChain, "kubernetes postrouting rules"},
-	{iptablesutil.TableFilter, iptablesutil.ChainForward, KubeForwardChain, "kubernetes forwarding rules"},
-	{iptablesutil.TableFilter, iptablesutil.ChainInput, KubeNodePortChain, "kubernetes health check rules"},
+	{util.TableNAT, util.ChainOutput, kubeServicesChain, "kubernetes service portals"},
+	{util.TableNAT, util.ChainPrerouting, kubeServicesChain, "kubernetes service portals"},
+	{util.TableNAT, util.ChainPostrouting, kubePostroutingChain, "kubernetes postrouting rules"},
+	{util.TableFilter, util.ChainForward, KubeForwardChain, "kubernetes forwarding rules"},
+	{util.TableFilter, util.ChainInput, KubeNodePortChain, "kubernetes health check rules"},
 }
 
 // ipsetWithIptablesChain is the ipsets list with iptables source chain and the chain jump to
@@ -107,23 +106,23 @@ var ipsetWithIptablesChain = []struct {
 	{kubeLoadBalancerSourceCIDRSet, string(KubeFireWallChain), "RETURN", "dst,dst,src", ""},
 	{kubeLoadBalancerSourceIPSet, string(KubeFireWallChain), "RETURN", "dst,dst,src", ""},
 	{kubeLoadBalancerLocalSet, string(KubeLoadBalancerChain), "RETURN", "dst,dst", ""},
-	{kubeNodePortLocalSetTCP, string(KubeNodePortChain), "RETURN", "dst", ipsetutil.ProtocolTCP},
-	{kubeNodePortSetTCP, string(KubeNodePortChain), string(KubeMarkMasqChain), "dst", ipsetutil.ProtocolTCP},
-	{kubeNodePortLocalSetUDP, string(KubeNodePortChain), "RETURN", "dst", ipsetutil.ProtocolUDP},
-	{kubeNodePortSetUDP, string(KubeNodePortChain), string(KubeMarkMasqChain), "dst", ipsetutil.ProtocolUDP},
-	{kubeNodePortLocalSetSCTP, string(KubeNodePortChain), "RETURN", "dst,dst", ipsetutil.ProtocolSCTP},
-	{kubeNodePortSetSCTP, string(KubeNodePortChain), string(KubeMarkMasqChain), "dst,dst", ipsetutil.ProtocolSCTP},
+	{kubeNodePortLocalSetTCP, string(KubeNodePortChain), "RETURN", "dst", util.ProtocolTCP},
+	{kubeNodePortSetTCP, string(KubeNodePortChain), string(KubeMarkMasqChain), "dst", util.ProtocolTCP},
+	{kubeNodePortLocalSetUDP, string(KubeNodePortChain), "RETURN", "dst", util.ProtocolUDP},
+	{kubeNodePortSetUDP, string(KubeNodePortChain), string(KubeMarkMasqChain), "dst", util.ProtocolUDP},
+	{kubeNodePortLocalSetSCTP, string(KubeNodePortChain), "RETURN", "dst,dst", util.ProtocolSCTP},
+	{kubeNodePortSetSCTP, string(KubeNodePortChain), string(KubeMarkMasqChain), "dst,dst", util.ProtocolSCTP},
 }
 
 // createAndLinkKubeChain create all kube chains that ipvs proxier need and write basic link.
 func (p *proxier) createAndLinkKubeChain() {
-	existingFilterChains := p.getExistingChains(p.filterChainsData, iptablesutil.TableFilter)
-	existingNATChains := p.getExistingChains(p.iptablesData, iptablesutil.TableNAT)
+	existingFilterChains := p.getExistingChains(p.filterChainsData, util.TableFilter)
+	existingNATChains := p.getExistingChains(p.iptablesData, util.TableNAT)
 
 	// ensure KUBE-MARK-DROP chain exist but do not change any rules
 	for _, ch := range iptablesEnsureChains {
 		if _, err := p.iptables.EnsureChain(ch.table, ch.chain); err != nil {
-			klog.ErrorS(err, "Failed to ensure chain exists", "table", ch.table, "chain", ch.chain)
+			klog.Error(err, "Failed to ensure chain exists", "table", ch.table, "chain", ch.chain)
 			return
 		}
 	}
@@ -131,28 +130,28 @@ func (p *proxier) createAndLinkKubeChain() {
 	// Make sure we keep stats for the top-level chains
 	for _, ch := range iptablesChains {
 		if _, err := p.iptables.EnsureChain(ch.table, ch.chain); err != nil {
-			klog.ErrorS(err, "Failed to ensure chain exists", "table", ch.table, "chain", ch.chain)
+			klog.Error(err, "Failed to ensure chain exists", "table", ch.table, "chain", ch.chain)
 			return
 		}
-		if ch.table == iptablesutil.TableNAT {
+		if ch.table == util.TableNAT {
 			if chain, ok := existingNATChains[ch.chain]; ok {
 				p.natChains.WriteBytes(chain)
 			} else {
-				p.natChains.Write(iptablesutil.MakeChainLine(ch.chain))
+				p.natChains.Write(util.MakeChainLine(ch.chain))
 			}
 		} else {
 			if chain, ok := existingFilterChains[ch.chain]; ok {
 				p.filterChains.WriteBytes(chain)
 			} else {
-				p.filterChains.Write(iptablesutil.MakeChainLine(ch.chain))
+				p.filterChains.Write(util.MakeChainLine(ch.chain))
 			}
 		}
 	}
 
 	for _, jc := range iptablesJumpChain {
 		args := []string{"-m", "comment", "--comment", jc.comment, "-j", string(jc.to)}
-		if _, err := p.iptables.EnsureRule(iptablesutil.Prepend, jc.table, jc.from, args...); err != nil {
-			klog.ErrorS(err, "Failed to ensure chain jumps", "table", jc.table, "srcChain", jc.from, "dstChain", jc.to)
+		if _, err := p.iptables.EnsureRule(util.Prepend, jc.table, jc.from, args...); err != nil {
+			klog.Error(err, "Failed to ensure chain jumps", "table", jc.table, "srcChain", jc.from, "dstChain", jc.to)
 		}
 	}
 }
@@ -160,13 +159,13 @@ func (p *proxier) createAndLinkKubeChain() {
 // getExistingChains get iptables-save output so we can check for existing chains and rules.
 // This will be a map of chain name to chain with rules as stored in iptables-save/iptables-restore
 // Result may SHARE memory with contents of buffer.
-func (p *proxier) getExistingChains(buffer *bytes.Buffer, table iptablesutil.Table) map[iptablesutil.Chain][]byte {
+func (p *proxier) getExistingChains(buffer *bytes.Buffer, table util.Table) map[util.Chain][]byte {
 	buffer.Reset()
 	err := p.iptables.SaveInto(table, buffer)
 	if err != nil { // if we failed to get any rules
-		klog.ErrorS(err, "Failed to execute iptables-save, syncing all rules")
+		klog.Error(err, "Failed to execute iptables-save, syncing all rules")
 	} else { // otherwise parse the output
-		return iptablesutil.GetChainLines(table, buffer.Bytes())
+		return util.GetChainLines(table, buffer.Bytes())
 	}
 	return nil
 }
@@ -366,7 +365,7 @@ func (p *proxier) acceptIPVSTraffic() {
 		var matchType string
 		if !p.ipsetList[set].isRefCountZero() {
 			switch p.ipsetList[set].SetType {
-			case ipsetutil.BitmapPort:
+			case util.BitmapPort:
 				matchType = "dst"
 			default:
 				matchType = "dst,dst"
@@ -406,11 +405,10 @@ func (p *proxier) syncIPTableRules() {
 	p.iptablesData.Write(p.filterChains.Bytes())
 	p.iptablesData.Write(p.filterRules.Bytes())
 
-	//klog.V(5).InfoS("Restoring iptables", "rules", string(p.iptablesData.Bytes()))
-	//klog.InfoS("Restoring iptables", "rules", string(p.iptablesData.Bytes()))
-	err := p.iptables.RestoreAll(p.iptablesData.Bytes(), iptablesutil.NoFlushTables, iptablesutil.RestoreCounters)
+	klog.V(5).Info("Restoring iptables", "rules", string(p.iptablesData.Bytes()))
+	err := p.iptables.RestoreAll(p.iptablesData.Bytes(), util.NoFlushTables, util.RestoreCounters)
 	if err != nil {
-		klog.ErrorS(err, "Failed to execute iptables-restore", "rules", string(p.iptablesData.Bytes()))
+		klog.Error(err, "Failed to execute iptables-restore", "rules", string(p.iptablesData.Bytes()))
 		return
 	}
 }

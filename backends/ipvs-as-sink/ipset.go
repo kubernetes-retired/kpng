@@ -18,11 +18,11 @@ package ipvssink
 
 import (
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/klog/v2"
+	v1 "k8s.io/api/core/v1"
+
+	"k8s.io/klog"
 
 	ipsetutil "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
 )
@@ -101,18 +101,8 @@ var ipsetInfo = []struct {
 	{kubeHealthCheckNodePortSet, ipsetutil.BitmapPort, kubeHealthCheckNodePortSetComment},
 }
 
-// IPSetVersioner can query the current ipset version.
-type IPSetVersioner interface {
-	// returns "X.Y"
-	GetVersion() (string, error)
-}
-
 type IPSet struct {
 	ipsetutil.IPSet
-	// activeEntries is the current active entries of the ipset.
-	newEntries sets.String
-	// activeEntries is the current active entries of the ipset.
-	deleteEntries sets.String
 	// handle is the util ipset interface handle.
 	handle ipsetutil.Interface
 
@@ -134,7 +124,7 @@ func newIPSet(handle ipsetutil.Interface, name string, setType ipsetutil.Type, i
 		if strings.HasPrefix(name, "KUBE-") {
 			name = strings.Replace(name, "KUBE-", "KUBE-6-", 1)
 			if len(name) > 31 {
-				klog.InfoS("Ipset name truncated", "ipSetName", name, "truncatedName", name[:31])
+				klog.Info("Ipset name truncated", "ipSetName", name, "truncatedName", name[:31])
 				name = name[:31]
 			}
 		}
@@ -146,18 +136,13 @@ func newIPSet(handle ipsetutil.Interface, name string, setType ipsetutil.Type, i
 			HashFamily: hashFamily,
 			Comment:    comment,
 		},
-		newEntries:    sets.NewString(),
-		deleteEntries: sets.NewString(),
-		handle:        handle,
+		handle: handle,
 	}
 	return set
 }
 
-func (set *IPSet) isEmpty() bool {
-	return len(set.newEntries.UnsortedList()) == 0
-}
-
 func (set *IPSet) isRefCountZero() bool {
+	klog.V(2).Infof("isRefCountZero, set=%v, count=%v", set.Name, set.refCountOfSvc)
 	return set.refCountOfSvc == 0
 }
 
@@ -167,32 +152,6 @@ func (set *IPSet) validateEntry(entry *ipsetutil.Entry) bool {
 
 func (set *IPSet) getComment() string {
 	return fmt.Sprintf("\"%s\"", set.Comment)
-}
-
-func (set *IPSet) resetEntries() {
-	set.newEntries = sets.NewString()
-	set.deleteEntries = sets.NewString()
-}
-
-func (set *IPSet) syncIPSetEntries() {
-	// Create entries
-	for _, entry := range set.newEntries.List() {
-		if err := set.handle.AddEntry(entry, &set.IPSet, true); err != nil {
-			klog.Errorf("Failed to add entry %v into ip set: %s, error: %v", entry, set.Name, err)
-		} else {
-			klog.V(3).Infof("Successfully add entry: %v into ip set: %s", entry, set.Name)
-		}
-	}
-
-	// Delete entries
-	for _, entry := range set.deleteEntries.List() {
-		if err := set.handle.DelEntry(entry, set.Name); err != nil {
-			klog.Errorf("Failed to delete entry: %v from ip set: %s, error: %v", entry, set.Name, err)
-		} else {
-			klog.V(3).Infof("Successfully deleted entry: %v to ip set: %s", entry, set.Name)
-		}
-	}
-
 }
 
 func ensureIPSet(set *IPSet) error {

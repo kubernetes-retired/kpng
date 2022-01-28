@@ -215,10 +215,10 @@ func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
 	if sl.SessionAffinityListener != nil {
 		var prevSessAff, currSessAff SessionAffinity
 		if prevSvc != nil {
-			prevSessAff = getSessionAffinity(prevSvc.SessionAffinity)
+			prevSessAff = GetSessionAffinity(prevSvc.SessionAffinity)
 		}
 		if currSvc != nil {
-			currSessAff = getSessionAffinity(currSvc.SessionAffinity)
+			currSessAff = GetSessionAffinity(currSvc.SessionAffinity)
 		}
 		if prevSessAff.ClientIP == nil && currSessAff.ClientIP != nil {
 			sl.SessionAffinityListener.EnableSessionAffinity(currSvc, currSessAff)
@@ -243,7 +243,7 @@ type SessionAffinity struct {
 	ClientIP *localnetv1.Service_ClientIP
 }
 
-func getSessionAffinity(affinity interface{}) SessionAffinity {
+func GetSessionAffinity(affinity interface{}) SessionAffinity {
 	var sessionAffinity SessionAffinity
 	switch affinity.(type) {
 	case *localnetv1.Service_ClientIP:

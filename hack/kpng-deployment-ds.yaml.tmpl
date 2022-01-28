@@ -44,9 +44,7 @@ spec:
         imagePullPolicy: ${PULL}
         name: kpng-${E2E_BACKEND}
         securityContext:
-          capabilities:
-           add:
-           - NET_ADMIN
+            privileged: true
         volumeMounts:
         - name: empty
           mountPath: /k8s
