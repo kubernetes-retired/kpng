@@ -8,6 +8,7 @@ import (
 	netutils "k8s.io/utils/net"
 
 	"github.com/Microsoft/hcsshim/hcn"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/proxy"
@@ -43,6 +44,21 @@ func (Proxier *Proxier) OnEndpointSliceAdd(endpointSlice *discovery.EndpointSlic
 func (Proxier *Proxier) OnEndpointSliceUpdate(_, endpointSlice *discovery.EndpointSlice) {
 	if Proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, false) && Proxier.isInitialized() {
 		Proxier.Sync()
+	}
+}
+
+func (Proxier *Proxier) BackendDeleteService(
+	namespace string,
+	name string) {
+
+	svcPortName := proxy.ServicePortName{
+		NamespacedName: types.NamespacedName{
+			Namespace: namespace,
+			Name:      name}}
+
+	_, exists := Proxier.serviceMap[svcPortName]
+	if exists {
+		Proxier.serviceMap[svcPortName] = nil
 	}
 }
 

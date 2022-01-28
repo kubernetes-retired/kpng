@@ -44,9 +44,9 @@ type Backend struct {
 }
 
 var (
-	_       decoder.Interface = &Backend{}
-	proxier Provider
-
+	_             decoder.Interface = &Backend{}
+	proxier       Provider
+	proxierState  Proxier
 	flag          = &pflag.FlagSet{}
 	minSyncPeriod time.Duration
 	syncPeriod    time.Duration
@@ -104,7 +104,9 @@ func (s *Backend) DeleteEndpoint(namespace, serviceName, key string) {
 }
 func (s *Backend) SetService(svc *localnetv1.Service) {}
 
-func (s *Backend) DeleteService(namespace, name string) {}
+func (s *Backend) DeleteService(namespace, name string) {
+	proxierState.BackendDeleteService(namespace, name)
+}
 
 func (s *Backend) Reset() {
 	/* noop */
