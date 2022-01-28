@@ -788,7 +788,7 @@ function print_reports {
     if_error_exit "Could not create temp file, mktemp failed"
 
     for i in $(seq "${cluster_count}"); do
-       local test_directory="${e2e_dir}${suffix}${i}"
+       local test_directory="${e2e_directory}${suffix}${i}"
 
        if ! [ -d "${test_directory}" ] ; then
           echo "directory \"${test_directory}\" not found, skipping"
