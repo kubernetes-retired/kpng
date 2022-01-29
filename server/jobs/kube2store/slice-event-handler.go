@@ -37,7 +37,7 @@ func serviceNameFrom(eps *discovery.EndpointSlice) string {
 
 func (h sliceEventHandler) OnAdd(obj interface{}) {
 	eps := obj.(*discovery.EndpointSlice)
-
+	klog.InfoS("on add endpoint slice handler...")
 	serviceName := serviceNameFrom(eps)
 	if serviceName == "" {
 		// no name => not associated with a service => ignore
@@ -74,6 +74,11 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 		}
 
 		infos = append(infos, info)
+		for i, port := range eps.Ports {
+			infos[i].Endpoint.EndpointPortMap[port.Name] = port.Port
+			//infos[i].Endpoint.EndpointPortMap["Port"] = port.Port
+		}
+		klog.InfoS("endpoint Info object at the end", infos)
 	}
 
 	h.s.Update(func(tx *proxystore.Tx) {

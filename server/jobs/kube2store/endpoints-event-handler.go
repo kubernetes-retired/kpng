@@ -19,6 +19,7 @@ package kube2store
 import (
 	v1 "k8s.io/api/core/v1"
 
+	"k8s.io/klog"
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
 )
@@ -31,6 +32,7 @@ func (h *endpointsEventHandler) sourceName(eps *v1.Endpoints) string {
 
 func (h *endpointsEventHandler) OnAdd(obj interface{}) {
 	eps := obj.(*v1.Endpoints)
+	klog.Info("inside Onadd", eps)
 
 	sourceName := h.sourceName(eps)
 
@@ -55,7 +57,6 @@ func (h *endpointsEventHandler) OnAdd(obj interface{}) {
 						SourceName:  sourceName,
 						Endpoint: &localnetv1.Endpoint{
 							Hostname: addr.Hostname,
-							//		Ports:    set.ports,
 						},
 						Conditions: &localnetv1.EndpointConditions{
 							Ready: set.ready,
@@ -79,12 +80,12 @@ func (h *endpointsEventHandler) OnAdd(obj interface{}) {
 					infos = append(infos, info)
 				}
 				for i, port := range set.ports {
-					infos[i].Endpoint.Ports[i].Name = port.Name
-					infos[i].Endpoint.Ports[i].Port = port.Port
+					infos[i].Endpoint.EndpointPortMap[port.Name] = port.Port
+					//infos[i].Endpoint.EndpointPortMap["Port"] = port.Port
 				}
 			}
 		}
-
+		klog.Info("endpointInfoobj handler", infos)
 		tx.SetEndpointsOfSource(eps.Namespace, sourceName, infos)
 		h.updateSync(proxystore.Endpoints, tx)
 	})
