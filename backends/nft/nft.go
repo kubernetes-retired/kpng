@@ -51,7 +51,7 @@ var (
 	forceNFTHashBug = flag.Bool("force-nft-hash-workaround", false, "bypass auto-detection of NFT hash bug (necessary when nft is blind)")
 	withTrace       = flag.Bool("trace", false, "enable nft trace")
 
-	clusterCIDRsFlag = flag.StringSlice("cluster-cidrs", []string{"0.0.0.0/0"}, "cluster IPs CIDR that shoud not be masqueraded")
+	clusterCIDRsFlag = flag.StringSlice("cluster-cidrs", []string{"0.0.0.0/0"}, "cluster IPs CIDR that should not be masqueraded")
 	clusterCIDRsV4   []string
 	clusterCIDRsV6   []string
 
@@ -94,38 +94,57 @@ func PreRun() {
 	klog.Info("cluster CIDRs V6: ", clusterCIDRsV6)
 }
 
+
+
+// Callback is called every time services or endpoints change by the KPNG brain.  The ServiceEndpoints
+// object is a single detailed Service with a list of all its associated Endpoints...
+//  type ServiceEndpoints struct {
+//	  Service   *localnetv1.Service
+//	  Endpoints []*localnetv1.Endpoint
+//  }
+// This Callback is heavily commented because NFT is the "canonical" example of how to implement an
+// idiomatic, fullstate based KPNG backend proxy.
 func Callback(ch <-chan *client.ServiceEndpoints) {
+	// Part 1: Initialize variables...
+
+	// doComments decides wether or not we want verbose comments in the NFT rules.
+	doComments := !*skipComments && bool(klog.V(1))
+	// svcCount, epCount, and start just track the amount of services and endpoints that we modified,
+	// for debugging purposes, and how long it took to process them.  We can use prometheus for this later.
 	svcCount := 0
 	epCount := 0
-	doComments := !*skipComments && bool(klog.V(1))
-
 	start := time.Now()
-	defer func() {
-		klog.V(1).Infof("%d services and %d endpoints applied in %v", svcCount, epCount, time.Since(start))
-	}()
-
-	defer table4.Reset()
-	defer table6.Reset()
-
 	rule := new(bytes.Buffer)
-
 	ipv4Mask := net.CIDRMask(*splitBits, 32)
 	ipv6Mask := net.CIDRMask(*splitBits6, 128)
-
 	chain4Nets := map[string]bool{}
 	chain6Nets := map[string]bool{}
-
 	mapOffsets := make([]uint64, *mapsCount)
-
 	epSeen := map[string]bool{}
 	localEndpointIPsV4 := make([]string, 0, 256)
 	localEndpointIPsV6 := make([]string, 0, 256)
 
+
+	defer func() {
+		klog.V(1).Infof("%d services and %d endpoints applied in %v", svcCount, epCount, time.Since(start))
+	}()
+
+	// table4 and table6 are "Diff" datastructures, where you:
+	// 1) write some data
+	// 2) call RESET to notify the "Diff" datastructure that your now writing a new set of data to it...
+	// 3) write some more data
+	// Check wether (1) and (3) are different.  We thus here are saying "once this function ends, make sure
+	// to reset the diff states".
+	defer table4.Reset()
+	defer table6.Reset()
+
+	// We now begin iterating through every endpoint that was sent from the KPNG brain.
 	for serviceEndpoints := range ch {
 		svc := serviceEndpoints.Service
 		endpoints := serviceEndpoints.Endpoints
 
-		// types we don't handle
+		// ExternalName services are entirely handled by coredns, so kube-proxy doesn't need to write rules.
+		// Instead, CoreDNS will directly round robin IPs back to any request.
 		if svc.Type == "ExternalName" {
 			continue
 		}
@@ -134,6 +153,8 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 		svcOffset := mapOffsets[mapH]
 		mapOffsets[mapH] += uint64(len(endpoints))
 
+		// endpointsMap
+		// why are we specifying 4 byte width for the nft endpoints_ ?
 		endpointsMap := fmt.Sprintf("endpoints_%04x", mapH)
 
 		svcCount++
@@ -146,6 +167,16 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			ips.AddSet(svc.IPs.ClusterIPs)
 		}
 		ips.AddSet(svc.IPs.ExternalIPs)
+
+		// The rest of this function does this:
+
+		// for both ipv4 and ipv6,
+		//		compute endpoints
+		//			add them to ipv4 or ipv6 as needed
+
+		//for ip4 and ip6 tables
+		//		"run" the finalization functions
+
 
 		for _, set := range []struct {
 			ips              []string
@@ -162,10 +193,13 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			}
 
 			family := "ip"
-			chainBuffers := table4
+
+			// nftTableBuffer is a new model of the incoming NFT rules that we will calculate,
+			// specific to a given service.
+			nftTableBuffer := table4
 			if set.v6 {
 				family = "ip6"
-				chainBuffers = table6
+				nftTableBuffer = table6
 			}
 
 			// compute endpoints
@@ -195,7 +229,8 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 
 			// add endpoints to the map
 			if len(endpointIPs) != 0 {
-				item := chainBuffers.Maps.GetItem(endpointsMap)
+				// we'll add the entire map of endpoints into the "chainBuffers"
+				item := nftTableBuffer.Maps.GetOrPutItem(endpointsMap)
 				epMap := item.Value()
 
 				if epMap.Len() == 0 {
@@ -265,7 +300,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 					continue
 				}
 
-				rule.WriteTo(chainBuffers.Chains.Get(svc_chain))
+				rule.WriteTo(nftTableBuffer.Chains.Get(svc_chain))
 				hasRules = true
 
 				// hande node ports
@@ -276,7 +311,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 					continue
 				}
 
-				rule.WriteTo(chainBuffers.Chains.Get("nodeports"))
+				rule.WriteTo(nftTableBuffer.Chains.Get("nodeports"))
 			}
 
 			if !hasRules {
@@ -303,7 +338,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 					chain := prefix + "net_" + hex.EncodeToString(ip)
 
 					// add service chain in dispatch
-					vmapAdd(chainBuffers.Chains.GetItem(chain), family+" daddr", ipStr+": jump "+svc_chain)
+					vmapAdd(nftTableBuffer.Chains.GetItem(chain), family+" daddr", ipStr+": jump "+svc_chain)
 
 					// reference the dispatch chain from the global dispatch (of not already done) (ie: z_dnat_all)
 					if set.v6 && !chain6Nets[chain] || !set.v6 && !chain4Nets[chain] {
@@ -312,7 +347,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 							Mask: mask,
 						}
 
-						vmapAdd(chainBuffers.Chains.GetItem("z_"+prefix+"all"), daddrMatch, ipNet.String()+": jump "+chain)
+						vmapAdd(nftTableBuffer.Chains.GetItem("z_"+prefix+"all"), daddrMatch, ipNet.String()+": jump "+chain)
 
 						if set.v6 {
 							chain6Nets[chain] = true
@@ -332,7 +367,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			}
 
 			if len(extIPs) != 0 {
-				extChain := chainBuffers.Chains.GetItem(prefix + "external")
+				extChain := nftTableBuffer.Chains.GetItem(prefix + "external")
 				for _, extIP := range extIPs {
 					// XXX should this be by protocol and port to allow external IP mutualization between services?
 					vmapAdd(extChain, daddrMatch, extIP+": jump "+svc_chain)
@@ -354,11 +389,12 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	addPostroutingChain(table4, clusterCIDRsV4, localEndpointIPsV4)
 	addPostroutingChain(table6, clusterCIDRsV6, localEndpointIPsV6)
 
-	// we're done
-	table4.Done()
-	table6.Done()
+	// we're done, so, now we finalize the diff hashes to make iterating over "changes"
+	// between the table4(n-1) and table4(n) versions possible.
+	table4.FinalizeDiffHashes()
+	table6.FinalizeDiffHashes()
 
-	// check if we have changes to apply
+	// check if we have changes to apply, based on the diff hashes we just finalized.
 	if !fullResync && !table4.Changed() && !table6.Changed() {
 		klog.V(1).Info("no changes to apply")
 		return

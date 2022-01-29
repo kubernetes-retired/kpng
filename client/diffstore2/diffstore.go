@@ -26,7 +26,9 @@ func New[K constraints.Ordered, V Leaf](newValue func() V) *Store[K, V] {
 	}
 }
 
-func (s *Store[K, V]) GetItem(key K) *Item[K, V] {
+// GetOrPutItem will insert a key into the store, or else, it will return the item
+// if it *already* exists in the store.  Either way it will return an item of the store's native type.
+func (s *Store[K, V]) GetOrPutItem(key K) *Item[K, V] {
 	var item *Item[K, V]
 
 	i := s.data.Get(&Item[K, V]{k: key})
@@ -47,8 +49,9 @@ func (s *Store[K, V]) GetItem(key K) *Item[K, V] {
 	return item
 }
 
+// Get just calls getOrPutItem but returns ONLY the value, and not the Key.
 func (s *Store[K, V]) Get(key K) V {
-	item := s.GetItem(key)
+	item := s.GetOrPutItem(key)
 	return item.v
 }
 
@@ -64,8 +67,8 @@ func (s *Store[K, V]) RunDeferred() {
 	})
 }
 
-// Done must be called at the end of the filling process. It will compute hashes of every node to allow diff functions to work.
-func (s *Store[K, V]) Done() {
+// FinalizeDiffHashes must be called at the end of the filling process. It will compute hashes of every node to allow diff functions to work.
+func (s *Store[K, V]) FinalizeDiffHashes() {
 	s.data.Ascend(func(item btree.Item) bool {
 		i := item.(*Item[K, V])
 
@@ -97,7 +100,7 @@ func (s *Store[K, V]) List() (ret []*Item[K, V]) {
 
 func (s *Store[K, V]) Deleted() (ret []*Item[K, V]) {
 	if !s.done {
-		panic("Done() not called!")
+		panic("FinalizeDiffHashes() not called!")
 	}
 
 	ret = make([]*Item[K, V], 0, s.data.Len()-s.touched)
@@ -118,7 +121,7 @@ func (s *Store[K, V]) Deleted() (ret []*Item[K, V]) {
 // Changed returns every entry that was created or updated
 func (s *Store[K, V]) Changed() (ret []*Item[K, V]) {
 	if !s.done {
-		panic("Done() not called!")
+		panic("FinalizeDiffHashes() not called!")
 	}
 
 	ret = make([]*Item[K, V], 0, s.touched)
@@ -138,7 +141,7 @@ func (s *Store[K, V]) Changed() (ret []*Item[K, V]) {
 
 func (s *Store[K, V]) HasChanges() (changed bool) {
 	if !s.done {
-		panic("Done() not called!")
+		panic("FinalizeDiffHashes() not called!")
 	}
 
 	s.data.Ascend(func(item btree.Item) bool {
