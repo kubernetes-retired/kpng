@@ -707,8 +707,10 @@ function create_infrastructure_and_run_tests {
     if [ "${ci_mode}" = true ] ; then
         workaround_coreDNS_for_IPv6_airgapped "${cluster_name}"
     fi
+    if [ "${backend}" != "not-kpng"] ; then
+        install_kpng "${cluster_name}"
+    fi
 
-    install_kpng "${cluster_name}"
     run_tests "${e2e_dir}"
 
     #need to clean this up
@@ -966,7 +968,7 @@ if  [[ "${cluster_count}" -lt "2" ]] && ${print_report}; then
     help
 fi
 
-if ! [[ "${backend}" =~ ^(iptables|nft|ipvs)$ ]]; then
+if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|not-kpng)$ ]]; then
     echo "user must specify the supported backend"
     help
 fi
