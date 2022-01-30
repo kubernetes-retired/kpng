@@ -29,7 +29,6 @@ import (
 	apiutil "k8s.io/apimachinery/pkg/util/net"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/tools/events"
-	"k8s.io/klog/v2"
 	kubefeatures "k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/proxy"
 	"k8s.io/kubernetes/pkg/proxy/apis/config"
@@ -40,17 +39,19 @@ import (
 
 // NewProxier returns a new Proxier
 func NewProxier(
-	syncPeriod time.Duration,
-	minSyncPeriod time.Duration,
+	syncPeriod time.Duration, //
+	minSyncPeriod time.Duration, //
 	masqueradeAll bool,
 	masqueradeBit int,
 	clusterCIDR string,
 	hostname string,
 	nodeIP net.IP,
-	recorder events.EventRecorder,
-	healthzServer healthcheck.ProxierHealthUpdater,
+	recorder events.EventRecorder, // ignore
+	healthzServer healthcheck.ProxierHealthUpdater, // ignore
 	config config.KubeProxyWinkernelConfiguration,
 ) (*Proxier, error) {
+
+	// ** Why do we have a masquerade bit ? and what is this 1 << uint... doing
 	masqueradeValue := 1 << uint(masqueradeBit)
 	masqueradeMark := fmt.Sprintf("%#08x/%#08x", masqueradeValue, masqueradeValue)
 
@@ -63,29 +64,44 @@ func NewProxier(
 		klog.InfoS("ClusterCIDR not specified, unable to distinguish between internal and external traffic")
 	}
 
+	// ** not worrying about svc>HealthServer but do we need it later?
 	serviceHealthServer := healthcheck.NewServiceHealthServer(
 		hostname,
 		recorder) /* windows listen to all node addresses */
 
+	// get a empty HNS network object, that we'll use to make system calls to either h1 or h2.
+	// this will introspect the underlying kernel.
 	hns, supportedFeatures := newHostNetworkService()
+	// --network-name <-- this is often passed in by calico
 	hnsNetworkName, err := getNetworkName(config.NetworkName)
 	if err != nil {
 		return nil, err
 	}
 
 	klog.V(3).InfoS("Cleaning up old HNS policy lists")
+
+	// Some kind of cleanup step, we dont fully understand it yet, but the API looks
+	// clumsy...should ask danny about this... we should use the hns object probably for this?
 	deleteAllHnsLoadBalancerPolicy()
 
-	// Get HNS network information
+	// Get HNS network information, (name, id, *** networkType *** remoteSubnets)
+	// One possible networkType == NETWORK_TYPE_OVERLAY
+	//		What other types ? others CNIs like AKS / EKS dont overlay ? ... maybe if its EKS its bridge
+	// 		and not overlay or something, worth spending a few hours to analyze these...
 	hnsNetworkInfo, err := getNetworkInfo(hns, hnsNetworkName)
 	if err != nil {
 		return nil, err
 	}
 
-	// Network could have been detected before Remote Subnet Routes are applied or ManagementIP is updated
-	// Sleep and update the network to include new information
+	// Network could have been detected ...
+	// - BEFORE Remote Subnet Routes were applied
+	// - BEFORE ManagementIP is updated
+	// So.. sleep just for a second...
 	if isOverlay(hnsNetworkInfo) {
+		// ... Why do we do this sleep ?
 		time.Sleep(10 * time.Second)
+
+		// Is this just to REFRESH the value of this field ?? ? ? ? ? ? ?????
 		hnsNetworkInfo, err = hns.getNetworkByName(hnsNetworkName)
 		if err != nil {
 			return nil, fmt.Errorf("could not find HNS network %s", hnsNetworkName)
@@ -93,6 +109,8 @@ func NewProxier(
 	}
 
 	klog.V(1).InfoS("Hns Network loaded", "hnsNetworkInfo", hnsNetworkInfo)
+
+	// Direct Server return is a optimization , we can ignore it for now...
 	isDSR := config.EnableDSR
 	if isDSR && !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinDSR) {
 		return nil, fmt.Errorf("WinDSR feature gate not enabled")
@@ -101,6 +119,8 @@ func NewProxier(
 	if isDSR && err != nil {
 		return nil, err
 	}
+
+	// Why do we need VIPs?
 
 	var sourceVip string
 	var hostMac string

@@ -20,14 +20,13 @@ limitations under the License.
 package winkernel
 
 import (
-	"fmt"
-	"time"
-	"os"
+        "fmt"
+        "os"
+        "time"
 
-	"github.com/Microsoft/hcsshim/hcn"
-	"github.com/Microsoft/hcsshim"
-	"k8s.io/klog/v2"
-	netutils "k8s.io/utils/net"
+        "github.com/Microsoft/hcsshim"
+        "github.com/Microsoft/hcsshim/hcn"
+        netutils "k8s.io/utils/net"
 )
 
 const NETWORK_TYPE_OVERLAY = "overlay"
@@ -35,6 +34,8 @@ const NETWORK_TYPE_OVERLAY = "overlay"
 type hnsNetworkInfo struct {
         name          string
         id            string
+        // is this "name" even used ? https://github.com/microsoft/windows-container-networking/issues/57
+        // YES... see NETWORK_TYPE_OVERLAY
         networkType   string
         remoteSubnets []*remoteSubnetInfo
 }
@@ -82,10 +83,26 @@ func getHnsNetworkInfo(hnsNetworkName string) (*hnsNetworkInfo, error) {
         }, nil
 }
 
-
+// newHostNetworkService creates a HNS struct for us to use, its either v1 or v2 based on kernel.
+//        features.RemoteSubnet =
+//        features.HostRoute =
+//        features.DSR =
+//        features.Slash32EndpointPrefixes =
+//        features.AclSupportForProtocol252 =
+//        features.SessionAffinity =
+//        features.IPv6DualStack
+//        features.SetPolicy =
+//        features.VxlanPort =)
+//        features.L4Proxy = i
+//        features.L4WfpProxy)
+//        features.TierAcl =
+//        features.NetworkACL =
+//        features.NestedIpSet
 func newHostNetworkService() (HostNetworkService, hcn.SupportedFeatures) {
         var hns HostNetworkService
         hns = hnsV1{}
+
+        // Note, should be using GetCachedSupportedFeatures...
         supportedFeatures := hcn.GetSupportedFeatures()
         if supportedFeatures.Api.V2 {
                 hns = hnsV2{}
