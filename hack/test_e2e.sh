@@ -707,15 +707,16 @@ function create_infrastructure_and_run_tests {
     if [ "${ci_mode}" = true ] ; then
         workaround_coreDNS_for_IPv6_airgapped "${cluster_name}"
     fi
-    if [ "${backend}" != "not-kpng"] ; then
+    if [ "${backend}" != "not-kpng" ] ; then
         install_kpng "${cluster_name}"
     fi
 
-    run_tests "${e2e_dir}"
-
-    #need to clean this up
-    if [ "${ci_mode}" = false ] ; then
+    if ! ${devel_mode} ; then
+        run_tests "${e2e_dir}"
+        #need to clean this up
+       if [ "${ci_mode}" = false ] ; then
           clean_artifacts "${e2e_dir}"
+       fi
     fi
 }
 
@@ -820,7 +821,7 @@ function main {
     #   None                                                                  #
     ###########################################################################
 
-    [ $# -eq 10 ]
+    [ $# -eq 11 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
@@ -834,6 +835,7 @@ function main {
     local cluster_count="${8}"
     local erase_clusters="${9}"
     local print_report="${10}"
+    local devel_mode="${11}"
 
     [ "${cluster_count}" -ge "1" ]
     if_error_exit "cluster_count must be larger or equal to one"
@@ -887,7 +889,7 @@ function main {
 
        echo -e "\n+=====================================================================================+"
        echo -e "\t\tRunning parallel KPNG E2E tests in background on ${cluster_count} kind clusters."
-       echo -e "+=====================================================================================+\n"
+       echo -e "+=====================================================================================+"
 
         for i in $(seq "${cluster_count}"); do
             local tmp_suffix="-${suffix}${i}"
@@ -898,9 +900,16 @@ function main {
             pids[${i}]=$!
         done
         for pid in ${pids[*]}; do # not possible to use quotes here
-              wait ${pid}
+            wait ${pid}
         done
-       print_reports "${e2e_dir}" "-${suffix}" "${cluster_count}"
+        if ! ${devel_mode} ; then
+           print_reports "${e2e_dir}" "-${suffix}" "${cluster_count}"
+        fi
+    fi
+    if ${devel_mode} ; then
+       echo -e "\n+=====================================================================================+"
+       echo -e "\t\tDeveloper mode no test run!"
+       echo -e "+=====================================================================================+"
     fi
 }
 
@@ -975,7 +984,7 @@ fi
 
 if [[ -n "${ip_family}" && -n "${backend}" ]]; then
     main "${ip_family}" "${backend}" "${ci_mode}" "${e2e_dir}" "${bin_dir}" "${dockerfile}" \
-         "${suffix}" "${cluster_count}" "${erase_clusters}" "${print_report}"
+         "${suffix}" "${cluster_count}" "${erase_clusters}" "${print_report}" "${devel_mode}"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help
