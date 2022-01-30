@@ -72,12 +72,11 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 			info.Endpoint.AddAddress(addr)
 		}
 
+		epMap := make(map[string]int32, len(eps.Ports))
 		for _, port := range eps.Ports {
-			ep := map[string]int32{
-				*port.Name: *port.Port,
-			}
-			info.Endpoint.EndpointPortMap = ep
+			epMap[*port.Name] = *port.Port
 		}
+		info.Endpoint.EndpointPortMap = epMap
 
 		infos = append(infos, info)
 	}
