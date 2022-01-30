@@ -25,7 +25,6 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -41,6 +40,7 @@ import (
 
 var (
 	flag = &pflag.FlagSet{}
+	nftTableManager = newNFTManager()
 
 	dryRun          = flag.Bool("dry-run", false, "dry run (do not apply rules)")
 	hookPrio        = flag.Int("hook-priority", 0, "nftable hooks priority")
@@ -105,6 +105,7 @@ func PreRun() {
 // This Callback is heavily commented because NFT is the "canonical" example of how to implement an
 // idiomatic, fullstate based KPNG backend proxy.
 func Callback(ch <-chan *client.ServiceEndpoints) {
+
 	// Part 1: Initialize variables...
 
 	// doComments decides wether or not we want verbose comments in the NFT rules.
@@ -135,8 +136,8 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	// 3) write some more data
 	// Check wether (1) and (3) are different.  We thus here are saying "once this function ends, make sure
 	// to reset the diff states".
-	defer table4.Reset()
-	defer table6.Reset()
+	defer nftTableManager.GetV4Table().Reset()
+	defer nftTableManager.GetV6Table().Reset()
 
 	// We now begin iterating through every endpoint that was sent from the KPNG brain.
 	for serviceEndpoints := range ch {
@@ -193,13 +194,9 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			}
 
 			family := "ip"
-
-			// nftTableBuffer is a new model of the incoming NFT rules that we will calculate,
-			// specific to a given service.
-			nftTableBuffer := table4
+			nftTable := nftTableManager.GetV4Table()
 			if set.v6 {
-				family = "ip6"
-				nftTableBuffer = table6
+				nftTable = nftTableManager.GetV6Table()
 			}
 
 			// compute endpoints
@@ -230,7 +227,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			// add endpoints to the map
 			if len(endpointIPs) != 0 {
 				// we'll add the entire map of endpoints into the "chainBuffers"
-				item := nftTableBuffer.Maps.GetOrPutItem(endpointsMap)
+				item := nftTable.Maps.GetOrPutItem(endpointsMap)
 				epMap := item.Value()
 
 				if epMap.Len() == 0 {
@@ -300,7 +297,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 					continue
 				}
 
-				rule.WriteTo(nftTableBuffer.Chains.Get(svc_chain))
+				rule.WriteTo(nftTable.Chains.Get(svc_chain))
 				hasRules = true
 
 				// hande node ports
@@ -311,7 +308,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 					continue
 				}
 
-				rule.WriteTo(nftTableBuffer.Chains.Get("nodeports"))
+				rule.WriteTo(nftTable.Chains.Get("nodeports"))
 			}
 
 			if !hasRules {
@@ -338,7 +335,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 					chain := prefix + "net_" + hex.EncodeToString(ip)
 
 					// add service chain in dispatch
-					vmapAdd(nftTableBuffer.Chains.GetItem(chain), family+" daddr", ipStr+": jump "+svc_chain)
+					vmapAdd(nftTable.Chains.GetOrPutItem(chain), family+" daddr", ipStr+": jump "+svc_chain)
 
 					// reference the dispatch chain from the global dispatch (of not already done) (ie: z_dnat_all)
 					if set.v6 && !chain6Nets[chain] || !set.v6 && !chain4Nets[chain] {
@@ -347,7 +344,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 							Mask: mask,
 						}
 
-						vmapAdd(nftTableBuffer.Chains.GetItem("z_"+prefix+"all"), daddrMatch, ipNet.String()+": jump "+chain)
+						vmapAdd(nftTable.Chains.GetOrPutItem("z_"+prefix+"all"), daddrMatch, ipNet.String()+": jump "+chain)
 
 						if set.v6 {
 							chain6Nets[chain] = true
@@ -367,7 +364,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			}
 
 			if len(extIPs) != 0 {
-				extChain := nftTableBuffer.Chains.GetItem(prefix + "external")
+				extChain := nftTable.Chains.GetOrPutItem(prefix + "external")
 				for _, extIP := range extIPs {
 					// XXX should this be by protocol and port to allow external IP mutualization between services?
 					vmapAdd(extChain, daddrMatch, extIP+": jump "+svc_chain)
@@ -378,24 +375,24 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	}
 
 	// run deferred rendering
-	table4.RunDeferred()
-	table6.RunDeferred()
+	nftTableManager.GetV4Table().RunDeferred()
+	nftTableManager.GetV6Table().RunDeferred()
 
 	// dispatch chains
-	addDispatchChains(table4)
-	addDispatchChains(table6)
+	addDispatchChains(nftTableManager.GetV4Table())
+	addDispatchChains(nftTableManager.GetV6Table())
 
 	// postrouting chains
-	addPostroutingChain(table4, clusterCIDRsV4, localEndpointIPsV4)
-	addPostroutingChain(table6, clusterCIDRsV6, localEndpointIPsV6)
+	addPostroutingChain(nftTableManager.GetV4Table(), clusterCIDRsV4, localEndpointIPsV4)
+	addPostroutingChain(nftTableManager.GetV6Table(), clusterCIDRsV6, localEndpointIPsV6)
 
 	// we're done, so, now we finalize the diff hashes to make iterating over "changes"
 	// between the table4(n-1) and table4(n) versions possible.
-	table4.FinalizeDiffHashes()
-	table6.FinalizeDiffHashes()
+	nftTableManager.GetV4Table().FinalizeDiffHashes()
+	nftTableManager.GetV6Table().FinalizeDiffHashes()
 
 	// check if we have changes to apply, based on the diff hashes we just finalized.
-	if !fullResync && !table4.Changed() && !table6.Changed() {
+	if !fullResync && !nftTableManager.GetV4Table().Changed() && !nftTableManager.GetV6Table().Changed() {
 		klog.V(1).Info("no changes to apply")
 		return
 	}

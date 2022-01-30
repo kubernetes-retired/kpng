@@ -17,15 +17,40 @@ limitations under the License.
 package nft
 
 import (
+	"fmt"
+	"github.com/OneOfOne/xxhash"
+	"github.com/google/btree"
 	"sigs.k8s.io/kpng/client/diffstore2"
+	"bytes"
+	"io"
 )
 
 var (
-	table4 = newNftable("ip", "k8s_svc")
-	table6 = newNftable("ip6", "k8s_svc6")
-
-	allTables = []*nftable{table4, table6}
+	nftTableManager = newNFTManager()
+	chainTypes = map[string]bool{"chain":true, "map":true}
 )
+
+type NFTManager struct {
+	allTables []*nftable
+}
+
+func newNFTManager() *NFTManager {
+	n := &NFTManager{}
+	n.allTables = []*nftable{
+		newNftable("ip", "k8s_svc"),
+		newNftable("ip6", "k8s_svc6"),
+	}
+}
+
+// GetV4Table returns a singleton instance of the global DiffState table for ipv4
+func (n* NFTManager) GetV4Table() *nftable {
+	return n.allTables[0]
+}
+
+// GetV6Table returns a singleton instance of the global DiffState table for ipv6
+func (n* NFTManager) GetV6Table() *nftable {
+	return n.allTables[1]
+}
 
 type Leaf = diffstore2.BufferLeaf
 type Item = diffstore2.Item[string, *Leaf]
@@ -66,6 +91,9 @@ type nftable struct {
 	// material changes which might require us to rewrite the NFT rules to the linux kernel.
 	Chains *Store
 	Maps   *Store
+
+	// this allows this datastructure to be reused as a btree
+	data   *btree.BTree
 }
 
 func newNftable(family, name string) *nftable {
@@ -113,3 +141,222 @@ func (n *nftable) KindStores() []KindStore {
 func (n *nftable) Changed() bool {
 	return n.Chains.HasChanges() || n.Maps.HasChanges()
 }
+
+//
+
+
+// chainBuffer is our underlying storage medium for all the chains in a table.
+// We use hashes to rapidly check wether chains need to be rewritten.
+// the buffer
+type chainBuffer struct {
+	kind         string
+	name         string
+	previousHash uint64
+	currentHash  *xxhash.XXHash64
+	buffer       *bytes.Buffer
+	lenMA        int
+	deferred     []func(*chainBuffer)
+}
+
+var (
+	_ btree.Item    = &chainBuffer{}
+	_ io.ReadWriter = &chainBuffer{}
+)
+
+// Less implements the interface for the btree which we use to store all the chains in this table.
+// See the Item interface for our underlying BTree implementation for details.
+func (c *chainBuffer) Less(i btree.Item) bool {
+	return c.name < i.(*chainBuffer).name
+}
+
+func (c *chainBuffer) Read(b []byte) (int, error) {
+	return c.buffer.Read(b)
+}
+
+func (c *chainBuffer) Write(b []byte) (int, error) {
+	if c.currentHash == nil {
+		c.currentHash = xxhash.New64()
+	}
+	c.currentHash.Write(b)
+	return c.buffer.Write(b)
+}
+
+func (c *chainBuffer) Writeln() (n int, err error) {
+	return c.Write([]byte{'\n'})
+}
+
+func (c *chainBuffer) WriteString(s string) (n int, err error) {
+	start := c.buffer.Len()
+	n, err = c.buffer.WriteString(s)
+
+	if c.currentHash == nil {
+		c.currentHash = xxhash.New64()
+	}
+	c.currentHash.Write(c.buffer.Bytes()[start:])
+
+	return n, err
+}
+
+func (c *chainBuffer) Len() int {
+	return c.buffer.Len()
+}
+
+// Changed uses the hash computation in this chain buffer to determine wether or not
+// any recent changes have occured on this chain.
+func (c *chainBuffer) Changed() bool {
+	if c.currentHash == nil {
+		return c.previousHash != 0
+	}
+	return c.currentHash.Sum64() != c.previousHash
+}
+
+// Defer runs adds a function to the queue of tasks which we will run on the chain Buffer.
+func (c *chainBuffer) Defer(deferred func(*chainBuffer)) {
+	c.deferred = append(c.deferred, deferred)
+}
+
+// RunDeffered runs all the deferred operations for this chainBuffer.
+func (c *chainBuffer) RunDeferred() {
+	for _, deferredOperation := range c.deferred {
+		deferredOperation(c)
+	}
+}
+
+func (c *chainBuffer) Created() bool {
+	return c.previousHash == 0 && c.currentHash != nil
+}
+
+func (set *nftable) Reset() {
+	set.data.Ascend(func(i btree.Item) bool {
+		cb := i.(*chainBuffer)
+
+		cb.deferred = cb.deferred[:0]
+
+		// compute buffer len moving average
+		if cb.lenMA == 0 {
+			cb.lenMA = cb.buffer.Len()
+		} else {
+			cb.lenMA = (4*cb.lenMA + cb.buffer.Len()) / 5
+		}
+		// expect len+20%
+		expCap := cb.lenMA * 120 / 100
+
+		if cb.buffer.Cap() <= expCap {
+			cb.buffer.Reset()
+		} else {
+			cb.buffer = bytes.NewBuffer(make([]byte, 0, expCap))
+		}
+
+		if cb.currentHash == nil {
+			// no writes -> empty
+			cb.previousHash = 0
+		} else {
+			cb.previousHash = cb.currentHash.Sum64()
+			cb.currentHash = nil
+		}
+		return true
+	})
+}
+
+// ReplaceOrInsert creates a new chainBuffer which can be used to add new chains.
+// A typical NFT chain might start off empty...
+// nft 'add chain filter0 filter0_chain0 { }
+// Once a chain is created we can add rules to it.
+func (set *nftable) ReplaceOrInsert(kind, name string) *chainBuffer {
+	i := set.data.Get(&chainBuffer{name: name})
+
+	// we didn't see this chain - so we'll make a new one...
+	if i == nil {
+		if _, ok := chainTypes[kind] ; ! ok {
+			chainError := fmt.Errorf("can't create chain buffer w/o with kind %v", kind)
+			panic(chainError)
+		}
+
+		i = &chainBuffer{
+			kind:     kind,
+			name:     name,
+			buffer:   new(bytes.Buffer),
+			deferred: make([]func(*chainBuffer), 0, 1),
+		}
+		set.data.ReplaceOrInsert(i)
+	}
+
+	cb := i.(*chainBuffer)
+
+	if kind != "" && kind != cb.kind {
+		panic("wrong kind for " + name + ": " + kind + " (got " + cb.kind + ")")
+	}
+
+	return cb
+}
+
+// ListChains returns a list of all the chain names in this nftable.
+func (set *nftable) ListChains() (chains []string) {
+	chains = make([]string, 0, set.data.Len())
+
+	set.data.Ascend(func(i btree.Item) bool {
+		cb := i.(*chainBuffer)
+		if cb.currentHash != nil {
+			chains = append(chains, cb.name)
+		}
+		return true
+	})
+
+	return
+}
+
+func (set *nftable) Deleted() (chains []*chainBuffer) {
+	chains = make([]*chainBuffer, 0)
+
+	set.data.Ascend(func(i btree.Item) bool {
+		cb := i.(*chainBuffer)
+		if cb.previousHash != 0 && cb.currentHash == nil {
+			chains = append(chains, cb)
+		}
+		return true
+	})
+
+	return
+}
+
+func (set *nftable) Changed() (changed bool) {
+	changed = false
+
+	set.data.Ascend(func(i btree.Item) bool {
+		cb := i.(*chainBuffer)
+		if cb.Changed() {
+			changed = true
+		}
+		return !changed
+	})
+
+	return
+}
+
+// RunDeferred runs all of the deferred tasks on this nftable in ascending order, of each chain.
+func (set *nftable) RunDeferred() {
+	set.data.Ascend(
+		func(i btree.Item) bool {
+			// Run all of the deferred inner tasks of this chain.
+			i.(*chainBuffer).RunDeferred()
+			return true
+		})
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
