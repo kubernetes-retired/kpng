@@ -120,7 +120,7 @@ func (t *iptables) sync() {
 	endpointUpdateResult := t.endpointsMap.Update(t.endpointsChanges)
 
 	t.detectStaleConntrackEntries()
-	klog.V(2).InfoS("Syncing iptables rules")
+	klog.InfoS("Syncing iptables rules")
 
 	// success := false
 	// defer func() {
@@ -201,7 +201,7 @@ func (t *iptables) sync() {
 			if allEndpoints != nil {
 				hasEndpoints = len(*allEndpoints) > 0
 			}
-			endpoints, endpointChains := t.createServiceSpecificChains(svcInfo, activeNATChains, existingNATChains, allEndpoints)
+			endpoints, endpointChains, endpointPortMap := t.createServiceSpecificChains(svcInfo, activeNATChains, existingNATChains, allEndpoints)
 
 			t.writeClusterIPRules(svcInfo, svcName, args[:0])
 			t.writeExternalIPRules(svcInfo, svcName, args[:0], localAddrSet, replacementPortsMap)
@@ -213,7 +213,7 @@ func (t *iptables) sync() {
 			}
 
 			readyEndpointChains, readyEndpoints, localReadyEndpointChains := t.getReadyEndpointsInfo(endpoints, endpointChains)
-			t.writeEndpointRules(svcInfo, svcName, endpointChains, readyEndpointChains, endpoints, readyEndpoints, &args)
+			t.writeEndpointRules(svcInfo, svcName, endpointChains, readyEndpointChains, endpoints, readyEndpoints, &args, endpointPortMap)
 
 			// The logic below this applies only if this service is marked as OnlyLocal
 			if svcInfo.NodeLocalExternal() {
@@ -258,7 +258,7 @@ func (t *iptables) sync() {
 }
 
 func (t *iptables) createServiceSpecificChains(svcInfo *serviceInfo, activeNATChains map[util.Chain]bool,
-	existingNATChains map[util.Chain][]byte, allEndpoints *endpointsInfoByName) ([]*string, *[]util.Chain) {
+	existingNATChains map[util.Chain][]byte, allEndpoints *endpointsInfoByName) ([]*string, *[]util.Chain, map[string]map[string]int32) {
 	if allEndpoints != nil && len(*allEndpoints) > 0 {
 		// Create the per-service chain, retaining counters if possible.
 		t.copyExistingChains([]util.Chain{svcInfo.servicePortChainName}, existingNATChains, &t.natChains)
@@ -626,14 +626,16 @@ func (t *iptables) writeNodePortsRules(svcInfo *serviceInfo, nodeAddresses sets.
 
 //createEndpointsChain creates chains for each ep
 func (t *iptables) createEndpointsChain(svcInfo *serviceInfo, allEndpoints *endpointsInfoByName,
-	existingNATChains map[util.Chain][]byte, activeNATChains map[util.Chain]bool) ([]*string, *[]util.Chain) {
+	existingNATChains map[util.Chain][]byte, activeNATChains map[util.Chain]bool) ([]*string, *[]util.Chain, map[string]map[string]int32) {
 	endpoints := make([]*string, 0)
 	endpointChains := make([]util.Chain, 0)
 	protocol := strings.ToLower(svcInfo.Protocol().String())
+	endpointPortMap := make(map[string]map[string]int32)
 	var endpointChain util.Chain
 	if allEndpoints == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
+
 	for _, epInfo := range *allEndpoints {
 		// epInfo, ok := ep.(*endpointsInfo)
 		// if !ok {
@@ -652,6 +654,7 @@ func (t *iptables) createEndpointsChain(svcInfo *serviceInfo, allEndpoints *endp
 			}
 			ep = epInfo.IPs.V4[0]
 		}
+		endpointPortMap[ep] = epInfo.EndpointPortMap
 		endpoints = append(endpoints, &ep)
 
 		endpointChain = servicePortEndpointChainName(svcInfo.serviceNameString, protocol, ep)
@@ -661,17 +664,17 @@ func (t *iptables) createEndpointsChain(svcInfo *serviceInfo, allEndpoints *endp
 		t.copyExistingChains([]util.Chain{endpointChain}, existingNATChains, &t.natChains)
 		activeNATChains[endpointChain] = true
 	}
-	return endpoints, &endpointChains
+	return endpoints, &endpointChains, endpointPortMap
 }
 
 //writeEndpointRules writes rules to svc to jump to sep and rules to sep to dnat and loadbalance to actual ep ip
 func (t *iptables) writeEndpointRules(svcInfo *serviceInfo, svcName types.NamespacedName, endpointChains *[]util.Chain,
-	readyEndpointChains *[]util.Chain, endpoints []*string, readyEndpoints []*string, args *[]string) {
+	readyEndpointChains *[]util.Chain, endpoints []*string, readyEndpoints []*string, args *[]string, endpointPortMap map[string]map[string]int32) {
 	// First write session affinity rules, if applicable.
 	t.writeSessionAffinityRules(svcInfo, (*args)[:0], endpointChains, svcName)
 	// Now write loadbalancing & DNAT rules.
 	t.writeEndpointLBRules(svcInfo, svcName, readyEndpointChains, readyEndpoints, (*args)[:0])
-	t.writeDNATRules(svcInfo, svcName, endpoints, endpointChains, (*args)[:0])
+	t.writeDNATRules(svcInfo, svcName, endpoints, endpointChains, (*args)[:0], endpointPortMap)
 }
 
 func (t *iptables) writeSessionAffinityRules(svcInfo *serviceInfo, args []string, endpointChains *[]util.Chain,
@@ -757,7 +760,7 @@ func (t *iptables) writeEndpointLBRules(svcInfo *serviceInfo, svcName types.Name
 }
 
 func (t *iptables) writeDNATRules(svcInfo *serviceInfo, svcName types.NamespacedName,
-	endpoints []*string, endpointChains *[]util.Chain, args []string) {
+	endpoints []*string, endpointChains *[]util.Chain, args []string, endpointPortMap map[string]map[string]int32) {
 	protocol := strings.ToLower(svcInfo.Protocol().String())
 	for i, endpointChain := range *endpointChains {
 		epIP := endpoints[i]
@@ -776,10 +779,27 @@ func (t *iptables) writeDNATRules(svcInfo *serviceInfo, svcName types.Namespaced
 		if svcInfo.SessionAffinity().ClientIP != nil {
 			args = append(args, "-m", "recent", "--name", string(endpointChain), "--set")
 		}
+
+		targetPort := t.getTargetPort(svcInfo, endpointPortMap, *epIP)
+
+		// this seems very sly to me. Doing this because there were 2 entries being added
+		// one with the right target port and one with zero
+		// write better logic or verify how baseServiceInfo & endpointPortMap are populated
+		if targetPort == 0 {
+			continue
+		}
 		// DNAT to final destination.
-		args = append(args, "-m", protocol, "-p", protocol, "-j", "DNAT", "--to-destination", net.JoinHostPort(*endpoints[i], strconv.Itoa(svcInfo.TargetPort())))
+		args = append(args, "-m", protocol, "-p", protocol, "-j", "DNAT", "--to-destination", net.JoinHostPort(*epIP, strconv.Itoa(targetPort)))
 		t.natRules.Write(args)
 	}
+}
+
+// if the targetPort is string, fetch the value from endpointPortMap
+func (t *iptables) getTargetPort(svcInfo *serviceInfo, endpointPortMap map[string]map[string]int32, endpoint string) int {
+	if svcInfo.TargetPortName() != "" {
+		return int(endpointPortMap[endpoint][svcInfo.PortName()])
+	}
+	return svcInfo.TargetPort()
 }
 
 func (t *iptables) writeLocalExtTrafficPolicyRules(svcInfo *serviceInfo, svcName types.NamespacedName, localReadyEndpointChains *[]util.Chain, args []string) {

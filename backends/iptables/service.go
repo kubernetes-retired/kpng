@@ -54,6 +54,8 @@ type BaseServiceInfo struct {
 	internalTrafficPolicy    *v1.ServiceInternalTrafficPolicyType
 	hintsAnnotation          string
 	targetPort               int
+	targetPortName           string
+	portName                 string
 }
 
 // SessionAffinity contains data about assinged session affinity
@@ -81,6 +83,15 @@ func (info *BaseServiceInfo) Port() int {
 // Port is part of ServicePort interface.
 func (info *BaseServiceInfo) TargetPort() int {
 	return info.targetPort
+}
+
+// PortName is part of ServicePort interface.
+func (info *BaseServiceInfo) PortName() string {
+	return info.portName
+}
+
+func (info *BaseServiceInfo) TargetPortName() string {
+	return info.targetPortName
 }
 
 // SessionAffinity is part of the ServicePort interface.
@@ -157,7 +168,9 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localnetv1.PortMapping
 	info := &BaseServiceInfo{
 		clusterIP:         net.ParseIP(clusterIP),
 		port:              int(port.Port),
+		portName:          port.Name,
 		targetPort:        int(port.TargetPort),
+		targetPortName:    port.TargetPortName,
 		protocol:          port.Protocol,
 		nodePort:          int(port.NodePort),
 		nodeLocalExternal: nodeLocalExternal,

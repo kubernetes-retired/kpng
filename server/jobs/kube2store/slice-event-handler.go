@@ -37,7 +37,6 @@ func serviceNameFrom(eps *discovery.EndpointSlice) string {
 
 func (h sliceEventHandler) OnAdd(obj interface{}) {
 	eps := obj.(*discovery.EndpointSlice)
-
 	serviceName := serviceNameFrom(eps)
 	if serviceName == "" {
 		// no name => not associated with a service => ignore
@@ -72,6 +71,12 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 		for _, addr := range sliceEndpoint.Addresses {
 			info.Endpoint.AddAddress(addr)
 		}
+
+		epMap := make(map[string]int32, len(eps.Ports))
+		for _, port := range eps.Ports {
+			epMap[*port.Name] = *port.Port
+		}
+		info.Endpoint.EndpointPortMap = epMap
 
 		infos = append(infos, info)
 	}
