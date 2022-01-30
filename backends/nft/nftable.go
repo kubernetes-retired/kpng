@@ -17,17 +17,17 @@ limitations under the License.
 package nft
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/OneOfOne/xxhash"
 	"github.com/google/btree"
-	"sigs.k8s.io/kpng/client/diffstore2"
-	"bytes"
 	"io"
+	"sigs.k8s.io/kpng/client/diffstore2"
 )
 
 var (
-	nftTableManager = newNFTManager()
-	chainTypes = map[string]bool{"chain":true, "map":true}
+	// nftTableManager = newNFTManager()
+	chainTypes = map[string]bool{"chain": true, "map": true}
 )
 
 type NFTManager struct {
@@ -40,15 +40,16 @@ func newNFTManager() *NFTManager {
 		newNftable("ip", "k8s_svc"),
 		newNftable("ip6", "k8s_svc6"),
 	}
+	return n
 }
 
 // GetV4Table returns a singleton instance of the global DiffState table for ipv4
-func (n* NFTManager) GetV4Table() *nftable {
+func (n *NFTManager) GetV4Table() *nftable {
 	return n.allTables[0]
 }
 
 // GetV6Table returns a singleton instance of the global DiffState table for ipv6
-func (n* NFTManager) GetV6Table() *nftable {
+func (n *NFTManager) GetV6Table() *nftable {
 	return n.allTables[1]
 }
 
@@ -93,7 +94,7 @@ type nftable struct {
 	Maps   *Store
 
 	// this allows this datastructure to be reused as a btree
-	data   *btree.BTree
+	data *btree.BTree
 }
 
 func newNftable(family, name string) *nftable {
@@ -111,17 +112,17 @@ func newNftable(family, name string) *nftable {
 // Reset resets the individual diffstores' for the Chain and Map items of this table.
 // The Chain and Maps of an Nftable are the "things" which change throughout the process
 // of the KPNG nft backend, as new endpoints and services are discovered from the KPNG brain.
-func (n *nftable) Reset() {
+func (n *nftable) ResetNFTForChainMaps() {
 	n.Chains.Reset()
 	n.Maps.Reset()
 }
 
-func (n *nftable) RunDeferred() {
+func (n *nftable) RunDeferredForChainMaps() {
 	n.Chains.RunDeferred()
 	n.Maps.RunDeferred()
 }
 
-func (n *nftable) FinalizeDiffHashes() {
+func (n *nftable) FinalizeDiffHashesForChainMaps() {
 	n.Chains.FinalizeDiffHashes()
 	n.Maps.FinalizeDiffHashes()
 }
@@ -138,12 +139,11 @@ func (n *nftable) KindStores() []KindStore {
 	}
 }
 
-func (n *nftable) Changed() bool {
+func (n *nftable) isDirtyChainOrMap() bool {
 	return n.Chains.HasChanges() || n.Maps.HasChanges()
 }
 
 //
-
 
 // chainBuffer is our underlying storage medium for all the chains in a table.
 // We use hashes to rapidly check wether chains need to be rewritten.
@@ -226,7 +226,7 @@ func (c *chainBuffer) Created() bool {
 	return c.previousHash == 0 && c.currentHash != nil
 }
 
-func (set *nftable) Reset() {
+func (set *nftable) ResetTree() {
 	set.data.Ascend(func(i btree.Item) bool {
 		cb := i.(*chainBuffer)
 
@@ -267,7 +267,7 @@ func (set *nftable) ReplaceOrInsert(kind, name string) *chainBuffer {
 
 	// we didn't see this chain - so we'll make a new one...
 	if i == nil {
-		if _, ok := chainTypes[kind] ; ! ok {
+		if _, ok := chainTypes[kind]; !ok {
 			chainError := fmt.Errorf("can't create chain buffer w/o with kind %v", kind)
 			panic(chainError)
 		}
@@ -319,7 +319,7 @@ func (set *nftable) Deleted() (chains []*chainBuffer) {
 	return
 }
 
-func (set *nftable) Changed() (changed bool) {
+func (set *nftable) ChangedTree() (changed bool) {
 	changed = false
 
 	set.data.Ascend(func(i btree.Item) bool {
@@ -342,21 +342,3 @@ func (set *nftable) RunDeferred() {
 			return true
 		})
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

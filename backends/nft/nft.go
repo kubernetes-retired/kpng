@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -39,7 +40,7 @@ import (
 )
 
 var (
-	flag = &pflag.FlagSet{}
+	flag            = &pflag.FlagSet{}
 	nftTableManager = newNFTManager()
 
 	dryRun          = flag.Bool("dry-run", false, "dry run (do not apply rules)")
@@ -94,8 +95,6 @@ func PreRun() {
 	klog.Info("cluster CIDRs V6: ", clusterCIDRsV6)
 }
 
-
-
 // Callback is called every time services or endpoints change by the KPNG brain.  The ServiceEndpoints
 // object is a single detailed Service with a list of all its associated Endpoints...
 //  type ServiceEndpoints struct {
@@ -125,7 +124,6 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	localEndpointIPsV4 := make([]string, 0, 256)
 	localEndpointIPsV6 := make([]string, 0, 256)
 
-
 	defer func() {
 		klog.V(1).Infof("%d services and %d endpoints applied in %v", svcCount, epCount, time.Since(start))
 	}()
@@ -136,8 +134,8 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	// 3) write some more data
 	// Check wether (1) and (3) are different.  We thus here are saying "once this function ends, make sure
 	// to reset the diff states".
-	defer nftTableManager.GetV4Table().Reset()
-	defer nftTableManager.GetV6Table().Reset()
+	defer nftTableManager.GetV4Table().ResetNFTForChainMaps()
+	defer nftTableManager.GetV6Table().ResetNFTForChainMaps()
 
 	// We now begin iterating through every endpoint that was sent from the KPNG brain.
 	for serviceEndpoints := range ch {
@@ -177,7 +175,6 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 
 		//for ip4 and ip6 tables
 		//		"run" the finalization functions
-
 
 		for _, set := range []struct {
 			ips              []string
@@ -388,11 +385,11 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 
 	// we're done, so, now we finalize the diff hashes to make iterating over "changes"
 	// between the table4(n-1) and table4(n) versions possible.
-	nftTableManager.GetV4Table().FinalizeDiffHashes()
-	nftTableManager.GetV6Table().FinalizeDiffHashes()
+	nftTableManager.GetV4Table().FinalizeDiffHashesForChainMaps()
+	nftTableManager.GetV6Table().FinalizeDiffHashesForChainMaps()
 
 	// check if we have changes to apply, based on the diff hashes we just finalized.
-	if !fullResync && !nftTableManager.GetV4Table().Changed() && !nftTableManager.GetV6Table().Changed() {
+	if !fullResync && !nftTableManager.GetV4Table().isDirtyChainOrMap() && !nftTableManager.GetV6Table().isDirtyChainOrMap() {
 		klog.V(1).Info("no changes to apply")
 		return
 	}
@@ -552,7 +549,9 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 
 	out := bufio.NewWriter(io.MultiWriter(outputs...))
 
-	for _, table := range allTables {
+	// Todo this iteration should be calling a public method of nftTableManager, as opposed
+	// to accessing the private tables array
+	for _, table := range nftTableManager.allTables {
 		// flush/delete previous state
 		if fullResync {
 			fmt.Fprintf(out, "table %s %s\n", table.Family, table.Name)
