@@ -268,9 +268,9 @@ function create_cluster {
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: cluster name                                                    #
-    #   arg2: IP family                                                   #
-    #   arg3: artifacts directory                                                    #
-   ###########################################################################
+    #   arg2: IP family                                                       #
+    #   arg3: artifacts directory                                             #
+    ###########################################################################
     [ $# -eq 3 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
@@ -311,6 +311,35 @@ EOF
     kind get kubeconfig --internal --name "${cluster_name}" > "${artifacts_directory}/kubeconfig.conf"
     kind get kubeconfig --name "${cluster_name}" > "${artifacts_directory}/${KUBECONFIG_TESTS}"
 
+    # IPv6 clusters need some CoreDNS changes in order to work in k8s CI:
+    # 1. k8s CI doesn´t offer IPv6 connectivity, so CoreDNS should be configured
+    # to work in an offline environment:
+    # https://github.com/coredns/coredns/issues/2494#issuecomment-457215452
+    # 2. k8s CI adds following domains to resolv.conf search field:
+    # c.k8s-prow-builds.internal google.internal.
+    # CoreDNS should handle those domains and answer with NXDOMAIN instead of SERVFAIL
+    # otherwise pods stops trying to resolve the domain.
+    #
+    if [ "${ip_family:-ipv4}" = "ipv6" ]; then
+        local k8s_context="kind-${cluster_name}"
+       # Get the current config
+        local original_coredns=$(kubectl --context "${k8s_context}" get -oyaml -n=kube-system configmap/coredns)
+        echo "Original CoreDNS config:"
+        echo "${original_coredns}"
+        # Patch it
+        local fixed_coredns=$(
+        printf '%s' "${original_coredns}" | sed \
+         -e 's/^.*kubernetes cluster\.local/& internal/' \
+         -e '/^.*upstream$/d' \
+         -e '/^.*fallthrough.*$/d' \
+         -e '/^.*forward . \/etc\/resolv.conf$/d' \
+         -e '/^.*loop$/d' \
+        )
+        echo "Patched CoreDNS config:"
+        echo "${fixed_coredns}"
+        printf '%s' "${fixed_coredns}" | kubectl --context "${k8s_context}" apply -f -
+  fi
+
     pass_message "Cluster ${cluster_name} is created."
 }
 
@@ -344,55 +373,6 @@ function wait_until_cluster_is_ready {
     fi
 
     pass_message "${cluster_name} is operational."
-}
-
-function workaround_coreDNS_for_IPv6_airgapped {
-    ###########################################################################
-    # Description:                                                            #
-    #                                                                         #
-    # Patch CoreDNS to work in Github CI                                      #
-    # 1. Github CI doesn´t offer IPv6 connectivity, so CoreDNS should be      #
-    # configured to work in an offline environment:                           #
-    # https://github.com/coredns/coredns/issues/2494#issuecomment-457215452   #
-    # 2. Github CI adds following domains to resolv.conf search field:        #
-    # .net.                                                                   #
-    # CoreDNS should handle those domains and answer with NXDOMAIN instead of #
-    # SERVFAIL otherwise pods stops trying to resolve the domain.             #
-    #                                                                         #
-    #   arg1: cluster name                                                    #
-   ###########################################################################
-
-    [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
-
-    local cluster_name=$1
-    local k8s_context="kind-${cluster_name}"
-    ###########################################################################
-
-    # Get the current config
-    original_coredns=$(kubectl --context "${k8s_context}" get -oyaml -n="${NAMESPACE}" configmap/coredns)
-    if [ "${ci_mode}" = true ] ; then
-        echo "Original CoreDNS config:"
-        echo "${original_coredns}"
-    fi
-
-    # Patch it
-    fixed_coredns=$(
-        printf '%s' "${original_coredns}" | sed \
-            -e 's/^.*kubernetes cluster\.local/& net/' \
-            -e '/^.*upstream$/d' \
-            -e '/^.*fallthrough.*$/d' \
-            -e '/^.*forward . \/etc\/resolv.conf$/d' \
-            -e '/^.*loop$/d' \
-    )
-    if [ "${ci_mode}" = true ] ; then
-        echo "Patched CoreDNS config:"
-        echo "${fixed_coredns}"
-    fi
-    printf '%s' "${fixed_coredns}" | kubectl apply -f - &> /dev/null
-    if_error_exit "cannot apply patch in CoreDNS"
-
-    pass_message "CoreDNS is patched and ready."
 }
 
 function delete_kind_cluster {
@@ -490,34 +470,60 @@ function install_kpng {
 }
 
 function run_tests {
-    ###########################################################################
-    # Description:                                                            #
-    # Execute the tests with ginkgo                                           #
-    #                                                                         #
-    # Arguments:                                                              #
-    #   arg1: e2e directory                                                   #
      ###########################################################################
-    [ $# -eq 1 ]
-     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+     # Description:                                                            #
+     # Execute the tests with ginkgo                                           #
+     #                                                                         #
+     # Arguments:                                                              #
+     #   arg1: e2e directory                                                   #
+     #   arg4: parallel ginkgo tests boolean                                    #
+     ###########################################################################
+
+    [ $# -eq 2 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
+    local parallel="${2}"
+
     local artifacts_directory="${e2e_dir}/artifacts"
 
+    [ -f "${artifacts_directory}/${KUBECONFIG_TESTS}" ]
+    if_error_exit "Directory \"${artifacts_directory}/${KUBECONFIG_TESTS}\" does not exist"
+
     cp "${artifacts_directory}/${KUBECONFIG_TESTS}" "${e2e_dir}/${KUBECONFIG_TESTS}"
-    ginkgo --nodes="${GINKGO_NUMBER_OF_NODES}" \
-           --focus="${GINKGO_FOCUS}" \
-           --skip="${GINKGO_SKIP_TESTS}" \
+
+   # ginkgo regexes
+   local ginkgo_skip="${GINKGO_SKIP_TESTS:-}"
+   local ginkgo_focus="${GINKGO_FOCUS:-"\\[Conformance\\]"}"
+   # if we set PARALLEL=true, skip serial tests set --ginkgo-parallel
+   if [ "${parallel:-false}" = "true" ]; then
+     export GINKGO_PARALLEL=y
+     if [ -z "${skip}" ]; then
+       ginkgo_skip="\\[Serial\\]"
+     else
+       ginkgo_skip="\\[Serial\\]|${ginkgo_skip}"
+     fi
+   fi
+
+   # setting this env prevents ginkgo e2e from trying to run provider setup
+   export KUBERNETES_CONFORMANCE_TEST='y'
+   # setting these is required to make RuntimeClass tests work ... :/
+   export KUBE_CONTAINER_RUNTIME=remote
+   export KUBE_CONTAINER_RUNTIME_ENDPOINT=unix:///run/containerd/containerd.sock
+   export KUBE_CONTAINER_RUNTIME_NAME=containerd
+
+   ginkgo --nodes="${GINKGO_NUMBER_OF_NODES}" \
+           --focus="${ginkgo_focus}" \
+           --skip="${ginkgo_skip}" \
            "${E2E_DIR}"/e2e.test \
            -- \
            --kubeconfig="${KUBECONFIG_TESTS}" \
            --provider="${GINKGO_PROVIDER}" \
            --dump-logs-on-failure="${GINKGO_DUMP_LOGS_ON_FAILURE}" \
            --report-dir="${GINKGO_REPORT_DIR}" \
-           --disable-log-dump="${GINKGO_DISABLE_LOG_DUMP}"
-
-    # FIXME: until all tests are green, let's keep the exit 0
-    #if_error_exit "ginkgo: one or more tests failed"
-    exit 0
+           --disable-log-dump="${GINKGO_DISABLE_LOG_DUMP}" &
+   local ginko_pid=$!
+   wait "${ginko_pid}"
 }
 
 function clean_artifacts {
@@ -534,24 +540,26 @@ function clean_artifacts {
 
     local e2e_dir="${1}"
 
-    kind export \
-        logs \
-        --name="$(cat "${e2e_dir}/clustername")" \
-        --loglevel="debug" \
-        "${E2E_LOGS}"
-    if_error_exit "cannot export kind logs"
+    if [ ! "${E2E_LOGS:-false}" = "false" ] ; then
+        kind export \
+          logs \
+          --name="$(cat "${e2e_dir}/clustername")" \
+          --loglevel="debug" \
+          "${E2E_LOGS}"
+        if_error_exit "cannot export kind logs"
 
-    #TODO in local mode to avoid the overwriting of artifacts from test to test
-    #     add logic to this function that moves the content of artifacts
-    #     to a dir named clustername+date+time
-    pass_message "make sure to safe your result before the next run."
+       #TODO in local mode to avoid the overwriting of artifacts from test to test
+       #     add logic to this function that moves the content of artifacts
+       #     to a dir named clustername+date+time
+       pass_message "make sure to safe your result before the next run."
+    fi
 }
 
 
 function apply_ipvx_fixes {
     ###########################################################################
     # Description:                                                            #
-    # apply ipvx fixe                                                         #
+    # apply ipvx fixes                                                        #
     #                                                                         #
     # Arguments:                                                              #
     #   None                                                                  #
@@ -698,21 +706,19 @@ function create_infrastructure_and_run_tests {
     if [ "${ci_mode}" = true ] ; then
         # store the clustername for other scripts in ci
         echo "${cluster_name}"
-        echo "${cluster_name}" > "${e2e_dir}"/clustername
     fi
 
     create_cluster "${cluster_name}" "${ip_family}" "${artifacts_directory}"
     wait_until_cluster_is_ready "${cluster_name}"
 
-    if [ "${ci_mode}" = true ] ; then
-        workaround_coreDNS_for_IPv6_airgapped "${cluster_name}"
-    fi
+    echo "${cluster_name}" > "${e2e_dir}"/clustername
+
     if [ "${backend}" != "not-kpng" ] ; then
         install_kpng "${cluster_name}"
     fi
 
     if ! ${devel_mode} ; then
-        run_tests "${e2e_dir}"
+        run_tests "${e2e_dir}" "false"
         #need to clean this up
        if [ "${ci_mode}" = false ] ; then
           clean_artifacts "${e2e_dir}"
@@ -900,7 +906,7 @@ function main {
             pids[${i}]=$!
         done
         for pid in ${pids[*]}; do # not possible to use quotes here
-            wait ${pid}
+          wait ${pid}
         done
         if ! ${devel_mode} ; then
            print_reports "${e2e_dir}" "-${suffix}" "${cluster_count}"
@@ -926,7 +932,8 @@ function help {
     printf "\n"
     printf "Usage: %s [-i ip_family] [-b backend]\n" "$0"
     printf "\t-i set ip_family(ipv4/ipv6/dual) name in the e2e test runs.\n"
-    printf "\t-b set backend (iptables/nft/ipvs) name in the e2e test runs.\n"
+    printf "\t-b set backend (iptables/nft/ipvs/not-kpng) name in the e2e test runs. \
+    \"not-kpng\" is used to be able to validate and compare results\n"
     printf "\t-c flag allows for ci_mode. Please don't run on local systems.\n"
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
     printf "\t-e erase kind clusters.\n"
