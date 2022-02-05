@@ -34,7 +34,6 @@ require (
 )
 
 require (
-	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
@@ -80,7 +79,7 @@ require (
 	k8s.io/component-base v0.21.0-alpha.1 // indirect
 	k8s.io/klog/v2 v2.20.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20210421082810-95288971da7e // indirect
-	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b // indirect
+	k8s.io/utils v0.0.0-20220127004650-9b3446523e65 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
