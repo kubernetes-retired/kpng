@@ -454,15 +454,17 @@ func addDispatchChains(table *nftable) {
 	}
 
 	// filtering
+	filterAll := table.Chains.Get("z_filter_all")
+	fmt.Fprint(filterAll, "  ct state invalid drop\n")
+
 	if table.Chains.Get("filter_external").Len() != 0 {
-		fmt.Fprint(table.Chains.Get("z_filter_all"), "  jump filter_external\n")
+		fmt.Fprint(filterAll, "  jump filter_external\n")
 	}
-	if table.Chains.Get("z_filter_all").Len() != 0 {
-		fmt.Fprintf(table.Chains.Get("hook_filter_forward"),
-			"  type filter hook forward priority %d;\n  jump z_filter_all\n", *hookPrio)
-		fmt.Fprintf(table.Chains.Get("hook_filter_output"),
-			"  type filter hook output priority %d;\n  jump z_filter_all\n", *hookPrio)
-	}
+
+	fmt.Fprintf(table.Chains.Get("hook_filter_forward"),
+		"  type filter hook forward priority %d;\n  jump z_filter_all\n", *hookPrio)
+	fmt.Fprintf(table.Chains.Get("hook_filter_output"),
+		"  type filter hook output priority %d;\n  jump z_filter_all\n", *hookPrio)
 }
 
 func addPostroutingChain(table *nftable, clusterCIDRs []string, localEndpointIPs []string) {
