@@ -225,7 +225,7 @@ func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
 		}
 
 		if prevSessAff.ClientIP != nil && currSessAff.ClientIP == nil {
-			sl.SessionAffinityListener.DisableSessionAffinity(currSvc)
+			sl.SessionAffinityListener.DisableSessionAffinity(prevSvc)
 		}
 	}
 
