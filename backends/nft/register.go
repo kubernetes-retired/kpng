@@ -6,6 +6,8 @@ import (
 	"sigs.k8s.io/kpng/client/backendcmd"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
+	"sigs.k8s.io/kpng/client/localsink/fullstate/fullstatepipe"
+	"sigs.k8s.io/kpng/client/plugins/conntrack"
 )
 
 type backend struct {
@@ -25,7 +27,12 @@ func (b *backend) Sink() localsink.Sink {
 	sink := fullstate.New(&b.cfg)
 
 	PreRun()
-	sink.Callback = Callback
+
+	ct := conntrack.New()
+	sink.Callback = fullstatepipe.New(fullstatepipe.ParallelSendSequenceClose,
+		Callback,
+		ct.Callback,
+	).Callback
 
 	return sink
 }
