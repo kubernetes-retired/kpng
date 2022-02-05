@@ -49,7 +49,7 @@ func (_ sessAffLsnr) EnableSessionAffinity(svc *localnetv1.Service, sessionAffin
 	fmt.Print("ENABLE sessionAffinity svc: ", cleanStr(svc), "sessionAffinity: ", sessionAffinity, "\n")
 }
 func (_ sessAffLsnr) DisableSessionAffinity(svc *localnetv1.Service) {
-	fmt.Print("DISABLE sessionAffinity svc: ", cleanStr(svc)"\n")
+	fmt.Print("DISABLE sessionAffinity svc: ", cleanStr(svc), "\n")
 }
 
 func Example() {
