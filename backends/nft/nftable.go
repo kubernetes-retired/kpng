@@ -37,6 +37,7 @@ func newNftable(family, name string) *nftable {
 		Name:   name,
 		Chains: diffstore2.NewBufferStore[string](),
 		Maps:   diffstore2.NewBufferStore[string](),
+		Sets:   diffstore2.NewBufferStore[string](),
 	}
 }
 
@@ -45,21 +46,25 @@ type nftable struct {
 	Name   string
 	Chains *Store
 	Maps   *Store
+	Sets   *Store
 }
 
 func (n *nftable) Reset() {
 	n.Chains.Reset()
 	n.Maps.Reset()
+	n.Sets.Reset()
 }
 
 func (n *nftable) RunDeferred() {
 	n.Chains.RunDeferred()
 	n.Maps.RunDeferred()
+	n.Sets.RunDeferred()
 }
 
 func (n *nftable) Done() {
 	n.Chains.Done()
 	n.Maps.Done()
+	n.Sets.Done()
 }
 
 type KindStore struct {
@@ -70,6 +75,7 @@ type KindStore struct {
 func (n *nftable) KindStores() []KindStore {
 	return []KindStore{
 		{"map", n.Maps},
+		{"set", n.Sets},
 		{"chain", n.Chains},
 	}
 }

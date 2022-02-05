@@ -24,6 +24,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/netip"
 	"os"
 	"os/exec"
 	"strconv"
@@ -162,10 +163,10 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			}
 
 			family := "ip"
-			chainBuffers := table4
+			table := table4
 			if set.v6 {
 				family = "ip6"
-				chainBuffers = table6
+				table = table6
 			}
 
 			// compute endpoints
@@ -195,7 +196,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 
 			// add endpoints to the map
 			if len(endpointIPs) != 0 {
-				item := chainBuffers.Maps.GetItem(endpointsMap)
+				item := table.Maps.GetItem(endpointsMap)
 				epMap := item.Value()
 
 				if epMap.Len() == 0 {
@@ -241,42 +242,118 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 
 			daddrMatch := family + " daddr"
 
-			svc_chain := prefix + strings.Join([]string{"svc", svc.Namespace, svc.Name}, "_")
+			svcChain := prefix + strings.Join([]string{"svc", svc.Namespace, svc.Name}, "_")
 
 			hasRules := false
-			for _, protocol := range []localnetv1.Protocol{
-				localnetv1.Protocol_TCP,
-				localnetv1.Protocol_UDP,
-				localnetv1.Protocol_SCTP,
-			} {
+
+			switch sa := svc.SessionAffinity.(type) {
+			case *localnetv1.Service_ClientIP:
 				rule.Reset()
+				rule.WriteString("  numgen random mod ")
+				rule.WriteString(strconv.Itoa(len(endpointIPs)))
+				rule.WriteString(" vmap { ")
 
-				// build the rule
-				ruleSpec := dnatRule{
-					Namespace:   svc.Namespace,
-					Name:        svc.Name,
-					Protocol:    protocol,
-					Ports:       svc.Ports,
-					EndpointIPs: endpointIPs,
+				chain := table.Chains.Get(svcChain)
+				timeout := strconv.Itoa(int(sa.ClientIP.TimeoutSeconds))
+				for idx, ip := range endpointIPs {
+					ipHex := hex.EncodeToString(netip.MustParseAddr(ip).AsSlice())
+
+					epSet := svcChain + "_epset_" + ipHex
+					fmt.Fprint(table.Sets.Get(epSet), "  typeof "+family+" daddr; flags timeout;\n")
+
+					epChainName := svcChain + "_ep_" + ipHex
+					epChain := table.Chains.Get(epChainName)
+					fmt.Fprint(epChain, "  update @"+epSet+" { "+family+" saddr timeout "+timeout+"s }\n")
+
+					fmt.Fprint(chain, "  "+family+" saddr @"+epSet+" jump "+epChainName+"\n")
+
+					for _, nodePort := range []bool{false, true} {
+						for _, port := range svc.Ports {
+							srcPort := port.Port
+							if nodePort {
+								srcPort = port.NodePort
+							}
+							if srcPort == 0 {
+								continue
+							}
+
+							epChain.WriteString("  ")
+							epChain.WriteString(protoMatch(port.Protocol))
+							epChain.WriteByte(' ')
+							epChain.WriteString(strconv.Itoa(int(srcPort)))
+							epChain.WriteString(" dnat to ")
+							epChain.WriteString(ip)
+
+							if srcPort != port.TargetPort {
+								epChain.WriteByte(':')
+								epChain.WriteString(strconv.Itoa(int(port.TargetPort)))
+							}
+
+							epChain.WriteByte('\n')
+
+							if nodePort {
+								nodeports := table.Chains.Get("nodeports")
+								nodeports.WriteString("  ")
+								nodeports.WriteString(protoMatch(port.Protocol))
+								nodeports.WriteByte(' ')
+								nodeports.WriteString(strconv.Itoa(int(srcPort)))
+								nodeports.WriteString(" jump ")
+								nodeports.WriteString(svcChain)
+								nodeports.WriteByte('\n')
+							}
+						}
+					}
+
+					if idx != 0 {
+						rule.WriteString(", ")
+					}
+					rule.WriteString(strconv.Itoa(idx))
+					rule.WriteString(": jump ")
+					rule.WriteString(epChainName)
+
+					hasRules = true
 				}
-				ruleSpec.WriteTo(rule, false, endpointsMap, svcOffset)
 
-				if rule.Len() == 0 {
-					continue
+				if hasRules {
+					rule.WriteString("}\n")
+					rule.WriteTo(chain)
 				}
 
-				rule.WriteTo(chainBuffers.Chains.Get(svc_chain))
-				hasRules = true
+			default:
+				for _, protocol := range []localnetv1.Protocol{
+					localnetv1.Protocol_TCP,
+					localnetv1.Protocol_UDP,
+					localnetv1.Protocol_SCTP,
+				} {
+					rule.Reset()
 
-				// hande node ports
-				rule.Reset()
-				ruleSpec.WriteTo(rule, true, endpointsMap, svcOffset)
+					// build the rule
+					ruleSpec := dnatRule{
+						Namespace:   svc.Namespace,
+						Name:        svc.Name,
+						Protocol:    protocol,
+						Ports:       svc.Ports,
+						EndpointIPs: endpointIPs,
+					}
+					ruleSpec.WriteTo(rule, false, endpointsMap, svcOffset)
 
-				if rule.Len() == 0 {
-					continue
+					if rule.Len() == 0 {
+						continue
+					}
+
+					rule.WriteTo(table.Chains.Get(svcChain))
+					hasRules = true
+
+					// hande node ports
+					rule.Reset()
+					ruleSpec.WriteTo(rule, true, endpointsMap, svcOffset)
+
+					if rule.Len() == 0 {
+						continue
+					}
+
+					rule.WriteTo(table.Chains.Get("nodeports"))
 				}
-
-				rule.WriteTo(chainBuffers.Chains.Get("nodeports"))
 			}
 
 			if !hasRules {
@@ -303,7 +380,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 					chain := prefix + "net_" + hex.EncodeToString(ip)
 
 					// add service chain in dispatch
-					vmapAdd(chainBuffers.Chains.GetItem(chain), family+" daddr", ipStr+": jump "+svc_chain)
+					vmapAdd(table.Chains.GetItem(chain), family+" daddr", ipStr+": jump "+svcChain)
 
 					// reference the dispatch chain from the global dispatch (of not already done) (ie: z_dnat_all)
 					if set.v6 && !chain6Nets[chain] || !set.v6 && !chain4Nets[chain] {
@@ -312,7 +389,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 							Mask: mask,
 						}
 
-						vmapAdd(chainBuffers.Chains.GetItem("z_"+prefix+"all"), daddrMatch, ipNet.String()+": jump "+chain)
+						vmapAdd(table.Chains.GetItem("z_"+prefix+"all"), daddrMatch, ipNet.String()+": jump "+chain)
 
 						if set.v6 {
 							chain6Nets[chain] = true
@@ -332,10 +409,10 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			}
 
 			if len(extIPs) != 0 {
-				extChain := chainBuffers.Chains.GetItem(prefix + "external")
+				extChain := table.Chains.GetItem(prefix + "external")
 				for _, extIP := range extIPs {
 					// XXX should this be by protocol and port to allow external IP mutualization between services?
-					vmapAdd(extChain, daddrMatch, extIP+": jump "+svc_chain)
+					vmapAdd(extChain, daddrMatch, extIP+": jump "+svcChain)
 				}
 			}
 
@@ -544,7 +621,7 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 			}
 		}
 
-		// create/update changed chains
+		// create/update changed elements
 		for _, ks := range table.KindStores() {
 			var items []*Item
 			if fullResync {
@@ -567,7 +644,7 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 			fmt.Fprintln(out, "}")
 		}
 
-		// delete removed chains (already done by deleting the table on fullResync)
+		// delete removed elements (already done by deleting the table on fullResync)
 		if !fullResync {
 			// delete
 			if canDeleteChains {
