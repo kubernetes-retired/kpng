@@ -17,6 +17,7 @@ limitations under the License.
 package nft
 
 import (
+	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/diffstore2"
 )
 
@@ -47,6 +48,17 @@ type nftable struct {
 	Chains *Store
 	Maps   *Store
 	Sets   *Store
+}
+
+func (n *nftable) IPsFromSet(set *localnetv1.IPSet) []string {
+	switch n.Family {
+	case "ip":
+		return set.V4
+	case "ip6":
+		return set.V6
+	default:
+		return nil
+	}
 }
 
 func (n *nftable) Reset() {

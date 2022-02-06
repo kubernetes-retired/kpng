@@ -18,8 +18,9 @@ package nft
 
 import (
 	"bytes"
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"strconv"
+
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 
 	"k8s.io/klog"
 )
@@ -73,6 +74,10 @@ func (d dnatRule) WriteTo(rule *bytes.Buffer, nodePorts bool, endpointsMap strin
 		}
 
 		rule.WriteString("  ")
+
+		if nodePorts {
+			rule.WriteString(mDAddrLocal)
+		}
 		rule.WriteString(protoMatch)
 
 		rule.WriteByte(' ')
