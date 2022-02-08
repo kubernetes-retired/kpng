@@ -575,7 +575,6 @@ function clean_artifacts {
           --name="$(cat "${e2e_dir}/clustername")" \
           "${log_dir}"
     if_error_exit "cannot export kind logs"
-#         --loglevel="debug" \
 
     #TODO in local mode to avoid the overwriting of artifacts from test to test
     #     add logic to this function that moves the content of artifacts
@@ -867,22 +866,26 @@ function print_reports {
     # create_infrastructure_and_run_tests                                     #
     #                                                                         #
     # Arguments:                                                              #
-    #   arg1: e2e_directory                                                   #
-    #   arg2: suffix                                                       #
-    #   arg3: cluster_count                                                         #
+    #   arg1: ip_family                                                       #
+    #   arg2: backend                                                         #
+    #   arg3: e2e_directory                                                   #
+    #   arg4: suffix                                                          #
+    #   arg5: cluster_count                                                   #
     ###########################################################################
 
-    [ $# -eq 3 ]
+    [ $# -eq 5 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
-    local e2e_directory="${1}"
-    local suffix="${2}"
-    local cluster_count="${3}"
+    local ip_family="${1}"
+    local backend="${2}"
+    local e2e_directory="${3}"
+    local suffix="${4}"
+    local cluster_count="${5}"
 
-    echo "+==================================================================+"
-    echo -e "\t\tTest Report from running test on ${cluster_count}" clusters.
-    echo "+==================================================================+"
+    echo "+==========================================================================================+"
+    echo -e "\t\tTest Report from running test \"-i ${ip_family} -b ${backend}\" on ${cluster_count} clusters."
+    echo "+==========================================================================================+"
 
     local combined_output_file=$(mktemp -q)
     if_error_exit "Could not create temp file, mktemp failed"
@@ -947,7 +950,7 @@ function main {
     fi
 
     if ${print_report} ; then
-        print_reports "${e2e_dir}" "-${suffix}" "${cluster_count}"
+        print_reports "${ip_family}" "${backend}" "${e2e_dir}" "-${suffix}" "${cluster_count}"
         exit 1
     fi
 
@@ -985,9 +988,9 @@ function main {
     else
         local pids
 
-       echo -e "\n+=====================================================================================+"
-       echo -e "\t\tRunning parallel KPNG E2E tests in background on ${cluster_count} kind clusters."
-       echo -e "+=====================================================================================+"
+       echo -e "\n+====================================================================================================+"
+       echo -e "\t\tRunning parallel KPNG E2E tests \"-i ${ip_family} -b ${backend}\" in background on ${cluster_count} kind clusters."
+       echo -e "+====================================================================================================+"
 
         for i in $(seq "${cluster_count}"); do
             local tmp_suffix="-${suffix}${i}"
@@ -1002,14 +1005,14 @@ function main {
           wait ${pid}
         done
         if ! ${devel_mode} ; then
-           print_reports "${e2e_dir}" "-${suffix}" "${cluster_count}"
+           print_reports "${ip_family}" "${backend}" "${e2e_dir}" "-${suffix}" "${cluster_count}"
         fi
     fi
     if ${devel_mode} ; then
        echo -e "\n+=====================================================================================+"
        echo -e "\t\tDeveloper mode no test run!"
        echo -e "+=====================================================================================+"
-    else
+    elif ! ${ci_mode} ; then
         delete_kind_clusters "${bin_dir}" "${ip_family}" "${backend}" "${suffix}" "${cluster_count}"
     fi
 }
