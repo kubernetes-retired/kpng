@@ -18,7 +18,7 @@
 shopt -s expand_aliases
 
 : "${E2E_GO_VERSION:="1.17.3"}"
-: "${E2E_K8S_VERSION:="v1.22.2"}"
+: "${E2E_K8S_VERSION:="v1.23.3"}"
 : "${E2E_TIMEOUT_MINUTES:=100}"
 
 OS=$(uname| tr '[:upper:]' '[:lower:]')
@@ -126,11 +126,13 @@ function container_build {
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: Path for E2E installation directory, or the empty string         #
+    #   arg2: ci_mode         #
     ###########################################################################
-    [ $# -eq 1 ]
+    [ $# -eq 2 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
-    CONTAINER_FILE=${1}
+    local CONTAINER_FILE=${1}
+    local ci_mode=${2}
 
     # Running locally it's not necessary to show all info
     QUIET_MODE="--quiet"
@@ -270,13 +272,15 @@ function create_cluster {
     #   arg1: cluster name                                                    #
     #   arg2: IP family                                                       #
     #   arg3: artifacts directory                                             #
+    #   arg4: ci_mode                                                         #
     ###########################################################################
-    [ $# -eq 3 ]
+    [ $# -eq 4 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
-    local cluster_name=$1
-    local ip_family=$2
-    local artifacts_directory=$3
+    local cluster_name=${1}
+    local ip_family=${2}
+    local artifacts_directory=${3}
+    local ci_mode=${4}
 
     # Get rid of any old cluster with the same name.
     if kind get clusters | grep -q "${cluster_name}" &> /dev/null; then
@@ -286,27 +290,55 @@ function create_cluster {
         pass_message "Previous cluster ${cluster_name} deleted."
     fi
 
-    KIND_VERBOSE_MODE="-v0"
-    if [ "${ci_mode}" = true ] ; then
-        KIND_VERBOSE_MODE="-v7"
+     # Default Log level for all components in test clusters
+      local kind_cluster_log_level=${KIND_CLUSTER_LOG_LEVEL:-4}
+      local kind_log_level="-v3"
+      if [ "${ci_mode}" = true ] ; then
+          kind_log_level="-v7"
+      fi
+
+      # potentially enable --logging-format
+      local scheduler_extra_args="      \"v\": \"${kind_cluster_log_level}\""
+      local controllerManager_extra_args="      \"v\": \"${kind_cluster_log_level}\""
+      local apiServer_extra_args="      \"v\": \"${kind_cluster_log_level}\""
+ #     local kubelet_extra_args="      \"v\": \"${kind_cluster_log_level}\""
+
+      # JSON map injected into featureGates config
+ #     local feature_gates='{"AllAlpha":false,"AllBeta":false}'
+      # --runtime-config argument value passed to the API server
+ #     local runtime_config='{"api/alpha":"false", "api/beta":"false"}'
+
+    if [ -n "$CLUSTER_LOG_FORMAT" ]; then
+          scheduler_extra_args="${scheduler_extra_args}\"logging-format\": \"${CLUSTER_LOG_FORMAT}\""
+          controllerManager_extra_args="${controllerManager_extra_args}\"logging-format\": \"${CLUSTER_LOG_FORMAT}\""
+          apiServer_extra_args="${apiServer_extra_args}\"logging-format\": \"${CLUSTER_LOG_FORMAT}\""
     fi
 
     echo -e "\nPreparing to setup ${cluster_name} cluster ..."
     # create cluster
- cat <<EOF | kind create cluster \
-        --name "${cluster_name}"                     \
-        --image "${KINDEST_NODE_IMAGE}":"${E2E_K8S_VERSION}"    \
-        "${KIND_VERBOSE_MODE}" --wait 1m --retain --config=-
-            kind: Cluster
-            apiVersion: kind.x-k8s.io/v1alpha4
-            networking:
-                ipFamily: "${ip_family}"
-            nodes:
-            - role: control-plane
-            - role: worker
-            - role: worker
+    # create the config file
+     cat <<EOF > "${artifacts_directory}/kind-config.yaml"
+      kind: Cluster
+      apiVersion: kind.x-k8s.io/v1alpha4
+      networking:
+          ipFamily: "${ip_family}"
+      nodes:
+      - role: control-plane
+      - role: worker
+      - role: worker
 EOF
+    kind create cluster \
+      --name "${cluster_name}"                     \
+      --image "${KINDEST_NODE_IMAGE}":"${E2E_K8S_VERSION}"    \
+      --retain \
+      --wait=1m \
+      "${kind_log_level}" \
+      "--config=${artifacts_directory}/kind-config.yaml"
     if_error_exit "cannot create kind cluster ${cluster_name}"
+
+    # Patch kube-proxy to set the verbosity level
+    kubectl patch -n kube-system daemonset/kube-proxy \
+       --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/command/-", "value": "--v='"${kind_cluster_log_level}"'" }]'
 
     kind get kubeconfig --internal --name "${cluster_name}" > "${artifacts_directory}/kubeconfig.conf"
     kind get kubeconfig --name "${cluster_name}" > "${artifacts_directory}/${KUBECONFIG_TESTS}"
@@ -320,7 +352,7 @@ EOF
     # CoreDNS should handle those domains and answer with NXDOMAIN instead of SERVFAIL
     # otherwise pods stops trying to resolve the domain.
     #
-    if [ "${ip_family:-ipv4}" = "ipv6" ]; then
+    if [ "${ip_family}" = "ipv6" ]; then
         local k8s_context="kind-${cluster_name}"
        # Get the current config
         local original_coredns=$(kubectl --context "${k8s_context}" get -oyaml -n=kube-system configmap/coredns)
@@ -350,12 +382,14 @@ function wait_until_cluster_is_ready {
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: cluster name                                                    #
-   ###########################################################################
+    #   arg2: ci_mode                                                         #
+    ###########################################################################
 
-    [ $# -eq 1 ]
+    [ $# -eq 2 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
-    local cluster_name=$1
+    local cluster_name=${1}
+    local ci_mode=${2}
     local k8s_context="kind-${cluster_name}"
 
     kubectl --context "${k8s_context}" wait \
@@ -407,7 +441,7 @@ function install_kpng {
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: cluster name                                                    #
-   ###########################################################################
+    ###########################################################################
     [ $# -eq 1 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
@@ -476,27 +510,30 @@ function run_tests {
      #                                                                         #
      # Arguments:                                                              #
      #   arg1: e2e directory                                                   #
-     #   arg4: parallel ginkgo tests boolean                                    #
+     #   arg2: e2e_test, path to test binary                                   #
+     #   arg3: parallel ginkgo tests boolean                                   #
      ###########################################################################
 
-    [ $# -eq 2 ]
+    [ $# -eq 3 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
-    local parallel="${2}"
+    local e2e_test="${2}"
+    local parallel="${3}"
 
     local artifacts_directory="${e2e_dir}/artifacts"
 
     [ -f "${artifacts_directory}/${KUBECONFIG_TESTS}" ]
     if_error_exit "Directory \"${artifacts_directory}/${KUBECONFIG_TESTS}\" does not exist"
 
-    cp "${artifacts_directory}/${KUBECONFIG_TESTS}" "${e2e_dir}/${KUBECONFIG_TESTS}"
+    [ -f "${e2e_test}" ]
+    if_error_exit "File \"${e2e_test}\" does not exist"
 
    # ginkgo regexes
    local ginkgo_skip="${GINKGO_SKIP_TESTS:-}"
-   local ginkgo_focus="${GINKGO_FOCUS:-"\\[Conformance\\]"}"
+   local ginkgo_focus=${GINKGO_FOCUS:-"\\[Conformance\\]"}
    # if we set PARALLEL=true, skip serial tests set --ginkgo-parallel
-   if [ "${parallel:-false}" = "true" ]; then
+   if [ "${parallel}" = "true" ]; then
      export GINKGO_PARALLEL=y
      if [ -z "${skip}" ]; then
        ginkgo_skip="\\[Serial\\]"
@@ -515,15 +552,13 @@ function run_tests {
    ginkgo --nodes="${GINKGO_NUMBER_OF_NODES}" \
            --focus="${ginkgo_focus}" \
            --skip="${ginkgo_skip}" \
-           "${E2E_DIR}"/e2e.test \
+           "${e2e_test}" \
            -- \
-           --kubeconfig="${KUBECONFIG_TESTS}" \
+           --kubeconfig="${artifacts_directory}/${KUBECONFIG_TESTS}" \
            --provider="${GINKGO_PROVIDER}" \
            --dump-logs-on-failure="${GINKGO_DUMP_LOGS_ON_FAILURE}" \
            --report-dir="${GINKGO_REPORT_DIR}" \
-           --disable-log-dump="${GINKGO_DISABLE_LOG_DUMP}" &
-   local ginko_pid=$!
-   wait "${ginko_pid}"
+           --disable-log-dump="${GINKGO_DISABLE_LOG_DUMP}"
 }
 
 function clean_artifacts {
@@ -539,33 +574,94 @@ function clean_artifacts {
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
+    local log_dir="${E2E_LOGS:-${e2e_dir}/artifacts/logs}"
 
-    if [ ! "${E2E_LOGS:-false}" = "false" ] ; then
-        kind export \
-          logs \
+    kind export \
+       logs \
           --name="$(cat "${e2e_dir}/clustername")" \
-          --loglevel="debug" \
-          "${E2E_LOGS}"
-        if_error_exit "cannot export kind logs"
+          "${log_dir}"
+    if_error_exit "cannot export kind logs"
 
-       #TODO in local mode to avoid the overwriting of artifacts from test to test
-       #     add logic to this function that moves the content of artifacts
-       #     to a dir named clustername+date+time
-       pass_message "make sure to safe your result before the next run."
-    fi
+    #TODO in local mode to avoid the overwriting of artifacts from test to test
+    #     add logic to this function that moves the content of artifacts
+    #     to a dir named clustername+date+time
+    pass_message "make sure to safe your result before the next run."
 }
-
-
-function apply_ipvx_fixes {
+function verify_sysctl_setting {
     ###########################################################################
     # Description:                                                            #
-    # apply ipvx fixes                                                        #
+    # Verify that a sysctl attribute setting has a value                      #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1: attribute                                                       #
+    #   arg2: value                                                           #
+    ###########################################################################
+   [ $# -eq 2 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+   local attribute="${1}"
+   local value="${2}"
+   local result=$(sysctl -n  "${attribute}")
+   if_error_exit "\"sysctl -n ${attribute}\" failed}"
+
+   if [ ! "${value}" -eq "${result}" ] ; then
+       echo "Failure: \"sysctl -n ${attribute}\" returned \"${result}\", not \"${value}\" as expected."
+       exit
+   fi
+}
+
+function set_sysctl {
+    ###########################################################################
+    # Description:                                                            #
+    # Set a sysctl attribute to value                                         #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1: attribute                                                       #
+    #   arg2: value                                                           #
+    ###########################################################################
+   [ $# -eq 2 ]
+   if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+   local attribute="${1}"
+   local value="${2}"
+   local result=$(sysctl -n  "${attribute}")
+   if_error_exit "\"sysctl -n ${attribute}\" failed"
+
+   if [ ! "${value}" -eq "${result}" ] ; then
+       echo "Setting: \"sysctl -w ${attribute}=${value}\""
+       sudo sysctl -w  "${attribute}"="${value}"
+       if_error_exit "\"sudo sysctl -w  ${attribute} = ${value}\" failed"
+   fi
+}
+
+function verify_host_network_settings {
+     ###########################################################################
+     # Description:                                                            #
+     # Verify hosts network settings                                           #
+     #                                                                         #
+     # Arguments:                                                              #
+     #   None                                                                  #
+     ###########################################################################
+
+    verify_sysctl_setting net.ipv6.conf.all.forwarding 1
+    verify_sysctl_setting net.ipv4.ip_forward 1
+    verify_sysctl_setting net.bridge.bridge-nf-call-arptables 0
+    verify_sysctl_setting net.bridge.bridge-nf-call-ip6tables 0
+    verify_sysctl_setting net.bridge.bridge-nf-call-iptables 0
+}
+
+function set_host_network_settings {
+    ###########################################################################
+    # Description:                                                            #
+    # prepare hosts network settings                                          #
     #                                                                         #
     # Arguments:                                                              #
     #   None                                                                  #
     ###########################################################################
-    sudo sysctl -w net.ipv6.conf.all.forwarding=1
-    sudo sysctl -w net.ipv4.ip_forward=1
+
+     set_sysctl net.ipv6.conf.all.forwarding 1
+     set_sysctl net.ipv4.ip_forward 1
+     set_sysctl net.bridge.bridge-nf-call-arptables 0
+     set_sysctl net.bridge.bridge-nf-call-ip6tables 0
+     set_sysctl net.bridge.bridge-nf-call-iptables 0
 }
 
 function add_to_path {
@@ -594,7 +690,7 @@ function add_to_path {
 function install_binaries {
     ###########################################################################
     # Description:                                                            #
-    # Copy binaries from the net to binaries directory                         #
+    # Copy binaries from the net to binaries directory                        #
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: binary directory, path to where ginko will be installed         #
@@ -642,11 +738,6 @@ function set_e2e_dir {
     pushd "${0%/*}" > /dev/null || exit
         mkdir -p "${e2e_dir}"
         mkdir -p "${e2e_dir}/artifacts"
-        # e2e.test must be placed in the E2E directory when called by ginkgo
-        if ! [ -f "${e2e_dir}"/e2e.test ] ; then
-            sudo cp "${bin_dir}/e2e.test" "${e2e_dir}/e2e.test"
-            sudo chmod +rx "${e2e_dir}/e2e.test"
-        fi
     popd > /dev/null || exit
 }
 
@@ -657,12 +748,18 @@ function prepare_container {
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: Path of dockerfile                                              #
+    #   arg2: ci_mode                                                         #
     ###########################################################################
+
+    [ $# -eq 2 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
     local dockerfile="${1}"
+    local ci_mode="${2}"
 
     # Detect container engine
     detect_container_engine
-    container_build "${dockerfile}"
+    container_build "${dockerfile}" "${ci_mode}"
 }
 
 function create_infrastructure_and_run_tests {
@@ -674,20 +771,22 @@ function create_infrastructure_and_run_tests {
     #   arg1: Path for E2E installation directory                             #
     #   arg2: ip_family                                                       #
     #   arg3: backend                                                         #
-    #   arg4: suffix                                                          #
-    #   arg5: developer_mode                                                  #
-    #   arg6: ci_mode                                                          #
-   ###########################################################################
+    #   arg4: e2e_test                                                        #
+    #   arg5: suffix                                                          #
+    #   arg6: developer_mode                                                  #
+    #   arg7: <ci_mode>                                                         #
+    ###########################################################################
 
-    [ $# -eq 6 ]
+    [ $# -eq 7 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
     local ip_family="${2}"
     local backend="${3}"
-    local suffix="${4}"
-    local devel_mode="${5}"
-    local ci_mode="${6}"
+    local e2e_test="${4}"
+    local suffix="${5}"
+    local devel_mode="${6}"
+    local ci_mode="${7}"
 
     local artifacts_directory="${e2e_dir}/artifacts"
     local cluster_name="kpng-e2e-${ip_family}-${backend}${suffix}"
@@ -703,13 +802,13 @@ function create_infrastructure_and_run_tests {
     [ -d "${artifacts_directory}" ]
     if_error_exit "Directory \"${artifacts_directory}\" does not exist"
 
-    if [ "${ci_mode}" = true ] ; then
-        # store the clustername for other scripts in ci
-        echo "${cluster_name}"
-    fi
+    [ -f "${e2e_test}" ]
+    if_error_exit "File \"${e2e_test}\" does not exist"
 
-    create_cluster "${cluster_name}" "${ip_family}" "${artifacts_directory}"
-    wait_until_cluster_is_ready "${cluster_name}"
+    echo "${cluster_name}"
+
+    create_cluster "${cluster_name}" "${ip_family}" "${artifacts_directory}" "${ci_mode}"
+    wait_until_cluster_is_ready "${cluster_name}" "${ci_mode}"
 
     echo "${cluster_name}" > "${e2e_dir}"/clustername
 
@@ -718,7 +817,7 @@ function create_infrastructure_and_run_tests {
     fi
 
     if ! ${devel_mode} ; then
-        run_tests "${e2e_dir}" "false"
+        run_tests "${e2e_dir}" "${e2e_test}" "false"
         #need to clean this up
        if [ "${ci_mode}" = false ] ; then
           clean_artifacts "${e2e_dir}"
@@ -776,22 +875,26 @@ function print_reports {
     # create_infrastructure_and_run_tests                                     #
     #                                                                         #
     # Arguments:                                                              #
-    #   arg1: e2e_directory                                                   #
-    #   arg2: suffix                                                       #
-    #   arg3: cluster_count                                                         #
+    #   arg1: ip_family                                                       #
+    #   arg2: backend                                                         #
+    #   arg3: e2e_directory                                                   #
+    #   arg4: suffix                                                          #
+    #   arg5: cluster_count                                                   #
     ###########################################################################
 
-    [ $# -eq 3 ]
+    [ $# -eq 5 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
-    local e2e_directory="${1}"
-    local suffix="${2}"
-    local cluster_count="${3}"
+    local ip_family="${1}"
+    local backend="${2}"
+    local e2e_directory="${3}"
+    local suffix="${4}"
+    local cluster_count="${5}"
 
-    echo "+==================================================================+"
-    echo -e "\t\tTest Report from running test on ${cluster_count}" clusters.
-    echo "+==================================================================+"
+    echo "+==========================================================================================+"
+    echo -e "\t\tTest Report from running test \"-i ${ip_family} -b ${backend}\" on ${cluster_count} clusters."
+    echo "+==========================================================================================+"
 
     local combined_output_file=$(mktemp -q)
     if_error_exit "Could not create temp file, mktemp failed"
@@ -856,7 +959,7 @@ function main {
     fi
 
     if ${print_report} ; then
-        print_reports "${e2e_dir}" "-${suffix}" "${cluster_count}"
+        print_reports "${ip_family}" "${backend}" "${e2e_dir}" "-${suffix}" "${cluster_count}"
         exit 1
     fi
 
@@ -869,10 +972,11 @@ function main {
         # REMOVE THIS comment out ON THE REPO WITH A PR WHEN LOCAL TESTS ARE ALL GREEN
         # set -e
         echo "this tests can't fail now in ci"
-        apply_ipvx_fixes
+        set_host_network_settings
     fi
 
-    prepare_container "${dockerfile}"
+    verify_host_network_settings
+    prepare_container "${dockerfile}" "${ci_mode}"
     install_binaries "${bin_dir}" "${E2E_K8S_VERSION}" "${OS}"
 
     if [ "${cluster_count}" -eq "1" ] ; then
@@ -889,33 +993,36 @@ function main {
     if [ "${cluster_count}" -eq "1" ] ; then
         local tmp_suffix=${suffix:+"-${suffix}"}
         create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
-              "${tmp_suffix}" "${devel_mode}" "${ci_mode}"
+              "${bin_dir}/e2e.test" "${tmp_suffix}" "${devel_mode}" "${ci_mode}"
     else
         local pids
 
-       echo -e "\n+=====================================================================================+"
-       echo -e "\t\tRunning parallel KPNG E2E tests in background on ${cluster_count} kind clusters."
-       echo -e "+=====================================================================================+"
+       echo -e "\n+====================================================================================================+"
+       echo -e "\t\tRunning parallel KPNG E2E tests \"-i ${ip_family} -b ${backend}\" in background on ${cluster_count} kind clusters."
+       echo -e "+====================================================================================================+"
 
         for i in $(seq "${cluster_count}"); do
             local tmp_suffix="-${suffix}${i}"
             local output_file="${e2e_dir}${tmp_suffix}/output.log"
             rm -f "${output_file}"
             create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
-                  "${tmp_suffix}" "${devel_mode}" "${ci_mode}"  &> "${e2e_dir}${tmp_suffix}/output.log" &
+                  "${bin_dir}/e2e.test" "${tmp_suffix}" "${devel_mode}" "${ci_mode}"  \
+                  &> "${e2e_dir}${tmp_suffix}/output.log" &
             pids[${i}]=$!
         done
         for pid in ${pids[*]}; do # not possible to use quotes here
           wait ${pid}
         done
         if ! ${devel_mode} ; then
-           print_reports "${e2e_dir}" "-${suffix}" "${cluster_count}"
+           print_reports "${ip_family}" "${backend}" "${e2e_dir}" "-${suffix}" "${cluster_count}"
         fi
     fi
     if ${devel_mode} ; then
        echo -e "\n+=====================================================================================+"
        echo -e "\t\tDeveloper mode no test run!"
        echo -e "+=====================================================================================+"
+    elif ! ${ci_mode} ; then
+        delete_kind_clusters "${bin_dir}" "${ip_family}" "${backend}" "${suffix}" "${cluster_count}"
     fi
 }
 
