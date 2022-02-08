@@ -195,20 +195,20 @@ func Example() {
 	sl.DeleteService("ns", "svc-session-affinity-1")
 
 	// Output:
-	// add svc with port 80
+	// 	add svc with port 80
 	// ADD svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80}
 	//     port: Protocol:TCP Port:80
-	//
+
 	// add port 81
 	// ADD svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:81}
 	//     port: Protocol:TCP Port:81
-	//
+
 	// add port 82, remove port 81
 	// DEL svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:81}
 	//     port: Protocol:TCP Port:81
 	// ADD svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
 	//     port: Protocol:TCP Port:82
-	//
+
 	// add cluster IP
 	// ADD svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
 	//     ip: 10.1.1.1 (ClusterIP)
@@ -218,7 +218,83 @@ func Example() {
 	// ADD svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
 	//     ip: 10.1.1.1 (ClusterIP)
 	//     port: Protocol:TCP Port:82
-	//
+
+	// enable external traffic policy
+
+	// disable external traffic policy
+
+	// enable internal traffic policy
+
+	// disable internal traffic policy
+
+	// enable session affinity
+	// ADD svc: Namespace:"ns" Name:"svc-session-affinity-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82} ClientIP:{TimeoutSeconds:10}
+	//     port: Protocol:TCP Port:80
+	// ADD svc: Namespace:"ns" Name:"svc-session-affinity-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82} ClientIP:{TimeoutSeconds:10}
+	//     port: Protocol:TCP Port:82
+	// ADD svc: Namespace:"ns" Name:"svc-session-affinity-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82} ClientIP:{TimeoutSeconds:10}
+	//     ip: 10.1.1.1 (ClusterIP)
+	// ADD svc: Namespace:"ns" Name:"svc-session-affinity-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82} ClientIP:{TimeoutSeconds:10}
+	//     ip: 10.1.1.1 (ClusterIP)
+	//     port: Protocol:TCP Port:80
+	// ADD svc: Namespace:"ns" Name:"svc-session-affinity-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82} ClientIP:{TimeoutSeconds:10}
+	//     ip: 10.1.1.1 (ClusterIP)
+	//     port: Protocol:TCP Port:82
+	// ENABLE sessionAffinity svc: Namespace:"ns" Name:"svc-session-affinity-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82} ClientIP:{TimeoutSeconds:10}sessionAffinity: {0xc000010310}
+
+	// disable session affinity
+	// DISABLE sessionAffinity svc: Namespace:"ns" Name:"svc-session-affinity-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82} ClientIP:{TimeoutSeconds:10}
+
+	// delete svc
+	// DEL svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     port: Protocol:TCP Port:80
+	// DEL svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     port: Protocol:TCP Port:82
+	// DEL svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     ip: 10.1.1.1 (ClusterIP)
+	//     port: Protocol:TCP Port:80
+	// DEL svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     ip: 10.1.1.1 (ClusterIP)
+	//     port: Protocol:TCP Port:82
+	// DEL svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     ip: 10.1.1.1 (ClusterIP)
+	// DEL svc: Namespace:"ns" Name:"svc-session-affinity-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     port: Protocol:TCP Port:80
+	// DEL svc: Namespace:"ns" Name:"svc-session-affinity-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     port: Protocol:TCP Port:82
+	// DEL svc: Namespace:"ns" Name:"svc-session-affinity-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     ip: 10.1.1.1 (ClusterIP)
+	//     port: Protocol:TCP Port:80
+	// DEL svc: Namespace:"ns" Name:"svc-session-affinity-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     ip: 10.1.1.1 (ClusterIP)
+	//     port: Protocol:TCP Port:82
+	// DEL svc: Namespace:"ns" Name:"svc-session-affinity-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     ip: 10.1.1.1 (ClusterIP)
+	// want:
+	// add svc with port 80
+	// ADD svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80}
+	//     port: Protocol:TCP Port:80
+
+	// add port 81
+	// ADD svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:81}
+	//     port: Protocol:TCP Port:81
+
+	// add port 82, remove port 81
+	// DEL svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:81}
+	//     port: Protocol:TCP Port:81
+	// ADD svc: Namespace:"ns" Name:"svc-1" Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     port: Protocol:TCP Port:82
+
+	// add cluster IP
+	// ADD svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     ip: 10.1.1.1 (ClusterIP)
+	// ADD svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     ip: 10.1.1.1 (ClusterIP)
+	//     port: Protocol:TCP Port:80
+	// ADD svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
+	//     ip: 10.1.1.1 (ClusterIP)
+	//     port: Protocol:TCP Port:82
+
 	// delete svc
 	// DEL svc: Namespace:"ns" Name:"svc-1" IPs:{ClusterIPs:{V4:"10.1.1.1"}} Ports:{Protocol:TCP Port:80} Ports:{Protocol:TCP Port:82}
 	//     port: Protocol:TCP Port:80
