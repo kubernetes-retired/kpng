@@ -126,11 +126,13 @@ function container_build {
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: Path for E2E installation directory, or the empty string         #
+    #   arg2: ci_mode         #
     ###########################################################################
-    [ $# -eq 1 ]
+    [ $# -eq 2 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
-    CONTAINER_FILE=${1}
+    local CONTAINER_FILE=${1}
+    local ci_mode=${2}
 
     # Running locally it's not necessary to show all info
     QUIET_MODE="--quiet"
@@ -270,13 +272,15 @@ function create_cluster {
     #   arg1: cluster name                                                    #
     #   arg2: IP family                                                       #
     #   arg3: artifacts directory                                             #
+    #   arg4: ci_mode                                                         #
     ###########################################################################
-    [ $# -eq 3 ]
+    [ $# -eq 4 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
-    local cluster_name=$1
-    local ip_family=$2
-    local artifacts_directory=$3
+    local cluster_name=${1}
+    local ip_family=${2}
+    local artifacts_directory=${3}
+    local ci_mode=${4}
 
     # Get rid of any old cluster with the same name.
     if kind get clusters | grep -q "${cluster_name}" &> /dev/null; then
@@ -378,12 +382,14 @@ function wait_until_cluster_is_ready {
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: cluster name                                                    #
+    #   arg2: ci_mode                                                         #
     ###########################################################################
 
-    [ $# -eq 1 ]
+    [ $# -eq 2 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
-    local cluster_name=$1
+    local cluster_name=${1}
+    local ci_mode=${2}
     local k8s_context="kind-${cluster_name}"
 
     kubectl --context "${k8s_context}" wait \
@@ -584,11 +590,11 @@ function clean_artifacts {
 function verify_sysctl_setting {
     ###########################################################################
     # Description:                                                            #
-    # Verify that a sysctl attribute setting has a value                                #
+    # Verify that a sysctl attribute setting has a value                      #
     #                                                                         #
     # Arguments:                                                              #
-    #   arg1: attribute
-    #   arg2: value
+    #   arg1: attribute                                                       #
+    #   arg2: value                                                           #
     ###########################################################################
    [ $# -eq 2 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
@@ -606,11 +612,11 @@ function verify_sysctl_setting {
 function set_sysctl {
     ###########################################################################
     # Description:                                                            #
-    # Set a sysctl attribute to value                                #
+    # Set a sysctl attribute to value                                         #
     #                                                                         #
     # Arguments:                                                              #
-    #   arg1: attribute
-    #   arg2: value
+    #   arg1: attribute                                                       #
+    #   arg2: value                                                           #
     ###########################################################################
    [ $# -eq 2 ]
    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
@@ -629,7 +635,7 @@ function set_sysctl {
 function verify_host_network_settings {
      ###########################################################################
      # Description:                                                            #
-     # Verify hosts network settings                                                        #
+     # Verify hosts network settings                                           #
      #                                                                         #
      # Arguments:                                                              #
      #   None                                                                  #
@@ -645,7 +651,7 @@ function verify_host_network_settings {
 function set_host_network_settings {
     ###########################################################################
     # Description:                                                            #
-    # prepare hosts network settings                                                        #
+    # prepare hosts network settings                                          #
     #                                                                         #
     # Arguments:                                                              #
     #   None                                                                  #
@@ -684,7 +690,7 @@ function add_to_path {
 function install_binaries {
     ###########################################################################
     # Description:                                                            #
-    # Copy binaries from the net to binaries directory                         #
+    # Copy binaries from the net to binaries directory                        #
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: binary directory, path to where ginko will be installed         #
@@ -742,12 +748,18 @@ function prepare_container {
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: Path of dockerfile                                              #
+    #   arg2: ci_mode                                                         #
     ###########################################################################
+
+    [ $# -eq 2 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
     local dockerfile="${1}"
+    local ci_mode="${2}"
 
     # Detect container engine
     detect_container_engine
-    container_build "${dockerfile}"
+    container_build "${dockerfile}" "${ci_mode}"
 }
 
 function create_infrastructure_and_run_tests {
@@ -762,7 +774,7 @@ function create_infrastructure_and_run_tests {
     #   arg4: e2e_test                                                        #
     #   arg5: suffix                                                          #
     #   arg6: developer_mode                                                  #
-    #   arg7: ci_mode                                                         #
+    #   arg7: <ci_mode>                                                         #
     ###########################################################################
 
     [ $# -eq 7 ]
@@ -793,13 +805,10 @@ function create_infrastructure_and_run_tests {
     [ -f "${e2e_test}" ]
     if_error_exit "File \"${e2e_test}\" does not exist"
 
-    if [ "${ci_mode}" = true ] ; then
-        # store the clustername for other scripts in ci
-        echo "${cluster_name}"
-    fi
+    echo "${cluster_name}"
 
-    create_cluster "${cluster_name}" "${ip_family}" "${artifacts_directory}"
-    wait_until_cluster_is_ready "${cluster_name}"
+    create_cluster "${cluster_name}" "${ip_family}" "${artifacts_directory}" "${ci_mode}"
+    wait_until_cluster_is_ready "${cluster_name}" "${ci_mode}"
 
     echo "${cluster_name}" > "${e2e_dir}"/clustername
 
@@ -967,7 +976,7 @@ function main {
     fi
 
     verify_host_network_settings
-    prepare_container "${dockerfile}"
+    prepare_container "${dockerfile}" "${ci_mode}"
     install_binaries "${bin_dir}" "${E2E_K8S_VERSION}" "${OS}"
 
     if [ "${cluster_count}" -eq "1" ] ; then
