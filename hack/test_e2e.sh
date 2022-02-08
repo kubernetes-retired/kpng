@@ -981,7 +981,7 @@ function main {
     if [ "${cluster_count}" -eq "1" ] ; then
         local tmp_suffix=${suffix:+"-${suffix}"}
         create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
-              "${tmp_suffix}" "${devel_mode}" "${ci_mode}"
+              "${bin_dir}/e2e.test" "${tmp_suffix}" "${devel_mode}" "${ci_mode}"
     else
         local pids
 
