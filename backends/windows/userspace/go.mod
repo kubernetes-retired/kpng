@@ -43,7 +43,7 @@ require (
 	k8s.io/apimachinery v0.22.4
 	k8s.io/klog/v2 v2.9.0
 	k8s.io/kubernetes v1.22.4
-	k8s.io/utils v0.0.0-20211116205334-6203023598ed
+	k8s.io/utils v0.0.0-20220127004650-9b3446523e65
 	sigs.k8s.io/kpng/api v0.0.0-00010101000000-000000000000
 )
 

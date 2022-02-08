@@ -146,7 +146,7 @@ func TestLoadBalanceWorksWithMultipleEndpointsAndUpdates(t *testing.T) {
 	loadBalancer.OnEndpointsAdd(endpoint3, service2)
 
 	shuffledEndpoints := loadBalancer.services[serviceP].endpoints
-	if !stringsInSlice(shuffledEndpoints, "endpoint1:1", "endpoint2:1", "endpoint3:1") {
+	if !stringsInSlice(shuffledEndpoints, "endpoint1:0", "endpoint2:0", "endpoint3:0") {
 		t.Errorf("did not find expected endpoints: %v", shuffledEndpoints)
 	}
 	expectEndpoint(t, loadBalancer, serviceP, shuffledEndpoints[0], nil)
@@ -155,7 +155,7 @@ func TestLoadBalanceWorksWithMultipleEndpointsAndUpdates(t *testing.T) {
 	expectEndpoint(t, loadBalancer, serviceP, shuffledEndpoints[0], nil)
 
 	shuffledEndpoints = loadBalancer.services[serviceQ].endpoints
-	if !stringsInSlice(shuffledEndpoints, "endpoint1:10", "endpoint2:10", "endpoint2:10") {
+	if !stringsInSlice(shuffledEndpoints, "endpoint1:0", "endpoint2:0", "endpoint2:0") {
 		t.Errorf("did not find expected endpoints: %v", shuffledEndpoints)
 	}
 	expectEndpoint(t, loadBalancer, serviceQ, shuffledEndpoints[0], nil)
