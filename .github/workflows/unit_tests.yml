@@ -9,7 +9,8 @@ on:
       - master
 
 jobs:
-  setup:
+  test:
+    name: run unit tests
     runs-on: ubuntu-latest
     steps:
     - name: Setup Go
@@ -21,13 +22,8 @@ jobs:
     - name: Install dependencies
       run: |
         go version
-        go install  golang.org/x/lint/golint@latest
+        go install golang.org/x/lint/golint@latest
 
-  test:
-    name: run unit tests
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
     - name: checkout
       uses: actions/checkout@v2
     
