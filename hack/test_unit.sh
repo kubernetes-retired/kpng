@@ -44,5 +44,5 @@ for f in $(find . -type f -name '*test.go' | sed -r 's|/[^/]+$||' |sort |uniq)
     draw_line 
     echo "testing $f" 
     draw_line 
-    (cd $f && go test -v) 
+    (cd $f && go test -v) || exit 1
   done
