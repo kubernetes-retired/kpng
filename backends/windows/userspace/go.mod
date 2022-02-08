@@ -1,6 +1,6 @@
 module sigs.k8s.io/kpng/backends/windows/userspace
 
-go 1.17
+go 1.18
 
 replace (
 	k8s.io/api => k8s.io/api v0.22.4
