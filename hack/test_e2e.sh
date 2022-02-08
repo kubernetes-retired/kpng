@@ -621,8 +621,8 @@ function set_sysctl {
    if_error_exit "\"sysctl -n ${attribute}\" failed"
 
    if [ ! "${value}" -eq "${result}" ] ; then
-       echo "Setting: \"sysctl -w ${attribute} = ${value}\""
-       sudo sysctl -w  "${attribute}" = "${value}"
+       echo "Setting: \"sysctl -w ${attribute}=${value}\""
+       sudo sysctl -w  "${attribute}"="${value}"
        if_error_exit "\"sudo sysctl -w  ${attribute} = ${value}\" failed"
    fi
 }
