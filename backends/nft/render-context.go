@@ -112,7 +112,8 @@ func (ctx *renderContext) addServiceEndpoints(serviceEndpoints *fullstate.Servic
 
 	daddrMatch := family + " daddr"
 
-	svcChain := prefix + strings.Join([]string{"svc", svc.Namespace, svc.Name}, "_")
+	svcChainNameFragment := strings.Join([]string{"svc", svc.Namespace, svc.Name}, "_")
+	svcChain := prefix + svcChainNameFragment
 
 	rule := ctx.buf
 	hasRules := false
@@ -130,8 +131,10 @@ func (ctx *renderContext) addServiceEndpoints(serviceEndpoints *fullstate.Servic
 		for idx, ip := range endpointIPs {
 			ipHex := hex.EncodeToString(netip.MustParseAddr(ip).AsSlice())
 
-			epSet := svcChain + "_epset_" + ipHex
-			fmt.Fprint(table.Sets.Get(epSet), "  typeof "+family+" daddr; flags timeout;\n")
+			epSet := svcChainNameFragment + "_epset_" + ipHex
+			if epSetV := table.Sets.Get(epSet); epSetV.Len() == 0 {
+				fmt.Fprint(epSetV, "  typeof "+family+" daddr; flags timeout;\n")
+			}
 
 			epChainName := svcChain + "_ep_" + ipHex
 			epChain := table.Chains.Get(epChainName)
@@ -207,7 +210,7 @@ func (ctx *renderContext) addServiceEndpoints(serviceEndpoints *fullstate.Servic
 			fmt.Fprint(epMap, "\\\n    ")
 			for idx, ip := range endpointIPs {
 				if idx != 0 {
-					epMap.Write([]byte{',', ' '})
+					epMap.WriteString(", ")
 				}
 				key := nftKey(int(svcOffset) + idx)
 

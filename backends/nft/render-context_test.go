@@ -111,10 +111,10 @@ func ExampleRenderContext() {
 	//
 	// -- svc with client IP affinity --
 	// table ip k8s_svc {
-	//  set dnat_svc_my-ns_my-svc_epset_0a010001 {
+	//  set svc_my-ns_my-svc_epset_0a010001 {
 	//   typeof ip daddr; flags timeout;
 	//  }
-	//  set dnat_svc_my-ns_my-svc_epset_0a010101 {
+	//  set svc_my-ns_my-svc_epset_0a010101 {
 	//   typeof ip daddr; flags timeout;
 	//  }
 	//  chain dnat_external {
@@ -123,17 +123,17 @@ func ExampleRenderContext() {
 	//   ip daddr vmap { 10.0.0.1: jump dnat_svc_my-ns_my-svc}
 	//  }
 	//  chain dnat_svc_my-ns_my-svc {
-	//   ip saddr @dnat_svc_my-ns_my-svc_epset_0a010001 jump dnat_svc_my-ns_my-svc_ep_0a010001
-	//   ip saddr @dnat_svc_my-ns_my-svc_epset_0a010101 jump dnat_svc_my-ns_my-svc_ep_0a010101
+	//   ip saddr @svc_my-ns_my-svc_epset_0a010001 jump dnat_svc_my-ns_my-svc_ep_0a010001
+	//   ip saddr @svc_my-ns_my-svc_epset_0a010101 jump dnat_svc_my-ns_my-svc_ep_0a010101
 	//   numgen random mod 2 vmap { 0: jump dnat_svc_my-ns_my-svc_ep_0a010001, 1: jump dnat_svc_my-ns_my-svc_ep_0a010101}
 	//  }
 	//  chain dnat_svc_my-ns_my-svc_ep_0a010001 {
-	//   update @dnat_svc_my-ns_my-svc_epset_0a010001 { ip saddr timeout 30s }
+	//   update @svc_my-ns_my-svc_epset_0a010001 { ip saddr timeout 30s }
 	//   tcp dport 80 dnat to 10.1.0.1:8080
 	//   fib daddr type local tcp dport 58080 dnat to 10.1.0.1:8080
 	//  }
 	//  chain dnat_svc_my-ns_my-svc_ep_0a010101 {
-	//   update @dnat_svc_my-ns_my-svc_epset_0a010101 { ip saddr timeout 30s }
+	//   update @svc_my-ns_my-svc_epset_0a010101 { ip saddr timeout 30s }
 	//   tcp dport 80 dnat to 10.1.1.1:8080
 	//   fib daddr type local tcp dport 58080 dnat to 10.1.1.1:8080
 	//  }
