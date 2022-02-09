@@ -29,5 +29,5 @@ run cd cmd && go install -trimpath -buildvcs=false ./...
 # the real image
 from alpine:3.15
 entrypoint ["/bin/kpng"]
-run apk add --update iptables ip6tables iproute2 ipvsadm nftables ipset
+run apk add --update iptables ip6tables iproute2 ipvsadm nftables ipset conntrack-tools
 copy --from=build /go/bin/ /bin/
