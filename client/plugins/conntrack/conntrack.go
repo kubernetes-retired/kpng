@@ -54,6 +54,12 @@ func (ct Conntrack) Callback(ch <-chan *client.ServiceEndpoints) {
 
 	ct.flows.Done()
 
+	for _, item := range ct.flows.Changed() {
+		if item.Created() {
+			cleanupPotentialConflicts(item.Value().Get())
+		}
+	}
+
 	for _, item := range ct.flows.Deleted() {
 		cleanupFlowEntries(item.Value().Get())
 	}

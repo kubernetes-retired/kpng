@@ -17,6 +17,22 @@ func setupConntrack() {
 	// TODO
 }
 
+func cleanupPotentialConflicts(flow Flow) {
+	origin := flow.DnatIP
+	parameters := parametersWithFamily(utilnet.IsIPv6String(origin), "-D",
+		"--orig-dst", origin,
+		"-p", protoStr(flow.Protocol),
+		"--sport", strconv.Itoa(int(flow.Port)))
+
+	klog.V(4).Infof("Clearing potential conflict conntrack entries %v", parameters)
+	output, err := runConntrack(parameters...)
+	if err != nil {
+		klog.Errorf("conntrack command returned: %q, error message: %s", string(output), err)
+		return
+	}
+	klog.V(4).Infof("Conntrack potential conflict entries deleted %s", string(output))
+}
+
 func cleanupFlowEntries(flow Flow) {
 	if !IsClearConntrackNeeded(flow.Protocol) {
 		return
@@ -32,18 +48,23 @@ func cleanupFlowEntries(flow Flow) {
 		"-p", protoStr(flow.Protocol),
 		"--sport", strconv.Itoa(int(flow.Port)), "--dport", strconv.Itoa(int(flow.TargetPort)))
 
-	conntrackPath, err := execer.LookPath("conntrack")
-	if err != nil {
-		klog.Errorf("error looking for path of conntrack: %v", err)
-		return
-	}
 	klog.V(4).Infof("Clearing conntrack entries %v", parameters)
-	output, err := execer.Command(conntrackPath, parameters...).CombinedOutput()
+	output, err := runConntrack(parameters...)
 	if err != nil {
 		klog.Errorf("conntrack command returned: %q, error message: %s", string(output), err)
 		return
 	}
 	klog.V(4).Infof("Conntrack entries deleted %s", string(output))
+}
+
+func runConntrack(parameters ...string) (output []byte, err error) {
+	conntrackPath, err := execer.LookPath("conntrack")
+	if err != nil {
+		klog.Errorf("error looking for path of conntrack: %v", err)
+		return
+	}
+	output, err = execer.Command(conntrackPath, parameters...).CombinedOutput()
+	return
 }
 
 // adapted from k8s's pkg/util/conntrack
