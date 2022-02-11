@@ -596,17 +596,17 @@ function verify_sysctl_setting {
     #   arg1: attribute                                                       #
     #   arg2: value                                                           #
     ###########################################################################
-   [ $# -eq 2 ]
+    [ $# -eq 2 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
-   local attribute="${1}"
-   local value="${2}"
-   local result=$(sysctl -n  "${attribute}")
-   if_error_exit "\"sysctl -n ${attribute}\" failed}"
+    local attribute="${1}"
+    local value="${2}"
+    local result=$(sysctl -n  "${attribute}")
+    if_error_exit "\"sysctl -n ${attribute}\" failed}"
 
-   if [ ! "${value}" -eq "${result}" ] ; then
+    if [ ! "${value}" -eq "${result}" ] ; then
        echo "Failure: \"sysctl -n ${attribute}\" returned \"${result}\", not \"${value}\" as expected."
        exit
-   fi
+    fi
 }
 
 function set_sysctl {
@@ -618,18 +618,18 @@ function set_sysctl {
     #   arg1: attribute                                                       #
     #   arg2: value                                                           #
     ###########################################################################
-   [ $# -eq 2 ]
-   if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
-   local attribute="${1}"
-   local value="${2}"
-   local result=$(sysctl -n  "${attribute}")
-   if_error_exit "\"sysctl -n ${attribute}\" failed"
+    [ $# -eq 2 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    local attribute="${1}"
+    local value="${2}"
+    local result=$(sysctl -n  "${attribute}")
+    if_error_exit "\"sysctl -n ${attribute}\" failed"
 
-   if [ ! "${value}" -eq "${result}" ] ; then
+    if [ ! "${value}" -eq "${result}" ] ; then
        echo "Setting: \"sysctl -w ${attribute}=${value}\""
        sudo sysctl -w  "${attribute}"="${value}"
        if_error_exit "\"sudo sysctl -w  ${attribute} = ${value}\" failed"
-   fi
+    fi
 }
 
 function verify_host_network_settings {
@@ -638,14 +638,19 @@ function verify_host_network_settings {
      # Verify hosts network settings                                           #
      #                                                                         #
      # Arguments:                                                              #
-     #   None                                                                  #
+     #   arg1: ip_family                                                       #
      ###########################################################################
+     [ $# -eq 1 ]
+     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+     local ip_family="${1}"
 
-    verify_sysctl_setting net.ipv6.conf.all.forwarding 1
-    verify_sysctl_setting net.ipv4.ip_forward 1
-    verify_sysctl_setting net.bridge.bridge-nf-call-arptables 0
-    verify_sysctl_setting net.bridge.bridge-nf-call-ip6tables 0
-    verify_sysctl_setting net.bridge.bridge-nf-call-iptables 0
+     verify_sysctl_setting net.ipv4.ip_forward 1
+     if [ "${ip_family}" = "ipv6" ]; then
+       verify_sysctl_setting net.ipv6.conf.all.forwarding 1
+       verify_sysctl_setting net.bridge.bridge-nf-call-arptables 0
+       verify_sysctl_setting net.bridge.bridge-nf-call-ip6tables 0
+       verify_sysctl_setting net.bridge.bridge-nf-call-iptables 0
+     fi
 }
 
 function set_host_network_settings {
@@ -654,14 +659,19 @@ function set_host_network_settings {
     # prepare hosts network settings                                          #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
+    #   arg1: ip_family                                                       #
     ###########################################################################
+     [ $# -eq 1 ]
+     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+     local ip_family="${1}"
 
      set_sysctl net.ipv6.conf.all.forwarding 1
-     set_sysctl net.ipv4.ip_forward 1
-     set_sysctl net.bridge.bridge-nf-call-arptables 0
-     set_sysctl net.bridge.bridge-nf-call-ip6tables 0
-     set_sysctl net.bridge.bridge-nf-call-iptables 0
+     if [ "${ip_family}" = "ipv6" ]; then
+       set_sysctl net.ipv4.ip_forward 1
+       set_sysctl net.bridge.bridge-nf-call-arptables 0
+       set_sysctl net.bridge.bridge-nf-call-ip6tables 0
+       set_sysctl net.bridge.bridge-nf-call-iptables 0
+     fi
 }
 
 function add_to_path {
@@ -972,10 +982,10 @@ function main {
         # REMOVE THIS comment out ON THE REPO WITH A PR WHEN LOCAL TESTS ARE ALL GREEN
         # set -e
         echo "this tests can't fail now in ci"
-        set_host_network_settings
+        set_host_network_settings "${ip_family}"
     fi
 
-    verify_host_network_settings
+    verify_host_network_settings "${ip_family}"
     prepare_container "${dockerfile}" "${ci_mode}"
     install_binaries "${bin_dir}" "${E2E_K8S_VERSION}" "${OS}"
 
