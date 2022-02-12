@@ -654,7 +654,7 @@ func (t *iptables) createEndpointsChain(svcInfo *serviceInfo, allEndpoints *endp
 			}
 			ep = epInfo.IPs.V4[0]
 		}
-		endpointPortMap[ep] = epInfo.EndpointPortMap
+		endpointPortMap[ep] = epInfo.PortOverrides // TODO migrate to epInfo.Ports() map[string]int32 when ready
 		endpoints = append(endpoints, &ep)
 
 		endpointChain = servicePortEndpointChainName(svcInfo.serviceNameString, protocol, ep)

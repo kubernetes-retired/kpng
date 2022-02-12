@@ -76,7 +76,7 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 		for _, port := range eps.Ports {
 			epMap[*port.Name] = *port.Port
 		}
-		info.Endpoint.EndpointPortMap = epMap
+		info.Endpoint.PortOverrides = epMap
 
 		infos = append(infos, info)
 	}

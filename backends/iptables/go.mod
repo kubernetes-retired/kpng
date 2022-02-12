@@ -41,7 +41,7 @@ require (
 	k8s.io/apimachinery v0.22.2
 	k8s.io/client-go v0.22.2
 	k8s.io/klog/v2 v2.20.0
-	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b
+	k8s.io/utils v0.0.0-20220127004650-9b3446523e65
 	sigs.k8s.io/kpng/api v0.0.0-20211016163122-10ddff77b5bd
 	sigs.k8s.io/kpng/client v0.0.0-20211016163122-10ddff77b5bd
 )

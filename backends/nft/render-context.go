@@ -2,15 +2,9 @@ package nft
 
 import (
 	"bytes"
-	"encoding/hex"
-	"fmt"
 	"net"
-	"net/netip"
 	"strconv"
 	"strings"
-
-	"github.com/cespare/xxhash"
-	"k8s.io/klog"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
@@ -49,10 +43,13 @@ func newRenderContext(table *nftable, clusterCIDRs []string, ipMask net.IPMask) 
 	}
 }
 
+type EpIP struct {
+	IP       string
+	Endpoint *localnetv1.Endpoint
+}
+
 func (ctx *renderContext) addServiceEndpoints(serviceEndpoints *fullstate.ServiceEndpoints) {
 	const daddrLocal = "fib daddr type local "
-
-	doComments := !*skipComments && bool(klog.V(1))
 
 	table := ctx.table
 	family := table.Family
@@ -60,12 +57,23 @@ func (ctx *renderContext) addServiceEndpoints(serviceEndpoints *fullstate.Servic
 	svc := serviceEndpoints.Service
 	endpoints := serviceEndpoints.Endpoints
 
-	mapH := xxhash.Sum64String(svc.Namespace+"/"+svc.Name) % (*mapsCount)
-	svcOffset := ctx.mapOffsets[mapH]
-	ctx.mapOffsets[mapH] += uint64(len(endpoints))
+	// write endpoint chains
+	endpointIPs := ctx.epIPs(endpoints)
+	ctx.epCount += len(endpointIPs)
 
-	endpointsMap := fmt.Sprintf("endpoints_%04x", mapH)
+	chainPrefix, dnatChainName, filterChainName := ctx.svcChainNames(svc)
+	_ = chainPrefix
+	_ = filterChainName
 
+	dnatChain := ctx.table.Chains.Get(dnatChainName)
+	for _, epIP := range endpointIPs {
+		ctx.addEndpointChain(svc, epIP, dnatChain)
+	}
+
+	// write service chain(s)
+	ctx.addSvcChain(svc, endpointIPs)
+
+	// add the service IPs to the dispatch
 	clusterIPs := &localnetv1.IPSet{}
 	allSvcIPs := &localnetv1.IPSet{}
 
@@ -78,19 +86,69 @@ func (ctx *renderContext) addServiceEndpoints(serviceEndpoints *fullstate.Servic
 	ips := table.IPsFromSet(allSvcIPs)
 
 	if len(ips) == 0 {
-		return // XXX check: NodePort services can theorically have no IP but work anyway
+		// nothing to contribute to the dispatch vmaps
+		return
 	}
 
-	// compute endpoints
-	endpointIPs := make([]string, 0, len(endpoints))
+	for _, i := range []struct {
+		suffix, target string
+	}{
+		{"_dnat", dnatChainName},
+		{"_filter", filterChainName},
+	} {
+		if ctx.table.Chains.Get(i.target).Len() == 0 {
+			continue
+		}
+
+		vmapItem := ctx.table.Maps.GetItem("z_dispatch_svc" + i.suffix)
+		vmap := vmapItem.Value()
+
+		first := false
+		if vmap.Len() == 0 {
+			// first time here
+			vmap.WriteString("  typeof " + family + " daddr : verdict; elements = {\n    ")
+			vmapItem.Defer(func(vmap *Leaf) {
+				vmap.WriteString(" }\n")
+			})
+			first = true
+		}
+
+		for idx, ip := range ips {
+			if first {
+				first = false
+			} else if idx%5 == 0 {
+				vmap.WriteString(",\n    ")
+			} else {
+				vmap.WriteString(", ")
+			}
+
+			vmap.WriteString(ip)
+			vmap.WriteString(": jump ")
+			vmap.WriteString(i.target)
+		}
+	}
+}
+
+func (ctx *renderContext) Finalize() {
+	ctx.table.RunDeferred()
+	addDispatchChains(ctx.table)
+	addPostroutingChain(ctx.table, ctx.clusterCIDRs, ctx.localEndpointIPs)
+	ctx.table.Done()
+}
+
+func (ctx *renderContext) epIPs(endpoints []*localnetv1.Endpoint) (endpointIPs []EpIP) {
+	endpointIPs = make([]EpIP, 0, len(endpoints))
 	for _, ep := range endpoints {
-		epIPs := table.IPsFromSet(ep.IPs)
+		epIPs := ctx.table.IPsFromSet(ep.IPs)
 
 		if len(epIPs) == 0 {
 			continue
 		}
 
-		endpointIPs = append(endpointIPs, epIPs[0])
+		endpointIPs = append(endpointIPs, EpIP{
+			IP:       epIPs[0],
+			Endpoint: ep,
+		})
 
 		if ep.Local {
 			for _, ip := range epIPs {
@@ -101,227 +159,27 @@ func (ctx *renderContext) addServiceEndpoints(serviceEndpoints *fullstate.Servic
 			}
 		}
 	}
-
-	ctx.epCount += len(endpointIPs)
-
-	// filter or nat? reject does not work in prerouting
-	prefix := "dnat_"
-	if len(endpointIPs) == 0 {
-		prefix = "filter_"
-	}
-
-	daddrMatch := family + " daddr"
-
-	svcChainNameFragment := strings.Join([]string{"svc", svc.Namespace, svc.Name}, "_")
-	svcChain := prefix + svcChainNameFragment
-
-	rule := ctx.buf
-	hasRules := false
-
-	switch sa := svc.SessionAffinity.(type) {
-	case *localnetv1.Service_ClientIP:
-		rule.Reset()
-		rule.WriteString("  numgen random mod ")
-		rule.WriteString(strconv.Itoa(len(endpointIPs)))
-		rule.WriteString(" vmap { ")
-
-		chain := table.Chains.Get(svcChain)
-		timeout := strconv.Itoa(int(sa.ClientIP.TimeoutSeconds))
-
-		for idx, ip := range endpointIPs {
-			ipHex := hex.EncodeToString(netip.MustParseAddr(ip).AsSlice())
-
-			epSet := svcChainNameFragment + "_epset_" + ipHex
-			if epSetV := table.Sets.Get(epSet); epSetV.Len() == 0 {
-				fmt.Fprint(epSetV, "  typeof "+family+" daddr; flags timeout;\n")
-			}
-
-			epChainName := svcChain + "_ep_" + ipHex
-			epChain := table.Chains.Get(epChainName)
-			fmt.Fprint(epChain, "  update @"+epSet+" { "+family+" saddr timeout "+timeout+"s }\n")
-
-			fmt.Fprint(chain, "  "+family+" saddr @"+epSet+" jump "+epChainName+"\n")
-
-			for _, nodePort := range []bool{false, true} {
-				for _, port := range svc.Ports {
-					srcPort := port.Port
-					if nodePort {
-						srcPort = port.NodePort
-					}
-					if srcPort == 0 {
-						continue
-					}
-
-					epChain.WriteString("  ")
-					if nodePort {
-						epChain.WriteString(mDAddrLocal)
-					}
-					epChain.WriteString(protoMatch(port.Protocol))
-					epChain.WriteByte(' ')
-					epChain.WriteString(strconv.Itoa(int(srcPort)))
-					epChain.WriteString(" dnat to ")
-					epChain.WriteString(ip)
-
-					if srcPort != port.TargetPort {
-						epChain.WriteByte(':')
-						epChain.WriteString(strconv.Itoa(int(port.TargetPort)))
-					}
-
-					epChain.WriteByte('\n')
-
-				}
-			}
-
-			if idx != 0 {
-				rule.WriteString(", ")
-			}
-			rule.WriteString(strconv.Itoa(nftKey(idx)))
-			rule.WriteString(": jump ")
-			rule.WriteString(epChainName)
-
-			hasRules = true
-		}
-
-		if hasRules {
-			rule.WriteString("}\n")
-			rule.WriteTo(chain)
-		}
-
-	default:
-		// add endpoints to the map
-		if len(endpointIPs) != 0 {
-			item := table.Maps.GetItem(endpointsMap)
-			epMap := item.Value()
-
-			if epMap.Len() == 0 {
-				epMap.WriteString("  typeof numgen random mod 1 : ")
-				epMap.WriteString(family)
-				epMap.WriteString(" daddr\n")
-				epMap.WriteString("  elements = {")
-				item.Defer(func(m *Leaf) { m.WriteString("}\n") })
-			} else {
-				epMap.WriteString(", ")
-			}
-
-			if doComments {
-				fmt.Fprintf(epMap, "\\\n    # %s/%s", svc.Namespace, svc.Name)
-			}
-
-			fmt.Fprint(epMap, "\\\n    ")
-			for idx, ip := range endpointIPs {
-				if idx != 0 {
-					epMap.WriteString(", ")
-				}
-				key := nftKey(int(svcOffset) + idx)
-
-				epMap.WriteString(strconv.Itoa(key))
-				epMap.WriteString(" : ")
-				epMap.WriteString(ip)
-			}
-		}
-
-		for _, protocol := range []localnetv1.Protocol{
-			localnetv1.Protocol_TCP,
-			localnetv1.Protocol_UDP,
-			localnetv1.Protocol_SCTP,
-		} {
-			rule.Reset()
-
-			// build the rule
-			ruleSpec := dnatRule{
-				Namespace:   svc.Namespace,
-				Name:        svc.Name,
-				Protocol:    protocol,
-				Ports:       svc.Ports,
-				EndpointIPs: endpointIPs,
-			}
-
-			// handle standard dnat
-			ruleSpec.WriteTo(rule, false, endpointsMap, svcOffset)
-
-			if rule.Len() != 0 {
-				rule.WriteTo(table.Chains.Get(svcChain))
-				hasRules = true
-			}
-
-			// handle node ports
-			rule.Reset()
-			ruleSpec.WriteTo(rule, true, endpointsMap, svcOffset)
-
-			if rule.Len() != 0 {
-				rule.WriteTo(table.Chains.Get(svcChain))
-				hasRules = true
-			}
-		}
-	}
-
-	if !hasRules {
-		return // no rules, no refs to make
-	}
-
-	for _, port := range svc.Ports {
-		srcPort := port.NodePort
-		if srcPort == 0 {
-			continue
-		}
-
-		nodeports := table.Chains.Get("nodeports")
-		nodeports.WriteString("  ")
-		nodeports.WriteString(protoMatch(port.Protocol))
-		nodeports.WriteByte(' ')
-		nodeports.WriteString(strconv.Itoa(int(srcPort)))
-		nodeports.WriteString(" jump ")
-		nodeports.WriteString(svcChain)
-		nodeports.WriteByte('\n')
-	}
-
-	// dispatch group chain (ie: dnat_net_0a002700 for 10.0.39.x and a /24 mask)
-	familyClusterIPs := table.IPsFromSet(clusterIPs)
-
-	if len(familyClusterIPs) != 0 {
-		// this family owns the cluster IP => build the dispatch chain
-		mask := ctx.ipMask
-
-		for _, ipStr := range familyClusterIPs {
-			ip := net.ParseIP(ipStr).Mask(mask)
-
-			// get the dispatch chain
-			chain := prefix + "net_" + hex.EncodeToString(ip)
-
-			// add service chain in dispatch
-			vmapAdd(table.Chains.GetItem(chain), family+" daddr", ipStr+": jump "+svcChain)
-
-			// reference the dispatch chain from the global dispatch (of not already done) (ie: z_dnat_all)
-			if !ctx.chainNets[chain] {
-				ipNet := &net.IPNet{
-					IP:   ip,
-					Mask: mask,
-				}
-
-				vmapAdd(table.Chains.GetItem("z_"+prefix+"all"), daddrMatch, ipNet.String()+": jump "+chain)
-
-				ctx.chainNets[chain] = true
-			}
-		}
-	}
-
-	// handle external IPs dispatch
-	extIPsSet := svc.IPs.AllIngress()
-
-	extIPs := table.IPsFromSet(extIPsSet)
-
-	if len(extIPs) != 0 {
-		extChain := table.Chains.GetItem(prefix + "external")
-		for _, extIP := range extIPs {
-			// XXX should this be by protocol and port to allow external IP mutualization between services?
-			vmapAdd(extChain, daddrMatch, extIP+": jump "+svcChain)
-		}
-	}
+	return
 }
 
-func (ctx *renderContext) Finalize() {
-	ctx.table.RunDeferred()
-	addDispatchChains(ctx.table)
-	addPostroutingChain(ctx.table, ctx.clusterCIDRs, ctx.localEndpointIPs)
-	ctx.table.Done()
+func (ctx *renderContext) recordNodePort(port *localnetv1.PortMapping, targetChain string) {
+	chain := ctx.table.Chains.Get("nodeports_dnat")
+	if strings.HasSuffix(targetChain, "_filter") {
+		chain = ctx.table.Chains.Get("nodeports_filter")
+	}
+
+	chain.WriteString("  ")
+	chain.WriteString(protoMatch(port.Protocol))
+	chain.WriteByte(' ')
+	chain.WriteString(strconv.Itoa(int(port.NodePort)))
+	chain.WriteString(" jump ")
+	chain.WriteString(targetChain)
+	chain.WriteByte('\n')
+}
+
+func (ctx *renderContext) svcChainNames(svc *localnetv1.Service) (chainPrefix, dnatChainName, filterChainName string) {
+	chainPrefix = ctx.svcNftName(svc)
+	dnatChainName = chainPrefix + "_dnat"
+	filterChainName = chainPrefix + "_filter"
+	return
 }
