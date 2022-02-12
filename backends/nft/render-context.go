@@ -52,7 +52,7 @@ func (ctx *renderContext) addServiceEndpoints(serviceEndpoints *fullstate.Servic
 	const daddrLocal = "fib daddr type local "
 
 	table := ctx.table
-	family := table.Family
+	//iptype := table.nftIPType()
 
 	svc := serviceEndpoints.Service
 	endpoints := serviceEndpoints.Endpoints
@@ -61,9 +61,7 @@ func (ctx *renderContext) addServiceEndpoints(serviceEndpoints *fullstate.Servic
 	endpointIPs := ctx.epIPs(endpoints)
 	ctx.epCount += len(endpointIPs)
 
-	chainPrefix, dnatChainName, filterChainName := ctx.svcChainNames(svc)
-	_ = chainPrefix
-	_ = filterChainName
+	_, dnatChainName, filterChainName := ctx.svcChainNames(svc)
 
 	dnatChain := ctx.table.Chains.Get(dnatChainName)
 	for _, epIP := range endpointIPs {
@@ -100,13 +98,13 @@ func (ctx *renderContext) addServiceEndpoints(serviceEndpoints *fullstate.Servic
 			continue
 		}
 
-		vmapItem := ctx.table.Maps.GetItem("z_dispatch_svc" + i.suffix)
+		vmapItem := ctx.table.Chains.GetItem("z_dispatch_svc" + i.suffix)
 		vmap := vmapItem.Value()
 
 		first := false
 		if vmap.Len() == 0 {
 			// first time here
-			vmap.WriteString("  typeof " + family + " daddr : verdict; elements = {\n    ")
+			vmap.WriteString("  " + ctx.table.Family + " daddr vmap {\n    ")
 			vmapItem.Defer(func(vmap *Leaf) {
 				vmap.WriteString(" }\n")
 			})

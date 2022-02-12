@@ -11,28 +11,15 @@ func (ctx *renderContext) svcNftName(svc *localnetv1.Service) string {
 }
 
 func (ctx *renderContext) addSvcVmap(vmapName string, svc *localnetv1.Service, epIPs []EpIP) {
-	vmap := ctx.table.Maps.Get(vmapName)
-	vmap.WriteString("  typeof numgen random mod 1 : verdict")
+	vmap := ctx.table.Chains.Get(vmapName)
 
 	if len(epIPs) == 0 {
-		vmap.WriteByte('\n')
+		panic("no epIPs is not allowed")
 		return
 	}
 
-	for i, epIP := range epIPs {
-		if i == 0 {
-			vmap.WriteString("; elements = {\n    ")
-		} else if i%5 == 0 {
-			vmap.WriteString(",\n    ")
-		} else {
-			vmap.WriteString(", ")
-		}
-		vmap.WriteString(strconv.Itoa(nftKey(i)))
-		vmap.WriteString(": jump ")
-		vmap.WriteString(ctx.epChainName(svc, epIP.Endpoint))
-	}
-
-	vmap.WriteString(" }\n")
+	vmap.WriteString("  ")
+	ctx.writeEndpointsVmap(vmap, svc, epIPs)
 }
 
 func (ctx *renderContext) addSvcChain(svc *localnetv1.Service, epIPs []EpIP) {
@@ -43,7 +30,9 @@ func (ctx *renderContext) addSvcChain(svc *localnetv1.Service, epIPs []EpIP) {
 
 	// the default vmap with all endpoints
 	vmapAllName := chainPrefix + "_eps"
-	ctx.addSvcVmap(vmapAllName, svc, epIPs)
+	if len(epIPs) != 0 {
+		ctx.addSvcVmap(vmapAllName, svc, epIPs)
+	}
 
 	// one rule per port, with handling for defined-but-not-on-every-endpoint cases (aka multi-port)
 	for _, port := range svc.Ports {
@@ -66,7 +55,7 @@ func (ctx *renderContext) addSvcChain(svc *localnetv1.Service, epIPs []EpIP) {
 
 		vmapName := vmapAllName
 
-		if len(subset) != len(epIPs) {
+		if len(subset) != len(epIPs) && len(subset) != 0 {
 			// not defined on all endpoints, need a specific map
 			vmapName = chainPrefix + "_eps_" + port.Name
 			ctx.addSvcVmap(vmapName, svc, subset)
@@ -88,12 +77,29 @@ func (ctx *renderContext) addSvcChain(svc *localnetv1.Service, epIPs []EpIP) {
 			if len(subset) == 0 {
 				chain.WriteString(" reject\n")
 			} else {
-				chain.WriteString(" numgen random mod ")
-				chain.WriteString(strconv.Itoa(len(subset)))
-				chain.WriteString(" vmap @")
+				chain.WriteString(" jump ")
 				chain.WriteString(vmapName)
 				chain.WriteByte('\n')
 			}
 		}
 	}
+}
+
+func (ctx *renderContext) writeEndpointsVmap(w writer, svc *localnetv1.Service, epIPs []EpIP) {
+	w.WriteString("numgen random mod ")
+	w.WriteString(strconv.Itoa(len(epIPs)))
+	w.WriteString(" vmap {")
+	for i, epIP := range epIPs {
+		if i == 0 {
+			w.WriteString("\n    ")
+		} else if i%5 == 0 {
+			w.WriteString(",\n    ")
+		} else {
+			w.WriteString(", ")
+		}
+		w.WriteString(strconv.Itoa(nftKey(i)))
+		w.WriteString(": jump ")
+		w.WriteString(ctx.epChainName(svc, epIP.Endpoint))
+	}
+	w.WriteString(" }\n")
 }

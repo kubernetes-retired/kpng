@@ -4,9 +4,9 @@ import "fmt"
 
 func ExampleEndpointPortMapping() {
 	ports := []*PortMapping{
-		{TargetPortName: "http", TargetPort: 8080},
-		{TargetPortName: "http2", TargetPort: 800},
-		{TargetPortName: "metrics"},
+		{Name: "http", TargetPortName: "t-http", TargetPort: 8080},
+		{Name: "http2", TargetPortName: "t-http2", TargetPort: 800},
+		{Name: "metrics", TargetPortName: "t-metrics"},
 	}
 
 	ep := &Endpoint{
@@ -14,7 +14,7 @@ func ExampleEndpointPortMapping() {
 	}
 
 	for _, port := range ports {
-		fmt.Println(port.TargetPortName, ep.PortMapping(port))
+		fmt.Println(port.Name, ep.PortMapping(port))
 	}
 
 	// Output:

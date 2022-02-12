@@ -23,8 +23,8 @@ func testValues() (ctx *renderContext, seps *fullstate.ServiceEndpoints) {
 		},
 		Ports: []*v1.PortMapping{
 			{Name: "http", Protocol: v1.Protocol_TCP, Port: 80, TargetPort: 8080, NodePort: 58080},
-			{Name: "metrics", TargetPortName: "metrics", Protocol: v1.Protocol_TCP, Port: 81},
-			{Name: "nowhere", TargetPortName: "nowhere", Protocol: v1.Protocol_TCP, Port: 82, NodePort: 58081},
+			{Name: "metrics", TargetPortName: "x", Protocol: v1.Protocol_TCP, Port: 81},
+			{Name: "nowhere", TargetPortName: "y", Protocol: v1.Protocol_TCP, Port: 82, NodePort: 58081},
 		},
 	}
 
@@ -49,25 +49,6 @@ func ExampleRenderBasicService() {
 
 	// Output:
 	// table ip k8s_svc {
-	//  map svc_my-ns_my-svc_eps {
-	//   typeof numgen random mod 1 : verdict; elements = {
-	//     0: jump svc_my-ns_my-svc_ep_0a010001, 1: jump svc_my-ns_my-svc_ep_0a010002, 2: jump svc_my-ns_my-svc_ep_0a010101 }
-	//  }
-	//  map svc_my-ns_my-svc_eps_metrics {
-	//   typeof numgen random mod 1 : verdict; elements = {
-	//     0: jump svc_my-ns_my-svc_ep_0a010002, 1: jump svc_my-ns_my-svc_ep_0a010101 }
-	//  }
-	//  map svc_my-ns_my-svc_eps_nowhere {
-	//   typeof numgen random mod 1 : verdict
-	//  }
-	//  map z_dispatch_svc_dnat {
-	//   typeof ip daddr : verdict; elements = {
-	//     10.0.0.1: jump svc_my-ns_my-svc_dnat }
-	//  }
-	//  map z_dispatch_svc_filter {
-	//   typeof ip daddr : verdict; elements = {
-	//     10.0.0.1: jump svc_my-ns_my-svc_filter }
-	//  }
 	//  chain nodeports_dnat {
 	//   tcp dport 58080 jump svc_my-ns_my-svc_dnat
 	//  }
@@ -75,9 +56,9 @@ func ExampleRenderBasicService() {
 	//   tcp dport 58081 jump svc_my-ns_my-svc_filter
 	//  }
 	//  chain svc_my-ns_my-svc_dnat {
-	//   tcp dport 80 numgen random mod 3 vmap @svc_my-ns_my-svc_eps
-	//   fib daddr type local tcp dport 58080 numgen random mod 3 vmap @svc_my-ns_my-svc_eps
-	//   tcp dport 81 numgen random mod 2 vmap @svc_my-ns_my-svc_eps_metrics
+	//   tcp dport 80 jump svc_my-ns_my-svc_eps
+	//   fib daddr type local tcp dport 58080 jump svc_my-ns_my-svc_eps
+	//   tcp dport 81 jump svc_my-ns_my-svc_eps_metrics
 	//  }
 	//  chain svc_my-ns_my-svc_ep_0a010001 {
 	//   tcp dport 80 dnat to 10.1.0.1:8080
@@ -93,17 +74,33 @@ func ExampleRenderBasicService() {
 	//   tcp dport 81 dnat to 10.1.1.1:1042
 	//   fib daddr type local tcp dport 58080 dnat to 10.1.1.1:8080
 	//  }
+	//  chain svc_my-ns_my-svc_eps {
+	//   numgen random mod 3 vmap {
+	//     0: jump svc_my-ns_my-svc_ep_0a010001, 1: jump svc_my-ns_my-svc_ep_0a010002, 2: jump svc_my-ns_my-svc_ep_0a010101 }
+	//  }
+	//  chain svc_my-ns_my-svc_eps_metrics {
+	//   numgen random mod 2 vmap {
+	//     0: jump svc_my-ns_my-svc_ep_0a010002, 1: jump svc_my-ns_my-svc_ep_0a010101 }
+	//  }
 	//  chain svc_my-ns_my-svc_filter {
 	//   tcp dport 82 reject
 	//   fib daddr type local tcp dport 58081 reject
 	//  }
+	//  chain z_dispatch_svc_dnat {
+	//   ip daddr vmap {
+	//     10.0.0.1: jump svc_my-ns_my-svc_dnat }
+	//  }
+	//  chain z_dispatch_svc_filter {
+	//   ip daddr vmap {
+	//     10.0.0.1: jump svc_my-ns_my-svc_filter }
+	//  }
 	//  chain z_dnat_all {
-	//   ip daddr vmap @z_dispatch_svc_dnat
+	//   jump z_dispatch_svc_dnat
 	//   fib daddr type local jump nodeports_dnat
 	//  }
 	//  chain z_filter_all {
 	//   ct state invalid drop
-	//   ip daddr vmap @z_dispatch_svc_filter
+	//   jump z_dispatch_svc_filter
 	//   fib daddr type local jump nodeports_filter
 	//  }
 	//  chain z_hook_filter_forward {
@@ -151,33 +148,14 @@ func ExampleRenderServiceWithClientIPAffinity() {
 
 	// Output:
 	// table ip k8s_svc {
-	//  map svc_my-ns_my-svc_eps {
-	//   typeof numgen random mod 1 : verdict; elements = {
-	//     0: jump svc_my-ns_my-svc_ep_0a010001, 1: jump svc_my-ns_my-svc_ep_0a010002, 2: jump svc_my-ns_my-svc_ep_0a010101 }
-	//  }
-	//  map svc_my-ns_my-svc_eps_metrics {
-	//   typeof numgen random mod 1 : verdict; elements = {
-	//     0: jump svc_my-ns_my-svc_ep_0a010002, 1: jump svc_my-ns_my-svc_ep_0a010101 }
-	//  }
-	//  map svc_my-ns_my-svc_eps_nowhere {
-	//   typeof numgen random mod 1 : verdict
-	//  }
-	//  map z_dispatch_svc_dnat {
-	//   typeof ip daddr : verdict; elements = {
-	//     10.0.0.1: jump svc_my-ns_my-svc_dnat }
-	//  }
-	//  map z_dispatch_svc_filter {
-	//   typeof ip daddr : verdict; elements = {
-	//     10.0.0.1: jump svc_my-ns_my-svc_filter }
-	//  }
 	//  set svc_my-ns_my-svc_ep_0a010001_recent {
-	//   typeof ip daddr; flags timeout;
+	//   type ipv4_addr; flags timeout;
 	//  }
 	//  set svc_my-ns_my-svc_ep_0a010002_recent {
-	//   typeof ip daddr; flags timeout;
+	//   type ipv4_addr; flags timeout;
 	//  }
 	//  set svc_my-ns_my-svc_ep_0a010101_recent {
-	//   typeof ip daddr; flags timeout;
+	//   type ipv4_addr; flags timeout;
 	//  }
 	//  chain nodeports_dnat {
 	//   tcp dport 58080 jump svc_my-ns_my-svc_dnat
@@ -189,9 +167,9 @@ func ExampleRenderServiceWithClientIPAffinity() {
 	//   ip saddr @svc_my-ns_my-svc_ep_0a010001_recent jump svc_my-ns_my-svc_ep_0a010001
 	//   ip saddr @svc_my-ns_my-svc_ep_0a010002_recent jump svc_my-ns_my-svc_ep_0a010002
 	//   ip saddr @svc_my-ns_my-svc_ep_0a010101_recent jump svc_my-ns_my-svc_ep_0a010101
-	//   tcp dport 80 numgen random mod 3 vmap @svc_my-ns_my-svc_eps
-	//   fib daddr type local tcp dport 58080 numgen random mod 3 vmap @svc_my-ns_my-svc_eps
-	//   tcp dport 81 numgen random mod 2 vmap @svc_my-ns_my-svc_eps_metrics
+	//   tcp dport 80 jump svc_my-ns_my-svc_eps
+	//   fib daddr type local tcp dport 58080 jump svc_my-ns_my-svc_eps
+	//   tcp dport 81 jump svc_my-ns_my-svc_eps_metrics
 	//  }
 	//  chain svc_my-ns_my-svc_ep_0a010001 {
 	//   update @svc_my-ns_my-svc_ep_0a010001_recent { ip saddr timeout 30s }
@@ -210,17 +188,33 @@ func ExampleRenderServiceWithClientIPAffinity() {
 	//   tcp dport 81 dnat to 10.1.1.1:1042
 	//   fib daddr type local tcp dport 58080 dnat to 10.1.1.1:8080
 	//  }
+	//  chain svc_my-ns_my-svc_eps {
+	//   numgen random mod 3 vmap {
+	//     0: jump svc_my-ns_my-svc_ep_0a010001, 1: jump svc_my-ns_my-svc_ep_0a010002, 2: jump svc_my-ns_my-svc_ep_0a010101 }
+	//  }
+	//  chain svc_my-ns_my-svc_eps_metrics {
+	//   numgen random mod 2 vmap {
+	//     0: jump svc_my-ns_my-svc_ep_0a010002, 1: jump svc_my-ns_my-svc_ep_0a010101 }
+	//  }
 	//  chain svc_my-ns_my-svc_filter {
 	//   tcp dport 82 reject
 	//   fib daddr type local tcp dport 58081 reject
 	//  }
+	//  chain z_dispatch_svc_dnat {
+	//   ip daddr vmap {
+	//     10.0.0.1: jump svc_my-ns_my-svc_dnat }
+	//  }
+	//  chain z_dispatch_svc_filter {
+	//   ip daddr vmap {
+	//     10.0.0.1: jump svc_my-ns_my-svc_filter }
+	//  }
 	//  chain z_dnat_all {
-	//   ip daddr vmap @z_dispatch_svc_dnat
+	//   jump z_dispatch_svc_dnat
 	//   fib daddr type local jump nodeports_dnat
 	//  }
 	//  chain z_filter_all {
 	//   ct state invalid drop
-	//   ip daddr vmap @z_dispatch_svc_filter
+	//   jump z_dispatch_svc_filter
 	//   fib daddr type local jump nodeports_filter
 	//  }
 	//  chain z_hook_filter_forward {

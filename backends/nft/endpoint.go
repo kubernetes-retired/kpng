@@ -28,7 +28,7 @@ func (ctx *renderContext) addEndpointChain(svc *localnetv1.Service, epIP EpIP, s
 	case *localnetv1.Service_ClientIP:
 		recentSet := epChainName + "_recent"
 		if recentSetV := ctx.table.Sets.Get(recentSet); recentSetV.Len() == 0 {
-			recentSetV.WriteString("  typeof " + family + " daddr; flags timeout;\n")
+			recentSetV.WriteString("  type " + ctx.table.nftIPType() + "; flags timeout;\n")
 		}
 
 		timeout := strconv.Itoa(int(sa.ClientIP.TimeoutSeconds))

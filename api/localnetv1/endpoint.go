@@ -32,7 +32,7 @@ func (ep *Endpoint) AddAddress(s string) (ip net.IP) {
 func (ep *Endpoint) PortMapping(port *PortMapping) (target int32) {
 	target = port.TargetPort
 	if port.TargetPortName != "" {
-		override, ok := ep.PortOverrides[port.TargetPortName]
+		override, ok := ep.PortOverrides[port.Name] // it's the *port* name (not target port name)
 		if ok {
 			target = override
 		}

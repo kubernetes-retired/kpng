@@ -205,8 +205,8 @@ func addDispatchChains(table *nftable) {
 	}
 
 	// DNAT
-	if table.Maps.Has("z_dispatch_svc_dnat") {
-		fmt.Fprint(dnatAll, "  ip daddr vmap @z_dispatch_svc_dnat\n")
+	if table.Chains.Has("z_dispatch_svc_dnat") {
+		fmt.Fprint(dnatAll, "  jump z_dispatch_svc_dnat\n")
 	}
 
 	if table.Chains.Has("dnat_external") {
@@ -228,8 +228,8 @@ func addDispatchChains(table *nftable) {
 	filterAll := table.Chains.Get("z_filter_all")
 	fmt.Fprint(filterAll, "  ct state invalid drop\n")
 
-	if table.Maps.Has("z_dispatch_svc_filter") {
-		fmt.Fprint(filterAll, "  ip daddr vmap @z_dispatch_svc_filter\n")
+	if table.Chains.Has("z_dispatch_svc_filter") {
+		fmt.Fprint(filterAll, "  jump z_dispatch_svc_filter\n")
 	}
 
 	if table.Chains.Has("filter_external") {
@@ -325,23 +325,10 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 
 		// create/update changed elements
 		fmt.Fprintf(out, "table %s %s {\n", table.Family, table.Name)
-		for _, ks := range table.KindStores() {
-			var items []*Item
-			if fullResync {
-				items = ks.Store.List()
-			} else {
-				items = ks.Store.Changed()
-			}
-
-			if len(items) == 0 {
-				continue
-			}
-
-			for _, item := range items {
-				fmt.Fprintf(out, " %s %s {\n", ks.Kind, item.Key())
-				io.Copy(out, item.Value())
-				fmt.Fprintln(out, " }")
-			}
+		for _, ki := range table.OrderedChanges(fullResync) {
+			fmt.Fprintf(out, " %s %s {\n", ki.Kind, ki.Item.Key())
+			io.Copy(out, ki.Item.Value())
+			fmt.Fprintln(out, " }")
 		}
 		fmt.Fprintln(out, "}")
 
