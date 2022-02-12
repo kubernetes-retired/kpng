@@ -29,7 +29,6 @@ import (
 	"k8s.io/client-go/tools/events"
 	"k8s.io/kubernetes/pkg/proxy/apis/config"
 	"k8s.io/kubernetes/pkg/proxy/healthcheck"
-
 	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/backendcmd"
 	"sigs.k8s.io/kpng/client/localsink"
@@ -100,11 +99,9 @@ func (s *Backend) Sink() localsink.Sink {
 }
 
 func (s *Backend) DeleteEndpoint(namespace, serviceName, key string) {
-
 }
 
 func (s *Backend) SetService(svc *localnetv1.Service) {
-
 }
 
 func (s *Backend) DeleteService(namespace, name string) {
