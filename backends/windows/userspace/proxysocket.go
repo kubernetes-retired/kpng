@@ -1,4 +1,4 @@
-package main
+package userspace
 
 import (
 	"fmt"
@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/proxy"
 )
 
 // Abstraction over TCP/UDP sockets which are proxied.
@@ -77,7 +76,7 @@ func (tcp *tcpProxySocket) ListenPort() int {
 func tryConnect(service ServicePortPortalName, srcAddr net.Addr, protocol string, proxier *Proxier) (out net.Conn, err error) {
 	sessionAffinityReset := false
 	for _, dialTimeout := range endpointDialTimeout {
-		servicePortName := proxy.ServicePortName{
+		servicePortName := ServicePortName{
 			NamespacedName: types.NamespacedName{
 				Namespace: service.Namespace,
 				Name:      service.Name,

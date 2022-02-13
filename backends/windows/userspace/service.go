@@ -1,4 +1,4 @@
-package main
+package userspace
 
 import "sigs.k8s.io/kpng/api/localnetv1"
 
