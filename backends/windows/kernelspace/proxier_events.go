@@ -1,4 +1,4 @@
-package winkernel
+package kernelspace
 
 import (
 	"sync/atomic"

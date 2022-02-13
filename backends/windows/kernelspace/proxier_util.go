@@ -1,11 +1,12 @@
-package winkernel
+package kernelspace
 
 import (
+	"k8s.io/kubernetes/pkg/proxy"
 	"net"
 	"sync"
 
 	"k8s.io/client-go/tools/events"
-	"k8s.io/kubernetes/pkg/proxy"
+	//	"k8s.io/kubernetes/pkg/proxy"
 	"k8s.io/kubernetes/pkg/proxy/healthcheck"
 	"k8s.io/kubernetes/pkg/util/async"
 	//proxyconfig "k8s.io/kubernetes/pkg/proxy/config"
@@ -56,8 +57,8 @@ type Proxier struct {
 	// services that happened since policies were synced. For a single object,
 	// changes are accumulated, i.e. previous is state from before all of them,
 	// current is state after applying all of those.
-	endpointsChanges  *proxy.EndpointChangeTracker
-	serviceChanges    *proxy.ServiceChangeTracker
+	endpointsChanges  *EndpointChangeTracker
+	serviceChanges    *ServiceChangeTracker
 	endPointsRefCount endPointsReferenceCountMap
 	mu                sync.Mutex // protects the following fields
 	serviceMap        proxy.ServiceMap

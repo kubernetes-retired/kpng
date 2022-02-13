@@ -17,7 +17,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package winkernel
+package kernelspace
 
 import (
 	"encoding/json"
@@ -30,10 +30,10 @@ import (
 )
 
 type remoteSubnetInfo struct {
-        destinationPrefix string
-        isolationID       uint16
-        providerAddress   string
-        drMacAddress      string
+	destinationPrefix string
+	isolationID       uint16
+	providerAddress   string
+	drMacAddress      string
 }
 
 type hnsV2 struct{}

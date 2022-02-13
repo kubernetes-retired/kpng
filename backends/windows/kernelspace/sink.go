@@ -17,7 +17,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package winkernel
+package kernelspace
 
 import (
 	"net"
@@ -99,9 +99,13 @@ func (s *Backend) Sink() localsink.Sink {
 }
 
 func (s *Backend) DeleteEndpoint(namespace, serviceName, key string) {
+	proxierState.serviceChanges.Delete(namespace, serviceName)
+
 }
 
 func (s *Backend) SetService(svc *localnetv1.Service) {
+	proxierState.serviceChanges.Update(svc)
+
 }
 
 func (s *Backend) DeleteService(namespace, name string) {

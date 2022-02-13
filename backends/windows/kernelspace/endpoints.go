@@ -17,108 +17,108 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package winkernel
+package kernelspace
 
 import (
-	"net"
-	"k8s.io/klog/v2"
-	"strconv"
-	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/kubernetes/pkg/proxy"
+        "k8s.io/apimachinery/pkg/util/sets"
+        "k8s.io/klog/v2"
+        "k8s.io/kubernetes/pkg/proxy"
+        "net"
+        "strconv"
 )
 
 // internal struct for endpoints information
 type endpoints struct {
-        ip              string
-        port            uint16
-        isLocal         bool
-        macAddress      string
-        hnsID           string
-        refCount        *uint16
-        providerAddress string
-        hns             HostNetworkService
+	ip              string
+	port            uint16
+	isLocal         bool
+	macAddress      string
+	hnsID           string
+	refCount        *uint16
+	providerAddress string
+	hns             HostNetworkService
 
-        // conditions
-        ready       bool
-        serving     bool
-        terminating bool
+	// conditions
+	ready       bool
+	serving     bool
+	terminating bool
 }
 
 // String is part of proxy.Endpoint interface.
 func (ep *endpoints) String() string {
-        return net.JoinHostPort(
+	return net.JoinHostPort(
 		ep.ip,
 		strconv.Itoa(int(ep.port)))
 }
 
 // GetIsLocal is part of proxy.Endpoint interface.
 func (ep *endpoints) GetIsLocal() bool {
-        return ep.isLocal
+	return ep.isLocal
 }
 
 // IsReady returns true if an endpoint is ready and not terminating.
 func (ep *endpoints) IsReady() bool {
-        return ep.ready
+	return ep.ready
 }
 
 // IsServing returns true if an endpoint is ready, regardless of it's terminating state.
 func (ep *endpoints) IsServing() bool {
-        return ep.serving
+	return ep.serving
 }
 
 // IsTerminating returns true if an endpoint is terminating.
 func (ep *endpoints) IsTerminating() bool {
-        return ep.terminating
+	return ep.terminating
 }
 
 // GetZoneHint returns the zone hint for the endpoint.
 func (ep *endpoints) GetZoneHints() sets.String {
-        return sets.String{}
+	return sets.String{}
 }
 
 // IP returns just the IP part of the endpoint, it's a part of proxy.Endpoint interface.
 func (ep *endpoints) IP() string {
-        return ep.ip
+	return ep.ip
 }
 
 // Port returns just the Port part of the endpoint.
 func (ep *endpoints) Port() (int, error) {
-        return int(ep.port), nil
+	return int(ep.port), nil
 }
 
 // Equal is part of proxy.Endpoint interface.
 func (ep *endpoints) Equal(other proxy.Endpoint) bool {
-        return ep.String() == other.String() && ep.GetIsLocal() == other.GetIsLocal()
+	return ep.String() == other.String() && ep.GetIsLocal() == other.GetIsLocal()
 }
 
 // GetNodeName returns the NodeName for this endpoint.
 func (ep *endpoints) GetNodeName() string {
-        return ""
+	return ""
 }
 
 // GetZone returns the Zone for this endpoint.
 func (ep *endpoints) GetZone() string {
-        return ""
+	return ""
 }
 
 func (ep *endpoints) Cleanup() {
-        klog.V(3).InfoS("Endpoint cleanup", "endpoints.Info", ep)
-        if !ep.GetIsLocal() && ep.refCount != nil {
-                *ep.refCount--
+	klog.V(3).InfoS("Endpoint cleanup", "endpoints.Info", ep)
+	if !ep.GetIsLocal() && ep.refCount != nil {
+		*ep.refCount--
 
-                // Remove the remote hns endpoint, if no service is referring it
-                // Never delete a Local Endpoint. Local Endpoints are already created by other entities.
-                // Remove only remote endpoints created by this service
-                if *ep.refCount <= 0 && !ep.GetIsLocal() {
-                        klog.V(4).InfoS("Removing endpoints, since no one is referencing it", "endpoint", ep)
-                        err := ep.hns.deleteEndpoint(ep.hnsID)
-                        if err == nil {
-                                ep.hnsID = ""
-                        } else {
-                                klog.ErrorS(err, "Endpoint deletion failed", "ip", ep.IP())
-                        }
-                }
+		// Remove the remote hns endpoint, if no service is referring it
+		// Never delete a Local Endpoint. Local Endpoints are already created by other entities.
+		// Remove only remote endpoints created by this service
+		if *ep.refCount <= 0 && !ep.GetIsLocal() {
+			klog.V(4).InfoS("Removing endpoints, since no one is referencing it", "endpoint", ep)
+			err := ep.hns.deleteEndpoint(ep.hnsID)
+			if err == nil {
+				ep.hnsID = ""
+			} else {
+				klog.ErrorS(err, "Endpoint deletion failed", "ip", ep.IP())
+			}
+		}
 
-                ep.refCount = nil
-        }
+		ep.refCount = nil
+	}
 }
