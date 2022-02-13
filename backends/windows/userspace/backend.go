@@ -1,18 +1,26 @@
-package main
+package userspace
 
 import (
-	"flag"
 	"io"
 	"log"
 	"time"
 
+	"github.com/spf13/pflag"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
-	"k8s.io/klog/v2"
-	utilnetsh "k8s.io/kubernetes/pkg/util/netsh"
-	"k8s.io/utils/exec"
 	netutils "k8s.io/utils/net"
+
+	"k8s.io/klog/v2"
+	"k8s.io/utils/exec"
 	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/client/backendcmd"
+	"sigs.k8s.io/kpng/client/localsink"
+	"sigs.k8s.io/kpng/client/localsink/decoder"
+	"sigs.k8s.io/kpng/client/localsink/filterreset"
 )
+
+func init() {
+	backendcmd.Register("to-winuserspace", func() backendcmd.Cmd { return &userspaceBackend{} })
+}
 
 var (
 	proxier Provider
@@ -24,27 +32,34 @@ var (
 )
 
 type userspaceBackend struct {
-	nodeName  string
+	localsink.Config
+
 	services  map[string]*service
 	ips       map[string]bool
 	listeners map[string]io.Closer
 }
 
-func (b *userspaceBackend) BindFlags() {
-	flag.StringVar(&bindAddress, "bind-address", "0.0.0.0", "bind address")
-	flag.StringVar(&portRange, "port-range", "36000-37000", "port range")
-	flag.DurationVar(&syncPeriodDuration, "sync-period-duration", 15*time.Second, "sync period duration")
-	flag.DurationVar(&udpIdleTimeout, "udp-idle-timeout", 10*time.Second, "UDP idle timeout")
+var _ decoder.Interface = &userspaceBackend{}
+
+func (b *userspaceBackend) BindFlags(flags *pflag.FlagSet) {
+	flags.StringVar(&bindAddress, "bind-address", "0.0.0.0", "bind address")
+	flags.StringVar(&portRange, "port-range", "36000-37000", "port range")
+	flags.DurationVar(&syncPeriodDuration, "sync-period-duration", 15*time.Second, "sync period duration")
+	flags.DurationVar(&udpIdleTimeout, "udp-idle-timeout", 10*time.Second, "UDP idle timeout")
+}
+
+func (b *userspaceBackend) Sink() localsink.Sink {
+	return filterreset.New(decoder.New(b))
 }
 
 func (b *userspaceBackend) Setup() {
 	var err error
 
-	klog.V(0).InfoS("Using Windows userspace Proxier.")
+	klog.V(0).InfoS("Using Windows Userspace Proxier. (this is a deprecated mode).")
 
 	execer := exec.New()
-	var netshInterface utilnetsh.Interface
-	netshInterface = utilnetsh.New(execer)
+	var netshInterface Interface
+	netshInterface = New(execer)
 	proxier, err = NewProxier(
 		NewLoadBalancerRR(),
 		netutils.ParseIPSloppy(bindAddress),
@@ -65,8 +80,8 @@ func (b *userspaceBackend) Sync() {
 }
 
 // WaitRequest see localsink.Sink#WaitRequest
-func (b *userspaceBackend) WaitRequest() (nodeName string, err error) {
-	return b.nodeName, nil
+func (b *userspaceBackend) WaitRequest() (NodeName string, err error) {
+	return b.NodeName, nil
 }
 
 // Reset see localsink.Sink#Reset

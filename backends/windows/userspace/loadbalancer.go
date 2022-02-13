@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package userspace
 
 import (
-	"k8s.io/kubernetes/pkg/proxy"
 	"net"
+
 	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
@@ -40,10 +40,10 @@ type EndpointsHandler interface {
 type LoadBalancer interface {
 	// NextEndpoint returns the endpoint to handle a request for the given
 	// service-port and source address.
-	NextEndpoint(service proxy.ServicePortName, srcAddr net.Addr, sessionAffinityReset bool) (string, error)
-	NewService(service proxy.ServicePortName, affinityClientIP *localnetv1.ClientIPAffinity, stickyMaxAgeMinutes int) error
-	DeleteService(service proxy.ServicePortName)
-	CleanupStaleStickySessions(service proxy.ServicePortName)
+	NextEndpoint(service ServicePortName, srcAddr net.Addr, sessionAffinityReset bool) (string, error)
+	NewService(service ServicePortName, affinityClientIP *localnetv1.ClientIPAffinity, stickyMaxAgeMinutes int) error
+	DeleteService(service ServicePortName)
+	CleanupStaleStickySessions(service ServicePortName)
 
 	EndpointsHandler
 }

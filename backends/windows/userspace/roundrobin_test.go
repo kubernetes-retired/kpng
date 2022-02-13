@@ -1,11 +1,11 @@
-package main
+package userspace
 
 import (
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/pkg/proxy"
 	"net"
-	"sigs.k8s.io/kpng/api/localnetv1"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
 func stringsInSlice(haystack []string, needles ...string) bool {
@@ -24,7 +24,7 @@ func stringsInSlice(haystack []string, needles ...string) bool {
 	return true
 }
 
-func expectEndpoint(t *testing.T, loadBalancer *LoadBalancerRR, service proxy.ServicePortName, expected string, netaddr net.Addr) {
+func expectEndpoint(t *testing.T, loadBalancer *LoadBalancerRR, service ServicePortName, expected string, netaddr net.Addr) {
 	endpoint, err := loadBalancer.NextEndpoint(service, netaddr, false)
 	if err != nil {
 		t.Errorf("Didn't find a service for %s, expected %s, failed with: %v", service, expected, err)
@@ -36,7 +36,7 @@ func expectEndpoint(t *testing.T, loadBalancer *LoadBalancerRR, service proxy.Se
 
 func TestLoadBalanceFailsWithNoEndpoints(t *testing.T) {
 	loadBalancer := NewLoadBalancerRR()
-	svc := proxy.ServicePortName{
+	svc := ServicePortName{
 		NamespacedName: types.NamespacedName{Namespace: "testnamespace", Name: "foo"}, Port: "does-not-exist",
 	}
 	endpoint, err := loadBalancer.NextEndpoint(svc, nil, false)
@@ -79,7 +79,7 @@ func TestLoadBalanceWorksWithSingleEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.description, func(t *testing.T) {
-			svcPortName := proxy.ServicePortName{
+			svcPortName := ServicePortName{
 				NamespacedName: types.NamespacedName{Namespace: tt.namespace, Name: tt.serviceName}, Port: tt.portName,
 			}
 
@@ -114,13 +114,13 @@ func TestLoadBalanceWorksWithSingleEndpoint(t *testing.T) {
 func TestLoadBalanceWorksWithMultipleEndpointsAndUpdates(t *testing.T) {
 	loadBalancer := NewLoadBalancerRR()
 
-	serviceP := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "testnamespace", Name: "foo"}, Port: "p"}
+	serviceP := ServicePortName{NamespacedName: types.NamespacedName{Namespace: "testnamespace", Name: "foo"}, Port: "p"}
 	endpoint, err := loadBalancer.NextEndpoint(serviceP, nil, false)
 	if err == nil || len(endpoint) != 0 {
 		t.Errorf("Didn't fail with non-existent service")
 	}
 
-	serviceQ := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "testnamespace", Name: "foo"}, Port: "q"}
+	serviceQ := ServicePortName{NamespacedName: types.NamespacedName{Namespace: "testnamespace", Name: "foo"}, Port: "q"}
 	endpoint, err = loadBalancer.NextEndpoint(serviceQ, nil, false)
 	if err == nil || len(endpoint) != 0 {
 		t.Errorf("Didn't fail with non-existent service %d %s", len(endpoint), err)
@@ -201,7 +201,7 @@ func TestLoadBalanceWorksWithServiceRemoval(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.description, func(t *testing.T) {
 			var lastEp *localnetv1.Endpoint
-			svcPortName := proxy.ServicePortName{
+			svcPortName := ServicePortName{
 				NamespacedName: types.NamespacedName{Namespace: tt.namespace, Name: tt.serviceName}, Port: tt.portName,
 			}
 
