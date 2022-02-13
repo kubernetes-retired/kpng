@@ -1,4 +1,4 @@
-package main
+package userspace
 
 import (
 	"fmt"
@@ -10,12 +10,10 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/kubernetes/pkg/proxy"
 
 	"k8s.io/apimachinery/pkg/types"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/util/netsh"
 	netutils "k8s.io/utils/net"
 	"sigs.k8s.io/kpng/api/localnetv1"
 )
@@ -101,7 +99,7 @@ type Proxier struct {
 	syncPeriod     time.Duration
 	udpIdleTimeout time.Duration
 	numProxyLoops  int32 // use atomic ops to access this; mostly for testing
-	netsh          netsh.Interface
+	netsh          Interface
 	hostIP         net.IP
 }
 
@@ -122,7 +120,7 @@ var (
 // which to listen. It is assumed that there is only a single Proxier active
 // on a machine. An error will be returned if the proxier cannot be started
 // due to an invalid ListenIP (loopback)
-func NewProxier(loadBalancer LoadBalancer, listenIP net.IP, netsh netsh.Interface, pr utilnet.PortRange, syncPeriod, udpIdleTimeout time.Duration) (*Proxier, error) {
+func NewProxier(loadBalancer LoadBalancer, listenIP net.IP, netsh Interface, pr utilnet.PortRange, syncPeriod, udpIdleTimeout time.Duration) (*Proxier, error) {
 	if listenIP.Equal(localhostIPv4) || listenIP.Equal(localhostIPv6) {
 		return nil, ErrProxyOnLocalhost
 	}
@@ -136,7 +134,7 @@ func NewProxier(loadBalancer LoadBalancer, listenIP net.IP, netsh netsh.Interfac
 	return createProxier(loadBalancer, listenIP, netsh, hostIP, syncPeriod, udpIdleTimeout)
 }
 
-func createProxier(loadBalancer LoadBalancer, listenIP net.IP, netsh netsh.Interface, hostIP net.IP, syncPeriod, udpIdleTimeout time.Duration) (*Proxier, error) {
+func createProxier(loadBalancer LoadBalancer, listenIP net.IP, netsh Interface, hostIP net.IP, syncPeriod, udpIdleTimeout time.Duration) (*Proxier, error) {
 	return &Proxier{
 		loadBalancer:   loadBalancer,
 		serviceMap:     make(map[ServicePortPortalName]*serviceInfo),
@@ -167,9 +165,9 @@ func (proxier *Proxier) SyncLoop() {
 func (proxier *Proxier) cleanupStaleStickySessions() {
 	proxier.mu.Lock()
 	defer proxier.mu.Unlock()
-	servicePortNameMap := make(map[proxy.ServicePortName]bool)
+	servicePortNameMap := make(map[ServicePortName]bool)
 	for name := range proxier.serviceMap {
-		servicePortName := proxy.ServicePortName{
+		servicePortName := ServicePortName{
 			NamespacedName: types.NamespacedName{
 				Namespace: name.Namespace,
 				Name:      name.Name,
@@ -349,7 +347,7 @@ func (proxier *Proxier) mergeService(service *localnetv1.Service) map[ServicePor
 		}
 		if len(listenIPPortMap) > 0 {
 			// only one loadbalancer per service port portal
-			servicePortName := proxy.ServicePortName{
+			servicePortName := ServicePortName{
 				NamespacedName: types.NamespacedName{
 					Namespace: service.Namespace,
 					Name:      service.Name,
@@ -377,9 +375,9 @@ func (proxier *Proxier) unmergeService(service *localnetv1.Service, existingPort
 		return
 	}
 
-	servicePortNameMap := make(map[proxy.ServicePortName]bool)
+	servicePortNameMap := make(map[ServicePortName]bool)
 	for name := range existingPortPortals {
-		servicePortName := proxy.ServicePortName{
+		servicePortName := ServicePortName{
 			NamespacedName: types.NamespacedName{
 				Namespace: name.Namespace,
 				Name:      name.Name,
@@ -391,7 +389,7 @@ func (proxier *Proxier) unmergeService(service *localnetv1.Service, existingPort
 
 	for i := range service.Ports {
 		servicePort := &service.Ports[i]
-		serviceName := proxy.ServicePortName{NamespacedName: svcName, Port: (*servicePort).GetName()}
+		serviceName := ServicePortName{NamespacedName: svcName, Port: (*servicePort).GetName()}
 		// create a slice of all the source IPs to use for service port portals
 		listenIPPortMap := getListenIPPortMap(service, int((*servicePort).GetPort()), int((*servicePort).GetNodePort()))
 
