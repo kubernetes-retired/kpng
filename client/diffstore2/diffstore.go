@@ -26,6 +26,14 @@ func New[K constraints.Ordered, V Leaf](newValue func() V) *Store[K, V] {
 	}
 }
 
+func (s *Store[K, V]) Has(key K) bool {
+	i := s.data.Get(&Item[K, V]{k: key})
+	if i == nil {
+		return false
+	}
+	return i.(*Item[K, V]).touched
+}
+
 func (s *Store[K, V]) GetItem(key K) *Item[K, V] {
 	var item *Item[K, V]
 

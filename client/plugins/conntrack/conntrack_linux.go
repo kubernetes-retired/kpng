@@ -1,6 +1,7 @@
 package conntrack
 
 import (
+	"bytes"
 	"strconv"
 	"strings"
 
@@ -17,39 +18,66 @@ func setupConntrack() {
 	// TODO
 }
 
+func cleanupIPPortEntries(ipp IPPort) {
+	parameters := parametersWithFamily(utilnet.IsIPv6String(ipp.DnatIP), "-D",
+		"-p", protoStr(ipp.Protocol), "--sport", strconv.Itoa(int(ipp.Port)))
+	if ipp.DnatIP != "node" {
+		parameters = append(parameters, "--orig-dst", ipp.DnatIP)
+	}
+
+	klog.V(4).Infof("Clearing conntrack entries for (IP,Port) %v", parameters)
+	output, err := runConntrack(parameters...)
+	if err != nil {
+		return
+	}
+	klog.V(4).Infof("Conntrack entries for (IP,Port) deleted: %s", string(output))
+}
+
 func cleanupFlowEntries(flow Flow) {
 	if !IsClearConntrackNeeded(flow.Protocol) {
 		return
 	}
 
-	origin := flow.DnatIP
-	dest := flow.EndpointIP
-
 	// adapted & completed from k8s's pkg/util/conntrack
 
-	parameters := parametersWithFamily(utilnet.IsIPv6String(origin), "-D",
-		"--orig-dst", origin, "--dst-nat", dest,
-		"-p", protoStr(flow.Protocol),
-		"--sport", strconv.Itoa(int(flow.Port)), "--dport", strconv.Itoa(int(flow.TargetPort)))
+	parameters := parametersWithFamily(utilnet.IsIPv6String(flow.DnatIP), "-D",
+		"-p", protoStr(flow.Protocol), "--sport", strconv.Itoa(int(flow.Port)),
+		"--dst-nat", flow.EndpointIP, "--dport", strconv.Itoa(int(flow.TargetPort)))
 
+	if flow.DnatIP != "node" {
+		parameters = append(parameters, "--orig-dst", flow.DnatIP)
+	}
+
+	klog.V(4).Infof("Clearing conntrack entries %v", parameters)
+	output, err := runConntrack(parameters...)
+	if err != nil {
+		return
+	}
+	klog.V(4).Infof("Conntrack entries deleted: %s", string(output))
+}
+
+func runConntrack(parameters ...string) (output []byte, err error) {
 	conntrackPath, err := execer.LookPath("conntrack")
 	if err != nil {
 		klog.Errorf("error looking for path of conntrack: %v", err)
 		return
 	}
-	klog.V(4).Infof("Clearing conntrack entries %v", parameters)
-	output, err := execer.Command(conntrackPath, parameters...).CombinedOutput()
+	output, err = execer.Command(conntrackPath, parameters...).CombinedOutput()
 	if err != nil {
-		klog.Errorf("conntrack command returned: %q, error message: %s", string(output), err)
+		if bytes.Contains(output, []byte(" 0 flow entries have been deleted")) {
+			err = nil
+		} else {
+			klog.Errorf("conntrack command failed: %v: %v", parameters, err)
+			if len(output) != 0 {
+				klog.Errorf("conntrack command output: %s", string(output))
+			}
+		}
 		return
 	}
-	klog.V(4).Infof("Conntrack entries deleted %s", string(output))
+	return
 }
 
 // adapted from k8s's pkg/util/conntrack
-
-// NoConnectionToDelete is the error string returned by conntrack when no matching connections are found
-const NoConnectionToDelete = "0 flow entries have been deleted"
 
 func parametersWithFamily(isIPv6 bool, parameters ...string) []string {
 	if isIPv6 {
