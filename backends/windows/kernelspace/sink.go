@@ -35,6 +35,8 @@ import (
 	"sigs.k8s.io/kpng/client/localsink/decoder"
 	"sigs.k8s.io/kpng/client/localsink/filterreset"
 	"sigs.k8s.io/kpng/client/serviceevents"
+
+	klog "k8s.io/klog/v2"
 )
 
 type Backend struct {
@@ -132,8 +134,7 @@ func (s *Backend) Setup() {
 		15*time.Second,
 		"sync period duration")
 
-	klog.V(0).InfoS(
-		"Using Windows Kernel Proxier.")
+	klog.V(0).InfoS("Using Windows Kernel Proxier.")
 
 	//proxyMode := getProxyMode(string(config.Mode), WindowsKernelCompatTester{})
 	//dualStackMode := getDualStackMode(config.Winkernel.NetworkName, DualStackCompatTester{})

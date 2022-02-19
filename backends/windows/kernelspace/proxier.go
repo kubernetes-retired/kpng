@@ -1,5 +1,5 @@
 //go:build windows
-// +build windows
+//+build windows
 
 /*
 Copyright 2017-2022 The Kubernetes Authors.
@@ -21,19 +21,19 @@ package kernelspace
 
 import (
 	"fmt"
-	v1 "k8s.io/api/core/v1"
-	"net"
-	"time"
-
 	"github.com/Microsoft/hcsshim/hcn"
+	v1 "k8s.io/api/core/v1"
 	apiutil "k8s.io/apimachinery/pkg/util/net"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/tools/events"
+	klog "k8s.io/klog/v2"
 	kubefeatures "k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/proxy/apis/config"
 	"k8s.io/kubernetes/pkg/proxy/healthcheck"
 	"k8s.io/kubernetes/pkg/util/async"
 	netutils "k8s.io/utils/net"
+	"net"
+	"time"
 )
 
 // NewProxier returns a new Proxier

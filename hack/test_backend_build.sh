@@ -39,6 +39,7 @@ function build_package {
     go mod download
     echo "building $dir with GOOS='$2'"
     GOOS="$2" go build
+    ls -altrh
   popd
 }
 
@@ -55,3 +56,4 @@ case $package in
   "")         build_all_backends ;;
   *)          echo "invalid argument: '$package'" ;;
 esac
+

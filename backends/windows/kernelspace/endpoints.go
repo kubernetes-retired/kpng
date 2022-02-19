@@ -1,5 +1,5 @@
-// //go:build windows
-// // +build windows
+//go:build windows
+// +build windows
 
 /*
 Copyright 2018-2022 The Kubernetes Authors.

@@ -83,10 +83,10 @@ func NewEndpointChangeTracker(hostname string, ipFamily v1.IPFamily, recorder ev
 	}
 }
 
-func (ect *EndpointChangeTracker) EndpointUpdate(namespace, serviceName, key string, endpoint *WindowsEndpoint) {
+func (ect *EndpointChangeTracker) EndpointUpdate(namespace, serviceName, key string, we *windowsEndpoint) {
 	namespacedName := types.NamespacedName{Name: serviceName, Namespace: namespace}
 	EndpointChangesTotal.Inc()
-	ect.endpointsCache.updatePending(namespacedName, key, endpoint)
+	ect.endpointsCache.updatePending(namespacedName, key, we)
 }
 
 // checkoutTriggerTimes applies the locally cached trigger times to a map of
@@ -213,12 +213,14 @@ func (em EndpointsMap) getLocalReadyEndpointIPs() map[types.NamespacedName]sets.
 			// 	continue
 			// }
 
-			if endpointEntry.Local {
+			if endpointEntry.isLocal {
 				nsn := service
 				if localIPs[nsn] == nil {
 					localIPs[nsn] = sets.NewString()
 				}
-				localIPs[nsn].Insert(endpointEntry.IPs.All()...)
+				// localIPs[nsn].Insert(endpointEntry.IPs.All()...)
+				localIPs[nsn].Insert(endpointEntry.ip)
+
 			}
 		}
 	}

@@ -29,12 +29,17 @@ import (
 func newServiceInfo(port *localnetv1.PortMapping, service *localnetv1.Service, baseInfo *BaseServiceInfo) ServicePort {
 	info := &serviceInfo{BaseServiceInfo: baseInfo}
 
+	//protoc := v1.ProtocolTCP
+	//if port.Protocol == localnetv1.Protocol_UDP {
+	//	protoc = v1.ProtocolUDP
+	//}
+
 	// Store the following for performance reasons.
 	svcName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
 	svcPortName := ServicePortName{
 		svcName,
 		port.Name,
-		info.protocol,
+		port.Protocol,
 	}
 	//	protocol := strings.ToLower(string(info.Protocol()))
 	info.serviceNameString = svcPortName.String()
@@ -79,17 +84,10 @@ func (svcInfo *serviceInfo) deleteAllHnsLoadBalancerPolicy() {
 	}
 }
 
-func (svcInfo *serviceInfo) cleanupAllPolicies(proxyEndpoints *localnetv1.Endpoint) {
+func (svcInfo *serviceInfo) cleanupAllPolicies(proxyEndpoints *windowsEndpoint) {
 	klog.V(3).InfoS("Service cleanup", "serviceInfo", svcInfo)
 	// Skip the svcInfo.policyApplied check to remove all the policies
 	svcInfo.deleteAllHnsLoadBalancerPolicy()
-	// Cleanup Endpoints references
-	for _, ep := range proxyEndpoints {
-		epInfo, ok := ep.(*windowsEndpoint)
-		if ok {
-			epInfo.Cleanup()
-		}
-	}
 	if svcInfo.remoteEndpoint != nil {
 		svcInfo.remoteEndpoint.Cleanup()
 	}

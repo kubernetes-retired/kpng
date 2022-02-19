@@ -245,12 +245,7 @@ type makeServicePortFunc func(*localnetv1.PortMapping, *localnetv1.Service, *Bas
 
 // This handler is invoked by the apply function on every change. This function should not modify the
 // ServiceMap's but just use the changes for any Proxier specific cleanup.
-// type processServiceMapChangeFunc func(previous, current ServiceMap)
-
-// serviceChange contains all changes to services that happened since proxy rules were synced.  For a single object,
-// changes are accumulated, i.e. previous is state from before applying the changes,
-// current is state after applying all of the changes.
-// type serviceChange ServiceMap
+type processServiceMapChangeFunc func(previous, current ServiceMap)
 
 // ServiceChangeTracker carries state about uncommitted changes to an arbitrary number of
 // Services, keyed by their namespace and name.
@@ -281,8 +276,10 @@ type ServiceMap map[ServicePortName]ServicePort
 
 // Update updates ServiceMap base on the given changes.
 func (sm ServiceMap) Update(changes *ServiceChangeTracker) (result UpdateServiceMapResult) {
+
 	result.UDPStaleClusterIP = sets.NewString()
-	sm.apply(changes, result.UDPStaleClusterIP)
+	// TODO Jay, do we need this??? it doesnt seem to be supported in the wy we ported kpng over
+	//sm.apply(changes, result.UDPStaleClusterIP)
 
 	// TODO: If this will appear to be computationally expensive, consider
 	// computing this incrementally similarly to serviceMap.

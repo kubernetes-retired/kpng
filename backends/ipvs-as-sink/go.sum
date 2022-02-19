@@ -790,6 +790,7 @@ rsc.io/quote/v3 v3.1.0/go.mod h1:yEA65RcK8LyAZtP9Kv3t0HmxON59tX3rD+tICJqUlj0=
 rsc.io/sampler v1.3.0/go.mod h1:T1hPZKmBbMNahiBKFy5HrXp6adAjACjK9JXDnKaTXpA=
 sigs.k8s.io/kpng/backends/iptables v0.0.0-20211222150536-8496fd72894d h1:ewfgdM+/6tASOFcLG5Rs8PGJnxUmoSW+BxSBxVIZ3cU=
 sigs.k8s.io/kpng/backends/iptables v0.0.0-20211222150536-8496fd72894d/go.mod h1:SiOCHUwct4qSQH0v/0jAcn5251nViCGFMcWGgHEyRb4=
+sigs.k8s.io/kpng/backends/ipvs v0.0.0-20211016172202-2f0db1baddba/go.mod h1:KWfVv02YH3bYl0bU8S5UJS8DvQJlUOCo9FAIveZLOCw=
 sigs.k8s.io/structured-merge-diff/v4 v4.0.2/go.mod h1:bJZC9H9iH24zzfZ/41RGcq60oK1F7G282QMXDPYydCw=
 sigs.k8s.io/structured-merge-diff/v4 v4.1.0/go.mod h1:bJZC9H9iH24zzfZ/41RGcq60oK1F7G282QMXDPYydCw=
 sigs.k8s.io/structured-merge-diff/v4 v4.1.2 h1:Hr/htKFmJEbtMgS/UD0N+gtgctAqz81t3nu+sPzynno=

@@ -51,7 +51,7 @@ func NewEndpointsCache(hostname string, ipFamily v1.IPFamily, recorder events.Ev
 }
 
 // updatePending updates a pending slice in the cache.
-func (cache *EndpointsCache) updatePending(svcKey types.NamespacedName, key string, we windowsEndpoint) bool {
+func (cache *EndpointsCache) updatePending(svcKey types.NamespacedName, key string, we *windowsEndpoint) bool {
 	var esInfoMap *endpointsInfoByName
 	var ok bool
 	if esInfoMap, ok = cache.trackerByServiceMap[svcKey]; !ok {
