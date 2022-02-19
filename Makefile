@@ -116,35 +116,3 @@ e2e: e2e-ipv4-iptables \
 	e2e-ipv4-nft \
 	e2e-ipv6-nft \
 	e2e-dual-nft
-
-## Build binary for Windows platform
-windows: PLATFORM="windows"
-windows:
-	@$(MAKE) -e build
-
-## Build binary for Linux platform
-linux: PLATFORM="linux"
-linux:
-	@$(MAKE) -e build
-
-## Build binary for Darwin platform
-darwin: PLATFORM="darwin"
-darwin:
-	@$(MAKE) -e build
-
-build:
-	@mkdir -p $(BUILD_DIR)/$(PLATFORM)/$(VERSION)
-	@cd cmd && \
-		env GOOS=$(PLATFORM) \
-		GOARCH=$(ARCH) \
-		go build \
-		-trimpath \
-		-o ../$(BUILD_DIR)/$(PLATFORM)/$(VERSION) \
-		-v \
-		-ldflags=$(LDFLAGS) \
-		./...
-	@echo "\tkpng $(YELLOW)$(PLATFORM)$(RESET) binaries available in: $(GREEN)$(BUILD_DIR)/$(PLATFORM)/$(VERSION)$(RESET)\n"
-
-## Build binary for all supported platforms
-release: linux windows darwin
-	@echo "\nAll release binaries are available in: $(YELLOW)$(BUILD_DIR)$(RESET)/\n"

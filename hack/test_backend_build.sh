@@ -14,6 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+###  Note for developers, if you want to install golang 1.18 ... you can run
+###  eval "$(curl -sL https://raw.githubusercontent.com/travis-ci/gimme/master/gimme | GIMME_GO_VERSION=1.18beta1 bash)"
+if [ $# -eq 0 ]
+  then
+    echo "please send a backend arg: iptables ipvs-as-sink nft windows/kernelspace"
+fi
+
 package=$1
 
 # removing output from pushd
@@ -30,7 +37,8 @@ function build_package {
   echo "trying to build '$dir' "
   pushd ./$dir/
     go mod download
-    go build
+    echo "building $dir with GOOS='$2'"
+    GOOS="$2" go build
   popd
 }
 
@@ -40,9 +48,10 @@ function build_all_backends {
 }
 
 case $package in
-  "iptables")  build_package backends/iptables ;;
-  "ipvs")     build_package backends/ipvs-as-sink ;;
-  "nft")      build_package backends/nft ;;
+  "iptables")  build_package backends/iptables linux ;;
+  "ipvs")     build_package backends/ipvs-as-sink linux ;;
+  "nft")      build_package backends/nft linux ;;
+  "windows/kernelspace") build_package backends/windows/kernelspace windows ;;
   "")         build_all_backends ;;
   *)          echo "invalid argument: '$package'" ;;
 esac
