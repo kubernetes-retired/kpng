@@ -1,6 +1,7 @@
 package kernelspace
 
 import (
+	"k8s.io/component-base/metrics"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -10,8 +11,6 @@ import (
 	"k8s.io/client-go/tools/events"
 
 	"k8s.io/klog/v2"
-
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 var supportedEndpointSliceAddressTypes = sets.NewString(
@@ -30,14 +29,18 @@ var supportedEndpointSliceAddressTypes = sets.NewString(
 
 // EndpointChangesTotal is the number of endpoint changes that the proxy
 // has seen.
-//var EndpointChangesTotal = metrics.NewCounter(
-//	&metrics.CounterOpts{
-//		Subsystem:      kubeProxySubsystem,
-//		Name:           "sync_proxy_rules_endpoint_changes_total",
-//		Help:           "Cumulative proxy rules Endpoint changes",
-//		StabilityLevel: metrics.ALPHA,
-//	},
-//)
+
+const kubeProxySubsystem = "kubeproxy"
+
+var EndpointChangesTotal = metrics.NewCounter(
+	&metrics.CounterOpts{
+		Subsystem:      kubeProxySubsystem,
+		Name:           "sync_proxy_rules_endpoint_changes_total",
+		Help:           "Cumulative proxy rules Endpoint changes",
+		StabilityLevel: metrics.ALPHA,
+	},
+)
+
 // EndpointsMap maps a service name to a list of all its Endpoints.
 type EndpointsMap map[types.NamespacedName]*endpointsInfoByName
 
@@ -80,7 +83,7 @@ func NewEndpointChangeTracker(hostname string, ipFamily v1.IPFamily, recorder ev
 	}
 }
 
-func (ect *EndpointChangeTracker) EndpointUpdate(namespace, serviceName, key string, endpoint *localnetv1.Endpoint) {
+func (ect *EndpointChangeTracker) EndpointUpdate(namespace, serviceName, key string, endpoint *WindowsEndpoint) {
 	namespacedName := types.NamespacedName{Name: serviceName, Namespace: namespace}
 	EndpointChangesTotal.Inc()
 	ect.endpointsCache.updatePending(namespacedName, key, endpoint)

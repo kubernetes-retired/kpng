@@ -46,14 +46,7 @@ var supportedEndpointSliceAddressTypes = sets.NewString(
 
 // EndpointChangesTotal is the number of endpoint changes that the proxy
 // has seen.
-//var EndpointChangesTotal = metrics.NewCounter(
-//	&metrics.CounterOpts{
-//		Subsystem:      kubeProxySubsystem,
-//		Name:           "sync_proxy_rules_endpoint_changes_total",
-//		Help:           "Cumulative proxy rules Endpoint changes",
-//		StabilityLevel: metrics.ALPHA,
-//	},
-//)
+
 // EndpointsMap maps a service name to a list of all its Endpoints.
 type EndpointsMap map[types.NamespacedName]*endpointsInfoByName
 

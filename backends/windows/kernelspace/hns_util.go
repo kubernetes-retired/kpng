@@ -21,12 +21,12 @@ package kernelspace
 
 import (
 	"fmt"
-	"os"
-	"time"
-
 	"github.com/Microsoft/hcsshim"
 	"github.com/Microsoft/hcsshim/hcn"
+	"k8s.io/klog/v2"
 	netutils "k8s.io/utils/net"
+	"os"
+	"time"
 )
 
 const NETWORK_TYPE_OVERLAY = "overlay"

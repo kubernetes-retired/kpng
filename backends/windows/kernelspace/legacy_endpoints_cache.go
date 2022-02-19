@@ -36,10 +36,14 @@ type EndpointsCache struct {
 	ipFamily            v1.IPFamily
 	recorder            events.EventRecorder
 }
+type WindowsEndpoint struct {
+	Endpoint    *localnetv1.Endpoint
+	hnsEndpoint *endpoints
+}
 
 // endpointsInfoByName groups endpointInfo by the names of the
 // corresponding Endpoint.
-type endpointsInfoByName map[string]*localnetv1.Endpoint
+type endpointsInfoByName map[string]*WindowsEndpoint
 
 // NewEndpointsCache initializes an EndpointCache.
 func NewEndpointsCache(hostname string, ipFamily v1.IPFamily, recorder events.EventRecorder) *EndpointsCache {
@@ -52,7 +56,7 @@ func NewEndpointsCache(hostname string, ipFamily v1.IPFamily, recorder events.Ev
 }
 
 // updatePending updates a pending slice in the cache.
-func (cache *EndpointsCache) updatePending(svcKey types.NamespacedName, key string, endpoint *localnetv1.Endpoint) bool {
+func (cache *EndpointsCache) updatePending(svcKey types.NamespacedName, key string, endpoint *WindowsEndpoint) bool {
 	var esInfoMap *endpointsInfoByName
 	var ok bool
 	if esInfoMap, ok = cache.trackerByServiceMap[svcKey]; !ok {

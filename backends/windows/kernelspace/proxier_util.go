@@ -1,7 +1,6 @@
 package kernelspace
 
 import (
-	"k8s.io/kubernetes/pkg/proxy"
 	"net"
 	"sync"
 
@@ -48,7 +47,7 @@ type Provider interface {
 	SyncLoop()
 }
 
-// Proxier is an hns based proxy for connections between a localhost:lport
+// Proxier (windows/kernelspace/Proxier) is copied impl of windows kernel based proxy for connections between a localhost:lport
 // and services that provide the actual backends.
 type Proxier struct {
 	// TODO(imroc): implement node handler for winkernel proxier.
@@ -61,8 +60,8 @@ type Proxier struct {
 	serviceChanges    *ServiceChangeTracker
 	endPointsRefCount endPointsReferenceCountMap
 	mu                sync.Mutex // protects the following fields
-	serviceMap        proxy.ServiceMap
-	endpointsMap      proxy.EndpointsMap
+	serviceMap        ServiceMap
+	endpointsMap      EndpointsMap
 	// endpointSlicesSynced and servicesSynced are set to true when corresponding
 	// objects are synced after startup. This is used to avoid updating hns policies
 	// with some partial data after kube-proxy restart.

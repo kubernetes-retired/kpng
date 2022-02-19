@@ -38,7 +38,7 @@ import (
 type BaseServiceInfo struct {
 	clusterIP                net.IP
 	port                     int
-	protocol                 localnetv1.Protocol
+	protocol                 v1.Protocol
 	nodePort                 int
 	loadBalancerIPs          []string
 	sessionAffinity          SessionAffinity
@@ -86,8 +86,19 @@ func (info *BaseServiceInfo) SessionAffinity() SessionAffinity {
 }
 
 // Protocol is part of ServicePort interface.
-func (info *BaseServiceInfo) Protocol() localnetv1.Protocol {
+func (info *BaseServiceInfo) Protocol() v1.Protocol {
 	return info.protocol
+}
+
+// SessionAffinityType is part of the ServicePort interface.
+func (info *BaseServiceInfo) SessionAffinityType() v1.ServiceAffinity {
+	// TODO figure out how to plumb this up jay
+	return "None"
+}
+
+// StickyMaxAgeSeconds is just a thing im hacking together to get this to compile..
+func (info *BaseServiceInfo) StickyMaxAgeSeconds() int {
+	return info.stickyMaxAgeSeconds
 }
 
 // LoadBalancerSourceRanges is part of ServicePort interface
@@ -150,12 +161,17 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localnetv1.PortMapping
 	// 	nodeLocalInternal = apiservice.RequestsOnlyLocalTrafficForInternal(service)
 	// }
 
+	v1Proto := v1.ProtocolTCP
+	if port.Protocol == localnetv1.Protocol_UDP {
+		v1Proto = v1.ProtocolUDP
+	}
+
 	clusterIP := GetClusterIPByFamily(sct.ipFamily, service)
 	info := &BaseServiceInfo{
 		clusterIP:         net.ParseIP(clusterIP),
 		port:              int(port.Port),
 		targetPort:        int(port.TargetPort),
-		protocol:          port.Protocol,
+		protocol:          v1Proto,
 		nodePort:          int(port.NodePort),
 		nodeLocalExternal: nodeLocalExternal,
 		nodeLocalInternal: nodeLocalInternal,
@@ -225,23 +241,6 @@ func getLoadbalancerSourceRanges(filters []*localnetv1.IPFilter) []string {
 	return sourceRanges
 }
 
-// returns a new ServicePort which abstracts a serviceInfo
-func newServiceInfo(port *localnetv1.PortMapping, service *localnetv1.Service, baseInfo *BaseServiceInfo) ServicePort {
-	info := &serviceInfo{BaseServiceInfo: baseInfo}
-
-	// Store the following for performance reasons.
-	svcName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
-	svcPortName := ServicePortName{
-		svcName,
-		port.Name,
-		info.protocol,
-	}
-	//	protocol := strings.ToLower(string(info.Protocol()))
-	info.serviceNameString = svcPortName.String()
-
-	return info
-}
-
 type makeServicePortFunc func(*localnetv1.PortMapping, *localnetv1.Service, *BaseServiceInfo) ServicePort
 
 // This handler is invoked by the apply function on every change. This function should not modify the
@@ -275,6 +274,26 @@ func NewServiceChangeTracker(makeServiceInfo makeServicePortFunc, ipFamily v1.IP
 		ipFamily:        ipFamily,
 		// processServiceMapChange: processServiceMapChange,
 	}
+}
+
+// ServiceMap maps a service to its ServicePort.
+type ServiceMap map[ServicePortName]ServicePort
+
+// Update updates ServiceMap base on the given changes.
+func (sm ServiceMap) Update(changes *ServiceChangeTracker) (result UpdateServiceMapResult) {
+	result.UDPStaleClusterIP = sets.NewString()
+	sm.apply(changes, result.UDPStaleClusterIP)
+
+	// TODO: If this will appear to be computationally expensive, consider
+	// computing this incrementally similarly to serviceMap.
+	result.HCServiceNodePorts = make(map[types.NamespacedName]uint16)
+	for svcPortName, info := range sm {
+		if info.HealthCheckNodePort() != 0 {
+			result.HCServiceNodePorts[svcPortName.NamespacedName] = uint16(info.HealthCheckNodePort())
+		}
+	}
+
+	return result
 }
 
 // Update updates given service's change map based on the <previous, current> service pair.  It returns true if items changed,
@@ -371,13 +390,6 @@ func (svcSnap *ServicesSnapshot) merge(svcName types.NamespacedName, other *serv
 		return
 	}
 	(*svcSnap)[svcName] = *other
-}
-
-// internal struct for string service information
-type serviceInfo struct {
-	*BaseServiceInfo
-	// The following fields are computed and stored for performance reasons.
-	serviceNameString string
 }
 
 // serviceToServiceMap translates a single Service object to a ServiceMap.

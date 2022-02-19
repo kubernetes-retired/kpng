@@ -3,13 +3,10 @@ package kernelspace
 import (
 	"sync/atomic"
 
-	v1 "k8s.io/api/core/v1"
 	discovery "k8s.io/api/discovery/v1"
 	netutils "k8s.io/utils/net"
 
-	"github.com/Microsoft/hcsshim/hcn"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/proxy"
 	"sigs.k8s.io/kpng/api/localnetv1"
@@ -31,27 +28,28 @@ func (Proxier *Proxier) OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnet
 // called and the state is fully propagated to local cache.
 func (Proxier *Proxier) OnEndpointsSynced() {}
 
-// OnEndpointSliceAdd is called whenever creation of a new endpoint slice object
-// is observed.
+// TODO Fix EndpointSlices logic !!!!!!!!!!!!! JAY
 func (Proxier *Proxier) OnEndpointSliceAdd(endpointSlice *discovery.EndpointSlice) {
-	if Proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, false) && Proxier.isInitialized() {
-		Proxier.Sync()
-	}
+	//	if Proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, false) && Proxier.isInitialized() {
+	//		Proxier.Sync()
+	//	}
 }
-
-// OnEndpointSliceUpdate is called whenever modification of an existing endpoint
-// slice object is observed.
 func (Proxier *Proxier) OnEndpointSliceUpdate(_, endpointSlice *discovery.EndpointSlice) {
-	if Proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, false) && Proxier.isInitialized() {
-		Proxier.Sync()
-	}
+	//	if Proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, false) && Proxier.isInitialized() {
+	//		Proxier.Sync()
+	//	}
+}
+func (Proxier *Proxier) OnEndpointSliceDelete(endpointSlice *discovery.EndpointSlice) {
+	//	if Proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, true) && Proxier.isInitialized() {
+	//		proxier.Sync()
+	//	}
 }
 
 func (Proxier *Proxier) BackendDeleteService(
 	namespace string,
 	name string) {
 
-	svcPortName := proxy.ServicePortName{
+	svcPortName := ServicePortName{
 		NamespacedName: types.NamespacedName{
 			Namespace: namespace,
 			Name:      name}}
@@ -59,14 +57,6 @@ func (Proxier *Proxier) BackendDeleteService(
 	_, exists := Proxier.serviceMap[svcPortName]
 	if exists {
 		Proxier.serviceMap[svcPortName] = nil
-	}
-}
-
-// OnEndpointSliceDelete is called whenever deletion of an existing endpoint slice
-// object is observed.
-func (Proxier *Proxier) OnEndpointSliceDelete(endpointSlice *discovery.EndpointSlice) {
-	if Proxier.endpointsChanges.EndpointSliceUpdate(endpointSlice, true) && Proxier.isInitialized() {
-		proxier.Sync()
 	}
 }
 
@@ -112,17 +102,31 @@ func (Proxier *Proxier) OnServiceSynced() {
 	Proxier.syncProxyRules()
 }
 
-func (Proxier *Proxier) endpointsMapChange(oldEndpointsMap, newEndpointsMap proxy.EndpointsMap) {
-	for svcPortName := range oldEndpointsMap {
-		Proxier.onEndpointsMapChange(&svcPortName)
+func (Proxier *Proxier) endpointsMapChange(oldEndpointsMap, newEndpointsMap EndpointsMap) {
+	//read the old endpoints...
+
+	// iterate through this cache.. map[types.NamespacedName]*endpointsInfoByName
+	for svcPortName, _ := range oldEndpointsMap {
+		spn := &ServicePortName{
+			NamespacedName: svcPortName,
+			// Port:
+			// Protocol:
+		}
+		Proxier.onEndpointsMapChange(spn)
 	}
 
+	//read the new endpoints...
 	for svcPortName := range newEndpointsMap {
-		Proxier.onEndpointsMapChange(&svcPortName)
+		spn := &ServicePortName{
+			NamespacedName: svcPortName,
+			// Port:
+			// Protocol:
+		}
+		Proxier.onEndpointsMapChange(spn)
 	}
 }
 
-func (Proxier *Proxier) onEndpointsMapChange(svcPortName *proxy.ServicePortName) {
+func (Proxier *Proxier) onEndpointsMapChange(svcPortName *ServicePortName) {
 
 	svc, exists := Proxier.serviceMap[*svcPortName]
 
@@ -135,24 +139,31 @@ func (Proxier *Proxier) onEndpointsMapChange(svcPortName *proxy.ServicePortName)
 		}
 
 		klog.V(3).InfoS("Endpoints are modified. Service is stale", "servicePortName", svcPortName)
-		svcInfo.cleanupAllPolicies(Proxier.endpointsMap[*svcPortName])
+		spn := &ServicePortName{
+			NamespacedName: svcPortName.NamespacedName,
+			// Port:
+			// Protocol:
+		}
+
+		// e := Proxier.endpointsMap[spn.NamespacedName]
+		endpoints := Proxier.endpointsMap[spn.NamespacedName]
+		for _, e := range *endpoints {
+			svcInfo.cleanupAllPolicies(e)
+		}
 	} else {
 		// If no service exists, just cleanup the remote endpoints
 		klog.V(3).InfoS("Endpoints are orphaned, cleaning up")
 		// Cleanup Endpoints references
-		epInfos, exists := Proxier.endpointsMap[*svcPortName]
 
-		if exists {
-			// Cleanup Endpoints references
-			for _, ep := range epInfos {
-				epInfo, ok := ep.(*endpoints)
-
-				if ok {
-					epInfo.Cleanup()
-				}
-
-			}
-		}
+		// TODO: Jay fix endpoint cleanup logic : what should happen here? look back in original windows
+		//epInfos, exists := Proxier.endpointsMap[svcPortName.NamespacedName]
+		// proxy .
+		// if exists {
+		// Cleanup Endpoints references
+		//	for _, ep := range *epInfos {
+		//		ep.
+		//		}
+		//}
 	}
 }
 
@@ -171,9 +182,16 @@ func (Proxier *Proxier) serviceMapChange(previous, current proxy.ServiceMap) {
 
 func (Proxier *Proxier) onServiceMapChange(svcPortName *proxy.ServicePortName) {
 
-	svc, exists := Proxier.serviceMap[*svcPortName]
+	// the ServicePort interface is used to store serviceInfo objects...
+	spn := &ServicePortName{
+		NamespacedName: svcPortName.NamespacedName,
+		// Port:
+		// Protocol:
+	}
+	svc, exists := Proxier.serviceMap[*spn]
 
 	if exists {
+		// The generic ServicePort interface casts down to a specific windows implementation here... "serviceInfo"...
 		svcInfo, ok := svc.(*serviceInfo)
 
 		if !ok {
@@ -181,8 +199,18 @@ func (Proxier *Proxier) onServiceMapChange(svcPortName *proxy.ServicePortName) {
 			return
 		}
 
-		klog.V(3).InfoS("Updating existing service port", "servicePortName", svcPortName, "clusterIP", svcInfo.ClusterIP(), "port", svcInfo.Port(), "protocol", svcInfo.Protocol())
-		svcInfo.cleanupAllPolicies(Proxier.endpointsMap[*svcPortName])
+		klog.V(3).InfoS(
+			"Updating existing service port",
+			"servicePortName", svcPortName,
+			"clusterIP", svcInfo.ClusterIP(),
+			"port", svcInfo.Port(),
+			"protocol", svcInfo.Protocol(),
+		)
+		endpoints := Proxier.endpointsMap[spn.NamespacedName]
+		for _, e := range *endpoints {
+			svcInfo.cleanupAllPolicies(e)
+		}
+
 	}
 }
 
@@ -212,36 +240,47 @@ func (Proxier *Proxier) newEndpointInfo(baseInfo *proxy.BaseEndpointInfo) proxy.
 }
 
 // returns a new proxy.ServicePort which abstracts a serviceInfo
-func (Proxier *Proxier) newServiceInfo(port *v1.ServicePort, service *v1.Service, baseInfo *proxy.BaseServiceInfo) proxy.ServicePort {
+func (Proxier *Proxier) newServiceInfo(port *localnetv1.PortMapping, service *localnetv1.Service, baseInfo *BaseServiceInfo) ServicePort {
 	info := &serviceInfo{BaseServiceInfo: baseInfo}
 	preserveDIP := service.Annotations["preserve-destination"] == "true"
-	localTrafficDSR := service.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal
-	err := hcn.DSRSupported()
-	if err != nil {
-		preserveDIP = false
-		localTrafficDSR = false
-	}
+
+	// TODO Jay , figure out how to implement DSR at some point...
+	//	localTrafficDSR := service.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal
+	// err := hcn.DSRSupported()
+	//if err != nil {
+	// preserveDIP := false
+	localTrafficDSR := false
+	//}
+
+	// TODO Jay , jsut making this compile ignorignt the intstr int parser not needed i think
 	// targetPort is zero if it is specified as a name in port.TargetPort.
 	// Its real value would be got later from endpoints.
 	targetPort := 0
-	if port.TargetPort.Type == intstr.Int {
-		targetPort = port.TargetPort.IntValue()
-	}
+	//if port.TargetPort == intstr.Int {
+	targetPort = int(port.TargetPort)
+	//}
 
 	info.preserveDIP = preserveDIP
 	info.targetPort = targetPort
 	info.hns = Proxier.hns
 	info.localTrafficDSR = localTrafficDSR
 
-	for _, eip := range service.Spec.ExternalIPs {
+	// TODO Jay: Adding both v4 and v6 ips.  no idea if this breaks dualstack or not.
+	for _, eip := range service.IPs.ExternalIPs.V4 {
+		info.externalIPs = append(info.externalIPs, &externalIPInfo{ip: eip})
+	}
+	for _, eip := range service.IPs.ExternalIPs.V6 {
 		info.externalIPs = append(info.externalIPs, &externalIPInfo{ip: eip})
 	}
 
-	for _, ingress := range service.Status.LoadBalancer.Ingress {
+	// TODO: Jay: What should we do for loadbalancer ingress IPs? Are they any different in kpng or just reuse v4/v6
+	/**
+	for _, ingress := range service.LoadBalancer.Ingress {
 		if netutils.ParseIPSloppy(ingress.IP) != nil {
 			info.loadBalancerIngressIPs = append(info.loadBalancerIngressIPs, &loadBalancerIngressInfo{ip: ingress.IP})
 		}
 	}
+	*/
 	return info
 }
 

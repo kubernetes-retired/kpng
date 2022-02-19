@@ -20,13 +20,31 @@ limitations under the License.
 package kernelspace
 
 import (
-        "k8s.io/klog/v2"
-        "k8s.io/kubernetes/pkg/proxy"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 )
+
+// returns a new ServicePort which abstracts a serviceInfo
+func newServiceInfo(port *localnetv1.PortMapping, service *localnetv1.Service, baseInfo *BaseServiceInfo) ServicePort {
+	info := &serviceInfo{BaseServiceInfo: baseInfo}
+
+	// Store the following for performance reasons.
+	svcName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
+	svcPortName := ServicePortName{
+		svcName,
+		port.Name,
+		info.protocol,
+	}
+	//	protocol := strings.ToLower(string(info.Protocol()))
+	info.serviceNameString = svcPortName.String()
+	return info
+}
 
 // internal struct for string service information
 type serviceInfo struct {
-	*proxy.BaseServiceInfo
+	// important : Dont use the proxy.BaseServiceInfo - we want to return a locavnet1 service
+	*BaseServiceInfo
 	targetPort             int
 	externalIPs            []*externalIPInfo
 	loadBalancerIngressIPs []*loadBalancerIngressInfo
@@ -37,6 +55,9 @@ type serviceInfo struct {
 	hns                    HostNetworkService
 	preserveDIP            bool
 	localTrafficDSR        bool
+
+	// from the other internal struct? not sure why
+	serviceNameString string
 }
 
 func (svcInfo *serviceInfo) deleteAllHnsLoadBalancerPolicy() {
@@ -58,7 +79,7 @@ func (svcInfo *serviceInfo) deleteAllHnsLoadBalancerPolicy() {
 	}
 }
 
-func (svcInfo *serviceInfo) cleanupAllPolicies(proxyEndpoints []proxy.Endpoint) {
+func (svcInfo *serviceInfo) cleanupAllPolicies(proxyEndpoints *localnetv1.Endpoint) {
 	klog.V(3).InfoS("Service cleanup", "serviceInfo", svcInfo)
 	// Skip the svcInfo.policyApplied check to remove all the policies
 	svcInfo.deleteAllHnsLoadBalancerPolicy()

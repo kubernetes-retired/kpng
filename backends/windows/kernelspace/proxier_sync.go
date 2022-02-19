@@ -62,7 +62,10 @@ func (Proxier *Proxier) cleanupAllPolicies() {
 			klog.ErrorS(nil, "Failed to cast serviceInfo", "serviceName", svcName)
 			continue
 		}
-		svcInfo.cleanupAllPolicies(Proxier.endpointsMap[svcName])
+		endpoints := Proxier.endpointsMap[svcName.NamespacedName]
+		for _, e := range *endpoints {
+			svcInfo.cleanupAllPolicies(e)
+		}
 	}
 }
 
@@ -170,16 +173,23 @@ func (Proxier *Proxier) syncProxyRules() {
 		containsPublicIP := false
 		containsNodeIP := false
 
-		for _, epInfo := range Proxier.endpointsMap[svcName] {
-			ep, ok := epInfo.(*endpoints)
+		for _, epInfo := range *Proxier.endpointsMap[svcName.NamespacedName] {
+
+			// !!!!!!!!!!!!!!!!
+			// ep must be an instance of "endpoints..."
+			// it is an localvnet1.Endpoint...
+			//			ep, ok := epInfo.(*endpoints)
+			// !!!!!!!!!!!!!!!!
+			ep := epInfo
 			if !ok {
 				klog.ErrorS(nil, "Failed to cast endpoints", "serviceName", svcName)
 				continue
 			}
 
-			if !ep.IsReady() {
-				continue
-			}
+			// TODO NEed to see how to implement this in localvent1... do we need add it to the brain ?  -> jay
+			//if !ep.IsReady() {
+			//	continue
+			//}
 
 			var newHnsEndpoint *endpoints
 			hnsNetworkName := Proxier.network.name
@@ -188,6 +198,7 @@ func (Proxier *Proxier) syncProxyRules() {
 			// targetPort is zero if it is specified as a name in port.TargetPort, so the real port should be got from endpoints.
 			// Note that hcsshim.AddLoadBalancer() doesn't support endpoints with different ports, so only port from first endpoint is used.
 			// TODO(feiskyer): add support of different endpoint ports after hcsshim.AddLoadBalancer() add that.
+			// TODO jay : disabling this logic
 			if svcInfo.targetPort == 0 {
 				svcInfo.targetPort = int(ep.port)
 			}

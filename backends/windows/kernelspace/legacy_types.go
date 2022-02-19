@@ -61,7 +61,9 @@ type ServicePort interface {
 	// LoadBalancerIPStrings returns service LoadBalancerIPs as a string array.
 	LoadBalancerIPStrings() []string
 	// GetProtocol returns service protocol.
-	Protocol() localnetv1.Protocol
+	//	Protocol() localnetv1.Protocol
+	Protocol() v1.Protocol
+
 	// LoadBalancerSourceRanges returns service LoadBalancerSourceRanges if present empty array if not
 	LoadBalancerSourceRanges() []string
 	// GetHealthCheckNodePort returns service health check node port if present.  If return 0, it means not present.

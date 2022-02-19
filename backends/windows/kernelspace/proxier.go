@@ -21,16 +21,15 @@ package kernelspace
 
 import (
 	"fmt"
+	v1 "k8s.io/api/core/v1"
 	"net"
 	"time"
 
 	"github.com/Microsoft/hcsshim/hcn"
-	v1 "k8s.io/api/core/v1"
 	apiutil "k8s.io/apimachinery/pkg/util/net"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/tools/events"
 	kubefeatures "k8s.io/kubernetes/pkg/features"
-	"k8s.io/kubernetes/pkg/proxy"
 	"k8s.io/kubernetes/pkg/proxy/apis/config"
 	"k8s.io/kubernetes/pkg/proxy/healthcheck"
 	"k8s.io/kubernetes/pkg/util/async"
@@ -39,14 +38,14 @@ import (
 
 // NewProxier returns a new Proxier
 func NewProxier(
-	syncPeriod time.Duration, //
+	syncPeriod time.Duration,    //
 	minSyncPeriod time.Duration, //
 	masqueradeAll bool,
 	masqueradeBit int,
 	clusterCIDR string,
 	hostname string,
 	nodeIP net.IP,
-	recorder events.EventRecorder, // ignore
+	recorder events.EventRecorder,                  // ignore
 	healthzServer healthcheck.ProxierHealthUpdater, // ignore
 	config config.KubeProxyWinkernelConfiguration,
 ) (*Proxier, error) {
@@ -67,7 +66,7 @@ func NewProxier(
 	// ** not worrying about svc>HealthServer but do we need it later?
 	serviceHealthServer := healthcheck.NewServiceHealthServer(
 		hostname,
-		recorder) /* windows listen to all node addresses */
+		recorder, []string{}) /* windows listen to all node addresses */
 
 	// get a empty HNS network object, that we'll use to make system calls to either h1 or h2.
 	// this will introspect the underlying kernel.
@@ -165,8 +164,8 @@ func NewProxier(
 	isIPv6 := netutils.IsIPv6(nodeIP)
 	Proxier := &Proxier{
 		endPointsRefCount:   make(endPointsReferenceCountMap),
-		serviceMap:          make(proxy.ServiceMap),
-		endpointsMap:        make(proxy.EndpointsMap),
+		serviceMap:          make(ServiceMap),
+		endpointsMap:        make(EndpointsMap),
 		masqueradeAll:       masqueradeAll,
 		masqueradeMark:      masqueradeMark,
 		clusterCIDR:         clusterCIDR,
@@ -188,8 +187,20 @@ func NewProxier(
 	if isIPv6 {
 		ipFamily = v1.IPv6Protocol
 	}
-	serviceChanges := proxy.NewServiceChangeTracker(Proxier.newServiceInfo, ipFamily, recorder, Proxier.serviceMapChange)
-	endPointChangeTracker := proxy.NewEndpointChangeTracker(hostname, Proxier.newEndpointInfo, ipFamily, recorder, Proxier.endpointsMapChange)
+
+	/**
+	func(*localnetv1.PortMapping, *localnetv1.Service, *BaseServiceInfo)
+		(port *v1.ServicePort,    service *v1.Service, baseInfo *BaseServiceInfo)
+	- (string,
+		func(baseInfo *proxy.BaseEndpointInfo)
+			proxy.Endpoint,
+			"k8s.io/api/core/v1".IPFamily,
+	    	events.EventRecorder
+		)
+	- vnet1 portmapping, vnet1 service, BaseServiceInfo
+	*/
+	serviceChanges := NewServiceChangeTracker(Proxier.newServiceInfo, ipFamily, recorder)
+	endPointChangeTracker := NewEndpointChangeTracker(hostname, ipFamily, recorder)
 	Proxier.endpointsChanges = endPointChangeTracker
 	Proxier.serviceChanges = serviceChanges
 
