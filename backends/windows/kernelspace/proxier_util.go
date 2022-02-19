@@ -14,13 +14,13 @@ import (
 	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
-// Provider is a proxy interface enforcing services and endpoints methods
+// Provider is a proxy interface enforcing services and windowsEndpoint methods
 // implementations
 type Provider interface {
-	// OnEndpointsAdd is called whenever creation of new endpoints object
+	// OnEndpointsAdd is called whenever creation of new windowsEndpoint object
 	// is observed.
 	OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service)
-	// OnEndpointsDelete is called whenever deletion of an existing endpoints
+	// OnEndpointsDelete is called whenever deletion of an existing windowsEndpoint
 	// object is observed.
 	OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service)
 	// OnEndpointsSynced is called once all the initial event handlers were
@@ -52,7 +52,7 @@ type Provider interface {
 type Proxier struct {
 	// TODO(imroc): implement node handler for winkernel proxier.
 	//proxyconfig.NoopNodeHandler
-	// endpointsChanges and serviceChanges contains all changes to endpoints and
+	// endpointsChanges and serviceChanges contains all changes to windowsEndpoint and
 	// services that happened since policies were synced. For a single object,
 	// changes are accumulated, i.e. previous is state from before all of them,
 	// current is state after applying all of those.

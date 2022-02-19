@@ -31,15 +31,15 @@ type ServiceHandler interface {
 }
 
 // EndpointsHandler is an abstract interface of objects which receive
-// notifications about endpoints object changes.
+// notifications about windowsEndpoint object changes.
 type EndpointsHandler interface {
-	// OnEndpointsAdd is called whenever creation of new endpoints object
+	// OnEndpointsAdd is called whenever creation of new windowsEndpoint object
 	// is observed.
 	OnEndpointsAdd(endpoints *v1.Endpoints)
 	// OnEndpointsUpdate is called whenever modification of an existing
-	// endpoints object is observed.
+	// windowsEndpoint object is observed.
 	OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints)
-	// OnEndpointsDelete is called whenever deletion of an existing endpoints
+	// OnEndpointsDelete is called whenever deletion of an existing windowsEndpoint
 	// object is observed.
 	OnEndpointsDelete(endpoints *v1.Endpoints)
 	// OnEndpointsSynced is called once all the initial event handlers were
@@ -83,7 +83,7 @@ func (*NoopEndpointSliceHandler) OnEndpointSlicesSynced() {}
 
 var _ EndpointSliceHandler = &NoopEndpointSliceHandler{}
 
-// EndpointsConfig tracks a set of endpoints configurations.
+// EndpointsConfig tracks a set of windowsEndpoint configurations.
 type EndpointsConfig struct {
 	listerSynced  cache.InformerSynced
 	eventHandlers []EndpointsHandler
@@ -107,16 +107,16 @@ func NewEndpointsConfig(endpointsInformer coreinformers.EndpointsInformer, resyn
 	return result
 }
 
-// RegisterEventHandler registers a handler which is called on every endpoints change.
+// RegisterEventHandler registers a handler which is called on every windowsEndpoint change.
 func (c *EndpointsConfig) RegisterEventHandler(handler EndpointsHandler) {
 	c.eventHandlers = append(c.eventHandlers, handler)
 }
 
 // Run waits for cache synced and invokes handlers after syncing.
 func (c *EndpointsConfig) Run(stopCh <-chan struct{}) {
-	klog.Info("Starting endpoints config controller")
+	klog.Info("Starting windowsEndpoint config controller")
 
-	if !cache.WaitForNamedCacheSync("endpoints config", stopCh, c.listerSynced) {
+	if !cache.WaitForNamedCacheSync("windowsEndpoint config", stopCh, c.listerSynced) {
 		return
 	}
 
@@ -174,7 +174,7 @@ func (c *EndpointsConfig) handleDeleteEndpoints(obj interface{}) {
 	}
 }
 
-// EndpointSliceConfig tracks a set of endpoints configurations.
+// EndpointSliceConfig tracks a set of windowsEndpoint configurations.
 type EndpointSliceConfig struct {
 	listerSynced  cache.InformerSynced
 	eventHandlers []EndpointSliceHandler

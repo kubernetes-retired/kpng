@@ -12,15 +12,15 @@ import (
 	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
-// OnEndpointsAdd is called whenever creation of new endpoints object
+// OnEndpointsAdd is called whenever creation of new windowsEndpoint object
 // is observed.
 func (Proxier *Proxier) OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service) {}
 
 // OnEndpointsUpdate is called whenever modification of an existing
-// endpoints object is observed.
+// windowsEndpoint object is observed.
 func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *localnetv1.Endpoint) {}
 
-// OnEndpointsDelete is called whenever deletion of an existing endpoints
+// OnEndpointsDelete is called whenever deletion of an existing windowsEndpoint
 // object is observed. Service object
 func (Proxier *Proxier) OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service) {}
 
@@ -103,7 +103,7 @@ func (Proxier *Proxier) OnServiceSynced() {
 }
 
 func (Proxier *Proxier) endpointsMapChange(oldEndpointsMap, newEndpointsMap EndpointsMap) {
-	//read the old endpoints...
+	//read the old windowsEndpoint...
 
 	// iterate through this cache.. map[types.NamespacedName]*endpointsInfoByName
 	for svcPortName, _ := range oldEndpointsMap {
@@ -115,7 +115,7 @@ func (Proxier *Proxier) endpointsMapChange(oldEndpointsMap, newEndpointsMap Endp
 		Proxier.onEndpointsMapChange(spn)
 	}
 
-	//read the new endpoints...
+	//read the new windowsEndpoint...
 	for svcPortName := range newEndpointsMap {
 		spn := &ServicePortName{
 			NamespacedName: svcPortName,
@@ -151,7 +151,7 @@ func (Proxier *Proxier) onEndpointsMapChange(svcPortName *ServicePortName) {
 			svcInfo.cleanupAllPolicies(e)
 		}
 	} else {
-		// If no service exists, just cleanup the remote endpoints
+		// If no service exists, just cleanup the remote windowsEndpoint
 		klog.V(3).InfoS("Endpoints are orphaned, cleaning up")
 		// Cleanup Endpoints references
 
@@ -222,7 +222,7 @@ func (Proxier *Proxier) newEndpointInfo(baseInfo *proxy.BaseEndpointInfo) proxy.
 		portNumber = 0
 	}
 
-	info := &endpoints{
+	info := &windowsEndpoint{
 		ip:         baseInfo.IP(),
 		port:       uint16(portNumber),
 		isLocal:    baseInfo.GetIsLocal(),
@@ -254,7 +254,7 @@ func (Proxier *Proxier) newServiceInfo(port *localnetv1.PortMapping, service *lo
 
 	// TODO Jay , jsut making this compile ignorignt the intstr int parser not needed i think
 	// targetPort is zero if it is specified as a name in port.TargetPort.
-	// Its real value would be got later from endpoints.
+	// Its real value would be got later from windowsEndpoint.
 	targetPort := 0
 	//if port.TargetPort == intstr.Int {
 	targetPort = int(port.TargetPort)

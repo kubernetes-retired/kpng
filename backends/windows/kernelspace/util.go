@@ -20,12 +20,12 @@ limitations under the License.
 package kernelspace
 
 import (
-        "fmt"
-        "net"
+	"fmt"
+	"net"
 
-        "github.com/Microsoft/hcsshim"
+	"github.com/Microsoft/hcsshim"
 
-        v1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 type externalIPInfo struct {
@@ -57,7 +57,7 @@ type closeable interface {
 
 //Uses mac prefix and IPv4 address to return a mac address
 //This ensures mac addresses are unique for proper load balancing
-//There is a possibility of MAC collisions but this Mac address is used for remote endpoints only
+//There is a possibility of MAC collisions but this Mac address is used for remote windowsEndpoint only
 //and not sent on the wire.
 func conjureMac(macPrefix string, ip net.IP) string {
 	if ip4 := ip.To4(); ip4 != nil {

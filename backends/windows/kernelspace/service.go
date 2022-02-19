@@ -51,7 +51,7 @@ type serviceInfo struct {
 	hnsID                  string
 	nodePorthnsID          string
 	policyApplied          bool
-	remoteEndpoint         *endpoints
+	remoteEndpoint         *windowsEndpoint
 	hns                    HostNetworkService
 	preserveDIP            bool
 	localTrafficDSR        bool
@@ -85,7 +85,7 @@ func (svcInfo *serviceInfo) cleanupAllPolicies(proxyEndpoints *localnetv1.Endpoi
 	svcInfo.deleteAllHnsLoadBalancerPolicy()
 	// Cleanup Endpoints references
 	for _, ep := range proxyEndpoints {
-		epInfo, ok := ep.(*endpoints)
+		epInfo, ok := ep.(*windowsEndpoint)
 		if ok {
 			epInfo.Cleanup()
 		}

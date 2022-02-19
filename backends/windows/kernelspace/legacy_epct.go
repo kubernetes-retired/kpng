@@ -59,12 +59,12 @@ type EndpointChangeTracker struct {
 	// ipfamily identify the ip family on which the tracker is operating on
 	ipFamily v1.IPFamily
 	recorder events.EventRecorder
-	// Map from the Endpoints namespaced-name to the times of the triggers that caused the endpoints
+	// Map from the Endpoints namespaced-name to the times of the triggers that caused the windowsEndpoint
 	// object to change. Used to calculate the network-programming-latency.
 	lastChangeTriggerTimes map[types.NamespacedName][]time.Time
-	// record the time when the endpointChangeTracker was created so we can ignore the endpoints
+	// record the time when the endpointChangeTracker was created so we can ignore the windowsEndpoint
 	// that were generated before, because we can't estimate the network-programming-latency on those.
-	// This is specially problematic on restarts, because we process all the endpoints that may have been
+	// This is specially problematic on restarts, because we process all the windowsEndpoint that may have been
 	// created hours or days before.
 	trackerStartTime time.Time
 }
@@ -104,7 +104,7 @@ func (ect *EndpointChangeTracker) checkoutTriggerTimes(lastChangeTriggerTimes *m
 }
 
 // getLastChangeTriggerTime returns the time.Time value of the
-// EndpointsLastChangeTriggerTime annotation stored in the given endpoints
+// EndpointsLastChangeTriggerTime annotation stored in the given windowsEndpoint
 // object or the "zero" time if the annotation wasn't set or was set
 // incorrectly.
 func getLastChangeTriggerTime(annotations map[string]string) time.Time {
@@ -124,15 +124,15 @@ func getLastChangeTriggerTime(annotations map[string]string) time.Time {
 	return val
 }
 
-// UpdateEndpointMapResult is the updated results after applying endpoints changes.
+// UpdateEndpointMapResult is the updated results after applying windowsEndpoint changes.
 type UpdateEndpointMapResult struct {
-	// HCEndpointsLocalIPSize maps an endpoints name to the length of its local IPs.
+	// HCEndpointsLocalIPSize maps an windowsEndpoint name to the length of its local IPs.
 	HCEndpointsLocalIPSize map[types.NamespacedName]int
-	// StaleEndpoints identifies if an endpoints service pair is stale.
+	// StaleEndpoints identifies if an windowsEndpoint service pair is stale.
 	StaleEndpoints []ServiceEndpoint
 	// StaleServiceNames identifies if a service is stale.
 	StaleServiceNames []ServicePortName
-	// List of the trigger times for all endpoints objects that changed. It's used to export the
+	// List of the trigger times for all windowsEndpoint objects that changed. It's used to export the
 	// network programming latency.
 	// NOTE(oxddr): this can be simplified to []time.Time if memory consumption becomes an issue.
 	LastChangeTriggerTimes map[types.NamespacedName][]time.Time
@@ -156,10 +156,10 @@ func (em EndpointsMap) Update(changes *EndpointChangeTracker) (result UpdateEndp
 	return result
 }
 
-// apply the changes to EndpointsMap and updates stale endpoints and service-endpoints pair. The `staleEndpoints` argument
-// is passed in to store the stale udp endpoints and `staleServiceNames` argument is passed in to store the stale udp service.
+// apply the changes to EndpointsMap and updates stale windowsEndpoint and service-windowsEndpoint pair. The `staleEndpoints` argument
+// is passed in to store the stale udp windowsEndpoint and `staleServiceNames` argument is passed in to store the stale udp service.
 // The changes map is cleared after applying them.
-// In addition it returns (via argument) and resets the lastChangeTriggerTimes for all endpoints
+// In addition it returns (via argument) and resets the lastChangeTriggerTimes for all windowsEndpoint
 // that were changed and will result in syncing the proxy rules.
 // apply triggers processEndpointsMapChange on every change.
 func (em EndpointsMap) apply(ect *EndpointChangeTracker, staleEndpoints *[]ServiceEndpoint,
@@ -174,7 +174,7 @@ func (em EndpointsMap) apply(ect *EndpointChangeTracker, staleEndpoints *[]Servi
 	ect.checkoutTriggerTimes(lastChangeTriggerTimes)
 }
 
-// Merge ensures that the current EndpointsMap contains all <service, endpoints> pairs from the EndpointsMap passed in.
+// Merge ensures that the current EndpointsMap contains all <service, windowsEndpoint> pairs from the EndpointsMap passed in.
 func (em EndpointsMap) merge(other EndpointsMap) {
 	for service, endpoints := range other {
 		for hash, endpointEntry := range *(endpoints) {
@@ -201,13 +201,13 @@ func (em EndpointsMap) merge(other EndpointsMap) {
 	}
 }
 
-// GetLocalEndpointIPs returns endpoints IPs if given endpoint is local - local means the endpoint is running in same host as kube-proxy.
+// GetLocalEndpointIPs returns windowsEndpoint IPs if given endpoint is local - local means the endpoint is running in same host as kube-proxy.
 func (em EndpointsMap) getLocalReadyEndpointIPs() map[types.NamespacedName]sets.String {
 	localIPs := make(map[types.NamespacedName]sets.String)
 	for service, endpoints := range em {
 		for _, endpointEntry := range *endpoints {
-			// Only add ready endpoints for health checking. Terminating endpoints may still serve traffic
-			// but the health check signal should fail if there are only terminating endpoints on a node.
+			// Only add ready windowsEndpoint for health checking. Terminating windowsEndpoint may still serve traffic
+			// but the health check signal should fail if there are only terminating windowsEndpoint on a node.
 			//TODO: CHECK no endpoint.Topology and endpoint.Conditions Endpointslicecache.go
 			// if !ep.IsReady() {
 			// 	continue

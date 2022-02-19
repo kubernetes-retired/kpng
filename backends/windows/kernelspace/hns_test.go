@@ -207,7 +207,7 @@ func testGetEndpointByIpAddress(t *testing.T, hns HostNetworkService) {
 func testCreateEndpointLocal(t *testing.T, hns HostNetworkService) {
 	Network := mustTestNetwork(t)
 
-	endpoint := &endpoints{
+	endpoint := &windowsEndpoint{
 		ip:         epIpAddress,
 		macAddress: epMacAddress,
 		isLocal:    true,
@@ -243,7 +243,7 @@ func testCreateEndpointLocal(t *testing.T, hns HostNetworkService) {
 func testCreateEndpointRemote(t *testing.T, hns HostNetworkService, providerAddress string) {
 	Network := mustTestNetwork(t)
 
-	endpoint := &endpoints{
+	endpoint := &windowsEndpoint{
 		ip:              epIpAddressRemote,
 		macAddress:      epMacAddress,
 		isLocal:         false,
@@ -348,11 +348,11 @@ func testGetLoadBalancerExisting(t *testing.T, hns HostNetworkService) {
 		t.Error(err)
 	}
 
-	endpoint := &endpoints{
+	endpoint := &windowsEndpoint{
 		ip:    Endpoint.IpConfigurations[0].IpAddress,
 		hnsID: Endpoint.Id,
 	}
-	endpoints := []endpoints{*endpoint}
+	endpoints := []windowsEndpoint{*endpoint}
 	lb, err := hns.getLoadBalancer(endpoints, loadBalancerFlags{}, sourceVip, serviceVip, protocol, internalPort, externalPort)
 	if err != nil {
 		t.Error(err)
@@ -393,11 +393,11 @@ func testGetLoadBalancerNew(t *testing.T, hns HostNetworkService) {
 	if err != nil {
 		t.Error(err)
 	}
-	endpoint := &endpoints{
+	endpoint := &windowsEndpoint{
 		ip:    Endpoint.IpConfigurations[0].IpAddress,
 		hnsID: Endpoint.Id,
 	}
-	endpoints := []endpoints{*endpoint}
+	endpoints := []windowsEndpoint{*endpoint}
 	lb, err := hns.getLoadBalancer(endpoints, loadBalancerFlags{}, sourceVip, serviceVip, protocol, internalPort, externalPort)
 	if err != nil {
 		t.Error(err)

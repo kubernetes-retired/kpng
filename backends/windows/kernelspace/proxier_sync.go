@@ -75,7 +75,7 @@ func (Proxier *Proxier) syncProxyRules() {
 	Proxier.mu.Lock()
 	defer Proxier.mu.Unlock()
 
-	// don't sync rules till we've received services and endpoints
+	// don't sync rules till we've received services and windowsEndpoint
 	if !Proxier.isInitialized() {
 		klog.V(2).InfoS("Not syncing hns until Services and Endpoints have been received from master")
 		return
@@ -147,7 +147,7 @@ func (Proxier *Proxier) syncProxyRules() {
 			serviceVipEndpoint, _ := hns.getEndpointByIpAddress(svcInfo.ClusterIP().String(), hnsNetworkName)
 			if serviceVipEndpoint == nil {
 				klog.V(4).InfoS("No existing remote endpoint", "IP", svcInfo.ClusterIP())
-				hnsEndpoint := &endpoints{
+				hnsEndpoint := &windowsEndpoint{
 					ip:              svcInfo.ClusterIP().String(),
 					isLocal:         false,
 					macAddress:      Proxier.hostMac,
@@ -166,23 +166,23 @@ func (Proxier *Proxier) syncProxyRules() {
 			}
 		}
 
-		var hnsEndpoints []endpoints
-		var hnsLocalEndpoints []endpoints
+		var hnsEndpoints []windowsEndpoint
+		var hnsLocalEndpoints []windowsEndpoint
 		klog.V(4).InfoS("Applying Policy", "serviceInfo", svcName)
-		// Create Remote endpoints for every endpoint, corresponding to the service
+		// Create Remote windowsEndpoint for every endpoint, corresponding to the service
 		containsPublicIP := false
 		containsNodeIP := false
 
 		for _, epInfo := range *Proxier.endpointsMap[svcName.NamespacedName] {
 
 			// !!!!!!!!!!!!!!!!
-			// ep must be an instance of "endpoints..."
+			// ep must be an instance of "windowsEndpoint..."
 			// it is an localvnet1.Endpoint...
-			//			ep, ok := epInfo.(*endpoints)
+			//			ep, ok := epInfo.(*windowsEndpoint)
 			// !!!!!!!!!!!!!!!!
 			ep := epInfo
 			if !ok {
-				klog.ErrorS(nil, "Failed to cast endpoints", "serviceName", svcName)
+				klog.ErrorS(nil, "Failed to cast windowsEndpoint", "serviceName", svcName)
 				continue
 			}
 
@@ -191,12 +191,12 @@ func (Proxier *Proxier) syncProxyRules() {
 			//	continue
 			//}
 
-			var newHnsEndpoint *endpoints
+			var newHnsEndpoint *windowsEndpoint
 			hnsNetworkName := Proxier.network.name
 			var err error
 
-			// targetPort is zero if it is specified as a name in port.TargetPort, so the real port should be got from endpoints.
-			// Note that hcsshim.AddLoadBalancer() doesn't support endpoints with different ports, so only port from first endpoint is used.
+			// targetPort is zero if it is specified as a name in port.TargetPort, so the real port should be got from windowsEndpoint.
+			// Note that hcsshim.AddLoadBalancer() doesn't support windowsEndpoint with different ports, so only port from first endpoint is used.
 			// TODO(feiskyer): add support of different endpoint ports after hcsshim.AddLoadBalancer() add that.
 			// TODO jay : disabling this logic
 			if svcInfo.targetPort == 0 {
@@ -235,7 +235,7 @@ func (Proxier *Proxier) syncProxyRules() {
 						providerAddress = Proxier.nodeIP.String()
 					}
 
-					hnsEndpoint := &endpoints{
+					hnsEndpoint := &windowsEndpoint{
 						ip:              ep.ip,
 						isLocal:         false,
 						macAddress:      conjureMac("02-11", netutils.ParseIPSloppy(ep.ip)),
@@ -244,12 +244,12 @@ func (Proxier *Proxier) syncProxyRules() {
 
 					newHnsEndpoint, err = hns.createEndpoint(hnsEndpoint, hnsNetworkName)
 					if err != nil {
-						klog.ErrorS(err, "Remote endpoint creation failed", "endpoints", hnsEndpoint)
+						klog.ErrorS(err, "Remote endpoint creation failed", "windowsEndpoint", hnsEndpoint)
 						continue
 					}
 				} else {
 
-					hnsEndpoint := &endpoints{
+					hnsEndpoint := &windowsEndpoint{
 						ip:         ep.ip,
 						isLocal:    false,
 						macAddress: ep.macAddress,
@@ -270,7 +270,7 @@ func (Proxier *Proxier) syncProxyRules() {
 			// For L2Bridge network the Source VIP is always the NodeIP of the current node and the same
 			// would be configured on kube-proxy as SourceVIP
 			//
-			// The logic for choosing the SourceVIP in Overlay networks is based on the backend endpoints:
+			// The logic for choosing the SourceVIP in Overlay networks is based on the backend windowsEndpoint:
 			// a) Endpoints are any IP's outside the cluster ==> Choose NodeIP as the SourceVIP
 			// b) Endpoints are IP addresses of a remote node => Choose NodeIP as the SourceVIP
 			// c) Everything else (Local POD's, Remote POD's, Node IP of current node) ==> Choose the configured SourceVIP
@@ -286,23 +286,23 @@ func (Proxier *Proxier) syncProxyRules() {
 			}
 
 			// Save the hnsId for reference
-			klog.V(1).InfoS("Hns endpoint resource", "endpoints", newHnsEndpoint)
+			klog.V(1).InfoS("Hns endpoint resource", "windowsEndpoint", newHnsEndpoint)
 
 			hnsEndpoints = append(hnsEndpoints, *newHnsEndpoint)
 			if newHnsEndpoint.GetIsLocal() {
 				hnsLocalEndpoints = append(hnsLocalEndpoints, *newHnsEndpoint)
 			} else {
-				// We only share the refCounts for remote endpoints
+				// We only share the refCounts for remote windowsEndpoint
 				ep.refCount = Proxier.endPointsRefCount.getRefCount(newHnsEndpoint.hnsID)
 				*ep.refCount++
 			}
 
 			ep.hnsID = newHnsEndpoint.hnsID
 
-			klog.V(3).InfoS("Endpoint resource found", "endpoints", ep)
+			klog.V(3).InfoS("Endpoint resource found", "windowsEndpoint", ep)
 		}
 
-		klog.V(3).InfoS("Associated endpoints for service", "endpoints", hnsEndpoints, "serviceName", svcName)
+		klog.V(3).InfoS("Associated windowsEndpoint for service", "windowsEndpoint", hnsEndpoints, "serviceName", svcName)
 
 		if len(svcInfo.hnsID) > 0 {
 			// This should not happen
@@ -343,7 +343,7 @@ func (Proxier *Proxier) syncProxyRules() {
 		svcInfo.hnsID = hnsLoadBalancer.hnsID
 		klog.V(3).InfoS("Hns LoadBalancer resource created for cluster ip resources", "clusterIP", svcInfo.ClusterIP(), "hnsID", hnsLoadBalancer.hnsID)
 
-		// If nodePort is specified, user should be able to use nodeIP:nodePort to reach the backend endpoints
+		// If nodePort is specified, user should be able to use nodeIP:nodePort to reach the backend windowsEndpoint
 		if svcInfo.NodePort() > 0 {
 			// If the preserve-destination service annotation is present, we will disable routing mesh for NodePort.
 			// This means that health services can use Node Port without falsely getting results from a different node.
@@ -441,14 +441,14 @@ func (Proxier *Proxier) syncProxyRules() {
 	}
 	metrics.SyncProxyRulesLastTimestamp.SetToCurrentTime()
 
-	// Update service healthchecks.  The endpoints list might include services that are
+	// Update service healthchecks.  The windowsEndpoint list might include services that are
 	// not "OnlyLocal", but the services list will not, and the serviceHealthServer
-	// will just drop those endpoints.
+	// will just drop those windowsEndpoint.
 	if err := Proxier.serviceHealthServer.SyncServices(serviceUpdateResult.HCServiceNodePorts); err != nil {
 		klog.ErrorS(err, "Error syncing healthcheck services")
 	}
 	if err := Proxier.serviceHealthServer.SyncEndpoints(endpointUpdateResult.HCEndpointsLocalIPSize); err != nil {
-		klog.ErrorS(err, "Error syncing healthcheck endpoints")
+		klog.ErrorS(err, "Error syncing healthcheck windowsEndpoint")
 	}
 
 	// Finish housekeeping.

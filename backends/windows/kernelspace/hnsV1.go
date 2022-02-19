@@ -15,11 +15,11 @@ import (
 
 type HostNetworkService interface {
 	getNetworkByName(name string) (*hnsNetworkInfo, error)
-	getEndpointByID(id string) (*endpoints, error)
-	getEndpointByIpAddress(ip string, networkName string) (*endpoints, error)
-	createEndpoint(ep *endpoints, networkName string) (*endpoints, error)
+	getEndpointByID(id string) (*windowsEndpoint, error)
+	getEndpointByIpAddress(ip string, networkName string) (*windowsEndpoint, error)
+	createEndpoint(ep *windowsEndpoint, networkName string) (*windowsEndpoint, error)
 	deleteEndpoint(hnsID string) error
-	getLoadBalancer(endpoints []endpoints, flags loadBalancerFlags, sourceVip string, vip string, protocol uint16, internalPort uint16, externalPort uint16) (*loadBalancerInfo, error)
+	getLoadBalancer(endpoints []windowsEndpoint, flags loadBalancerFlags, sourceVip string, vip string, protocol uint16, internalPort uint16, externalPort uint16) (*loadBalancerInfo, error)
 	deleteLoadBalancer(hnsID string) error
 }
 
@@ -39,26 +39,26 @@ func (hns hnsV1) getNetworkByName(name string) (*hnsNetworkInfo, error) {
 		networkType: hnsnetwork.Type,
 	}, nil
 }
-func (hns hnsV1) getEndpointByID(id string) (*endpoints, error) {
+func (hns hnsV1) getEndpointByID(id string) (*windowsEndpoint, error) {
 	hnsendpoint, err := hcsshim.GetHNSEndpointByID(id)
 	if err != nil {
 		klog.ErrorS(err, "failed to get HNS endpoint by id", "id", id)
 		return nil, err
 	}
-	return &endpoints{
+	return &windowsEndpoint{
 		ip:         hnsendpoint.IPAddress.String(),
 		isLocal:    !hnsendpoint.IsRemoteEndpoint, //TODO: Change isLocal to isRemote
 		macAddress: hnsendpoint.MacAddress,
 		hnsID:      hnsendpoint.Id,
 		hns:        hns,
 
-		// only ready and not terminating endpoints were added to HNS
+		// only ready and not terminating windowsEndpoint were added to HNS
 		ready:       true,
 		serving:     true,
 		terminating: false,
 	}, nil
 }
-func (hns hnsV1) getEndpointByIpAddress(ip string, networkName string) (*endpoints, error) {
+func (hns hnsV1) getEndpointByIpAddress(ip string, networkName string) (*windowsEndpoint, error) {
 	hnsnetwork, err := hcsshim.GetHNSNetworkByName(networkName)
 	if err != nil {
 		klog.ErrorS(err, "failed to get HNS network by name", "name", networkName)
@@ -67,7 +67,7 @@ func (hns hnsV1) getEndpointByIpAddress(ip string, networkName string) (*endpoin
 
 	hcsEndpoints, err := hcsshim.HNSListEndpointRequest()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list endpoints: %w", err)
+		return nil, fmt.Errorf("failed to list windowsEndpoint: %w", err)
 	}
 	for _, endpoint := range hcsEndpoints {
 		equal := false
@@ -75,14 +75,14 @@ func (hns hnsV1) getEndpointByIpAddress(ip string, networkName string) (*endpoin
 			equal = endpoint.IPAddress.String() == ip
 		}
 		if equal && strings.EqualFold(endpoint.VirtualNetwork, hnsnetwork.Id) {
-			return &endpoints{
+			return &windowsEndpoint{
 				ip:         endpoint.IPAddress.String(),
 				isLocal:    !endpoint.IsRemoteEndpoint,
 				macAddress: endpoint.MacAddress,
 				hnsID:      endpoint.Id,
 				hns:        hns,
 
-				// only ready and not terminating endpoints were added to HNS
+				// only ready and not terminating windowsEndpoint were added to HNS
 				ready:       true,
 				serving:     true,
 				terminating: false,
@@ -92,7 +92,7 @@ func (hns hnsV1) getEndpointByIpAddress(ip string, networkName string) (*endpoin
 
 	return nil, fmt.Errorf("Endpoint %v not found on network %s", ip, networkName)
 }
-func (hns hnsV1) createEndpoint(ep *endpoints, networkName string) (*endpoints, error) {
+func (hns hnsV1) createEndpoint(ep *windowsEndpoint, networkName string) (*windowsEndpoint, error) {
 	hnsNetwork, err := hcsshim.GetHNSNetworkByName(networkName)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (hns hnsV1) createEndpoint(ep *endpoints, networkName string) (*endpoints, 
 			return nil, fmt.Errorf("local endpoint creation failed: %w", err)
 		}
 	}
-	return &endpoints{
+	return &windowsEndpoint{
 		ip:              createdEndpoint.IPAddress.String(),
 		isLocal:         createdEndpoint.IsRemoteEndpoint,
 		macAddress:      createdEndpoint.MacAddress,
@@ -151,7 +151,7 @@ func (hns hnsV1) deleteEndpoint(hnsID string) error {
 	return err
 }
 
-func (hns hnsV1) getLoadBalancer(endpoints []endpoints, flags loadBalancerFlags, sourceVip string, vip string, protocol uint16, internalPort uint16, externalPort uint16) (*loadBalancerInfo, error) {
+func (hns hnsV1) getLoadBalancer(endpoints []windowsEndpoint, flags loadBalancerFlags, sourceVip string, vip string, protocol uint16, internalPort uint16, externalPort uint16) (*loadBalancerInfo, error) {
 	plists, err := hcsshim.HNSListPolicyListRequest()
 	if err != nil {
 		return nil, err

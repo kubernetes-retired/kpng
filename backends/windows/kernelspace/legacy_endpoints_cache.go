@@ -4,7 +4,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
-	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
 /*
@@ -28,22 +27,18 @@ type EndpointsCache struct {
 	// trackerByServiceMap is the basis of this cache. It contains endpoint
 	// slice trackers grouped by service name and endpoint slice name. The first
 	// key represents a namespaced service name while the second key represents
-	// an endpoint slice name. Since endpoints can move between slices, we
-	// require slice specific caching to prevent endpoints being removed from
+	// an endpoint slice name. Since windowsEndpoint can move between slices, we
+	// require slice specific caching to prevent windowsEndpoint being removed from
 	// the cache when they may have just moved to a different slice.
 	trackerByServiceMap map[types.NamespacedName]*endpointsInfoByName
 	hostname            string
 	ipFamily            v1.IPFamily
 	recorder            events.EventRecorder
 }
-type WindowsEndpoint struct {
-	Endpoint    *localnetv1.Endpoint
-	hnsEndpoint *endpoints
-}
 
 // endpointsInfoByName groups endpointInfo by the names of the
 // corresponding Endpoint.
-type endpointsInfoByName map[string]*WindowsEndpoint
+type endpointsInfoByName map[string]*windowsEndpoint
 
 // NewEndpointsCache initializes an EndpointCache.
 func NewEndpointsCache(hostname string, ipFamily v1.IPFamily, recorder events.EventRecorder) *EndpointsCache {
@@ -56,14 +51,14 @@ func NewEndpointsCache(hostname string, ipFamily v1.IPFamily, recorder events.Ev
 }
 
 // updatePending updates a pending slice in the cache.
-func (cache *EndpointsCache) updatePending(svcKey types.NamespacedName, key string, endpoint *WindowsEndpoint) bool {
+func (cache *EndpointsCache) updatePending(svcKey types.NamespacedName, key string, we windowsEndpoint) bool {
 	var esInfoMap *endpointsInfoByName
 	var ok bool
 	if esInfoMap, ok = cache.trackerByServiceMap[svcKey]; !ok {
 		esInfoMap = &endpointsInfoByName{}
 		cache.trackerByServiceMap[svcKey] = esInfoMap
 	}
-	(*esInfoMap)[key] = endpoint
+	(*esInfoMap)[key] = we
 	return true
 }
 

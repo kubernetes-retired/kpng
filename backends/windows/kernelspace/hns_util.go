@@ -132,8 +132,8 @@ func getNetworkInfo(hns HostNetworkService, hnsNetworkName string) (*hnsNetworkI
 	return hnsNetworkInfo, err
 }
 
-func newSourceVIP(hns HostNetworkService, network string, ip string, mac string, providerAddress string) (*endpoints, error) {
-	hnsEndpoint := &endpoints{
+func newSourceVIP(hns HostNetworkService, network string, ip string, mac string, providerAddress string) (*windowsEndpoint, error) {
+	hnsEndpoint := &windowsEndpoint{
 		ip:              ip,
 		isLocal:         true,
 		macAddress:      mac,
