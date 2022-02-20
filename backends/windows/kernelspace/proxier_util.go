@@ -6,7 +6,7 @@ import (
 
 	"k8s.io/client-go/tools/events"
 	//	"k8s.io/kubernetes/pkg/proxy"
-	"k8s.io/kubernetes/pkg/proxy/healthcheck"
+	//	"k8s.io/kubernetes/pkg/proxy/healthcheck"
 	"k8s.io/kubernetes/pkg/util/async"
 	//proxyconfig "k8s.io/kubernetes/pkg/proxy/config"
 
@@ -78,8 +78,9 @@ type Proxier struct {
 	nodeIP         net.IP
 	recorder       events.EventRecorder
 
-	serviceHealthServer healthcheck.ServiceHealthServer
-	healthzServer       healthcheck.ProxierHealthUpdater
+	// TODO Jay: Commenting these out to avoid importing pkg/proxy for now.
+	//	serviceHealthServer healthcheck.ServiceHealthServer
+	//	healthzServer       healthcheck.ProxierHealthUpdater
 
 	// Since converting probabilities (floats) to strings is expensive
 	// and we are using only probabilities in the format of 1/n, we are

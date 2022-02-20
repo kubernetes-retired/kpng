@@ -8,7 +8,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/proxy"
 	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
@@ -167,7 +166,7 @@ func (Proxier *Proxier) onEndpointsMapChange(svcPortName *ServicePortName) {
 	}
 }
 
-func (Proxier *Proxier) serviceMapChange(previous, current proxy.ServiceMap) {
+func (Proxier *Proxier) serviceMapChange(previous, current ServiceMap) {
 	for svcPortName := range current {
 		Proxier.onServiceMapChange(&svcPortName)
 	}
@@ -180,7 +179,7 @@ func (Proxier *Proxier) serviceMapChange(previous, current proxy.ServiceMap) {
 	}
 }
 
-func (Proxier *Proxier) onServiceMapChange(svcPortName *proxy.ServicePortName) {
+func (Proxier *Proxier) onServiceMapChange(svcPortName *ServicePortName) {
 
 	// the ServicePort interface is used to store serviceInfo objects...
 	spn := &ServicePortName{
@@ -215,7 +214,7 @@ func (Proxier *Proxier) onServiceMapChange(svcPortName *proxy.ServicePortName) {
 }
 
 // returns a new proxy.Endpoint which abstracts a endpointsInfo
-func (Proxier *Proxier) newEndpointInfo(baseInfo *proxy.BaseEndpointInfo) proxy.Endpoint {
+func (Proxier *Proxier) newEndpointInfo(baseInfo *BaseEndpointInfo) Endpoint {
 	portNumber, err := baseInfo.Port()
 
 	if err != nil {

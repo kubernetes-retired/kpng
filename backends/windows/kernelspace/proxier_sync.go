@@ -27,7 +27,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/proxy/metrics"
+//	"k8s.io/kubernetes/pkg/proxy/metrics"
 	netutils "k8s.io/utils/net"
 )
 
@@ -36,18 +36,20 @@ func (Proxier *Proxier) Sync() {
 	if Proxier.healthzServer != nil {
 		Proxier.healthzServer.QueuedUpdate()
 	}
-	metrics.SyncProxyRulesLastQueuedTimestamp.SetToCurrentTime()
+
+	// TODO commenting out metrics, Jay to fix , figure out how to  copy these later, avoiding pkg/proxy imports
+	// metrics.SyncProxyRulesLastQueuedTimestamp.SetToCurrentTime()
 	Proxier.syncRunner.Run()
 }
 
 // SyncLoop runs periodic work.  This is expected to run as a goroutine or as the main loop of the app.  It does not return.
 func (Proxier *Proxier) SyncLoop() {
 	// Update healthz timestamp at beginning in case Sync() never succeeds.
-	if Proxier.healthzServer != nil {
-		Proxier.healthzServer.Updated()
-	}
+//	if Proxier.healthzServer != nil {
+//		Proxier.healthzServer.Updated()
+//	}
 	// synthesize "last change queued" time as the informers are syncing.
-	metrics.SyncProxyRulesLastQueuedTimestamp.SetToCurrentTime()
+//	metrics.SyncProxyRulesLastQueuedTimestamp.SetToCurrentTime()
 	Proxier.syncRunner.Loop(wait.NeverStop)
 }
 
@@ -84,7 +86,8 @@ func (Proxier *Proxier) syncProxyRules() {
 	// Keep track of how long syncs take.
 	start := time.Now()
 	defer func() {
-		metrics.SyncProxyRulesLatency.Observe(metrics.SinceInSeconds(start))
+
+//		metrics.SyncProxyRulesLatency.Observe(metrics.SinceInSeconds(start))
 		klog.V(4).InfoS("Syncing proxy rules complete", "elapsed", time.Since(start))
 	}()
 
@@ -439,7 +442,7 @@ func (Proxier *Proxier) syncProxyRules() {
 	if Proxier.healthzServer != nil {
 		Proxier.healthzServer.Updated()
 	}
-	metrics.SyncProxyRulesLastTimestamp.SetToCurrentTime()
+	//metrics.SyncProxyRulesLastTimestamp.SetToCurrentTime()
 
 	// Update service healthchecks.  The windowsEndpoint list might include services that are
 	// not "OnlyLocal", but the services list will not, and the serviceHealthServer

@@ -20,14 +20,16 @@ import (
 	"sync"
 
 	"k8s.io/component-base/metrics/legacyregistry"
-	"k8s.io/kubernetes/pkg/proxy/metrics"
+//	"k8s.io/kubernetes/pkg/proxy/metrics"
 )
 
 var registerMetricsOnce sync.Once
 
 // RegisterMetrics registers kube-proxy metrics for Windows modes.
 func RegisterMetrics() {
-	registerMetricsOnce.Do(func() {
+
+// TODO Jay commenting these out for now
+/**	registerMetricsOnce.Do(func() {
 		legacyregistry.MustRegister(metrics.SyncProxyRulesLatency)
 		legacyregistry.MustRegister(metrics.SyncProxyRulesLastTimestamp)
 		legacyregistry.MustRegister(metrics.EndpointChangesPending)
@@ -36,4 +38,6 @@ func RegisterMetrics() {
 		legacyregistry.MustRegister(metrics.ServiceChangesTotal)
 		legacyregistry.MustRegister(metrics.SyncProxyRulesLastQueuedTimestamp)
 	})
+*/
+
 }
