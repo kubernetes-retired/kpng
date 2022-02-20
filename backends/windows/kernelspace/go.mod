@@ -1,6 +1,6 @@
 module sigs.k8s.io/kpng/backends/windows/kernelspace
 
-go 1.17
+go 1.18
 
 replace (
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20220210182314-2f4923fbfbeb // indirect

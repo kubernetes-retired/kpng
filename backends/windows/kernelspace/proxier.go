@@ -28,8 +28,8 @@ import (
 	"k8s.io/client-go/tools/events"
 	klog "k8s.io/klog/v2"
 	kubefeatures "k8s.io/kubernetes/pkg/features"
-	"k8s.io/kubernetes/pkg/proxy/apis/config"
-	"k8s.io/kubernetes/pkg/proxy/healthcheck"
+//	"k8s.io/kubernetes/pkg/proxy/apis/config"
+//	"k8s.io/kubernetes/pkg/proxy/healthcheck"
 	"k8s.io/kubernetes/pkg/util/async"
 	netutils "k8s.io/utils/net"
 	"net"
@@ -46,8 +46,8 @@ func NewProxier(
 	hostname string,
 	nodeIP net.IP,
 	recorder events.EventRecorder,                  // ignore
-	healthzServer healthcheck.ProxierHealthUpdater, // ignore
-	config config.KubeProxyWinkernelConfiguration,
+	//healthzServer healthcheck.ProxierHealthUpdater, // ignore
+	config KubeProxyWinkernelConfiguration,
 ) (*Proxier, error) {
 
 	// ** Why do we have a masquerade bit ? and what is this 1 << uint... doing
@@ -63,10 +63,11 @@ func NewProxier(
 		klog.InfoS("ClusterCIDR not specified, unable to distinguish between internal and external traffic")
 	}
 
+
 	// ** not worrying about svc>HealthServer but do we need it later?
-	serviceHealthServer := healthcheck.NewServiceHealthServer(
-		hostname,
-		recorder, []string{}) /* windows listen to all node addresses */
+	//serviceHealthServer := healthcheck.NewServiceHealthServer(
+	//	hostname,
+	//	recorder, []string{}) /* windows listen to all node addresses */
 
 	// get a empty HNS network object, that we'll use to make system calls to either h1 or h2.
 	// this will introspect the underlying kernel.
@@ -172,7 +173,7 @@ func NewProxier(
 		hostname:            hostname,
 		nodeIP:              nodeIP,
 		recorder:            recorder,
-		serviceHealthServer: serviceHealthServer,
+		//serviceHealthServer: serviceHealthServer,
 		healthzServer:       healthzServer,
 		hns:                 hns,
 		network:             *hnsNetworkInfo,

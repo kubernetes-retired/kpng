@@ -38,7 +38,7 @@ function build_package {
   pushd ./$dir/
     go mod download
     echo "building $dir with GOOS='$2'"
-    GOOS="$2" go build
+    GOOS="$2" go build ./...
     ls -altrh
   popd
 }
