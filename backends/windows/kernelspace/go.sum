@@ -387,6 +387,7 @@ github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
 github.com/libopenstorage/openstorage v1.0.0/go.mod h1:Sp1sIObHjat1BeXhfMqLZ14wnOzEhNx2YQedreMcUyc=
 github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de/go.mod h1:zAbeS9B/r2mtpb6U+EI2rYA5OAXxsYw6wTamcNW+zcE=
+github.com/lithammer/dedent v1.1.0 h1:VNzHMVCBNG1j0fh3OrsFRkVUwStdDArbgBWoPAffktY=
 github.com/lithammer/dedent v1.1.0/go.mod h1:jrXYCQtgg0nJiN+StA2KgR7w6CiQNv9Fd/Z9BP0jIOc=
 github.com/lpabon/godbc v0.1.1/go.mod h1:Jo9QV0cf3U6jZABgiJ2skINAXb9j8m51r07g4KI92ZA=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
@@ -1093,6 +1094,7 @@ k8s.io/cluster-bootstrap v0.0.0-20220124183052-e3974aa5a182/go.mod h1:dFVQCBSXH+
 k8s.io/code-generator v0.23.4-rc.0/go.mod h1:S0Q1JVA+kSzTI1oUvbKAxZY/DYbA/ZUb4Uknog12ETk=
 k8s.io/component-base v0.0.0-20220124174242-95a6431a4277 h1:Avm1ar/AB4Hi8+FABiWTYGZFfD0pwMEkHv244Ar1j6k=
 k8s.io/component-base v0.0.0-20220124174242-95a6431a4277/go.mod h1:liKXZIJJu+NNA3mVaYnMGyRsDxyEQ6ItKPqX/YWLVxA=
+k8s.io/component-helpers v0.20.0-alpha.2.0.20220124174436-7f5c4cdf69dc h1:BjXg3ZFkoKoJabt72e+Bsnl7LPaSvIxqgw8xE9Pzwjc=
 k8s.io/component-helpers v0.20.0-alpha.2.0.20220124174436-7f5c4cdf69dc/go.mod h1:0YZkpYkZWYEQ3cYdWeFGto96NYvl+FCll5Q3L/WQn8Y=
 k8s.io/controller-manager v0.20.0-alpha.1.0.20220124182419-3637f211e5d9/go.mod h1:a0noGxH+D+FlysqVPvgaIKschTDRoZw3jTF1R+pMJGk=
 k8s.io/cri-api v0.23.4-rc.0.0.20220210224708-239ad2a1ff9c/go.mod h1:REJE3PSU0h/LOV1APBrupxrEJqnoxZC8KWzkBUHwrK4=

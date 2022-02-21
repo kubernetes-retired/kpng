@@ -27,8 +27,8 @@ import (
 	"github.com/spf13/pflag"
 
 	"k8s.io/client-go/tools/events"
-// 	"k8s.io/kubernetes/pkg/proxy/apis/config"
-//	"k8s.io/kubernetes/pkg/proxy/healthcheck"
+	// 	"k8s.io/kubernetes/pkg/proxy/apis/config"
+	"k8s.io/kubernetes/pkg/proxy/healthcheck"
 	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/backendcmd"
 	"sigs.k8s.io/kpng/client/localsink"
@@ -51,8 +51,8 @@ var (
 	minSyncPeriod time.Duration
 	syncPeriod    time.Duration
 
-// TODO JAy add this back , avoiding pkg/proxy imports
-	//healthzServer healthcheck.ProxierHealthUpdater
+	// TODO JAy add this back , avoiding pkg/proxy imports
+	healthzServer healthcheck.ProxierHealthUpdater
 	recorder      events.EventRecorder
 
 	masqueradeAll = flag.Bool(
@@ -151,7 +151,7 @@ func (s *Backend) Setup() {
 		*hostname,
 		nodeIP,
 		recorder,
-		//healthzServer,
+		healthzServer,
 		winkernelConfig)
 
 	if err != nil {

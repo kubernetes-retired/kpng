@@ -21,6 +21,7 @@ package kernelspace
 
 import (
 	"fmt"
+
 	"github.com/Microsoft/hcsshim/hcn"
 	v1 "k8s.io/api/core/v1"
 	apiutil "k8s.io/apimachinery/pkg/util/net"
@@ -29,12 +30,15 @@ import (
 	"k8s.io/client-go/tools/events"
 	klog "k8s.io/klog/v2"
 	kubefeatures "k8s.io/kubernetes/pkg/features"
+	"k8s.io/kubernetes/pkg/proxy/healthcheck"
+
 	//	"k8s.io/kubernetes/pkg/proxy/apis/config"
-	//	"k8s.io/kubernetes/pkg/proxy/healthcheck"
-	"k8s.io/kubernetes/pkg/util/async"
-	netutils "k8s.io/utils/net"
+
 	"net"
 	"time"
+
+	"k8s.io/kubernetes/pkg/util/async"
+	netutils "k8s.io/utils/net"
 )
 
 // NewProxier returns a new Proxier
@@ -47,7 +51,7 @@ func NewProxier(
 	hostname string,
 	nodeIP net.IP,
 	recorder events.EventRecorder, // ignore
-	//healthzServer healthcheck.ProxierHealthUpdater, // ignore
+	healthzServer healthcheck.ProxierHealthUpdater, // ignore
 	config KubeProxyWinkernelConfiguration,
 ) (*Proxier, error) {
 
@@ -65,9 +69,9 @@ func NewProxier(
 	}
 
 	// ** not worrying about svc>HealthServer but do we need it later?
-	//serviceHealthServer := healthcheck.NewServiceHealthServer(
-	//	hostname,
-	//	recorder, []string{}) /* windows listen to all node addresses */
+	serviceHealthServer := healthcheck.NewServiceHealthServer(
+		hostname,
+		recorder, []string{}) /* windows listen to all node addresses */
 
 	// get a empty HNS network object, that we'll use to make system calls to either h1 or h2.
 	// this will introspect the underlying kernel.
@@ -164,24 +168,24 @@ func NewProxier(
 
 	isIPv6 := netutils.IsIPv6(nodeIP)
 	Proxier := &Proxier{
-		endPointsRefCount: make(endPointsReferenceCountMap),
-		serviceMap:        make(ServiceMap),
-		endpointsMap:      make(EndpointsMap),
-		masqueradeAll:     masqueradeAll,
-		masqueradeMark:    masqueradeMark,
-		clusterCIDR:       clusterCIDR,
-		hostname:          hostname,
-		nodeIP:            nodeIP,
-		recorder:          recorder,
-		//serviceHealthServer: serviceHealthServer,
-		//healthzServer:     healthzServer,
-		hns:               hns,
-		network:           *hnsNetworkInfo,
-		sourceVip:         sourceVip,
-		hostMac:           hostMac,
-		isDSR:             isDSR,
-		supportedFeatures: supportedFeatures,
-		isIPv6Mode:        isIPv6,
+		endPointsRefCount:   make(endPointsReferenceCountMap),
+		serviceMap:          make(ServiceMap),
+		endpointsMap:        make(EndpointsMap),
+		masqueradeAll:       masqueradeAll,
+		masqueradeMark:      masqueradeMark,
+		clusterCIDR:         clusterCIDR,
+		hostname:            hostname,
+		nodeIP:              nodeIP,
+		recorder:            recorder,
+		serviceHealthServer: serviceHealthServer,
+		healthzServer:       healthzServer,
+		hns:                 hns,
+		network:             *hnsNetworkInfo,
+		sourceVip:           sourceVip,
+		hostMac:             hostMac,
+		isDSR:               isDSR,
+		supportedFeatures:   supportedFeatures,
+		isIPv6Mode:          isIPv6,
 	}
 
 	ipFamily := v1.IPv4Protocol
