@@ -10,7 +10,7 @@ eventually will be replaced with https://github.com/kubernetes-sigs/kpng/issues/
 - get a windows cluster (sig-windows-dev-tools)
 
 ### phase 1: basic compilation 
-- compile this go module as a windows executable `GOOS=windows go build ./...`
+- compile this go module as a windows executable `GOOS=windows go build -trimpath -o ../dist`
 - cp this file into sig-windows-dev-tools/ and mount vagrant as shared into windows node
 - `vagrant ssh` into windows node, and run this file
 

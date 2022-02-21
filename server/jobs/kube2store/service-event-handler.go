@@ -19,8 +19,6 @@ package kube2store
 import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/klog"
-
 	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/server/pkg/proxystore"
 )
@@ -144,8 +142,8 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 	}
 
 	h.s.Update(func(tx *proxystore.Tx) {
-		klog.V(3).Info("service ", service.Namespace, "/", service.Name, " topology key: ", svc.Spec.TopologyKeys)
-		tx.SetService(service, svc.Spec.TopologyKeys)
+		//		klog.V(3).Info("service ", service.Namespace, "/", service.Name, " topology key: ", svc.Spec.TopologyKeys)
+		tx.SetService(service, []string{}) //svc.Spec.TopologyKeys)
 		h.updateSync(proxystore.Services, tx)
 	})
 }
