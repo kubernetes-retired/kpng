@@ -27,15 +27,15 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
-//	"k8s.io/kubernetes/pkg/proxy/metrics"
+	//	"k8s.io/kubernetes/pkg/proxy/metrics"
 	netutils "k8s.io/utils/net"
 )
 
 // Sync is called to synchronize the Proxier state to hns as soon as possible.
 func (Proxier *Proxier) Sync() {
-	if Proxier.healthzServer != nil {
-		Proxier.healthzServer.QueuedUpdate()
-	}
+	//	if Proxier.healthzServer != nil {
+	//		Proxier.healthzServer.QueuedUpdate()
+	//	}
 
 	// TODO commenting out metrics, Jay to fix , figure out how to  copy these later, avoiding pkg/proxy imports
 	// metrics.SyncProxyRulesLastQueuedTimestamp.SetToCurrentTime()
@@ -45,11 +45,11 @@ func (Proxier *Proxier) Sync() {
 // SyncLoop runs periodic work.  This is expected to run as a goroutine or as the main loop of the app.  It does not return.
 func (Proxier *Proxier) SyncLoop() {
 	// Update healthz timestamp at beginning in case Sync() never succeeds.
-//	if Proxier.healthzServer != nil {
-//		Proxier.healthzServer.Updated()
-//	}
+	//	if Proxier.healthzServer != nil {
+	//		Proxier.healthzServer.Updated()
+	//	}
 	// synthesize "last change queued" time as the informers are syncing.
-//	metrics.SyncProxyRulesLastQueuedTimestamp.SetToCurrentTime()
+	//	metrics.SyncProxyRulesLastQueuedTimestamp.SetToCurrentTime()
 	Proxier.syncRunner.Loop(wait.NeverStop)
 }
 
@@ -87,7 +87,7 @@ func (Proxier *Proxier) syncProxyRules() {
 	start := time.Now()
 	defer func() {
 
-//		metrics.SyncProxyRulesLatency.Observe(metrics.SinceInSeconds(start))
+		//		metrics.SyncProxyRulesLatency.Observe(metrics.SinceInSeconds(start))
 		klog.V(4).InfoS("Syncing proxy rules complete", "elapsed", time.Since(start))
 	}()
 
@@ -439,20 +439,22 @@ func (Proxier *Proxier) syncProxyRules() {
 		klog.V(2).InfoS("Policy successfully applied for service", "serviceInfo", svcInfo)
 	}
 
-	if Proxier.healthzServer != nil {
-		Proxier.healthzServer.Updated()
-	}
+	// TODO Jay:avoiding pkg/proxy imports... Commented out more healthServer stuff... going to kill it or keep it ?
+
+	//	if Proxier.healthzServer != nil {
+	//		Proxier.healthzServer.Updated()
+	//	}
 	//metrics.SyncProxyRulesLastTimestamp.SetToCurrentTime()
 
 	// Update service healthchecks.  The windowsEndpoint list might include services that are
 	// not "OnlyLocal", but the services list will not, and the serviceHealthServer
 	// will just drop those windowsEndpoint.
-	if err := Proxier.serviceHealthServer.SyncServices(serviceUpdateResult.HCServiceNodePorts); err != nil {
-		klog.ErrorS(err, "Error syncing healthcheck services")
-	}
-	if err := Proxier.serviceHealthServer.SyncEndpoints(endpointUpdateResult.HCEndpointsLocalIPSize); err != nil {
-		klog.ErrorS(err, "Error syncing healthcheck windowsEndpoint")
-	}
+	//	if err := Proxier.serviceHealthServer.SyncServices(serviceUpdateResult.HCServiceNodePorts); err != nil {
+	//		klog.ErrorS(err, "Error syncing healthcheck services")
+	//	}
+	//	if err := Proxier.serviceHealthServer.SyncEndpoints(endpointUpdateResult.HCEndpointsLocalIPSize); err != nil {
+	//		klog.ErrorS(err, "Error syncing healthcheck windowsEndpoint")
+	//	}
 
 	// Finish housekeeping.
 	// TODO: these could be made more consistent.

@@ -22,7 +22,7 @@ package kernelspace
 import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
-//	"k8s.io/kubernetes/pkg/proxy"
+	//	"k8s.io/kubernetes/pkg/proxy"
 	"net"
 	"strconv"
 )
@@ -87,7 +87,7 @@ func (ep *windowsEndpoint) Port() (int, error) {
 }
 
 // Equal is part of proxy.Endpoint interface.
-func (ep *windowsEndpoint) Equal(other proxy.Endpoint) bool {
+func (ep *windowsEndpoint) Equal(other Endpoint) bool {
 	return ep.String() == other.String() && ep.GetIsLocal() == other.GetIsLocal()
 }
 
@@ -99,6 +99,11 @@ func (ep *windowsEndpoint) GetNodeName() string {
 // GetZone returns the Zone for this endpoint.
 func (ep *windowsEndpoint) GetZone() string {
 	return ""
+}
+
+// TODO Jay imp topology logic mahybe in baseEndpointInfo or converge it w baseEndpointInfo
+func (ep *windowsEndpoint) GetTopology() map[string]string {
+	return map[string]string{}
 }
 
 func (ep *windowsEndpoint) Cleanup() {

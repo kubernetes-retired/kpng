@@ -21,7 +21,10 @@ package kernelspace
 
 import (
 	"fmt"
+	klog "k8s.io/klog/v2"
+	netutils "k8s.io/utils/net"
 	"net"
+	"strconv"
 
 	"github.com/Microsoft/hcsshim"
 
@@ -96,4 +99,45 @@ func (lkct WindowsKernelCompatTester) IsCompatible() error {
 		return fmt.Errorf("Windows kernel is not compatible for Kernel mode")
 	}
 	return nil
+}
+
+// random util functions fromupstream endpoints.go
+
+// IPPart returns just the IP part of an IP or IP:port or endpoint string. If the IP
+// part is an IPv6 address enclosed in brackets (e.g. "[fd00:1::5]:9999"),
+// then the brackets are stripped as well.
+func IPPart(s string) string {
+	if ip := netutils.ParseIPSloppy(s); ip != nil {
+		// IP address without port
+		return s
+	}
+	// Must be IP:port
+	host, _, err := net.SplitHostPort(s)
+	if err != nil {
+		klog.ErrorS(err, "Failed to parse host-port", "input", s)
+		return ""
+	}
+	// Check if host string is a valid IP address
+	ip := netutils.ParseIPSloppy(host)
+	if ip == nil {
+		klog.ErrorS(nil, "Failed to parse IP", "input", host)
+		return ""
+	}
+	return ip.String()
+}
+
+// PortPart returns just the port part of an endpoint string.
+func PortPart(s string) (int, error) {
+	// Must be IP:port
+	_, port, err := net.SplitHostPort(s)
+	if err != nil {
+		klog.ErrorS(err, "Failed to parse host-port", "input", s)
+		return -1, err
+	}
+	portNumber, err := strconv.Atoi(port)
+	if err != nil {
+		klog.ErrorS(err, "Failed to parse port", "input", port)
+		return -1, err
+	}
+	return portNumber, nil
 }
