@@ -9,9 +9,9 @@ replace (
 	sigs.k8s.io/kpng/backends/ipvs-as-sink => ../backends/ipvs-as-sink
 
 	sigs.k8s.io/kpng/backends/nft => ../backends/nft
+	sigs.k8s.io/kpng/backends/windows/kernelspace => ../backends/windows/kernelspace
 	sigs.k8s.io/kpng/backends/windows/userspace => ../backends/windows/userspace
 	sigs.k8s.io/kpng/backends/windows/userspace/netsh => ../backends/windows/userspace/netsh
-	sigs.k8s.io/kpng/backends/windows/kernelspace => ../backends/windows/kernelspace
 	sigs.k8s.io/kpng/client => ../client
 	sigs.k8s.io/kpng/server => ../server
 )
@@ -45,11 +45,7 @@ require (
 	github.com/spf13/cobra v1.2.1
 	google.golang.org/grpc v1.41.0
 	google.golang.org/protobuf v1.27.1
-<<<<<<< HEAD
-	k8s.io/client-go v0.22.4
-=======
 	k8s.io/client-go v0.23.4
->>>>>>> 44e36fc (Updated all go modules ...  still need to finish fixing proxier.go healthz server and proxier_sync)
 	k8s.io/klog v1.0.0
 	sigs.k8s.io/kpng/api v0.0.0-20211016172202-2f0db1baddba
 
@@ -57,19 +53,15 @@ require (
 	sigs.k8s.io/kpng/backends/iptables v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/kpng/backends/ipvs-as-sink v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/kpng/backends/nft v0.0.0-00010101000000-000000000000
-	sigs.k8s.io/kpng/backends/windows/userspace v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/kpng/backends/windows/kernelspace v0.0.0-00010101000000-000000000000
+	sigs.k8s.io/kpng/backends/windows/userspace v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/kpng/client v0.0.0-20211016172202-2f0db1baddba
 	sigs.k8s.io/kpng/server v0.0.0-00010101000000-000000000000
 )
 
 require (
-<<<<<<< HEAD
-=======
 	github.com/Microsoft/go-winio v0.4.17 // indirect
 	github.com/Microsoft/hcsshim v0.8.22 // indirect
-	github.com/OneOfOne/xxhash v1.2.8 // indirect
->>>>>>> 44e36fc (Updated all go modules ...  still need to finish fixing proxier.go healthz server and proxier_sync)
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
@@ -113,27 +105,29 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-<<<<<<< HEAD
+	// =======
 	k8s.io/api v0.22.4 // indirect
-	k8s.io/apimachinery v0.22.4 // indirect
-	k8s.io/component-base v0.22.4 // indirect
-	k8s.io/klog/v2 v2.20.0 // indirect
-	k8s.io/kube-openapi v0.0.0-20211109043538-20434351676c // indirect
-	k8s.io/utils v0.0.0-20220127004650-9b3446523e65 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
-=======
-	k8s.io/api v0.22.2 // indirect
 	k8s.io/apimachinery v0.23.4-rc.0 // indirect
 	k8s.io/apiserver v0.23.4 // indirect
-	k8s.io/component-base v0.21.0-alpha.1 // indirect
+	//<<<<<<< HEAD
+	//	k8s.io/api v0.22.4 // indirect
+	//	k8s.io/apimachinery v0.22.4 // indirect
+	k8s.io/component-base v0.22.4 // indirect
 	k8s.io/klog/v2 v2.30.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65 // indirect
-	k8s.io/kubernetes v0.0.0-00010101000000-000000000000 // indirect
-	k8s.io/utils v0.0.0-20211116205334-6203023598ed // indirect
+	k8s.io/kubernetes v1.22.4 // indirect
+	k8s.io/utils v0.0.0-20220127004650-9b3446523e65 // indirect
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
+	//	k8s.io/kube-openapi v0.0.0-20211109043538-20434351676c // indirect
+	//	k8s.io/utils v0.0.0-20220127004650-9b3446523e65 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
->>>>>>> 44e36fc (Updated all go modules ...  still need to finish fixing proxier.go healthz server and proxier_sync)
+	// >>>>>>> 44e36fc (Updated all go modules ...  still need to finish fixing proxier.go healthz server and proxier_sync)
 	sigs.k8s.io/yaml v1.2.0 // indirect
+)
+
+require (
+	github.com/lithammer/dedent v1.1.0 // indirect
+	k8s.io/component-helpers v0.0.0 // indirect
 )
 
 replace (
