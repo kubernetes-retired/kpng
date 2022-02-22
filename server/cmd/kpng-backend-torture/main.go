@@ -24,8 +24,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cespare/xxhash"
-	"github.com/gogo/protobuf/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"k8s.io/klog"
@@ -34,6 +32,7 @@ import (
 	"sigs.k8s.io/kpng/client/pkg/diffstore"
 	"sigs.k8s.io/kpng/server/pkg/server"
 	"sigs.k8s.io/kpng/server/pkg/server/watchstate"
+	"sigs.k8s.io/kpng/server/serde"
 )
 
 var (
@@ -121,14 +120,6 @@ func injectState(rev uint64, w *watchstate.WatchState) {
 	svcIP := ipGen(net.ParseIP("10.0.0.0"))
 	epIP := ipGen(net.ParseIP("10.128.0.0"))
 
-	pb := proto.NewBuffer(make([]byte, 0))
-	hashOf := func(m proto.Message) uint64 {
-		pb.Marshal(m)
-		h := xxhash.Sum64(pb.Bytes())
-		pb.Reset()
-		return h
-	}
-
 	for s := 0; s < nSvc; s++ {
 		svc := &localnetv1.Service{
 			Namespace: "default",
@@ -147,13 +138,13 @@ func injectState(rev uint64, w *watchstate.WatchState) {
 			},
 		}
 
-		svcs.Set([]byte(svc.Namespace+"/"+svc.Name), hashOf(svc), svc)
+		svcs.Set([]byte(svc.Namespace+"/"+svc.Name), serde.Hash(svc), svc)
 
 		for e := 0; e < nEpPerSvc; e++ {
 			ep := &localnetv1.Endpoint{}
 			ep.AddAddress(epIP.Next().String())
 
-			h := hashOf(ep)
+			h := serde.Hash(ep)
 			seps.Set([]byte(svc.Namespace+"/"+svc.Name+"/"+strconv.FormatUint(h, 16)), h, ep)
 		}
 	}

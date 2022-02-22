@@ -21,12 +21,11 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/cespare/xxhash"
 	"github.com/google/btree"
-	"google.golang.org/protobuf/proto"
 	"k8s.io/klog"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/server/serde"
 )
 
 type Store struct {
@@ -60,14 +59,6 @@ func New() *Store {
 		tree: btree.New(2),
 		sync: map[Set]bool{},
 	}
-}
-
-func (s *Store) hashOf(m proto.Message) (h uint64) {
-	message, err := proto.Marshal(m)
-	if err != nil {
-		panic(err) // should not happen
-	}
-	return xxhash.Sum64(message)
 }
 
 func (s *Store) Close() {
@@ -247,7 +238,7 @@ func (tx *Tx) SetService(s *localnetv1.Service, topologyKeys []string) {
 	si := &localnetv1.ServiceInfo{
 		Service:      s,
 		TopologyKeys: topologyKeys,
-		Hash: tx.s.hashOf(&localnetv1.ServiceInfo{
+		Hash: serde.Hash(&localnetv1.ServiceInfo{
 			Service:      s,
 			TopologyKeys: topologyKeys,
 		}),
@@ -304,7 +295,7 @@ func (tx *Tx) SetEndpointsOfSource(namespace, sourceName string, eis []*localnet
 			panic("inconsistent source: " + sourceName + " != " + ei.SourceName)
 		}
 
-		ei.Hash = tx.s.hashOf(&localnetv1.EndpointInfo{
+		ei.Hash = serde.Hash(&localnetv1.EndpointInfo{
 			Endpoint:   ei.Endpoint,
 			Conditions: ei.Conditions,
 			Topology:   ei.Topology,
@@ -413,7 +404,7 @@ func (tx *Tx) DelEndpointsOfSource(namespace, sourceName string) {
 func (tx *Tx) SetEndpoint(ei *localnetv1.EndpointInfo) {
 	tx.roPanic()
 
-	newHash := tx.s.hashOf(&localnetv1.EndpointInfo{
+	newHash := serde.Hash(&localnetv1.EndpointInfo{
 		Endpoint:   ei.Endpoint,
 		Conditions: ei.Conditions,
 		Topology:   ei.Topology,
@@ -482,7 +473,7 @@ func (tx *Tx) GetNode(name string) *localnetv1.Node {
 func (tx *Tx) SetNode(n *localnetv1.Node) {
 	ni := &localnetv1.NodeInfo{
 		Node: n,
-		Hash: tx.s.hashOf(n),
+		Hash: serde.Hash(n),
 	}
 
 	tx.set(&KV{
