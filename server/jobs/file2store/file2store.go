@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash"
-	"github.com/gogo/protobuf/proto"
 	"gopkg.in/yaml.v2"
 	"k8s.io/klog"
 
@@ -17,6 +16,7 @@ import (
 	"sigs.k8s.io/kpng/server/jobs/store2file"
 	"sigs.k8s.io/kpng/server/pkg/proxystore"
 	"sigs.k8s.io/kpng/server/pkg/server/watchstate"
+	"sigs.k8s.io/kpng/server/serde"
 )
 
 type Job struct {
@@ -29,19 +29,6 @@ func (j *Job) Run(ctx context.Context) {
 	store := j.Store
 
 	w := watchstate.New(nil, proxystore.AllSets)
-
-	pb := proto.NewBuffer(make([]byte, 0))
-	hashOf := func(m proto.Message) uint64 {
-		defer pb.Reset()
-
-		err := pb.Marshal(m)
-		if err != nil {
-			panic(err)
-		}
-
-		h := xxhash.Sum64(pb.Bytes())
-		return h
-	}
 
 	mtime := time.Time{}
 
@@ -80,7 +67,7 @@ func (j *Job) Run(ctx context.Context) {
 		diffEPs := w.StoreFor(proxystore.Endpoints)
 
 		for _, node := range state.Nodes {
-			diffNodes.Set([]byte(node.Name), hashOf(node), node)
+			diffNodes.Set([]byte(node.Name), serde.Hash(node), node)
 		}
 
 		for _, se := range state.Services {
@@ -97,7 +84,7 @@ func (j *Job) Run(ctx context.Context) {
 
 			fullName := []byte(svc.Namespace + "/" + svc.Name)
 
-			diffSvcs.Set(fullName, hashOf(si), si)
+			diffSvcs.Set(fullName, serde.Hash(si), si)
 
 			if len(se.Endpoints) != 0 {
 				h := xxhash.New()
@@ -110,8 +97,7 @@ func (j *Job) Run(ctx context.Context) {
 						ep.Conditions = &localnetv1.EndpointConditions{Ready: true}
 					}
 
-					ba, _ := proto.Marshal(ep)
-					h.Write(ba)
+					h.Write(serde.Marshal(ep))
 				}
 
 				diffEPs.Set(fullName, h.Sum64(), se.Endpoints)
