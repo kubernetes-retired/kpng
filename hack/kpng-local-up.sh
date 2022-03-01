@@ -25,7 +25,9 @@
 : ${CONFIG_MAP_NAME:=kpng}
 : ${SERVICE_ACCOUNT_NAME:=kpng}
 : ${NAMESPACE:=kube-system}
-export IMAGE PULL E2E_BACKEND CONFIG_MAP_NAME SERVICE_ACCOUNT_NAME NAMESPACE
+: ${KPNG_DEBUG_LEVEL:=4}
+
+export IMAGE PULL E2E_BACKEND CONFIG_MAP_NAME SERVICE_ACCOUNT_NAME NAMESPACE KPNG_DEBUG_LEVEL
 
 echo -n "this will deploy kpng with docker image $IMAGE, pull policy $PULL and the $BACKEND backend. Press enter to confirm, C-c to cancel"
 read
