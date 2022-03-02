@@ -53,8 +53,7 @@ spec:
         - name: modules
           mountPath: /lib/modules
           readOnly: true
-        args: [ "local", "--api=unix:///k8s/proxy.sock", "to-${E2E_BACKEND}" ]
-        #- --v=2
+        args: [ "local", "--api=unix:///k8s/proxy.sock", "to-${E2E_BACKEND}", "--v=${KPNG_DEBUG_LEVEL}"]
         #- --dry-run
       volumes:
       - name: empty

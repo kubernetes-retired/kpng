@@ -20,6 +20,7 @@ shopt -s expand_aliases
 : "${E2E_GO_VERSION:="1.17.3"}"
 : "${E2E_K8S_VERSION:="v1.23.3"}"
 : "${E2E_TIMEOUT_MINUTES:=100}"
+: "${KPNG_DEBUG_LEVEL:=4}"
 
 OS=$(uname| tr '[:upper:]' '[:lower:]')
 CONTAINER_ENGINE="docker"
@@ -491,6 +492,7 @@ function install_kpng {
     export CONFIG_MAP_NAME
     export SERVICE_ACCOUNT_NAME
     export NAMESPACE
+    export KPNG_DEBUG_LEVEL
     envsubst <"${0%/*}"/kpng-deployment-ds.yaml.tmpl > "${artifacts_directory}"/kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 
