@@ -41,8 +41,8 @@ func cleanupFlowEntries(flow Flow) {
 	// adapted & completed from k8s's pkg/util/conntrack
 
 	parameters := parametersWithFamily(utilnet.IsIPv6String(flow.DnatIP), "-D",
-		"-p", protoStr(flow.Protocol), "--sport", strconv.Itoa(int(flow.Port)),
-		"--dst-nat", flow.EndpointIP, "--dport", strconv.Itoa(int(flow.TargetPort)))
+		"-p", protoStr(flow.Protocol), "--dport", strconv.Itoa(int(flow.Port)),
+		"--dst-nat", flow.EndpointIP)
 
 	if flow.DnatIP != "node" {
 		parameters = append(parameters, "--orig-dst", flow.DnatIP)
