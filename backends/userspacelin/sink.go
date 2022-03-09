@@ -121,8 +121,6 @@ func (s *Backend) Setup() {
 	// make a proxier for ipv4, ipv6
 
 	usImpl = make(map[v1.IPFamily]*UserspaceLinux)
-	usImpl[v1.IPv4Protocol].iptables = iptablesutil.NewIPTableExec(exec.New(), iptablesutil.Protocol(v1.IPv4Protocol))
-	usImpl[v1.IPv6Protocol].iptables = iptablesutil.NewIPTableExec(exec.New(), iptablesutil.Protocol(v1.IPv6Protocol))
 
 	nodePortAddresses := []string{}
 	theProxier, _ := NewUserspaceLinux(NewLoadBalancerRR(), net.ParseIP("0.0.0.0"), usImpl[v1.IPv4Protocol].iptables, exec.New(), utilnet.PortRange{Base: 30000, Size: 2768}, time.Duration(1), time.Duration(1), time.Duration(1), nodePortAddresses)
@@ -132,6 +130,9 @@ func (s *Backend) Setup() {
 	// TODO THIS is untested...
 	theProxier, _ = NewUserspaceLinux(NewLoadBalancerRR(), net.ParseIP("::/0"), usImpl[v1.IPv6Protocol].iptables, exec.New(), utilnet.PortRange{Base: 30000, Size: 2768}, time.Duration(1), time.Duration(1), time.Duration(1), nodePortAddresses)
 	usImpl[v1.IPv4Protocol] = theProxier
+	usImpl[v1.IPv4Protocol].iptables = iptablesutil.NewIPTableExec(exec.New(), iptablesutil.Protocol(v1.IPv4Protocol))
+	usImpl[v1.IPv6Protocol].iptables = iptablesutil.NewIPTableExec(exec.New(), iptablesutil.Protocol(v1.IPv6Protocol))
+
 }
 
 func (s *Backend) Reset() { /* noop, we're wrapped in filterreset */ }
