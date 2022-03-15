@@ -45,7 +45,8 @@ type proxier struct {
 	ipset    util.Interface
 	exec     exec.Interface
 	//ipvs           util.Interface
-	//localDetector  proxyutiliptables.LocalTrafficDetector
+	localDetector util.LocalTrafficDetector
+
 	//portMapper     netutils.PortOpener
 	//recorder       events.EventRecorder
 	//serviceHealthServer healthcheck.ServiceHealthServer
@@ -76,6 +77,7 @@ func NewProxier(ipFamily v1.IPFamily,
 	nodeIPs []string,
 	schedulingMethod, masqueradeMark string,
 	masqueradeAll bool,
+	localDetector util.LocalTrafficDetector,
 	weight int32) *proxier {
 	return &proxier{
 		ipFamily:         ipFamily,
@@ -97,6 +99,7 @@ func NewProxier(ipFamily v1.IPFamily,
 		natRules:         iptablesutil.LineBuffer{},
 		filterChains:     iptablesutil.LineBuffer{},
 		filterRules:      iptablesutil.LineBuffer{},
+		localDetector:    localDetector,
 	}
 }
 

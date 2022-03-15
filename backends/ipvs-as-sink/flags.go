@@ -20,6 +20,7 @@ import (
 	"net"
 
 	"github.com/spf13/pflag"
+	"k8s.io/klog"
 )
 
 func (s *Backend) BindFlags(flags *pflag.FlagSet) {
@@ -32,6 +33,14 @@ func (s *Backend) BindFlags(flags *pflag.FlagSet) {
 	flags.Int32Var(&s.weight, "weight", 1, "An integer specifying the capacity of server relative to others in the pool")
 	//flags.Int32Var(s.masqueradeBit, "iptables-masquerade-bit", Int32PtrDerefOr(s.masqueradeBit, 14), "If using the pure iptables proxy, the bit of the fwmark space to mark packets requiring SNAT with.  Must be within the range [0, 31].")
 	flags.BoolVar(&s.masqueradeAll, "masquerade-all", s.masqueradeAll, "If using the pure iptables proxy, SNAT all traffic sent via Service cluster IPs (this not commonly needed)")
+	flags.StringVar(&s.k8sProxyConfig.ClusterCIDR, "cluster-cidr", getClusterCidr(), "The CIDR range of pods in the cluster. When configured, traffic sent to a Service cluster IP from outside this range will be masqueraded and traffic sent from pods to an external LoadBalancer IP will be directed to the respective cluster IP instead. This parameter is ignored if a config file is specified by --config.")
+	flags.Var(&s.k8sProxyConfig.DetectLocalMode, "detect-local-mode", "Mode to use to detect local traffic. This parameter is ignored if a config file is specified by --config.")
+}
+
+func getClusterCidr() string {
+	klog.Info("cluster cidr is called...")
+	clustercidr := "10.244.0.0/16"
+	return clustercidr
 }
 
 func interfaceAddresses() []string {

@@ -20,15 +20,17 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/klog"
 
 	"time"
 
 	"sigs.k8s.io/kpng/backends/ipvs-as-sink/exec"
-	"sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
+	util "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
 	"sigs.k8s.io/kpng/client/serviceevents"
 
 	"github.com/google/seesaw/ipvs"
@@ -74,15 +76,150 @@ type Backend struct {
 	dummy netlink.Link
 
 	masqueradeAll bool
+
+	k8sProxyConfig *KpngConfiguration
+}
+
+// KubeProxyConfiguration contains everything necessary to configure the
+// Kubernetes proxy server.
+type KpngConfiguration struct {
+	metav1.TypeMeta
+
+	// featureGates is a map of feature names to bools that enable or disable alpha/experimental features.
+	FeatureGates map[string]bool
+
+	// bindAddress is the IP address for the proxy server to serve on (set to 0.0.0.0
+	// for all interfaces)
+	BindAddress string
+	// healthzBindAddress is the IP address and port for the health check server to serve on,
+	// defaulting to 0.0.0.0:10256
+	HealthzBindAddress string
+	// metricsBindAddress is the IP address and port for the metrics server to serve on,
+	// defaulting to 127.0.0.1:10249 (set to 0.0.0.0 for all interfaces)
+	MetricsBindAddress string
+	// BindAddressHardFail, if true, kube-proxy will treat failure to bind to a port as fatal and exit
+	BindAddressHardFail bool
+	// enableProfiling enables profiling via web interface on /debug/pprof handler.
+	// Profiling handlers will be handled by metrics server.
+	EnableProfiling bool
+	// clusterCIDR is the CIDR range of the pods in the cluster. It is used to
+	// bridge traffic coming from outside of the cluster. If not provided,
+	// no off-cluster bridging will be performed.
+	ClusterCIDR string
+	// hostnameOverride, if non-empty, will be used as the identity instead of the actual hostname.
+	HostnameOverride string
+	// // clientConnection specifies the kubeconfig file and client connection settings for the proxy
+	// // server to use when communicating with the apiserver.
+	// ClientConnection componentbaseconfig.ClientConnectionConfiguration
+	// ipvs contains ipvs-related configuration options.
+	IPVS KpngIPVSConfiguration
+	// oomScoreAdj is the oom-score-adj value for kube-proxy process. Values must be within
+	// the range [-1000, 1000]
+	OOMScoreAdj *int32
+	// portRange is the range of host ports (beginPort-endPort, inclusive) that may be consumed
+	// in order to proxy service traffic. If unspecified (0-0) then ports will be randomly chosen.
+	PortRange string
+	// udpIdleTimeout is how long an idle UDP connection will be kept open (e.g. '250ms', '2s').
+	// Must be greater than 0. Only applicable for proxyMode=userspace.
+	UDPIdleTimeout metav1.Duration
+	// conntrack contains conntrack-related configuration options.
+	Conntrack KpngConntrackConfiguration
+	// configSyncPeriod is how often configuration from the apiserver is refreshed. Must be greater
+	// than 0.
+	ConfigSyncPeriod metav1.Duration
+	// nodePortAddresses is the --nodeport-addresses value for kube-proxy process. Values must be valid
+	// IP blocks. These values are as a parameter to select the interfaces where nodeport works.
+	// In case someone would like to expose a service on localhost for local visit and some other interfaces for
+	// particular purpose, a list of IP blocks would do that.
+	// If set it to "127.0.0.0/8", kube-proxy will only select the loopback interface for NodePort.
+	// If set it to a non-zero IP block, kube-proxy will filter that down to just the IPs that applied to the node.
+	// An empty string slice is meant to select all network interfaces.
+	NodePortAddresses []string
+	// ShowHiddenMetricsForVersion is the version for which you want to show hidden metrics.
+	ShowHiddenMetricsForVersion string
+	// DetectLocalMode determines mode to use for detecting local traffic, defaults to LocalModeClusterCIDR
+	DetectLocalMode LocalMode
+}
+
+// KubeProxyConntrackConfiguration contains conntrack settings for
+// the Kubernetes proxy server.
+type KpngConntrackConfiguration struct {
+	// maxPerCore is the maximum number of NAT connections to track
+	// per CPU core (0 to leave the limit as-is and ignore min).
+	MaxPerCore *int32
+	// min is the minimum value of connect-tracking records to allocate,
+	// regardless of maxPerCore (set maxPerCore=0 to leave the limit as-is).
+	Min *int32
+	// tcpEstablishedTimeout is how long an idle TCP connection will be kept open
+	// (e.g. '2s').  Must be greater than 0 to set.
+	TCPEstablishedTimeout *metav1.Duration
+	// tcpCloseWaitTimeout is how long an idle conntrack entry
+	// in CLOSE_WAIT state will remain in the conntrack
+	// table. (e.g. '60s'). Must be greater than 0 to set.
+	TCPCloseWaitTimeout *metav1.Duration
+}
+
+// KubeProxyIPVSConfiguration contains ipvs-related configuration
+// details for the Kubernetes proxy server.
+type KpngIPVSConfiguration struct {
+	// syncPeriod is the period that ipvs rules are refreshed (e.g. '5s', '1m',
+	// '2h22m').  Must be greater than 0.
+	SyncPeriod metav1.Duration
+	// minSyncPeriod is the minimum period that ipvs rules are refreshed (e.g. '5s', '1m',
+	// '2h22m').
+	MinSyncPeriod metav1.Duration
+	// ipvs scheduler
+	Scheduler string
+	// excludeCIDRs is a list of CIDR's which the ipvs proxier should not touch
+	// when cleaning up ipvs services.
+	ExcludeCIDRs []string
+	// strict ARP configure arp_ignore and arp_announce to avoid answering ARP queries
+	// from kube-ipvs0 interface
+	StrictARP bool
+	// tcpTimeout is the timeout value used for idle IPVS TCP sessions.
+	// The default value is 0, which preserves the current timeout value on the system.
+	TCPTimeout metav1.Duration
+	// tcpFinTimeout is the timeout value used for IPVS TCP sessions after receiving a FIN.
+	// The default value is 0, which preserves the current timeout value on the system.
+	TCPFinTimeout metav1.Duration
+	// udpTimeout is the timeout value used for IPVS UDP packets.
+	// The default value is 0, which preserves the current timeout value on the system.
+	UDPTimeout metav1.Duration
+}
+
+// LocalMode represents modes to detect local traffic from the node
+type LocalMode string
+
+// Currently supported modes for LocalMode
+const (
+	LocalModeClusterCIDR LocalMode = "ClusterCIDR"
+	LocalModeNodeCIDR    LocalMode = "NodeCIDR"
+)
+
+func (m *LocalMode) Set(s string) error {
+	*m = LocalMode(s)
+	return nil
+}
+
+func (m *LocalMode) String() string {
+	if m != nil {
+		return string(*m)
+	}
+	return ""
+}
+
+func (m *LocalMode) Type() string {
+	return "LocalMode"
 }
 
 var _ decoder.Interface = &Backend{}
 
 func New() *Backend {
 	return &Backend{
-		proxiers: make(map[v1.IPFamily]*proxier),
-		svcs:     map[string]*localnetv1.Service{},
-		svcEPMap: map[string]int{},
+		proxiers:       make(map[v1.IPFamily]*proxier),
+		svcs:           map[string]*localnetv1.Service{},
+		svcEPMap:       map[string]int{},
+		k8sProxyConfig: new(KpngConfiguration),
 	}
 }
 
@@ -252,6 +389,33 @@ func (s *Backend) Setup() {
 
 		iptInterface := util.NewIPTableInterface(execer, util.Protocol(ipFamily))
 
+		var config KpngConfiguration
+		var detectLocalMode LocalMode
+		detectLocalMode, err = s.getDetectLocalMode(config)
+		if err != nil {
+			return
+		}
+
+		var nodeInfo *v1.Node
+		// TODO Implement the NodeCIDR mode.
+		// if detectLocalMode == proxyconfigapi.LocalModeNodeCIDR {
+		// 	klog.Info("Watching for node, awaiting podCIDR allocation", "hostname", hostname)
+		// 	nodeInfo, err = waitForPodCIDR(client, hostname)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// 	klog.Info("NodeInfo", "PodCIDR", nodeInfo.Spec.PodCIDR, "PodCIDRs", nodeInfo.Spec.PodCIDRs)
+		// }
+
+		klog.V(2).Info("DetectLocalMode", "LocalMode", string(detectLocalMode))
+
+		var localDetector util.LocalTrafficDetector
+		localDetector, err = s.getLocalDetector(detectLocalMode, config, iptInterface, nodeInfo)
+		klog.V(2).Info("LocalDetector return value is...", localDetector)
+		if err != nil {
+			return
+		}
+
 		s.proxiers[ipFamily] = NewProxier(
 			ipFamily,
 			s.dummy,
@@ -261,6 +425,7 @@ func (s *Backend) Setup() {
 			s.schedulingMethod,
 			masqueradeMark,
 			s.masqueradeAll,
+			localDetector,
 			s.weight,
 		)
 
@@ -437,4 +602,39 @@ func (s *Backend) initializeKernelConfig(kernelHandler util.KernelHandler) error
 	//	}
 	//}
 	return nil
+}
+
+func (s *Backend) getLocalDetector(mode LocalMode, config KpngConfiguration, ipt util.IPTableInterface, nodeInfo *v1.Node) (util.LocalTrafficDetector, error) {
+	switch mode {
+	case LocalModeClusterCIDR:
+		if len(strings.TrimSpace(config.ClusterCIDR)) == 0 {
+			klog.Info("Detect-local-mode set to ClusterCIDR, but no cluster CIDR defined")
+			klog.Info("clusterCIDR value is....", config.ClusterCIDR)
+			break
+		}
+		return util.NewDetectLocalByCIDR(config.ClusterCIDR, ipt)
+	case LocalModeNodeCIDR:
+		if len(strings.TrimSpace(nodeInfo.Spec.PodCIDR)) == 0 {
+			klog.Info("Detect-local-mode set to NodeCIDR, but no PodCIDR defined at node")
+			break
+		}
+		return util.NewDetectLocalByCIDR(nodeInfo.Spec.PodCIDR, ipt)
+	}
+	klog.V(0).Info("Defaulting to no-op detect-local", "detect-local-mode", string(mode))
+	return util.NewNoOpLocalDetector(), nil
+}
+
+func (s *Backend) getDetectLocalMode(config KpngConfiguration) (LocalMode, error) {
+	mode := config.DetectLocalMode
+	klog.Info("local mode is ......", config.DetectLocalMode)
+	switch mode {
+	case LocalModeClusterCIDR, LocalModeNodeCIDR:
+		return mode, nil
+	default:
+		if strings.TrimSpace(mode.String()) != "" {
+			return mode, fmt.Errorf("unknown detect-local-mode: %v", mode)
+		}
+		klog.V(4).Info("Defaulting detect-local-mode", "LocalModeClusterCIDR", string(LocalModeClusterCIDR))
+		return LocalModeClusterCIDR, nil
+	}
 }
