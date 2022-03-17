@@ -1,8 +1,9 @@
 package diffstore2
 
 import (
-	"constraints"
 	"fmt"
+
+	"golang.org/x/exp/constraints"
 )
 
 func NewAnyStore[K constraints.Ordered, T any](equal func(a, b T) bool) *Store[K, *AnyLeaf[T]] {

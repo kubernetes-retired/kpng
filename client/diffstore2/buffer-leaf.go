@@ -2,8 +2,8 @@ package diffstore2
 
 import (
 	"bytes"
-	"constraints"
 
+	"golang.org/x/exp/constraints"
 	"github.com/cespare/xxhash"
 )
 
