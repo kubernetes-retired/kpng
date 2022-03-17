@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/kpng/api/localnetv1"
 	iptablesutil "sigs.k8s.io/kpng/backends/iptables/util"
 	"sigs.k8s.io/kpng/backends/ipvs-as-sink/exec"
-	util "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
+	"sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
 
 	"sigs.k8s.io/kpng/client/pkg/diffstore"
 )
@@ -41,11 +41,10 @@ type proxier struct {
 
 	dummy netlink.Link
 
-	iptables util.IPTableInterface
-	ipset    util.Interface
-	exec     exec.Interface
-	//ipvs           util.Interface
-	//localDetector  proxyutiliptables.LocalTrafficDetector
+	iptables      util.IPTableInterface
+	ipset         util.Interface
+	exec          exec.Interface
+	localDetector util.LocalTrafficDetector
 	//portMapper     netutils.PortOpener
 	//recorder       events.EventRecorder
 	//serviceHealthServer healthcheck.ServiceHealthServer
@@ -76,6 +75,7 @@ func NewProxier(ipFamily v1.IPFamily,
 	nodeIPs []string,
 	schedulingMethod, masqueradeMark string,
 	masqueradeAll bool,
+	localDetector util.LocalTrafficDetector,
 	weight int32) *proxier {
 	return &proxier{
 		ipFamily:         ipFamily,
@@ -97,6 +97,7 @@ func NewProxier(ipFamily v1.IPFamily,
 		natRules:         iptablesutil.LineBuffer{},
 		filterChains:     iptablesutil.LineBuffer{},
 		filterRules:      iptablesutil.LineBuffer{},
+		localDetector:    localDetector,
 	}
 }
 

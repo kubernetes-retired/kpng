@@ -30,8 +30,17 @@ func (s *Backend) BindFlags(flags *pflag.FlagSet) {
 	flags.StringSliceVar(&s.nodeAddresses, "node-address", interfaceAddresses(), "A comma-separated list of IPs to associate when using NodePort type. Defaults to all the Node addresses")
 	flags.StringVar(&s.schedulingMethod, "scheduling-method", "rr", "Algorithm for allocating TCP conn & UDP datagrams to real servers. Values: rr,wrr,lc,wlc,lblc,lblcr,dh,sh,seq,nq")
 	flags.Int32Var(&s.weight, "weight", 1, "An integer specifying the capacity of server relative to others in the pool")
-	//flags.Int32Var(s.masqueradeBit, "iptables-masquerade-bit", Int32PtrDerefOr(s.masqueradeBit, 14), "If using the pure iptables proxy, the bit of the fwmark space to mark packets requiring SNAT with.  Must be within the range [0, 31].")
 	flags.BoolVar(&s.masqueradeAll, "masquerade-all", s.masqueradeAll, "If using the pure iptables proxy, SNAT all traffic sent via Service cluster IPs (this not commonly needed)")
+	flags.StringVar(&s.k8sProxyConfig.ClusterCIDR, "cluster-cidr", getClusterCidr(), "The CIDR range of pods in the cluster. When configured, traffic sent to a Service cluster IP from outside this range will be masqueraded and traffic sent from pods to an external LoadBalancer IP will be directed to the respective cluster IP instead. This parameter is ignored if a config file is specified by --config.")
+	flags.Var(&s.k8sProxyConfig.DetectLocalMode, "detect-local-mode", "Mode to use to detect local traffic. This parameter is ignored if a config file is specified by --config.")
+}
+
+// TODO This function needs to be removed eventually.
+// Time being ClusterCIDR used by KIND are hardcoded.
+// In k8s kube-proxy clusterCIDR is read from kube-proxy configMap
+// Such equivalent configMap needs to be generated for KPNG.
+func getClusterCidr() string {
+	return "10.244.0.0/16,fd00:10:244::/56"
 }
 
 func interfaceAddresses() []string {

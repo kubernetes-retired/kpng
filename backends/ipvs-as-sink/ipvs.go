@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
+
+	"sigs.k8s.io/kpng/backends/ipvs-as-sink/config"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/version"
@@ -39,6 +42,8 @@ import (
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
 	"sigs.k8s.io/kpng/client/localsink/filterreset"
+
+	netutils "k8s.io/utils/net"
 )
 
 // In IPVS proxy mode, the following flags need to be set
@@ -74,15 +79,18 @@ type Backend struct {
 	dummy netlink.Link
 
 	masqueradeAll bool
+
+	k8sProxyConfig *config.KpngConfiguration
 }
 
 var _ decoder.Interface = &Backend{}
 
 func New() *Backend {
 	return &Backend{
-		proxiers: make(map[v1.IPFamily]*proxier),
-		svcs:     map[string]*localnetv1.Service{},
-		svcEPMap: map[string]int{},
+		proxiers:       make(map[v1.IPFamily]*proxier),
+		svcs:           map[string]*localnetv1.Service{},
+		svcEPMap:       map[string]int{},
+		k8sProxyConfig: new(config.KpngConfiguration),
 	}
 }
 
@@ -240,8 +248,36 @@ func (s *Backend) Setup() {
 	// Create a ipset utils.
 	execer := exec.New()
 	ipsetInterface := util.New(execer)
+	// Create iptables handlers for both families, one is already created
+	// Always ordered as IPv4, IPv6
+	// TODO check primaryProtocol based on IP Family of k8s cluster. Time being using as dual-stack always.
+	var ipt [2]util.IPTableInterface
+	ipt[0] = util.NewIPTableInterface(execer, util.ProtocolIPv4)
+	ipt[1] = util.NewIPTableInterface(execer, util.ProtocolIPv6)
 
-	for _, ipFamily := range []v1.IPFamily{v1.IPv4Protocol, v1.IPv6Protocol} {
+	detectLocalMode, err := getDetectLocalMode(s.k8sProxyConfig)
+	if err != nil {
+		return
+	}
+
+	klog.V(2).Info("DetectLocalMode", "LocalMode", string(detectLocalMode))
+
+	var localDetector [2]util.LocalTrafficDetector
+	localDetector, err = getDualStackLocalDetectorTuple(detectLocalMode, s.k8sProxyConfig, ipt, nil)
+	klog.V(2).Info("LocalDetector return value is...", localDetector)
+	if err != nil {
+		return
+	}
+
+	s.NewDualStackProxier(ipsetInterface, masqueradeMark, localDetector, ipt)
+}
+
+func (s *Backend) NewDualStackProxier(ipsetInterface util.Interface,
+	masqueradeMark string,
+	localDetector [2]util.LocalTrafficDetector,
+	iptInterface [2]util.IPTableInterface) {
+
+	for i, ipFamily := range []v1.IPFamily{v1.IPv4Protocol, v1.IPv6Protocol} {
 		var nodeIPs []string
 
 		for _, nodeIP := range s.nodeAddresses {
@@ -250,24 +286,22 @@ func (s *Backend) Setup() {
 			}
 		}
 
-		iptInterface := util.NewIPTableInterface(execer, util.Protocol(ipFamily))
-
 		s.proxiers[ipFamily] = NewProxier(
 			ipFamily,
 			s.dummy,
 			ipsetInterface,
-			iptInterface,
+			iptInterface[i],
 			nodeIPs,
 			s.schedulingMethod,
 			masqueradeMark,
 			s.masqueradeAll,
+			localDetector[i],
 			s.weight,
 		)
 
 		s.proxiers[ipFamily].initializeIPSets()
 	}
 }
-
 func (s *Backend) createIPVSDummyInterface() {
 	// populate dummyIPs
 	const dummyName = "kube-ipvs0"
@@ -437,4 +471,102 @@ func (s *Backend) initializeKernelConfig(kernelHandler util.KernelHandler) error
 	//	}
 	//}
 	return nil
+}
+
+func getDualStackLocalDetectorTuple(mode config.LocalMode, cfg *config.KpngConfiguration, ipt [2]util.IPTableInterface, nodeInfo *v1.Node) ([2]util.LocalTrafficDetector, error) {
+	var err error
+	localDetectors := [2]util.LocalTrafficDetector{util.NewNoOpLocalDetector(), util.NewNoOpLocalDetector()}
+	switch mode {
+	case config.LocalModeClusterCIDR:
+		if len(strings.TrimSpace(cfg.ClusterCIDR)) == 0 {
+			klog.Info("Detect-local-mode set to ClusterCIDR, but no cluster CIDR defined")
+			break
+		}
+
+		clusterCIDRs := cidrTuple(cfg.ClusterCIDR)
+
+		if len(strings.TrimSpace(clusterCIDRs[0])) == 0 {
+			klog.Info("Detect-local-mode set to ClusterCIDR, but no IPv4 cluster CIDR defined, defaulting to no-op detect-local for IPv4")
+		} else {
+			localDetectors[0], err = util.NewDetectLocalByCIDR(clusterCIDRs[0], ipt[0])
+			if err != nil { // don't loose the original error
+				return localDetectors, err
+			}
+		}
+
+		if len(strings.TrimSpace(clusterCIDRs[1])) == 0 {
+			klog.Info("Detect-local-mode set to ClusterCIDR, but no IPv6 cluster CIDR defined, , defaulting to no-op detect-local for IPv6")
+		} else {
+			localDetectors[1], err = util.NewDetectLocalByCIDR(clusterCIDRs[1], ipt[1])
+		}
+		return localDetectors, err
+	case config.LocalModeNodeCIDR:
+		if nodeInfo == nil || len(strings.TrimSpace(nodeInfo.Spec.PodCIDR)) == 0 {
+			klog.Info("No node info available to configure detect-local-mode NodeCIDR")
+			break
+		}
+		// localDetectors, like ipt, need to be of the order [IPv4, IPv6], but PodCIDRs is setup so that PodCIDRs[0] == PodCIDR.
+		// so have to handle the case where PodCIDR can be IPv6 and set that to localDetectors[1]
+		if netutils.IsIPv6CIDRString(nodeInfo.Spec.PodCIDR) {
+			localDetectors[1], err = util.NewDetectLocalByCIDR(nodeInfo.Spec.PodCIDR, ipt[1])
+			if err != nil {
+				return localDetectors, err
+			}
+			if len(nodeInfo.Spec.PodCIDRs) > 1 {
+				localDetectors[0], err = util.NewDetectLocalByCIDR(nodeInfo.Spec.PodCIDRs[1], ipt[0])
+			}
+		} else {
+			localDetectors[0], err = util.NewDetectLocalByCIDR(nodeInfo.Spec.PodCIDR, ipt[0])
+			if err != nil {
+				return localDetectors, err
+			}
+			if len(nodeInfo.Spec.PodCIDRs) > 1 {
+				localDetectors[1], err = util.NewDetectLocalByCIDR(nodeInfo.Spec.PodCIDRs[1], ipt[1])
+			}
+		}
+		return localDetectors, err
+	default:
+		klog.Info("Unknown detect-local-mode", "detect-local-mode", mode)
+	}
+	klog.Info("Defaulting to no-op detect-local", "detect-local-mode", string(mode))
+	return localDetectors, nil
+}
+
+func getDetectLocalMode(cfg *config.KpngConfiguration) (config.LocalMode, error) {
+	mode := cfg.DetectLocalMode
+	klog.Info("local mode is ......", cfg.DetectLocalMode)
+	switch mode {
+	case config.LocalModeClusterCIDR, config.LocalModeNodeCIDR:
+		return mode, nil
+	default:
+		if strings.TrimSpace(mode.String()) != "" {
+			return mode, fmt.Errorf("unknown detect-local-mode: %v", mode)
+		}
+		klog.V(4).Info("Defaulting detect-local-mode", "LocalModeClusterCIDR", string(config.LocalModeClusterCIDR))
+		return config.LocalModeClusterCIDR, nil
+	}
+}
+
+// cidrTuple takes a comma separated list of CIDRs and return a tuple (ipv4cidr,ipv6cidr)
+// The returned tuple is guaranteed to have the order (ipv4,ipv6) and if no cidr from a family is found an
+// empty string "" is inserted.
+func cidrTuple(cidrList string) [2]string {
+	cidrs := [2]string{"", ""}
+	foundIPv4 := false
+	foundIPv6 := false
+
+	for _, cidr := range strings.Split(cidrList, ",") {
+		if netutils.IsIPv6CIDRString(cidr) && !foundIPv6 {
+			cidrs[1] = cidr
+			foundIPv6 = true
+		} else if !foundIPv4 {
+			cidrs[0] = cidr
+			foundIPv4 = true
+		}
+		if foundIPv6 && foundIPv4 {
+			break
+		}
+	}
+
+	return cidrs
 }

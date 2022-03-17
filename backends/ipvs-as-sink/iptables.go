@@ -209,15 +209,14 @@ func (p *proxier) writeIptablesRules() {
 		)
 		if p.masqueradeAll {
 			p.natRules.Write(args, "dst,dst", "-j", string(KubeMarkMasqChain))
-			//TODO: localDetector code needs to be added later
-			//} else if p.localDetector.IsImplemented() {
-			//	// This masquerades off-cluster traffic to a service VIP.  The idea
-			//	// is that you can establish a static route for your Service range,
-			//	// routing to any node, and that node will bridge into the Service
-			//	// for you.  Since that might bounce off-node, we masquerade here.
-			//	// If/when we support "Local" policy for VIPs, we should update this.
-			//	p.natRules.Write(p.localDetector.JumpIfNotLocal(append(args, "dst,dst"), string(KubeMarkMasqChain)))
-			//} else {
+		} else if p.localDetector.IsImplemented() {
+			// This masquerades off-cluster traffic to a service VIP.  The idea
+			// is that you can establish a static route for your Service range,
+			// routing to any node, and that node will bridge into the Service
+			// for you.  Since that might bounce off-node, we masquerade here.
+			// If/when we support "Local" policy for VIPs, we should update this.
+			klog.Info("---> localdetector implemented in iptables")
+			p.natRules.Write(p.localDetector.JumpIfNotLocal(append(args, "dst,dst"), string(KubeMarkMasqChain)))
 		} else {
 			// Masquerade all OUTPUT traffic coming from a service ip.
 			// The kube dummy interface has all service VIPs assigned which
