@@ -8,6 +8,7 @@ require (
 	github.com/google/btree v1.0.1
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
+	golang.org/x/exp v0.0.0-20220317015231-48e79f11773a
 	google.golang.org/grpc v1.41.0
 	google.golang.org/protobuf v1.27.1
 	k8s.io/klog/v2 v2.9.0
@@ -26,6 +27,6 @@ require (
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/go-logr/logr v0.4.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22 // indirect
+	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654 // indirect
 	golang.org/x/text v0.3.6 // indirect
 )

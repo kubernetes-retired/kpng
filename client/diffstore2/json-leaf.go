@@ -1,9 +1,9 @@
 package diffstore2
 
 import (
-	"constraints"
 	"encoding/json"
 
+	"golang.org/x/exp/constraints"
 	"github.com/cespare/xxhash"
 )
 

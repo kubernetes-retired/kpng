@@ -1,8 +1,7 @@
 package diffstore2
 
 import (
-	"constraints"
-
+	"golang.org/x/exp/constraints"
 	"github.com/google/btree"
 )
 
