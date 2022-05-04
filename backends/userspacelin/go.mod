@@ -31,6 +31,7 @@ replace (
 	sigs.k8s.io/kpng/backends/iptables => ../iptables
 	sigs.k8s.io/kpng/backends/utils => ../utils
 	sigs.k8s.io/kpng/client => ../../client
+	sigs.k8s.io/kpng/client/backendcmd => ../../backends
 )
 
 require (
