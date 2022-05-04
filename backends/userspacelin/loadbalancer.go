@@ -20,8 +20,7 @@ type LoadBalancer interface {
 
 	// For userspace because we dont have an EndpointChangeTracker which can auto lookup services behind the scenes,
 	// we need to send this explicitly.
-	OnEndpointsAdd(service []*iptables.ServicePortName, endpoints *localnetv1.Endpoint)
-	OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints)
-	OnEndpointsDelete(endpoints *v1.Endpoints)
+	OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service)
+	OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service)
 	OnEndpointsSynced()
 }

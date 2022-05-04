@@ -30,8 +30,6 @@ import (
 	"time"
 
 	k8snet "k8s.io/apimachinery/pkg/util/net"
-	"sigs.k8s.io/kpng/backends/userspacelin/async"
-	"sigs.k8s.io/kpng/backends/userspacelin/conntrack"
 
 	// libcontaineruserns "github.com/opencontainers/runc/libcontainer/userns"
 	v1 "k8s.io/api/core/v1"
@@ -208,15 +206,15 @@ var (
 // created, it will keep iptables up to date in the background and will not
 // terminate if a particular iptables call fails.
 
-func NewUserspaceLinux(loadBalancer LoadBalancer, listenIP net.IP, iptables iptablesutil.Interface, exec utilexec.Interface, pr utilnet.PortRange, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, nodePortAddresses []string) (*UserspaceLinux, error) {
-	return NewCustomProxier(loadBalancer, listenIP, iptables, exec, pr, syncPeriod, minSyncPeriod, udpIdleTimeout, nodePortAddresses, newProxySocket)
+func NewUserspaceLinux(loadBalancer LoadBalancer, listenIP net.IP, iptables iptablesutil.Interface, exec utilexec.Interface, pr utilnet.PortRange, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration) (*UserspaceLinux, error) {
+	return NewCustomProxier(loadBalancer, listenIP, iptables, exec, pr, syncPeriod, minSyncPeriod, udpIdleTimeout)
 }
 
 // NewCustomProxier functions similarly to NewProxier, returning a new Proxier
 // for the given LoadBalancer and address.  The new proxier is constructed using
 // the ProxySocket constructor provided, however, instead of constructing the
 // default ProxySockets.
-func NewCustomProxier(loadBalancer LoadBalancer, listenIP net.IP, iptables iptablesutil.Interface, exec utilexec.Interface, pr utilnet.PortRange, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, nodePortAddresses []string, makeProxySocket ProxySocketFunc) (*UserspaceLinux, error) {
+func NewCustomProxier(loadBalancer LoadBalancer, listenIP net.IP, iptables iptablesutil.Interface, exec utilexec.Interface, pr utilnet.PortRange, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration) (*UserspaceLinux, error) {
 
 	// If listenIP is given, assume that is the intended host IP.  Otherwise
 	// try to find a suitable host IP address from network interfaces.
@@ -242,11 +240,11 @@ func NewCustomProxier(loadBalancer LoadBalancer, listenIP net.IP, iptables iptab
 	klog.V(2).InfoS("Setting proxy IP and initializing iptables", "ip", hostIP)
 
 	// ... finish implementing these functions ...
-	return createProxier(loadBalancer, hostIP, iptables, exec, hostIP, proxyPorts, syncPeriod, minSyncPeriod, udpIdleTimeout, makeProxySocket)
+	return createProxier(loadBalancer, hostIP, iptables, exec, hostIP, proxyPorts, syncPeriod, minSyncPeriod, udpIdleTimeout)
 }
 
 // createProxier makes a userspace proxier.  It does some iptables actions but it doesn't actually run iptables AS the proxy.
-func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptablesInterfaceImpl iptablesutil.Interface, exec utilexec.Interface, hostIP net.IP, proxyPorts PortAllocator, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration, makeProxySocket ProxySocketFunc) (*UserspaceLinux, error) {
+func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptablesInterfaceImpl iptablesutil.Interface, exec utilexec.Interface, hostIP net.IP, proxyPorts PortAllocator, syncPeriod, minSyncPeriod, udpIdleTimeout time.Duration) (*UserspaceLinux, error) {
 	// Hack: since the userspace proxy is old, we don't expect people to need to replace this loadbalancer. so we hardcode it to round_robin.go.
 
 	// convenient to pass nil for tests..
@@ -263,23 +261,22 @@ func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptablesInterface
 		return nil, fmt.Errorf("failed to flush iptables: %v", err)
 	}
 	proxier := &UserspaceLinux{
-		loadBalancer:    loadBalancer, // <----
-		serviceMap:      make(map[iptables.ServicePortName]*ServiceInfo),
-		serviceChanges:  make(map[types.NamespacedName]*UserspaceServiceChangeTracker),
-		portMap:         make(map[portMapKey]*portMapValue),
-		syncPeriod:      syncPeriod,
-		minSyncPeriod:   minSyncPeriod,
-		udpIdleTimeout:  udpIdleTimeout,
-		listenIP:        listenIP,
-		iptables:        iptablesInterfaceImpl,
-		hostIP:          hostIP,
-		proxyPorts:      proxyPorts,
-		makeProxySocket: makeProxySocket,
-		exec:            exec,
-		stopChan:        make(chan struct{}),
+		loadBalancer:   loadBalancer, // <----
+		serviceMap:     make(map[iptables.ServicePortName]*ServiceInfo),
+		serviceChanges: make(map[types.NamespacedName]*UserspaceServiceChangeTracker),
+		portMap:        make(map[portMapKey]*portMapValue),
+		syncPeriod:     syncPeriod,
+		minSyncPeriod:  minSyncPeriod,
+		udpIdleTimeout: udpIdleTimeout,
+		listenIP:       listenIP,
+		iptables:       iptablesInterfaceImpl,
+		hostIP:         hostIP,
+		proxyPorts:     proxyPorts,
+		exec:           exec,
+		stopChan:       make(chan struct{}),
 	}
 	klog.V(3).InfoS("Record sync param", "minSyncPeriod", minSyncPeriod, "syncPeriod", syncPeriod, "burstSyncs", numBurstSyncs)
-	proxier.syncRunner = async.NewBoundedFrequencyRunner("userspace-proxy-sync-runner", proxier.syncProxyRules, minSyncPeriod, syncPeriod, numBurstSyncs)
+	//	proxier.syncRunner = async.NewBoundedFrequencyRunner("userspace-proxy-sync-runner", proxier.syncProxyRules, minSyncPeriod, syncPeriod, numBurstSyncs)
 	return proxier, nil
 }
 
@@ -612,11 +609,11 @@ func (proxier *UserspaceLinux) unmergeService(service *localnetv1.Service, exist
 		proxier.loadBalancer.DeleteService(serviceName)
 		info.setFinished()
 	}
-	for _, svcIP := range staleUDPServices.UnsortedList() {
-		if err := conntrack.ClearEntriesForIP(proxier.exec, svcIP, v1.ProtocolUDP); err != nil {
-			klog.ErrorS(err, "Failed to delete stale service IP connections", "ip", svcIP)
-		}
-	}
+	// for _, svcIP := range staleUDPServices.UnsortedList() {
+	// 	if err := conntrack.ClearEntriesForIP(proxier.exec, svcIP, v1.ProtocolUDP); err != nil {
+	// 		klog.ErrorS(err, "Failed to delete stale service IP connections", "ip", svcIP)
+	// 	}
+	// }
 }
 
 func (proxier *UserspaceLinux) serviceChange(previous, current *localnetv1.Service, detail string) {
@@ -691,20 +688,20 @@ func (proxier *UserspaceLinux) OnServiceSynced() {
 
 // OnEndpointsAdd is called whenever creation of new endpoints object
 // is observed.
-func (proxier *UserspaceLinux) OnEndpointsAdd(spn []*iptables.ServicePortName, endpoints *localnetv1.Endpoint) {
-	proxier.loadBalancer.OnEndpointsAdd(spn, endpoints)
+func (proxier *UserspaceLinux) OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
+	proxier.loadBalancer.OnEndpointsAdd(ep, svc)
 }
 
 // OnEndpointsUpdate is called whenever modification of an existing
 // endpoints object is observed.
 func (proxier *UserspaceLinux) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {
-	proxier.loadBalancer.OnEndpointsUpdate(oldEndpoints, endpoints)
+	//	proxier.loadBalancer.OnEndpointsUpdate(oldEndpoints, endpoints)
 }
 
 // OnEndpointsDelete is called whenever deletion of an existing endpoints
 // object is observed.
-func (proxier *UserspaceLinux) OnEndpointsDelete(endpoints *v1.Endpoints) {
-	proxier.loadBalancer.OnEndpointsDelete(endpoints)
+func (proxier *UserspaceLinux) OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
+	proxier.loadBalancer.OnEndpointsDelete(ep, svc)
 }
 
 // OnEndpointsSynced is called once all the initial event handlers were

@@ -5,7 +5,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	klog "k8s.io/klog/v2"
-	"sigs.k8s.io/kpng/backends/userspacelin/metrics"
+
+	//	"sigs.k8s.io/kpng/backends/userspacelin/metrics"
 
 	// "k8s.io/kubernetes/pkg/proxy/metrics"
 	"sigs.k8s.io/kpng/api/localnetv1"
@@ -39,7 +40,7 @@ func (sct *UserspaceServiceChangeTracker) Update(current *localnetv1.Service) bo
 	if svc == nil {
 		return false
 	}
-	metrics.ServiceChangesTotal.Inc()
+	//metrics.ServiceChangesTotal.Inc()
 	namespacedName := types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}
 	var change *userspaceServiceChange
 	var ok bool
@@ -57,16 +58,16 @@ func (sct *UserspaceServiceChangeTracker) Update(current *localnetv1.Service) bo
 
 	// *change = sct.serviceToServiceMap(current)
 	// klog.V(2).Infof("Service %s updated: %d ports", namespacedName, len(*change))
-	metrics.ServiceChangesPending.Set(float64(len(sct.items)))
+	//metrics.ServiceChangesPending.Set(float64(len(sct.items)))
 	return len(sct.items) > 0
 }
 
 func (sct *UserspaceServiceChangeTracker) Delete(namespace, name string) bool {
-	metrics.ServiceChangesTotal.Inc()
+	//metrics.ServiceChangesTotal.Inc()
 	namespacedName := types.NamespacedName{Namespace: namespace, Name: name}
 	sct.items[namespacedName] = nil
 	klog.V(2).Infof("Service %s updated for delete", namespacedName)
-	metrics.ServiceChangesPending.Set(float64(len(sct.items)))
+	//metrics.ServiceChangesPending.Set(float64(len(sct.items)))
 	return len(sct.items) > 0
 }
 

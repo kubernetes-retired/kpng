@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	v1 "k8s.io/api/core/v1"
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	klog "k8s.io/klog/v2"
 	utilnet "k8s.io/utils/net"
 	"sigs.k8s.io/kpng/api/localnetv1"
@@ -92,4 +93,46 @@ func GetLocalAddrSet() utilnet.IPSet {
 	localAddrSet := utilnet.IPSet{}
 	localAddrSet.Insert(localAddrs...)
 	return localAddrSet
+}
+
+// BuildPortsToEndpointsMap builds a map of portname -> all ip:ports for that
+// portname.
+func buildPortsToEndpointsMap(ep *localnetv1.Endpoint, svc *localnetv1.Service) map[string][]string {
+	portsToEndpoints := map[string][]string{}
+
+	for _, ip := range ep.IPs.GetV4() {
+		for _, port := range svc.Ports {
+			if isValidEndpoint(ip, int(port.Port)) {
+				portsToEndpoints[port.Name] = append(portsToEndpoints[port.Name], net.JoinHostPort(ip, strconv.Itoa(int(port.TargetPort))))
+
+			}
+		}
+	}
+
+	return portsToEndpoints
+}
+
+// ShuffleStrings copies strings from the specified slice into a copy in random
+// order. It returns a new slice.
+func ShuffleStrings(s []string) []string {
+	if s == nil {
+		return nil
+	}
+	shuffled := make([]string, len(s))
+	perm := utilrand.Perm(len(s))
+	for i, j := range perm {
+		shuffled[j] = s[i]
+	}
+	return shuffled
+}
+
+// CopyStrings copies the contents of the specified string slice
+// into a new slice.
+func copyStrings(s []string) []string {
+	if s == nil {
+		return nil
+	}
+	c := make([]string, len(s))
+	copy(c, s)
+	return c
 }

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/sets"
-	"sigs.k8s.io/kpng/backends/userspacelin/util"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
 
@@ -232,7 +231,7 @@ func (lb *LoadBalancerRR) OnEndpointsAdd(service []*iptables.ServicePortName, en
 			// To be safe we will call it here.  A new service will only be created
 			// if one does not already exist.
 			state = lb.newServiceInternal(svcPort, v1.ServiceAffinity(""), 0)
-			state.endpoints = util.ShuffleStrings(newEndpoints)
+			state.endpoints = ShuffleStrings(newEndpoints)
 
 			// Reset the round-robin index.
 			state.index = 0
@@ -245,7 +244,7 @@ func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoint
 
 	// part 1: make new endpoints as needed stuff...
 
-	portsToEndpoints := util.BuildPortsToEndpointsMap(endpoints)
+	portsToEndpoints := buildPortsToEndpointsMap(endpoints)
 	registeredEndpoints := make(map[iptables.ServicePortName]bool)
 
 	lb.lock.Lock()
@@ -262,7 +261,7 @@ func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoint
 			curEndpoints = state.endpoints
 		}
 
-		if !exists || state == nil || len(curEndpoints) != len(newEndpoints) || !slicesEquiv(util.CopyStrings(curEndpoints), newEndpoints) {
+		if !exists || state == nil || len(curEndpoints) != len(newEndpoints) || !slicesEquiv(copyStrings(curEndpoints), newEndpoints) {
 			klog.V(1).Infof("LoadBalancerRR: Setting endpoints for %s to %+v", svcPort, newEndpoints)
 			lb.removeStaleAffinity(svcPort, newEndpoints)
 			// OnEndpointsUpdate can be called without NewService being called externally.
@@ -270,7 +269,7 @@ func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoint
 			// if one does not already exist.  The affinity will be updated
 			// later, once NewService is called.
 			state = lb.newServiceInternal(svcPort, v1.ServiceAffinity(""), 0)
-			state.endpoints = util.ShuffleStrings(newEndpoints)
+			state.endpoints = ShuffleStrings(newEndpoints)
 
 			// Reset the round-robin index.
 			state.index = 0
@@ -279,7 +278,7 @@ func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoint
 	}
 
 	// part 2: clean old stuff
-	oldPortsToEndpoints := util.BuildPortsToEndpointsMap(oldEndpoints)
+	oldPortsToEndpoints := buildPortsToEndpointsMap(oldEndpoints)
 
 	// clean old stuff
 	// Now remove all endpoints missing from the update.
@@ -304,7 +303,7 @@ func (lb *LoadBalancerRR) resetService(svcPort iptables.ServicePortName) {
 }
 
 func (lb *LoadBalancerRR) OnEndpointsDelete(endpoints *v1.Endpoints) {
-	portsToEndpoints := util.BuildPortsToEndpointsMap(endpoints)
+	portsToEndpoints := buildPortsToEndpointsMap(endpoints)
 
 	lb.lock.Lock()
 	defer lb.lock.Unlock()
