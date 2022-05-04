@@ -27,6 +27,7 @@ replace (
 )
 
 replace (
+	sigs.k8s.io/kpng => ../../empty
 	sigs.k8s.io/kpng/api => ../../api
 	sigs.k8s.io/kpng/backends/iptables => ../iptables
 	sigs.k8s.io/kpng/backends/utils => ../utils
@@ -94,7 +95,7 @@ replace (
 require (
 	golang.org/x/oauth2 v0.0.0-20210402161424-2e8d93401602 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	k8s.io/cloud-provider v0.0.0-00010101000000-000000000000
+	k8s.io/cloud-provider v0.22.2
 	k8s.io/component-base v0.22.2
 	sigs.k8s.io/kpng/backends/iptables v0.0.0-20211111154409-f00c5731e28f
 )
