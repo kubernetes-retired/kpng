@@ -7,7 +7,7 @@ from golang:1.18.0-alpine3.15 as build
 
 # install dependencies
 run apk add --update --no-cache \
-    gcc musl-dev \
+    gcc musl-dev git \
     linux-headers libnl3-dev
 
 # go mod args
@@ -24,7 +24,7 @@ run for f in $(find -name go.mod); do d=$(dirname $f); echo "downloading mods in
 
 add . ./
 #run for f in $(find -name go.mod); do d=$(dirname $f); echo "testing in $d"; ( cd $d && go test ./... ); done
-run cd cmd && go install -trimpath -buildvcs=false ./...
+run cd cmd && go mod tidy && go install -trimpath -buildvcs=false ./...
 
 # the real image
 from alpine:3.15

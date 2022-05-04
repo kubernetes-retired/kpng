@@ -45,24 +45,24 @@ func ToCIDR(ip net.IP) string {
 
 // BuildPortsToEndpointsMap builds a map of portname -> all ip:ports for that
 // portname. Explode Endpoints.Subsets[*] into this structure.
-func BuildPortsToEndpointsMap(service []*iptables.ServicePortName, endpoints *localnetv1.Endpoint) map[string][]string {
-	portsToEndpoints := map[string][]string{}
-	ipSet := endpoints.GetIPs()
-	for _, i := range ipSet.V4 {
-		for _, svc := range service {
-			intt, _ := strconv.Atoi(svc.Port)
-			if isValidEndpoint(i, intt) {
-				//append 10.1.2.3:8080 to "a"
-				portsToEndpoints[svc.PortName] = append(portsToEndpoints[svc.PortName], net.JoinHostPort(i, svc.Port))
-			}
-		}
-	}
-	// {
-	// "a": {10.1.1.1:80, 10.2.2.2:80}
-	// "b" : {10.1.1.1:443, 10.2.2.2:443}
-	// }
-	return portsToEndpoints
-}
+// func BuildPortsToEndpointsMap(service []*iptables.ServicePortName, endpoints *localnetv1.Endpoint) map[string][]string {
+// 	portsToEndpoints := map[string][]string{}
+// 	ipSet := endpoints.GetIPs()
+// 	for _, i := range ipSet.V4 {
+// 		for _, svc := range service {
+// 			intt, _ := strconv.Atoi(svc.Port)
+// 			if isValidEndpoint(i, intt) {
+// 				//append 10.1.2.3:8080 to "a"
+// 				portsToEndpoints[svc.PortName] = append(portsToEndpoints[svc.PortName], net.JoinHostPort(i, svc.Port))
+// 			}
+// 		}
+// 	}
+// 	// {
+// 	// "a": {10.1.1.1:80, 10.2.2.2:80}
+// 	// "b" : {10.1.1.1:443, 10.2.2.2:443}
+// 	// }
+// 	return portsToEndpoints
+// }
 
 // GetLocalAddrs returns a list of all network addresses on the local system
 func GetLocalAddrs() ([]net.IP, error) {

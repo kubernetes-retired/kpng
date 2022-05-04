@@ -6,11 +6,13 @@ import (
 	"time"
 
 	utilnet "k8s.io/apimachinery/pkg/util/net"
+	netutils "k8s.io/utils/net"
 
 	"k8s.io/utils/exec"
-	iptablesutil "sigs.k8s.io/kpng/backends/iptables/util"
 
 	v1 "k8s.io/api/core/v1"
+
+	iptablesutil "sigs.k8s.io/kpng/backends/iptables/util"
 
 	"sync"
 
@@ -53,10 +55,11 @@ func (s *Backend) Setup() {
 	usImpl = make(map[v1.IPFamily]*UserspaceLinux)
 	execer := exec.New()
 	for _, protocol := range []v1.IPFamily{v1.IPv4Protocol, v1.IPv6Protocol} {
+		iptables := iptablesutil.New(execer, iptablesutil.Protocol(protocol))
 		theProxier, err := NewUserspaceLinux(
 			NewLoadBalancerRR(),
-			utilnet.ParseIPSloppy("0.0.0.0"),
-			iptablesutil.Interface,
+			netutils.ParseIPSloppy("0.0.0.0"),
+			iptables,
 			execer,
 			utilnet.PortRange{Base: 30000, Size: 2768},
 			time.Duration(15),

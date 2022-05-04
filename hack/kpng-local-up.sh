@@ -21,7 +21,7 @@
 : ${KIND:="kindest/node:v1.22.0@sha256:b8bda84bb3a190e6e028b1760d277454a72267a5454b57db34437c34a588d047"}
 : ${IMAGE:="jayunit100/kpng:2"}
 : ${PULL:=IfNotPresent}
-: ${E2E_BACKEND:=iptables}
+: ${E2E_BACKEND:=userspacelin}
 : ${CONFIG_MAP_NAME:=kpng}
 : ${SERVICE_ACCOUNT_NAME:=kpng}
 : ${NAMESPACE:=kube-system}

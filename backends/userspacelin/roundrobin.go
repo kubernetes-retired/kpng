@@ -47,7 +47,7 @@ type LoadBalancerRR struct {
 }
 
 // Ensure this implements LoadBalancer.
-var _ LoadBalancer = &LoadBalancerRR{}
+var _LoadBalancer = &LoadBalancerRR{}
 
 type balancerState struct {
 	endpoints []string // a list of "ip:port" style strings
@@ -208,11 +208,11 @@ func (lb *LoadBalancerRR) removeStaleAffinity(svcPort iptables.ServicePortName, 
 	}
 }
 
-func (lb *LoadBalancerRR) OnEndpointsAdd(service []*iptables.ServicePortName, endpoints *localnetv1.Endpoint) {
-	portsToEndpoints := BuildPortsToEndpointsMap(service, endpoints)
+func (lb *LoadBalancerRR) OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
+	portsToEndpoints := buildPortsToEndpointsMap(ep, svc)
 
-	namespace := service[0].Namespace
-	name := service[0].Name
+	namespace := svc.Namespace
+	name := svc.Name
 	namespacedName := types.NamespacedName{Namespace: namespace, Name: name}
 
 	lb.lock.Lock()
@@ -240,55 +240,56 @@ func (lb *LoadBalancerRR) OnEndpointsAdd(service []*iptables.ServicePortName, en
 }
 
 //[]*v1.Endpoints, endpoint
-func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {
+// func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {
 
-	// part 1: make new endpoints as needed stuff...
+// 	// part 1: make new endpoints as needed stuff...
 
-	portsToEndpoints := buildPortsToEndpointsMap(endpoints)
-	registeredEndpoints := make(map[iptables.ServicePortName]bool)
+// 	portsToEndpoints := buildPortsToEndp
+// 	ointsMap(endpoints)
+// 	registeredEndpoints := make(map[iptables.ServicePortName]bool)
 
-	lb.lock.Lock()
-	defer lb.lock.Unlock()
+// 	lb.lock.Lock()
+// 	defer lb.lock.Unlock()
 
-	// new stuff
-	for portname := range portsToEndpoints {
-		svcPort := iptables.ServicePortName{NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
-		newEndpoints := portsToEndpoints[portname]
-		state, exists := lb.services[svcPort]
+// 	// new stuff
+// 	for portname := range portsToEndpoints {
+// 		svcPort := iptables.ServicePortName{NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
+// 		newEndpoints := portsToEndpoints[portname]
+// 		state, exists := lb.services[svcPort]
 
-		curEndpoints := []string{}
-		if state != nil {
-			curEndpoints = state.endpoints
-		}
+// 		curEndpoints := []string{}
+// 		if state != nil {
+// 			curEndpoints = state.endpoints
+// 		}
 
-		if !exists || state == nil || len(curEndpoints) != len(newEndpoints) || !slicesEquiv(copyStrings(curEndpoints), newEndpoints) {
-			klog.V(1).Infof("LoadBalancerRR: Setting endpoints for %s to %+v", svcPort, newEndpoints)
-			lb.removeStaleAffinity(svcPort, newEndpoints)
-			// OnEndpointsUpdate can be called without NewService being called externally.
-			// To be safe we will call it here.  A new service will only be created
-			// if one does not already exist.  The affinity will be updated
-			// later, once NewService is called.
-			state = lb.newServiceInternal(svcPort, v1.ServiceAffinity(""), 0)
-			state.endpoints = ShuffleStrings(newEndpoints)
+// 		if !exists || state == nil || len(curEndpoints) != len(newEndpoints) || !slicesEquiv(copyStrings(curEndpoints), newEndpoints) {
+// 			klog.V(1).Infof("LoadBalancerRR: Setting endpoints for %s to %+v", svcPort, newEndpoints)
+// 			lb.removeStaleAffinity(svcPort, newEndpoints)
+// 			// OnEndpointsUpdate can be called without NewService being called externally.
+// 			// To be safe we will call it here.  A new service will only be created
+// 			// if one does not already exist.  The affinity will be updated
+// 			// later, once NewService is called.
+// 			state = lb.newServiceInternal(svcPort, v1.ServiceAffinity(""), 0)
+// 			state.endpoints = ShuffleStrings(newEndpoints)
 
-			// Reset the round-robin index.
-			state.index = 0
-		}
-		registeredEndpoints[svcPort] = true
-	}
+// 			// Reset the round-robin index.
+// 			state.index = 0
+// 		}
+// 		registeredEndpoints[svcPort] = true
+// 	}
 
-	// part 2: clean old stuff
-	oldPortsToEndpoints := buildPortsToEndpointsMap(oldEndpoints)
+// 	// part 2: clean old stuff
+// 	oldPortsToEndpoints := buildPortsToEndpointsMap(oldEndpoints)
 
-	// clean old stuff
-	// Now remove all endpoints missing from the update.
-	for portname := range oldPortsToEndpoints {
-		svcPort := iptables.ServicePortName{NamespacedName: types.NamespacedName{Namespace: oldEndpoints.Namespace, Name: oldEndpoints.Name}, Port: portname}
-		if _, exists := registeredEndpoints[svcPort]; !exists {
-			lb.resetService(svcPort)
-		}
-	}
-}
+// 	// clean old stuff
+// 	// Now remove all endpoints missing from the update.
+// 	for portname := range oldPortsToEndpoints {
+// 		svcPort := iptables.ServicePortName{NamespacedName: types.NamespacedName{Namespace: oldEndpoints.Namespace, Name: oldEndpoints.Name}, Port: portname}
+// 		if _, exists := registeredEndpoints[svcPort]; !exists {
+// 			lb.resetService(svcPort)
+// 		}
+// 	}
+// }
 
 func (lb *LoadBalancerRR) resetService(svcPort iptables.ServicePortName) {
 	// If the service is still around, reset but don't delete.
@@ -302,14 +303,14 @@ func (lb *LoadBalancerRR) resetService(svcPort iptables.ServicePortName) {
 	}
 }
 
-func (lb *LoadBalancerRR) OnEndpointsDelete(endpoints *v1.Endpoints) {
-	portsToEndpoints := buildPortsToEndpointsMap(endpoints)
+func (lb *LoadBalancerRR) OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
+	portsToEndpoints := buildPortsToEndpointsMap(ep, svc)
 
 	lb.lock.Lock()
 	defer lb.lock.Unlock()
 
 	for portname := range portsToEndpoints {
-		svcPort := iptables.ServicePortName{NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
+		svcPort := iptables.ServicePortName{NamespacedName: types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}, Port: portname}
 		lb.resetService(svcPort)
 	}
 }

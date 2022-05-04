@@ -40,7 +40,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	// utilfeature "k8s.io/apiserver/pkg/util/feature"
-	servicehelper "k8s.io/cloud-provider/service/helpers"
+
 	klog "k8s.io/klog/v2"
 
 	// kubefeatures "k8s.io/kubernetes/pkg/features"
@@ -738,10 +738,10 @@ func sameConfig(info *ServiceInfo, service *localnetv1.Service, port *localnetv1
 	}
 
 	// TODO. build this loadBalancerStatus up properly.
-	loadBalancerStatus := v1.LoadBalancerStatus{}
-	if !servicehelper.LoadBalancerStatusEqual(&info.loadBalancerStatus, &loadBalancerStatus) {
-		return false
-	}
+	// loadBalancerStatus := v1.LoadBalancerStatus{}
+	// if !servicehelper.LoadBalancerStatusEqual(&info.loadBalancerStatus, &loadBalancerStatus) {
+	// 	return false
+	// }
 
 	// TODO add Session AFfinity to KPNG
 	// if info.sessionAffinityType != service.Spec.SessionAffinity {
