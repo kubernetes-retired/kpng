@@ -29,6 +29,9 @@ spec:
       # We'll sed-replace this with a valid kpng image at creat time
       - image: ${IMAGE}
         imagePullPolicy: ${PULL}
+        env:
+        - name: GOLANG_PROTOBUF_REGISTRATION_CONFLICT
+          value: warn
         name: kpng
         volumeMounts:
         - name: empty
@@ -42,6 +45,9 @@ spec:
         - --listen=unix:///k8s/proxy.sock
       - image: ${IMAGE}
         imagePullPolicy: ${PULL}
+        env:
+        - name: GOLANG_PROTOBUF_REGISTRATION_CONFLICT
+          value: warn
         name: kpng-${E2E_BACKEND}
         securityContext:
             privileged: true
