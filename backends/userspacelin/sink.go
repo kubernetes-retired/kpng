@@ -6,11 +6,10 @@ import (
 	"time"
 
 	utilnet "k8s.io/apimachinery/pkg/util/net"
+	klog "k8s.io/klog/v2"
 	netutils "k8s.io/utils/net"
 
 	"k8s.io/utils/exec"
-
-	v1 "k8s.io/api/core/v1"
 
 	iptablesutil "sigs.k8s.io/kpng/backends/iptables/util"
 
@@ -33,8 +32,9 @@ type Backend struct {
 }
 
 var wg = sync.WaitGroup{}
-var usImpl map[v1.IPFamily]*UserspaceLinux
-var hostname string
+var proxier *UserspaceLinux
+
+// var usImpl map[v1.IPFamily]*UserspaceLinux
 var _ decoder.Interface = &Backend{}
 
 func New() *Backend {
@@ -49,30 +49,25 @@ func (s *Backend) BindFlags(flags *pflag.FlagSet) {
 }
 
 func (s *Backend) Setup() {
+	var err error
 	log.Println("Started!")
-	hostname = s.NodeName
-	// make a proxier for ipv4, ipv6
-
-	usImpl = make(map[v1.IPFamily]*UserspaceLinux)
+	// hostname = s.NodeName
+	// make a proxier for ipv4
+	klog.V(0).InfoS("Using Userspace Proxier!")
 	execer := exec.New()
-	for _, protocol := range []v1.IPFamily{v1.IPv4Protocol, v1.IPv6Protocol} {
-		iptables := iptablesutil.New(execer, iptablesutil.Protocol(protocol))
-		theProxier, err := NewUserspaceLinux(
-			NewLoadBalancerRR(),
-			netutils.ParseIPSloppy("0.0.0.0"),
-			iptables,
-			execer,
-			utilnet.PortRange{Base: 30000, Size: 2768},
-			time.Duration(15),
-			time.Duration(15),
-			time.Duration(10),
-		)
-		if err != nil {
-			log.Fatal("unable to create proxier: %v", err)
-		} else {
-			usImpl[protocol] = theProxier
-			log.Println("Created proxier")
-		}
+	iptables := iptablesutil.New(execer, iptablesutil.Protocol("IPv4"))
+	proxier, err = NewUserspaceLinux(
+		NewLoadBalancerRR(),
+		netutils.ParseIPSloppy("0.0.0.0"),
+		iptables,
+		execer,
+		utilnet.PortRange{Base: 30000, Size: 2768},
+		time.Duration(15),
+		time.Duration(15),
+		time.Duration(10),
+	)
+	if err != nil {
+		log.Fatal("unable to create proxier: %v", err)
 	}
 }
 
@@ -85,9 +80,10 @@ func (s *Backend) Sync() {
 	// 	go impl.syncProxyRules()
 	// }
 	// wg.Wait()
-	for _, impl := range usImpl {
-		impl.syncProxyRules()
-	}
+	// for _, impl := range usImpl {
+	// 	impl.syncProxyRules()
+	// }
+	proxier.syncProxyRules()
 }
 
 func (s *Backend) SetService(svc *localnetv1.Service) {
@@ -96,43 +92,37 @@ func (s *Backend) SetService(svc *localnetv1.Service) {
 	if s.services == nil {
 		s.services = make(map[string]*service)
 	}
-	for _, impl := range usImpl {
-		if oldSvc, ok := s.services[key]; ok {
-			log.Println("service update")
-			impl.OnServiceUpdate(oldSvc.internalSvc, svc)
-		} else {
-			log.Println("service add")
-			impl.OnServiceAdd(svc)
-		}
-		s.services[key] = &service{Name: key, internalSvc: svc}
+
+	if oldSvc, ok := s.services[key]; ok {
+		log.Println("service update")
+		proxier.OnServiceUpdate(oldSvc.internalSvc, svc)
+	} else {
+		log.Println("service add")
+		proxier.OnServiceAdd(svc)
 	}
+	s.services[key] = &service{Name: key, internalSvc: svc}
+
 }
 
 func (s *Backend) DeleteService(namespace, name string) {
 	key := namespace + "/" + name
-	for _, impl := range usImpl {
-		log.Println("service delete")
-		impl.OnServiceDelete(s.services[key].internalSvc)
-		delete(s.services, key)
-	}
+	log.Println("service delete")
+	proxier.OnServiceDelete(s.services[key].internalSvc)
+	delete(s.services, key)
 }
 
 // name of the endpoint is the same as the service name
 func (s *Backend) SetEndpoint(namespace, serviceName, epKey string, endpoint *localnetv1.Endpoint) {
 	svc := s.services[namespace+"/"+serviceName]
-	for _, impl := range usImpl {
-		svc.AddEndpoint(epKey, endpoint)
-		impl.OnEndpointsAdd(endpoint, svc.internalSvc)
-	}
+	svc.AddEndpoint(epKey, endpoint)
+	proxier.OnEndpointsAdd(endpoint, svc.internalSvc)
 }
 
 func (s *Backend) DeleteEndpoint(namespace, serviceName, epKey string) {
 	key := namespace + "/" + serviceName
 	svc := s.services[key]
-	for _, impl := range usImpl {
-		if ep := svc.GetEndpoint(epKey); ep.key == epKey {
-			impl.OnEndpointsDelete(ep.internalEp, svc.internalSvc)
-		}
+	if ep := svc.GetEndpoint(epKey); ep.key == epKey {
+		proxier.OnEndpointsDelete(ep.internalEp, svc.internalSvc)
 	}
 }
 
