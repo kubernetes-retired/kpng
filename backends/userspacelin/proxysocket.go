@@ -20,15 +20,16 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sigs.k8s.io/kpng/backends/iptables"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"k8s.io/api/core/v1"
+	"sigs.k8s.io/kpng/backends/iptables"
+
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog/v2"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 )
 
 // Abstraction over TCP/UDP sockets which are proxied.
@@ -47,31 +48,31 @@ type ProxySocket interface {
 
 // newProxySocket creates a socket that has a listener that copies
 // bytes on new connections
-func newProxySocket(protocol v1.Protocol, ip net.IP, port int) (ProxySocket, error) {
+func newProxySocket(protocol localnetv1.Protocol, ip net.IP, port int) (ProxySocket, error) {
 	host := ""
 	if ip != nil {
 		host = ip.String()
 	}
 
-	switch strings.ToUpper(string(protocol)) {
-		case "TCP":
-			listener, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
-			if err != nil {
-				return nil, err
-			}
-			return &tcpProxySocket{Listener: listener, port: port}, nil
-		case "UDP":
-			addr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(host, strconv.Itoa(port)))
-			if err != nil {
-				return nil, err
-			}
-			conn, err := net.ListenUDP("udp", addr)
-			if err != nil {
-				return nil, err
-			}
-			return &udpProxySocket{UDPConn: conn, port: port}, nil
-		case "SCTP":
-			return nil, fmt.Errorf("SCTP is not supported for user space proxy")
+	switch strings.ToUpper(protocol.String()) {
+	case "TCP":
+		listener, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+		if err != nil {
+			return nil, err
+		}
+		return &tcpProxySocket{Listener: listener, port: port}, nil
+	case "UDP":
+		addr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(host, strconv.Itoa(port)))
+		if err != nil {
+			return nil, err
+		}
+		conn, err := net.ListenUDP("udp", addr)
+		if err != nil {
+			return nil, err
+		}
+		return &udpProxySocket{UDPConn: conn, port: port}, nil
+	case "SCTP":
+		return nil, fmt.Errorf("SCTP is not supported for user space proxy")
 	}
 	return nil, fmt.Errorf("unknown protocol %q", protocol)
 }

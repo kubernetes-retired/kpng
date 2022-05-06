@@ -50,7 +50,6 @@ func (s *Backend) BindFlags(flags *pflag.FlagSet) {
 
 func (s *Backend) Setup() {
 	var err error
-	log.Println("Started!")
 	// hostname = s.NodeName
 	// make a proxier for ipv4
 	klog.V(0).InfoS("Using Userspace Proxier!")
@@ -74,30 +73,18 @@ func (s *Backend) Setup() {
 func (s *Backend) Reset() { /* noop, we're wrapped in filterreset */ }
 
 func (s *Backend) Sync() {
-	// for _, impl := range usImpl {
-	// 	wg.Add(1)
-	// 	log.Println("Syncing rules")
-	// 	go impl.syncProxyRules()
-	// }
-	// wg.Wait()
-	// for _, impl := range usImpl {
-	// 	impl.syncProxyRules()
-	// }
 	proxier.syncProxyRules()
 }
 
 func (s *Backend) SetService(svc *localnetv1.Service) {
-	log.Println("Got service")
 	key := svc.NamespacedName()
 	if s.services == nil {
 		s.services = make(map[string]*service)
 	}
 
 	if oldSvc, ok := s.services[key]; ok {
-		log.Println("service update")
 		proxier.OnServiceUpdate(oldSvc.internalSvc, svc)
 	} else {
-		log.Println("service add")
 		proxier.OnServiceAdd(svc)
 	}
 	s.services[key] = &service{Name: key, internalSvc: svc}
@@ -106,7 +93,6 @@ func (s *Backend) SetService(svc *localnetv1.Service) {
 
 func (s *Backend) DeleteService(namespace, name string) {
 	key := namespace + "/" + name
-	log.Println("service delete")
 	proxier.OnServiceDelete(s.services[key].internalSvc)
 	delete(s.services, key)
 }

@@ -35,9 +35,9 @@ type affinityState struct {
 }
 
 type affinityPolicy struct {
-	affinityType v1.ServiceAffinity
-	affinityMap  map[string]*affinityState // map client IP -> affinity info
-	ttlSeconds   int
+	affinityClientIP bool
+	affinityMap      map[string]*affinityState // map client IP -> affinity info
+	ttlSeconds       int
 }
 
 // LoadBalancerRR is a round-robin load balancer.
@@ -47,7 +47,7 @@ type LoadBalancerRR struct {
 }
 
 // Ensure this implements LoadBalancer.
-var _LoadBalancer = &LoadBalancerRR{}
+var _ LoadBalancer = &LoadBalancerRR{}
 
 type balancerState struct {
 	endpoints []string // a list of "ip:port" style strings
@@ -55,11 +55,11 @@ type balancerState struct {
 	affinity  affinityPolicy
 }
 
-func newAffinityPolicy(affinityType v1.ServiceAffinity, ttlSeconds int) *affinityPolicy {
+func newAffinityPolicy(affinityClientIP *localnetv1.ClientIPAffinity, ttlSeconds int) *affinityPolicy {
 	return &affinityPolicy{
-		affinityType: affinityType,
-		affinityMap:  make(map[string]*affinityState),
-		ttlSeconds:   ttlSeconds,
+		affinityClientIP: affinityClientIP != nil,
+		affinityMap:      make(map[string]*affinityState),
+		ttlSeconds:       ttlSeconds,
 	}
 }
 
@@ -70,7 +70,7 @@ func NewLoadBalancerRR() *LoadBalancerRR {
 	}
 }
 
-func (lb *LoadBalancerRR) NewService(svcPort iptables.ServicePortName, affinityType v1.ServiceAffinity, ttlSeconds int) error {
+func (lb *LoadBalancerRR) NewService(svcPort iptables.ServicePortName, affinityType *localnetv1.ClientIPAffinity, ttlSeconds int) error {
 	klog.V(4).Infof("LoadBalancerRR NewService %q", svcPort)
 	lb.lock.Lock()
 	lb.lock.Unlock()
@@ -79,16 +79,16 @@ func (lb *LoadBalancerRR) NewService(svcPort iptables.ServicePortName, affinityT
 }
 
 // This assumes that lb.lock is already held.
-func (lb *LoadBalancerRR) newServiceInternal(svcPort iptables.ServicePortName, affinityType v1.ServiceAffinity, ttlSeconds int) *balancerState {
+func (lb *LoadBalancerRR) newServiceInternal(svcPort iptables.ServicePortName, affinityClientIP *localnetv1.ClientIPAffinity, ttlSeconds int) *balancerState {
 	if ttlSeconds == 0 {
 		ttlSeconds = int(v1.DefaultClientIPServiceAffinitySeconds) //default to 3 hours if not specified.  Should 0 be unlimited instead????
 	}
 
 	if _, exists := lb.services[svcPort]; !exists {
-		lb.services[svcPort] = &balancerState{affinity: *newAffinityPolicy(affinityType, ttlSeconds)}
+		lb.services[svcPort] = &balancerState{affinity: *newAffinityPolicy(affinityClientIP, ttlSeconds)}
 		klog.V(4).Infof("LoadBalancerRR service %q did not exist, created", svcPort)
-	} else if affinityType != "" {
-		lb.services[svcPort].affinity.affinityType = affinityType
+	} else if affinityClientIP != nil {
+		lb.services[svcPort].affinity.affinityClientIP = true
 	}
 	return lb.services[svcPort]
 }
@@ -103,7 +103,7 @@ func (lb *LoadBalancerRR) DeleteService(svcPort iptables.ServicePortName) {
 // return true if this service is using some form of session affinity.
 func isSessionAffinity(affinity *affinityPolicy) bool {
 	// Should never be empty string, but checking for it to be safe.
-	if affinity.affinityType == "" || affinity.affinityType == v1.ServiceAffinityNone {
+	if affinity.affinityClientIP == false {
 		return false
 	}
 	return true
@@ -210,7 +210,6 @@ func (lb *LoadBalancerRR) removeStaleAffinity(svcPort iptables.ServicePortName, 
 
 func (lb *LoadBalancerRR) OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
 	portsToEndpoints := buildPortsToEndpointsMap(ep, svc)
-
 	namespace := svc.Namespace
 	name := svc.Name
 	namespacedName := types.NamespacedName{Namespace: namespace, Name: name}
@@ -224,15 +223,16 @@ func (lb *LoadBalancerRR) OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv
 		svcPort := iptables.ServicePortName{NamespacedName: namespacedName, Port: portname}
 		newEndpoints := portsToEndpoints[portname]
 		state, exists := lb.services[svcPort]
-
+		if state != nil {
+			newEndpoints = append(newEndpoints, state.endpoints...)
+		}
 		if !exists || state == nil || len(newEndpoints) > 0 {
 			klog.V(1).Infof("LoadBalancerRR: Setting endpoints for %s to %+v", svcPort, newEndpoints)
 			// OnEndpointsAdd can be called without NewService being called externally.
 			// To be safe we will call it here.  A new service will only be created
 			// if one does not already exist.
-			state = lb.newServiceInternal(svcPort, v1.ServiceAffinity(""), 0)
+			state = lb.newServiceInternal(svcPort, svc.GetClientIP(), 0)
 			state.endpoints = ShuffleStrings(newEndpoints)
-
 			// Reset the round-robin index.
 			state.index = 0
 		}

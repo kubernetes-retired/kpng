@@ -18,7 +18,6 @@ package userspacelin
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"reflect"
 
@@ -33,7 +32,7 @@ import (
 	k8snet "k8s.io/apimachinery/pkg/util/net"
 
 	// libcontaineruserns "github.com/opencontainers/runc/libcontainer/userns"
-	v1 "k8s.io/api/core/v1"
+
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
@@ -66,15 +65,15 @@ type ServiceInfo struct {
 	// ActiveClients is the cache of active UDP clients being proxied by this proxy for this service
 	ActiveClients *ClientCache
 
-	isAliveAtomic       int32 // Only access this with atomic ops
-	portal              portal
-	protocol            v1.Protocol
-	proxyPort           int
-	socket              ProxySocket
-	nodePort            int
-	loadBalancerStatus  v1.LoadBalancerStatus
-	sessionAffinityType v1.ServiceAffinity
-	stickyMaxAgeSeconds int
+	isAliveAtomic           int32 // Only access this with atomic ops
+	portal                  portal
+	protocol                localnetv1.Protocol
+	proxyPort               int
+	socket                  ProxySocket
+	nodePort                int
+	loadBalancerIPs         []string
+	sessionClientIPAffinity *localnetv1.ClientIPAffinity
+	stickyMaxAgeSeconds     int
 	// Deprecated, but required for back-compat (including e2e)
 	externalIPs []string
 
@@ -125,7 +124,7 @@ func logTimeout(err error) bool {
 }
 
 // ProxySocketFunc is a function which constructs a ProxySocket from a protocol, ip, and port
-type ProxySocketFunc func(protocol v1.Protocol, ip net.IP, port int) (ProxySocket, error)
+type ProxySocketFunc func(protocol localnetv1.Protocol, ip net.IP, port int) (ProxySocket, error)
 
 const numBurstSyncs int = 2
 
@@ -167,7 +166,7 @@ type UserspaceLinux struct {
 	// protects serviceChanges
 	serviceChangesLock sync.Mutex
 	serviceChanges     map[types.NamespacedName]*UserspaceServiceChangeTracker // map of service changes, this is the entire state-space of all services in k8s.
-	//syncRunner         asyncRunnerInterface                                    // governs calls to syncProxyRules
+	syncRunner         asyncRunnerInterface                                    // governs calls to syncProxyRules
 
 	stopChan chan struct{}
 }
@@ -177,7 +176,7 @@ type UserspaceLinux struct {
 type portMapKey struct {
 	ip       string
 	port     int
-	protocol v1.Protocol
+	protocol localnetv1.Protocol
 }
 
 func (k *portMapKey) String() string {
@@ -278,7 +277,7 @@ func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptablesInterface
 		stopChan:        make(chan struct{}),
 	}
 	klog.V(3).InfoS("Record sync param", "minSyncPeriod", minSyncPeriod, "syncPeriod", syncPeriod, "burstSyncs", numBurstSyncs)
-	// proxier.syncRunner = async.NewBoundedFrequencyRunner("userspace-proxy-sync-runner", proxier.syncProxyRules, minSyncPeriod, syncPeriod, numBurstSyncs)
+	proxier.syncRunner = newBoundedFrequencyRunner("userspace-proxy-sync-runner", proxier.syncProxyRules, minSyncPeriod, syncPeriod, numBurstSyncs)
 	return proxier, nil
 }
 
@@ -368,9 +367,9 @@ func (proxier *UserspaceLinux) isInitialized() bool {
 }
 
 // Sync is called to synchronize the proxier state to iptables as soon as possible.
-// func (proxier *UserspaceLinux) Sync() {
-// 	proxier.syncRunner.Run()
-// }
+func (proxier *UserspaceLinux) Sync() {
+	proxier.syncRunner.Run()
+}
 
 // this is called sync() in iptables, omg vivek
 func (proxier *UserspaceLinux) syncProxyRules() {
@@ -415,9 +414,9 @@ func (proxier *UserspaceLinux) syncProxyRules() {
 }
 
 // SyncLoop runs periodic work.  This is expected to run as a goroutine or as the main loop of the app.  It does not return.
-// func (proxier *UserspaceLinux) SyncLoop() {
-// 	proxier.syncRunner.Loop(proxier.stopChan)
-// }
+func (proxier *UserspaceLinux) SyncLoop() {
+	proxier.syncRunner.Loop(proxier.stopChan)
+}
 
 // Ensure that portals exist for all services.
 func (proxier *UserspaceLinux) ensurePortals() {
@@ -456,7 +455,7 @@ func (proxier *UserspaceLinux) getServiceInfo(service iptables.ServicePortName) 
 // addServiceOnPortInternal starts listening for a new service, returning the ServiceInfo.
 // Pass proxyPort=0 to allocate a random port. The timeout only applies to UDP
 // connections, for now.
-func (proxier *UserspaceLinux) addServiceOnPortInternal(service iptables.ServicePortName, protocol v1.Protocol, proxyPort int, timeout time.Duration) (*ServiceInfo, error) {
+func (proxier *UserspaceLinux) addServiceOnPortInternal(service iptables.ServicePortName, protocol localnetv1.Protocol, proxyPort int, timeout time.Duration) (*ServiceInfo, error) {
 	sock, err := proxier.makeProxySocket(protocol, proxier.listenIP, proxyPort)
 	if err != nil {
 		return nil, err
@@ -472,13 +471,13 @@ func (proxier *UserspaceLinux) addServiceOnPortInternal(service iptables.Service
 		return nil, err
 	}
 	si := &ServiceInfo{
-		Timeout:             timeout,
-		ActiveClients:       newClientCache(),
-		isAliveAtomic:       1,
-		proxyPort:           portNum,
-		protocol:            protocol,
-		socket:              sock,
-		sessionAffinityType: v1.ServiceAffinityNone, // default
+		Timeout:                 timeout,
+		ActiveClients:           newClientCache(),
+		isAliveAtomic:           1,
+		proxyPort:               portNum,
+		protocol:                protocol,
+		socket:                  sock,
+		sessionClientIPAffinity: nil, // default
 	}
 	proxier.serviceMap[service] = si
 
@@ -511,21 +510,23 @@ func (proxier *UserspaceLinux) mergeService(service *localnetv1.Service) sets.St
 	existingPorts := sets.NewString()
 	svcName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
 	for i := range service.Ports {
+		//TODO print Ports
 		servicePort := &service.Ports[i]
+		//TODO print servicePort
 		serviceName := iptables.ServicePortName{NamespacedName: svcName, Port: (*servicePort).Name}
 		existingPorts.Insert((*servicePort).Name)
-		theServices, exists := proxier.serviceMap[serviceName]
+		info, exists := proxier.serviceMap[serviceName]
 		// TODO: check health of the socket? What if ProxyLoop exited?
-		if exists && sameConfig(theServices, service, *servicePort) {
+		if exists && sameConfig(info, service, *servicePort) {
 			// Nothing changed.
 			continue
 		}
 		if exists {
 			klog.V(4).InfoS("Something changed for service: stopping it", "serviceName", serviceName)
-			if err := proxier.cleanupPortalAndProxy(serviceName, theServices); err != nil {
+			if err := proxier.cleanupPortalAndProxy(serviceName, info); err != nil {
 				klog.ErrorS(err, "Failed to cleanup portal and proxy")
 			}
-			theServices.setFinished()
+			info.setFinished()
 		}
 		proxyPort, err := proxier.proxyPorts.AllocateNext()
 		if err != nil {
@@ -535,30 +536,24 @@ func (proxier *UserspaceLinux) mergeService(service *localnetv1.Service) sets.St
 
 		serviceIP := net.ParseIP(service.IPs.ClusterIPs.V4[0])
 		klog.V(0).InfoS("Adding new service", "serviceName", serviceName, "addr", net.JoinHostPort(serviceIP.String(), strconv.Itoa(int((*servicePort).Port))), "protocol", (*servicePort).Protocol)
-		log.Println(proxier, serviceName)
-		log.Println(v1.Protocol(localnetv1.Protocol_name[int32((*servicePort).Protocol.Enum().Number())]), proxyPort, proxier.udpIdleTimeout)
-		theServices, err = proxier.addServiceOnPortInternal(serviceName, v1.Protocol(localnetv1.Protocol_name[int32((*servicePort).Protocol.Enum().Number())]), proxyPort, proxier.udpIdleTimeout)
+		info, err = proxier.addServiceOnPortInternal(serviceName, (*servicePort).Protocol, proxyPort, proxier.udpIdleTimeout)
 		if err != nil {
 			klog.ErrorS(err, "Failed to start proxy", "serviceName", serviceName)
 			continue
 		}
-		theServices.portal.ip = serviceIP
-		theServices.portal.port = int((*servicePort).Port)
-		theServices.externalIPs = service.GetIPs().ExternalIPs.GetV4()
+		info.portal.ip = serviceIP
+		info.portal.port = int((*servicePort).Port)
+		info.externalIPs = service.GetIPs().ExternalIPs.GetV4()
+		info.loadBalancerIPs = service.GetIPs().LoadBalancerIPs.GetV4()
+		info.nodePort = int((*servicePort).GetNodePort())
+		// info.affinityClientIP = service.GetClientIP()
 		// Deep-copy in case the service instance changes
 		/**
 			ClusterIPs  *IPSet `protobuf:"bytes,1,opt,name=ClusterIPs,proto3" json:"ClusterIPs,omitempty"`
 			ExternalIPs *IPSet `protobuf:"bytes,2,opt,name=ExternalIPs,proto3" json:"ExternalIPs,omitempty"`
 			Headless    bool   `protobuf:"varint,3,opt,name=Headless,proto3" json:"Headless,omitempty"`
 		}
-		*/
-		// TODO build up this data structure from the types inside of "theServices"
-		thisServiceIsEmpty := v1.LoadBalancerStatus{}
-		theServices.loadBalancerStatus = thisServiceIsEmpty
 
-		theServices.nodePort = int(theServices.nodePort)
-
-		/**
 				// TODO sessionAffinity
 				info.sessionAffinityType = service.SessionAffinity
 				// Kube-apiserver side guarantees SessionAffinityConfig won't be nil when session affinity type is ClientIP
@@ -566,14 +561,17 @@ func (proxier *UserspaceLinux) mergeService(service *localnetv1.Service) sets.St
 					info.stickyMaxAgeSeconds = int(*service.SessionAffinityConfig.ClientIP.TimeoutSeconds)
 				}
 		**/
-		klog.V(0).InfoS("Record serviceInfo", "serviceInfo", theServices)
+		if service.SessionAffinity != nil {
+			info.stickyMaxAgeSeconds = int(service.GetClientIP().TimeoutSeconds)
+		}
+		klog.V(0).InfoS("Record serviceInfo", "serviceInfo", info)
 
-		if err := proxier.openPortal(serviceName, theServices); err != nil {
+		if err := proxier.openPortal(serviceName, info); err != nil {
 			klog.ErrorS(err, "Failed to open portal", "serviceName", serviceName)
 		}
-		proxier.loadBalancer.NewService(serviceName, theServices.sessionAffinityType, theServices.stickyMaxAgeSeconds)
+		proxier.loadBalancer.NewService(serviceName, service.GetClientIP(), info.stickyMaxAgeSeconds)
 
-		theServices.setStarted()
+		info.setStarted()
 	}
 
 	return existingPorts
@@ -603,7 +601,7 @@ func (proxier *UserspaceLinux) unmergeService(service *localnetv1.Service, exist
 			continue
 		}
 
-		if proxier.serviceMap[serviceName].protocol == v1.ProtocolUDP {
+		if proxier.serviceMap[serviceName].protocol == localnetv1.Protocol_UDP {
 			staleUDPServices.Insert(proxier.serviceMap[serviceName].portal.ip.String())
 		}
 
@@ -614,7 +612,7 @@ func (proxier *UserspaceLinux) unmergeService(service *localnetv1.Service, exist
 		info.setFinished()
 	}
 	// for _, svcIP := range staleUDPServices.UnsortedList() {
-	// 	if err := conntrack.ClearEntriesForIP(proxier.exec, svcIP, v1.ProtocolUDP); err != nil {
+	// 	if err := conntrack.ClearEntriesForIP(proxier.exec, svcIP, localnetv1.ProtocolUDP); err != nil {
 	// 		klog.ErrorS(err, "Failed to delete stale service IP connections", "ip", svcIP)
 	// 	}
 	// }
@@ -639,7 +637,6 @@ func (proxier *UserspaceLinux) serviceChange(previous, current *localnetv1.Servi
 		// depends on the next update/del after a merge, not subsequent
 		// updates.
 		change = &UserspaceServiceChangeTracker{items: map[types.NamespacedName]*userspaceServiceChange{svcName: &userspaceServiceChange{previous: previous}}}
-		log.Println(change)
 		proxier.serviceChanges[svcName] = change
 	}
 
@@ -651,31 +648,34 @@ func (proxier *UserspaceLinux) serviceChange(previous, current *localnetv1.Servi
 		delete(proxier.serviceChanges, svcName)
 	} else if proxier.isInitialized() {
 		// change will have an effect, ask the proxy to sync
-		// proxier.syncRunner.Run()
-		// proxier.syncProxyRules()
-		log.Println("mergeService")
-		proxier.mergeService(current)
+		proxier.syncRunner.Run()
 	}
-	log.Println("mergeService")
-	proxier.mergeService(current)
 }
 
 // OnServiceAdd is called whenever creation of new service object
 // is observed.
 func (proxier *UserspaceLinux) OnServiceAdd(service *localnetv1.Service) {
+	atomic.StoreInt32(&proxier.servicesSynced, 1)
+	if atomic.LoadInt32(&proxier.endpointsSynced) > 0 {
+		atomic.StoreInt32(&proxier.initialized, 1)
+	}
 	proxier.serviceChange(nil, service, "OnServiceAdd")
+	//_ = proxier.mergeService(service)
 }
 
 // OnServiceUpdate is called whenever modification of an existing
 // service object is observed.
 func (proxier *UserspaceLinux) OnServiceUpdate(oldService, service *localnetv1.Service) {
 	proxier.serviceChange(oldService, service, "OnServiceUpdate")
+	//existingPorts := proxier.mergeService(service)
+	//proxier.unmergeService(oldService, existingPorts)
 }
 
 // OnServiceDelete is called whenever deletion of an existing service
 // object is observed.
 func (proxier *UserspaceLinux) OnServiceDelete(service *localnetv1.Service) {
 	proxier.serviceChange(service, nil, "OnServiceDelete")
+	//proxier.unmergeService(service, sets.NewString())
 }
 
 // OnServiceSynced is called once all the initial event handlers were
@@ -699,12 +699,17 @@ func (proxier *UserspaceLinux) OnServiceSynced() {
 // OnEndpointsAdd is called whenever creation of new endpoints object
 // is observed.
 func (proxier *UserspaceLinux) OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
+	atomic.StoreInt32(&proxier.endpointsSynced, 1)
+	if atomic.LoadInt32(&proxier.servicesSynced) > 0 {
+		atomic.StoreInt32(&proxier.initialized, 1)
+	}
+
 	proxier.loadBalancer.OnEndpointsAdd(ep, svc)
 }
 
 // OnEndpointsUpdate is called whenever modification of an existing
 // endpoints object is observed.
-func (proxier *UserspaceLinux) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {
+func (proxier *UserspaceLinux) OnEndpointsUpdate(oldEndpoints, endpoints *localnetv1.Endpoint) {
 	//	proxier.loadBalancer.OnEndpointsUpdate(oldEndpoints, endpoints)
 }
 
@@ -735,9 +740,9 @@ func (proxier *UserspaceLinux) OnEndpointsSynced() {
 
 // TODO do we need portmapping?
 func sameConfig(info *ServiceInfo, service *localnetv1.Service, port *localnetv1.PortMapping) bool {
-	pr := v1.Protocol(info.protocol)
+	pr := localnetv1.Protocol(info.protocol)
 
-	if pr != v1.Protocol(port.Protocol) || info.portal.port != int(port.Port) || info.nodePort != int(port.NodePort) {
+	if pr != localnetv1.Protocol(port.Protocol) || info.portal.port != int(port.Port) || info.nodePort != int(port.NodePort) {
 		return false
 	}
 	if !info.portal.ip.Equal(net.ParseIP(service.IPs.ClusterIPs.V4[0])) {
@@ -783,15 +788,16 @@ func (proxier *UserspaceLinux) openPortal(service iptables.ServicePortName, info
 			return err
 		}
 	}
-	for _, ingress := range info.loadBalancerStatus.Ingress {
-		if ingress.IP != "" {
-			err = proxier.openOnePortal(portal{net.ParseIP(ingress.IP), info.portal.port, false}, info.protocol, proxier.listenIP, info.proxyPort, service)
+	for _, ingress := range info.loadBalancerIPs {
+		if ingress != "" {
+			err = proxier.openOnePortal(portal{net.ParseIP(ingress), info.portal.port, false}, info.protocol, proxier.listenIP, info.proxyPort, service)
 			if err != nil {
 				return err
 			}
 		}
 	}
 	if info.nodePort != 0 {
+		//TODO Add log here
 		err = proxier.openNodePort(info.nodePort, info.protocol, proxier.listenIP, info.proxyPort, service)
 		if err != nil {
 			return err
@@ -800,7 +806,7 @@ func (proxier *UserspaceLinux) openPortal(service iptables.ServicePortName, info
 	return nil
 }
 
-func (proxier *UserspaceLinux) openOnePortal(portal portal, protocol v1.Protocol, proxyIP net.IP, proxyPort int, name iptables.ServicePortName) error {
+func (proxier *UserspaceLinux) openOnePortal(portal portal, protocol localnetv1.Protocol, proxyIP net.IP, proxyPort int, name iptables.ServicePortName) error {
 	if proxier.localAddrs.Has(portal.ip) {
 		err := proxier.claimNodePort(portal.ip, portal.port, protocol, name)
 		if err != nil {
@@ -857,7 +863,7 @@ func (proxier *UserspaceLinux) openOnePortal(portal portal, protocol v1.Protocol
 
 // Marks a port as being owned by a particular service, or returns error if already claimed.
 // Idempotent: reclaiming with the same owner is not an error
-func (proxier *UserspaceLinux) claimNodePort(ip net.IP, port int, protocol v1.Protocol, owner iptables.ServicePortName) error {
+func (proxier *UserspaceLinux) claimNodePort(ip net.IP, port int, protocol localnetv1.Protocol, owner iptables.ServicePortName) error {
 	proxier.portMapMutex.Lock()
 	defer proxier.portMapMutex.Unlock()
 
@@ -890,7 +896,7 @@ func (proxier *UserspaceLinux) claimNodePort(ip net.IP, port int, protocol v1.Pr
 
 // Release a claim on a port.  Returns an error if the owner does not match the claim.
 // Tolerates release on an unclaimed port, to simplify .
-func (proxier *UserspaceLinux) releaseNodePort(ip net.IP, port int, protocol v1.Protocol, owner iptables.ServicePortName) error {
+func (proxier *UserspaceLinux) releaseNodePort(ip net.IP, port int, protocol localnetv1.Protocol, owner iptables.ServicePortName) error {
 	proxier.portMapMutex.Lock()
 	defer proxier.portMapMutex.Unlock()
 
@@ -909,7 +915,7 @@ func (proxier *UserspaceLinux) releaseNodePort(ip net.IP, port int, protocol v1.
 	return nil
 }
 
-func (proxier *UserspaceLinux) openNodePort(nodePort int, protocol v1.Protocol, proxyIP net.IP, proxyPort int, name iptables.ServicePortName) error {
+func (proxier *UserspaceLinux) openNodePort(nodePort int, protocol localnetv1.Protocol, proxyIP net.IP, proxyPort int, name iptables.ServicePortName) error {
 	// TODO: Do we want to allow containers to access public services?  Probably yes.
 	// TODO: We could refactor this to be the same code as portal, but with IP == nil
 
@@ -959,9 +965,9 @@ func (proxier *UserspaceLinux) closePortal(service iptables.ServicePortName, inf
 	for _, publicIP := range info.externalIPs {
 		el = append(el, proxier.closeOnePortal(portal{net.ParseIP(publicIP), info.portal.port, true}, info.protocol, proxier.listenIP, info.proxyPort, service)...)
 	}
-	for _, ingress := range info.loadBalancerStatus.Ingress {
-		if ingress.IP != "" {
-			el = append(el, proxier.closeOnePortal(portal{net.ParseIP(ingress.IP), info.portal.port, false}, info.protocol, proxier.listenIP, info.proxyPort, service)...)
+	for _, ingress := range info.loadBalancerIPs {
+		if ingress != "" {
+			el = append(el, proxier.closeOnePortal(portal{net.ParseIP(ingress), info.portal.port, false}, info.protocol, proxier.listenIP, info.proxyPort, service)...)
 		}
 	}
 	if info.nodePort != 0 {
@@ -975,7 +981,7 @@ func (proxier *UserspaceLinux) closePortal(service iptables.ServicePortName, inf
 	return utilerrors.NewAggregate(el)
 }
 
-func (proxier *UserspaceLinux) closeOnePortal(portal portal, protocol v1.Protocol, proxyIP net.IP, proxyPort int, name iptables.ServicePortName) []error {
+func (proxier *UserspaceLinux) closeOnePortal(portal portal, protocol localnetv1.Protocol, proxyIP net.IP, proxyPort int, name iptables.ServicePortName) []error {
 	el := []error{}
 	if proxier.localAddrs.Has(portal.ip) {
 		if err := proxier.releaseNodePort(portal.ip, portal.port, protocol, name); err != nil {
@@ -1015,7 +1021,7 @@ func (proxier *UserspaceLinux) closeOnePortal(portal portal, protocol v1.Protoco
 	return el
 }
 
-func (proxier *UserspaceLinux) closeNodePort(nodePort int, protocol v1.Protocol, proxyIP net.IP, proxyPort int, name iptables.ServicePortName) []error {
+func (proxier *UserspaceLinux) closeNodePort(nodePort int, protocol localnetv1.Protocol, proxyIP net.IP, proxyPort int, name iptables.ServicePortName) []error {
 	el := []error{}
 
 	// Handle traffic from containers.
@@ -1157,7 +1163,7 @@ var zeroIPv6 = net.ParseIP("::")
 var localhostIPv6 = net.ParseIP("::1")
 
 // Build a slice of iptables args that are common to from-container and from-host portal rules.
-func iptablesCommonPortalArgs(destIP net.IP, addPhysicalInterfaceMatch bool, addDstLocalMatch bool, destPort int, protocol v1.Protocol, service iptables.ServicePortName) []string {
+func iptablesCommonPortalArgs(destIP net.IP, addPhysicalInterfaceMatch bool, addDstLocalMatch bool, destPort int, protocol localnetv1.Protocol, service iptables.ServicePortName) []string {
 	// This list needs to include all fields as they are eventually spit out
 	// by iptables-save.  This is because some systems do not support the
 	// 'iptables -C' arg, and so fall back on parsing iptables-save output.
@@ -1169,8 +1175,8 @@ func iptablesCommonPortalArgs(destIP net.IP, addPhysicalInterfaceMatch bool, add
 	args := []string{
 		"-m", "comment",
 		"--comment", service.String(),
-		"-p", strings.ToLower(string(protocol)),
-		"-m", strings.ToLower(string(protocol)),
+		"-p", strings.ToLower(protocol.String()),
+		"-m", strings.ToLower(protocol.String()),
 		"--dport", fmt.Sprintf("%d", destPort),
 	}
 
@@ -1190,7 +1196,7 @@ func iptablesCommonPortalArgs(destIP net.IP, addPhysicalInterfaceMatch bool, add
 }
 
 // Build a slice of iptables args for a from-container portal rule.
-func (proxier *UserspaceLinux) iptablesContainerPortalArgs(destIP net.IP, addPhysicalInterfaceMatch bool, addDstLocalMatch bool, destPort int, protocol v1.Protocol, proxyIP net.IP, proxyPort int, service iptables.ServicePortName) []string {
+func (proxier *UserspaceLinux) iptablesContainerPortalArgs(destIP net.IP, addPhysicalInterfaceMatch bool, addDstLocalMatch bool, destPort int, protocol localnetv1.Protocol, proxyIP net.IP, proxyPort int, service iptables.ServicePortName) []string {
 	args := iptablesCommonPortalArgs(destIP, addPhysicalInterfaceMatch, addDstLocalMatch, destPort, protocol, service)
 
 	// This is tricky.
@@ -1237,7 +1243,7 @@ func (proxier *UserspaceLinux) iptablesContainerPortalArgs(destIP net.IP, addPhy
 }
 
 // Build a slice of iptables args for a from-host portal rule.
-func (proxier *UserspaceLinux) iptablesHostPortalArgs(destIP net.IP, addDstLocalMatch bool, destPort int, protocol v1.Protocol, proxyIP net.IP, proxyPort int, service iptables.ServicePortName) []string {
+func (proxier *UserspaceLinux) iptablesHostPortalArgs(destIP net.IP, addDstLocalMatch bool, destPort int, protocol localnetv1.Protocol, proxyIP net.IP, proxyPort int, service iptables.ServicePortName) []string {
 	args := iptablesCommonPortalArgs(destIP, false, addDstLocalMatch, destPort, protocol, service)
 
 	// This is tricky.
@@ -1272,7 +1278,7 @@ func (proxier *UserspaceLinux) iptablesHostPortalArgs(destIP net.IP, addDstLocal
 // Build a slice of iptables args for a from-host public-port rule.
 // See iptablesHostPortalArgs
 // TODO: Should we just reuse iptablesHostPortalArgs?
-func (proxier *UserspaceLinux) iptablesHostNodePortArgs(nodePort int, protocol v1.Protocol, proxyIP net.IP, proxyPort int, service iptables.ServicePortName) []string {
+func (proxier *UserspaceLinux) iptablesHostNodePortArgs(nodePort int, protocol localnetv1.Protocol, proxyIP net.IP, proxyPort int, service iptables.ServicePortName) []string {
 	args := iptablesCommonPortalArgs(nil, false, false, nodePort, protocol, service)
 
 	if proxyIP.Equal(zeroIPv4) || proxyIP.Equal(zeroIPv6) {
@@ -1284,7 +1290,7 @@ func (proxier *UserspaceLinux) iptablesHostNodePortArgs(nodePort int, protocol v
 }
 
 // Build a slice of iptables args for an from-non-local public-port rule.
-func (proxier *UserspaceLinux) iptablesNonLocalNodePortArgs(nodePort int, protocol v1.Protocol, proxyIP net.IP, proxyPort int, service iptables.ServicePortName) []string {
+func (proxier *UserspaceLinux) iptablesNonLocalNodePortArgs(nodePort int, protocol localnetv1.Protocol, proxyIP net.IP, proxyPort int, service iptables.ServicePortName) []string {
 	args := iptablesCommonPortalArgs(nil, false, false, proxyPort, protocol, service)
 	args = append(args, "-m", "state", "--state", "NEW", "-j", "ACCEPT")
 	return args
