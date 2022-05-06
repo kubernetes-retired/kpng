@@ -1103,7 +1103,7 @@ if  [[ "${cluster_count}" -lt "2" ]] && ${print_report}; then
     help
 fi
 
-if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|not-kpng)$ ]]; then
+if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|not-kpng|userspacelin)$ ]]; then
     echo "user must specify the supported backend"
     help
 fi
