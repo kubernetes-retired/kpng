@@ -5,7 +5,7 @@ import (
 	"runtime/trace"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/client/pkg/diffstore"
+	"sigs.k8s.io/kpng/client/lightdiffstore"
 	"sigs.k8s.io/kpng/server/jobs/store2diff"
 	"sigs.k8s.io/kpng/server/pkg/proxystore"
 	"sigs.k8s.io/kpng/server/pkg/server/watchstate"
@@ -72,7 +72,7 @@ func (_ *Job) SendDiff(w *watchstate.WatchState) (updated bool) {
 	count += w.SendDeletes(localnetv1.Set_GlobalServiceInfos)
 	count += w.SendDeletes(localnetv1.Set_GlobalNodeInfos)
 
-	w.Reset(diffstore.ItemDeleted)
+	w.Reset(lightdiffstore.ItemDeleted)
 
 	return count != 0
 }
