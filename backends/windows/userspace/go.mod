@@ -27,16 +27,8 @@ replace (
 	k8s.io/mount-utils => k8s.io/mount-utils v0.22.4
 	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.22.4
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.22.4
-)
-
-replace (
 	k8s.io/cli-runtime => k8s.io/cli-runtime v0.22.4
-	sigs.k8s.io/kpng => ../../empty
-	sigs.k8s.io/kpng/api => ./../../../api
-	sigs.k8s.io/kpng/client => ./../../../client
 )
-
-require sigs.k8s.io/kpng/client v0.0.0-00010101000000-000000000000
 
 require (
 	github.com/spf13/pflag v1.0.5
@@ -44,7 +36,6 @@ require (
 	k8s.io/apimachinery v0.22.4
 	k8s.io/klog/v2 v2.9.0
 	k8s.io/utils v0.0.0-20220127004650-9b3446523e65
-	sigs.k8s.io/kpng/api v0.0.0-00010101000000-000000000000
 )
 
 require (

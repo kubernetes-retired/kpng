@@ -78,8 +78,7 @@ func (j *Job) Run(ctx context.Context) {
 			}
 
 			si := &localnetv1.ServiceInfo{
-				Service:      se.Service,
-				TopologyKeys: se.TopologyKeys,
+				Service: se.Service,
 			}
 
 			fullName := []byte(svc.Namespace + "/" + svc.Name)
@@ -112,7 +111,7 @@ func (j *Job) Run(ctx context.Context) {
 			for _, u := range diffSvcs.Updated() {
 				klog.Info("U service ", string(u.Key))
 				si := u.Value.(*localnetv1.ServiceInfo)
-				tx.SetService(si.Service, si.TopologyKeys)
+				tx.SetService(si.Service)
 			}
 			for _, u := range diffEPs.Updated() {
 				klog.Info("U endpoints ", string(u.Key))

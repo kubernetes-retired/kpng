@@ -19,7 +19,9 @@ func ExampleForNodeWithTopology() {
 			Ports: []*localnetv1.PortMapping{
 				{Port: 1234},
 			},
-		}, []string{"kubernetes.io/hostname"})
+
+			InternalTrafficToLocal: true,
+		})
 
 		tx.SetEndpointsOfSource("test", "test-abcde", []*localnetv1.EndpointInfo{
 			{
@@ -54,7 +56,9 @@ func ExampleForNodeWithTopology() {
 			fmt.Print("host ", host, ":\n")
 			tx.Each(proxystore.Services, func(kv *proxystore.KV) (cont bool) {
 				fmt.Print("  - service ", kv.Name, ":\n")
-				for _, epi := range ForNode(tx, kv.Service, host) {
+
+				endpoints, _ /* TODO external endpoints */ := ForNode(tx, kv.Service, host)
+				for _, epi := range endpoints {
 					fmt.Print("    - ep ", epi.Endpoint.IPs, "\n")
 				}
 				return true
