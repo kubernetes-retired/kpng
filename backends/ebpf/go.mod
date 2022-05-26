@@ -1,4 +1,4 @@
-module github.com/kubernetes/kpng/backends/ebpf
+module sigs.k8s.io/kpng/backends/ebpf
 
 go 1.18
 
@@ -8,14 +8,8 @@ require (
 	k8s.io/api v0.24.0
 	k8s.io/apimachinery v0.24.0
 	k8s.io/klog v1.0.0
-	sigs.k8s.io/kpng/api v0.0.0-20220429144314-0fdc5402fa0b
+	sigs.k8s.io/kpng/api v0.0.0-20220521134046-f747cedbe766
 	sigs.k8s.io/kpng/client v0.0.0-20220429144314-0fdc5402fa0b
-)
-
-replace (
-	sigs.k8s.io/kpng => ../../empty
-	sigs.k8s.io/kpng/api => ../../api
-	sigs.k8s.io/kpng/client => ../../client
 )
 
 require (
@@ -28,13 +22,13 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/spf13/cobra v1.1.3 // indirect
+	github.com/spf13/cobra v1.4.0 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/genproto v0.0.0-20210930144712-2e2e1008e8a3 // indirect
+	google.golang.org/genproto v0.0.0-20220107163113-42d7afdf6368 // indirect
 	google.golang.org/grpc v1.41.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
+	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/klog/v2 v2.60.1 // indirect

@@ -1,6 +1,7 @@
 go 1.18
 
 use (
+	./backends/ebpf
 	./backends/iptables
 	./backends/ipvs-as-sink
 	./backends/nft

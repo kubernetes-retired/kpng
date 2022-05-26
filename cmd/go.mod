@@ -6,12 +6,9 @@ require (
 	github.com/spf13/cobra v1.4.0
 	google.golang.org/grpc v1.41.0
 	google.golang.org/protobuf v1.28.0
-	k8s.io/client-go v0.24.1
+	k8s.io/client-go v0.24.2
 	k8s.io/klog/v2 v2.60.1
 	sigs.k8s.io/kpng/api v0.0.0-20220521134046-f747cedbe766
-)
-
-require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -45,8 +42,8 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	k8s.io/api v0.24.1 // indirect
-	k8s.io/apimachinery v0.24.1 // indirect
+	k8s.io/api v0.24.2 // indirect
+	k8s.io/apimachinery v0.24.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42 // indirect
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
