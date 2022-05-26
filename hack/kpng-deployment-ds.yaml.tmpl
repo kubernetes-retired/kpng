@@ -18,7 +18,6 @@ spec:
       # to enable progressive deployment on existing cluster you can use node labels:
       #nodeSelector:
       #  kpng: kpng
-
       serviceAccountName: ${SERVICE_ACCOUNT_NAME}
       hostNetwork: true
       # so that kpng always runs on the controlplane nodes...
@@ -68,7 +67,16 @@ spec:
         - name: modules
           mountPath: /lib/modules
           readOnly: true
-        args: ${E2E_BACKEND_ARGS}
+        - name: bpf-maps
+          mountPath: /sys/fs/bpf
+          mountPropagation: Bidirectional
+        - name: cgroup-v2-fs
+          mountPath: /sys/fs/cgroup/unified
+        - name: cgroup-v2-mount
+          mountPath: /host-mount/mounts
+          mountPropagation: HostToContainer
+        args: [ "local", "--api=unix:///k8s/proxy.sock", "to-${E2E_BACKEND}", "--v=${KPNG_DEBUG_LEVEL}"]
+        #- --dry-run
       volumes:
       - name: empty
         emptyDir: {}
@@ -78,3 +86,10 @@ spec:
       - name: kpng-config
         configMap:
           name: ${CONFIG_MAP_NAME}
+      - name: bpf-maps
+        hostPath:
+          path: /sys/fs/bpf
+          type: DirectoryOrCreate
+      - name: bpf-log
+        hostPath:
+          path: /sys/kernel/debug/tracing

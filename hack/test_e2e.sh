@@ -699,7 +699,6 @@ function add_to_path {
     # Arguments:                                                              #
     #   arg1:  directory                                                      #
     ###########################################################################
-
     [ $# -eq 1 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
@@ -1066,7 +1065,7 @@ function help {
     printf "\n"
     printf "Usage: %s [-i ip_family] [-b backend]\n" "$0"
     printf "\t-i set ip_family(ipv4/ipv6/dual) name in the e2e test runs.\n"
-    printf "\t-b set backend (iptables/nft/ipvs/not-kpng) name in the e2e test runs. \
+    printf "\t-b set backend (iptables/nft/ipvs/ebpf/not-kpng) name in the e2e test runs. \
     \"not-kpng\" is used to be able to validate and compare results\n"
     printf "\t-c flag allows for ci_mode. Please don't run on local systems.\n"
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
@@ -1118,7 +1117,7 @@ if  [[ "${cluster_count}" -lt "2" ]] && ${print_report}; then
     help
 fi
 
-if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|not-kpng|userspacelin)$ ]]; then
+if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|ebpf|userspacelin|not-kpng)$ ]]; then
     echo "user must specify the supported backend"
     help
 fi
