@@ -45,7 +45,7 @@ func (b *backend) Sink() localsink.Sink {
 		ebc.Callback,
 	).Callback
 
-	sink.SetupFcn = b.Setup
+	sink.SetupFunc = b.Setup
 
 	return sink
 }
