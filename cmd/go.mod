@@ -3,14 +3,17 @@ module sigs.k8s.io/kpng/cmd
 go 1.18
 
 require (
+	github.com/PuerkitoBio/purell v1.1.1 // indirect
+	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/spf13/cobra v1.4.0
 	google.golang.org/grpc v1.41.0
 	google.golang.org/protobuf v1.28.0
 	k8s.io/client-go v0.24.2
 	k8s.io/klog/v2 v2.60.1
 	sigs.k8s.io/kpng/api v0.0.0-20220521134046-f747cedbe766
-	github.com/PuerkitoBio/purell v1.1.1 // indirect
-	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
+)
+
+require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful v2.9.5+incompatible // indirect
 	github.com/go-logr/logr v1.2.0 // indirect

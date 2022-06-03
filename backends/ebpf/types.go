@@ -19,12 +19,51 @@ package ebpf
 import (
 	"fmt"
 	"net"
+	"sync"
 
+	cebpflink "github.com/cilium/ebpf/link"
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
+
+// Userspace Types
+type svcEndpointMapping struct {
+	Svc *BaseServiceInfo
+
+	Endpoint []*localnetv1.Endpoint
+}
+
+type ebpfController struct {
+	// protects the following fields
+	mu sync.Mutex
+
+	// Keeps track of ebpf objects in memory.
+	objs bpfObjects
+
+	// Program Link,
+	bpfLink cebpflink.Link
+
+	ipFamily v1.IPFamily
+
+	// Caches of what service info our ebpf MAPs should contain
+	svcMap map[string]svcEndpointMapping
+
+	// Cache of all service keys in the svcMap, used to build deletion lists
+	svcMapKeys sets.String
+}
+
+func NewEBPFController(objs bpfObjects, bpfProgLink cebpflink.Link, ipFamily v1.IPFamily) ebpfController {
+	return ebpfController{
+		objs:       objs,
+		bpfLink:    bpfProgLink,
+		ipFamily:   ipFamily,
+		svcMap:     make(map[string]svcEndpointMapping),
+		svcMapKeys: sets.NewString(),
+	}
+}
 
 // ServicePortName carries a namespace + name + portname.  This is the unique
 // identifier for a load-balanced service.
@@ -35,7 +74,7 @@ type ServicePortName struct {
 }
 
 func (spn ServicePortName) String() string {
-	return fmt.Sprintf("%s%s", spn.NamespacedName.String(), fmtPortName(spn.Port))
+	return fmt.Sprintf("%s%s%s", spn.NamespacedName.String(), fmtPortName(spn.Port), spn.Protocol)
 }
 
 func fmtPortName(in string) string {
@@ -79,41 +118,6 @@ type ServicePort interface {
 	// HintsAnnotation returns the value of the v1.AnnotationTopologyAwareHints annotation.
 	HintsAnnotation() string
 }
-
-// // Endpoint in an interface which abstracts information about an endpoint.
-// // TODO: Rename functions to be consistent with ServicePort.
-// type Endpoint interface {
-// 	// String returns endpoint string.  An example format can be: `IP:Port`.
-// 	// We take the returned value as ServiceEndpoint.Endpoint.
-// 	String() string
-// 	// GetIsLocal returns true if the endpoint is running in same host as kube-proxy, otherwise returns false.
-// 	GetIsLocal() bool
-// 	// IsReady returns true if an endpoint is ready and not terminating.
-// 	// This is only set when watching EndpointSlices. If using Endpoints, this is always
-// 	// true since only ready endpoints are read from Endpoints.
-// 	IsReady() bool
-// 	// IsServing returns true if an endpoint is ready. It does not account
-// 	// for terminating state.
-// 	// This is only set when watching EndpointSlices. If using Endpoints, this is always
-// 	// true since only ready endpoints are read from Endpoints.
-// 	IsServing() bool
-// 	// IsTerminating retruns true if an endpoint is terminating. For pods,
-// 	// that is any pod with a deletion timestamp.
-// 	// This is only set when watching EndpointSlices. If using Endpoints, this is always
-// 	// false since terminating endpoints are always excluded from Endpoints.
-// 	IsTerminating() bool
-// 	// GetTopology returns the topology information of the endpoint.
-// 	GetTopology() map[string]string
-// 	// GetZoneHint returns the zone hint for the endpoint. This is based on
-// 	// endpoint.hints.forZones[0].name in the EndpointSlice API.
-// 	GetZoneHints() sets.String
-// 	// IP returns IP part of the endpoint.
-// 	IP() string
-// 	// Port returns the Port part of the endpoint.
-// 	Port() (int, error)
-// 	// Equal checks if two endpoints are equal.
-// 	Equal(Endpoint) bool
-// }
 
 // BaseServiceInfo contains base information that defines a service.
 // This could be used directly by proxier while processing services,
@@ -240,7 +244,7 @@ func (sct *ebpfController) newBaseServiceInfo(port *localnetv1.PortMapping, serv
 		nodeLocalExternal = true
 	}
 	nodeLocalInternal := false
-	//TODO : CHECK InternalTrafficPolicy
+	// TODO : CHECK InternalTrafficPolicy
 	// if utilfeature.DefaultFeatureGate.Enabled(features.ServiceInternalTrafficPolicy) {
 	// 	nodeLocalInternal = apiservice.RequestsOnlyLocalTrafficForInternal(service)
 	// }
@@ -344,4 +348,46 @@ func RequestsOnlyLocalTraffic(service *localnetv1.Service) bool {
 		return false
 	}
 	return service.ExternalTrafficToLocal
+}
+
+// Kernel Types used to interact with ebpf maps
+
+// ServiceEndpoint is used to identify a service and one of its endpoint pair.
+type ServiceEndpoint struct {
+	Endpoint        string
+	ServicePortName ServicePortName
+}
+
+// Service4Value must match 'struct lb4_service_v2' in "bpf/lib/common.h".
+type Service4Value struct {
+	BackendID uint32
+	Count     uint16
+	RevNat    uint16
+	Flags     uint8
+	Flags2    uint8
+	Pad       pad2uint8
+}
+
+// Service4Key must match 'struct lb4_key' in "bpf/lib/common.h".
+type Service4Key struct {
+	Address     IPv4
+	Port        Port
+	BackendSlot uint16
+}
+
+// Backend4Value must match 'struct lb4_backend' in "bpf/lib/common.h".
+type Backend4Value struct {
+	Address IPv4
+	Port    Port
+	Flags   uint8
+	Pad     uint8
+}
+
+type pad2uint8 [2]uint8
+
+type IPv4 [4]byte
+type Port [2]byte
+
+type Backend4Key struct {
+	ID uint32
 }

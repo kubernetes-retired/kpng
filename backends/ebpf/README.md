@@ -1,13 +1,39 @@
 # KPNG EBPF Backend Implementation 
 
-## Compile ebpf program 
+## Intro
+
+NOTE: This KPNG ebpf based backend is currently a POC and is limited in functionality
+exclusively to proxying internal ClusterIP based TCP + UDP services.  Functionality 
+will be expanded moving forward to include support for the remainder of the defined 
+service features.
+
+## Compile ebpf program
 
 This will automatically use cillium/ebpf to compile the go program into bytecode
 using clang, and build go bindings
 
 `go generate`
 
-## Licensing 
+## Start a local kpng ebpf backend kind cluster
+
+`./hack/test_e2e.sh -i ipv4 -b ebpf -d`
+
+## Testing Local Changes quickly
+
+1. `docker build -t kpng:test -f Dockerfile .` 
+NOTE: If any changes was made to the c source code `go generate` much be run 
+prior to image building.
+
+2. `kind load docker-image kpng:test --name=kpng-e2e-ipv4-ebpf`
+
+3. `kubectl delete pods -n kube-system -l app=kpng`
+
+## See ebpf program logs
+
+`kubectl logs -f <KPNG_POD_NAME> -n kube-system -c kpng-ebpf-tools cat /tracing/trace_pipe`
+
+
+## Licensing
 
 The user space components of this example are licensed under the [Apache License, Version 2.0](/LICENSE) as is the
 rest of the code defined in KPNG.

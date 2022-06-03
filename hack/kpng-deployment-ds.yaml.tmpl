@@ -27,6 +27,21 @@ spec:
         effect: "NoSchedule"
       containers:
       # We'll sed-replace this with a valid kpng image at creat time
+      - image: cilium/cilium-bpftool:b5ba881d2a7ec68d88ecd72efd60ac551c720701
+        imagePullPolicy: ${PULL}
+        name: kpng-ebpf-tools
+        securityContext:
+          privileged: true
+        command: [ "/bin/bash", "-c", "--", "mount bpffs /sys/fs/bpf -t bpf && sleep infinity" ]
+        volumeMounts:
+        - name: modules
+          mountPath: /lib/modules
+          readOnly: true
+        - name: bpf-maps
+          mountPath: /sys/fs/bpf
+          mountPropagation: Bidirectional
+        - name: bpf-log
+          mountPath: /tracing
       - image: ${IMAGE}
         imagePullPolicy: ${PULL}
         env:

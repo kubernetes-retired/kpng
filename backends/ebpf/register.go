@@ -33,7 +33,7 @@ func (s *backend) Reset() { /* noop */ }
 
 func (s *backend) Setup() {
 	ebc = ebpfSetup()
-	klog.Info("Loading ebpf maps and program %+v", ebc)
+	klog.Infof("Loading ebpf maps and program %+v", ebc)
 }
 
 func (b *backend) Sync() { /* no-op */ }
