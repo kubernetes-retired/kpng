@@ -8,18 +8,14 @@
 
 #define SYS_REJECT 0
 #define SYS_PROCEED 1
+#define DEFAULT_MAX_EBPF_MAP_ENNTRIES 65536
 
-char __license[] SEC("license") = "Dual MIT/GPL";
-
-const int DefaultMaxEntries = 65536;
+char __license[] SEC("license") = "BSD-2-Clause";
 
 struct V4_key {
   __be32 address;     /* Service virtual IPv4 address  4*/
   __be16 dport;       /* L4 port filter, if unset, all ports apply   */
   __u16 backend_slot; /* Backend iterator, 0 indicates the svc frontend  2*/
-  //__u8 proto;		/* L4 protocol, currently not used (set to 0) 1 */
-  //__u8 scope;		/* LB_LOOKUP_SCOPE_* for externalTrafficPolicy=Local 1*/
-  //__u16 pad[2];
 };
 
 struct lb4_service {
@@ -42,23 +38,22 @@ struct lb4_service {
 struct lb4_backend {
   __be32 address; /* Service endpoint IPv4 address */
   __be16 port;    /* L4 port filter */
-  __u8 proto;     /* L4 protocol, currently not used (set to 0) */
   __u8 flags;
 };
 
-struct bpf_map_def SEC("maps") v4_svc_map = {
-    .type = BPF_MAP_TYPE_HASH,
-    .key_size = sizeof(struct V4_key),
-    .value_size = sizeof(struct lb4_service),
-    .max_entries = DefaultMaxEntries,
-};
+struct {
+  __uint(type, BPF_MAP_TYPE_HASH); 
+  __type(key, struct V4_key);
+  __type(value, struct lb4_service); 
+  __uint(max_entries, DEFAULT_MAX_EBPF_MAP_ENNTRIES);
+} v4_svc_map SEC(".maps");
 
-struct bpf_map_def SEC("maps") v4_backend_map = {
-    .type = BPF_MAP_TYPE_HASH,
-    .key_size = sizeof(u32),
-    .value_size = sizeof(struct lb4_backend),
-    .max_entries = DefaultMaxEntries,
-};
+struct {
+  __uint(type, BPF_MAP_TYPE_HASH); 
+  __type(key, u32);
+  __type(value, struct lb4_backend); 
+  __uint(max_entries, DEFAULT_MAX_EBPF_MAP_ENNTRIES);
+} v4_backend_map SEC(".maps");
 
 static __always_inline struct lb4_service *
 lb4_lookup_service(struct V4_key *key) {
@@ -66,21 +61,8 @@ lb4_lookup_service(struct V4_key *key) {
 
   svc = bpf_map_lookup_elem(&v4_svc_map, key);
   if (svc) {
-    // svc = bpf_map_lookup_elem(&v4_svc_map, key);
-    // if (svc && svc->count)
     return svc;
   }
-
-  // const char fmt_str[] = "No Service Found loading tmp service with key %x %x
-  // %x \n";
-
-  // bpf_trace_printk(fmt_str, sizeof(fmt_str), key->address, key->dport,
-  // key->backend_slot);
-
-  // struct lb4_service tmpsvc = { };
-  // tmpsvc.count = 5;
-
-  // bpf_map_update_elem(&v4_svc_map, key, &tmpsvc, BPF_ANY);
 
   return NULL;
 }
@@ -170,22 +152,17 @@ static __always_inline int __sock4_fwd(struct bpf_sock_addr *ctx) {
 
   __u32 backend_id = 0;
 
-  const char fmt_str[] =
-      "Hello, world, from BPF! I am in the program address is %x port is %x\n";
-
-  bpf_trace_printk(fmt_str, sizeof(fmt_str), key.address, key.dport);
-
-  // svc->count++;
-  // bpf_map_update_elem(&v4_svc_map, &key, &svc, BPF_ANY);
-
   svc = lb4_lookup_service(&key);
   if (!svc) {
     return -ENXIO;
   }
 
-  const char fmt_str2[] = "Hello, world, from BPF! I found a service %lu\n";
+  // Logs are in /sys/kernel/debug/tracing/trace_pipe
 
-  bpf_trace_printk(fmt_str2, sizeof(fmt_str2), (unsigned long)svc->backend_id);
+  const char debug_str[] = "Entering the kpng ebpf backend, caught a\
+  packet destined for my VIP, the address is: %x port is: %x and selected backend id is: %x\n";
+  
+  bpf_trace_printk(debug_str, sizeof(debug_str),  key.address, key.dport, svc->backend_id);
 
   if (backend_id == 0) {
     key.backend_slot = (sock_select_slot(ctx) % svc->count) + 1;
@@ -209,9 +186,6 @@ static __always_inline int __sock4_fwd(struct bpf_sock_addr *ctx) {
   ctx->user_ip4 = backend->address;
   ctx_set_port(ctx, backend->port);
 
-  // increment count to show hit
-  // svc->count++;
-  // bpf_map_update_elem(&v4_svc_map, &key, &svc, BPF_ANY);
   return 0;
 }
 

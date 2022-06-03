@@ -37,20 +37,14 @@ type ebpfController struct {
 
 	// Caches of what service info our ebpf MAPs should contain
 	svcMap map[ServicePortName]svcEndpointMapping
-
-	// Caches of what we store in ebpf maps, generated fulling from svcMap
-	ebpfSvcMap  map[Service4Key]Service4Value
-	ebpfBkndMap map[Backend4Key]Backend4Value
 }
 
 func NewEBPFController(objs bpfObjects, bpfProgLink cebpflink.Link, ipFamily v1.IPFamily) ebpfController {
 	return ebpfController{
-		objs:        objs,
-		bpfLink:     bpfProgLink,
-		ipFamily:    ipFamily,
-		svcMap:      make(map[ServicePortName]svcEndpointMapping),
-		ebpfSvcMap:  make(map[Service4Key]Service4Value),
-		ebpfBkndMap: make(map[Backend4Key]Backend4Value),
+		objs:     objs,
+		bpfLink:  bpfProgLink,
+		ipFamily: ipFamily,
+		svcMap:   make(map[ServicePortName]svcEndpointMapping),
 	}
 }
 
@@ -132,13 +126,13 @@ func (ebc *ebpfController) Sync(keys []ServicePortName) {
 		svcKeys, svcValues, backendKeys, backendValues := makeEbpfMaps(svcInfo)
 
 		if _, err := ebc.objs.V4SvcMap.BatchUpdate(svcKeys, svcValues, &ebpf.BatchOptions{}); err != nil {
-			ebc.Cleanup()
 			klog.Fatalf("Failed Loading service entries: %v", err)
+			ebc.Cleanup()
 		}
 
 		if _, err := ebc.objs.V4BackendMap.BatchUpdate(backendKeys, backendValues, &ebpf.BatchOptions{}); err != nil {
-			ebc.Cleanup()
 			klog.Fatalf("Failed Loading service backend entries: %v", err)
+			ebc.Cleanup()
 		}
 	}
 }
@@ -186,12 +180,14 @@ func makeEbpfMaps(svcMapping svcEndpointMapping) (svcKeys []Service4Key, svcValu
 			BackendSlot: uint16(i + 1),
 		})
 
-		// Make backendID the int value of the string version of the address
+		// Make backendID the int value of the string version of the address + int protocol value
 		err = binary.Read(bytes.NewBuffer(net.ParseIP(address).To4()), binary.BigEndian, &ID)
 		if err != nil {
 			klog.Errorf("Failed to convert endpoint address: %s to Int32, err : %v",
 				address, err)
 		}
+		// Increment by port to have unique backend value for each svcPort
+		ID = ID + uint32(svcMapping.Svc.port)
 
 		svcValues = append(svcValues, Service4Value{Count: 0,
 			BackendID: ID,
@@ -204,7 +200,6 @@ func makeEbpfMaps(svcMapping svcEndpointMapping) (svcKeys []Service4Key, svcValu
 		backendValues = append(backendValues, Backend4Value{
 			Address: backendAddress,
 			Port:    targetPort,
-			Proto:   mapToEbpfProto(int(svcMapping.Svc.protocol)),
 		})
 	}
 	klog.Infof("Writing svcKeys %+v \nsvcValues %+v \nbackendKeys %+v \n backendValues %+v",
@@ -213,23 +208,23 @@ func makeEbpfMaps(svcMapping svcEndpointMapping) (svcKeys []Service4Key, svcValu
 	return svcKeys, svcValues, backendKeys, backendValues
 }
 
-// mapToEbpfProto takes a proto as defined by KPNG and maps it to those defined by
-// linux in https://github.com/torvalds/linux/blob/master/include/uapi/linux/in.h#L27
-func mapToEbpfProto(kpngProto int) U8proto {
-	switch kpngProto {
-	// TCP
-	case 1:
-		return 6
-	// UDP
-	case 2:
-		return 17
-	// SCTP
-	case 3:
-		return 132
-	default:
-		return 0
-	}
-}
+// // mapToEbpfProto takes a proto as defined by KPNG and maps it to those defined by
+// // linux in https://github.com/torvalds/linux/blob/master/include/uapi/linux/in.h#L27
+// func mapToEbpfProto(kpngProto int) U8proto {
+// 	switch kpngProto {
+// 	// TCP
+// 	case 1:
+// 		return 6
+// 	// UDP
+// 	case 2:
+// 		return 17
+// 	// SCTP
+// 	case 3:
+// 		return 132
+// 	default:
+// 		return 0
+// 	}
+// }
 
 // Types used to interact with ebpf maps
 
@@ -254,25 +249,20 @@ type Service4Key struct {
 	Address     IPv4
 	Port        Port
 	BackendSlot uint16
-	// Proto       uint8     `align:"proto"`
-	// Scope       uint8     `align:"scope"`
-	// Pad uint16 `align:"pad"`
 }
 
 // Backend4Value must match 'struct lb4_backend' in "bpf/lib/common.h".
 type Backend4Value struct {
 	Address IPv4
 	Port    Port
-	Proto   U8proto
 	Flags   uint8
+	Pad     uint8
 }
 
 type pad2uint8 [2]uint8
 
 type IPv4 [4]byte
 type Port [2]byte
-
-type U8proto uint8
 
 type Backend4Key struct {
 	ID uint32
