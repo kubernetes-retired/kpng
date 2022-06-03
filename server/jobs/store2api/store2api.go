@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"sigs.k8s.io/kpng/client/pkg/tlsflags"
+	"sigs.k8s.io/kpng/client/tlsflags"
 	"sigs.k8s.io/kpng/server/pkg/proxystore"
 	"sigs.k8s.io/kpng/server/pkg/server"
 	"sigs.k8s.io/kpng/server/pkg/server/endpoints"

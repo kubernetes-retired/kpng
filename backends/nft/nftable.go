@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/client/diffstore2"
+	"sigs.k8s.io/kpng/client/diffstore"
 )
 
 var (
@@ -31,17 +31,17 @@ var (
 	allTables = []*nftable{table4, table6}
 )
 
-type Leaf = diffstore2.BufferLeaf
-type Item = diffstore2.Item[string, *Leaf]
-type Store = diffstore2.Store[string, *Leaf]
+type Leaf = diffstore.BufferLeaf
+type Item = diffstore.Item[string, *Leaf]
+type Store = diffstore.Store[string, *Leaf]
 
 func newNftable(family, name string) *nftable {
 	return &nftable{
 		Family: family,
 		Name:   name,
-		Chains: diffstore2.NewBufferStore[string](),
-		Maps:   diffstore2.NewBufferStore[string](),
-		Sets:   diffstore2.NewBufferStore[string](),
+		Chains: diffstore.NewBufferStore[string](),
+		Maps:   diffstore.NewBufferStore[string](),
+		Sets:   diffstore.NewBufferStore[string](),
 	}
 }
 

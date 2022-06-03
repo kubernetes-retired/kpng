@@ -29,7 +29,7 @@ import (
 	"k8s.io/klog"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/client/pkg/diffstore"
+	"sigs.k8s.io/kpng/client/lightdiffstore"
 	"sigs.k8s.io/kpng/server/pkg/server"
 	"sigs.k8s.io/kpng/server/pkg/server/watchstate"
 	"sigs.k8s.io/kpng/server/serde"
@@ -82,7 +82,7 @@ func (s watchSrv) Watch(res localnetv1.Endpoints_WatchServer) error {
 		w.SendDeletes(localnetv1.Set_EndpointsSet)
 		w.SendDeletes(localnetv1.Set_ServicesSet)
 
-		w.Reset(diffstore.ItemDeleted)
+		w.Reset(lightdiffstore.ItemDeleted)
 
 		// change set sent
 		w.SendSync()

@@ -12,7 +12,7 @@ import (
 	"k8s.io/klog"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/client/pkg/diffstore"
+	"sigs.k8s.io/kpng/client/lightdiffstore"
 	"sigs.k8s.io/kpng/server/jobs/store2file"
 	"sigs.k8s.io/kpng/server/pkg/proxystore"
 	"sigs.k8s.io/kpng/server/pkg/server/watchstate"
@@ -143,7 +143,7 @@ func (j *Job) Run(ctx context.Context) {
 		})
 
 		for _, set := range proxystore.AllSets {
-			w.StoreFor(set).Reset(diffstore.ItemDeleted)
+			w.StoreFor(set).Reset(lightdiffstore.ItemDeleted)
 		}
 	}
 }

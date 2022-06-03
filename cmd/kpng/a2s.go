@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"sigs.k8s.io/kpng/client/pkg/tlsflags"
+	"sigs.k8s.io/kpng/client/tlsflags"
 	"sigs.k8s.io/kpng/server/jobs/api2store"
 	"sigs.k8s.io/kpng/server/pkg/apiwatch"
 	"sigs.k8s.io/kpng/server/pkg/proxystore"

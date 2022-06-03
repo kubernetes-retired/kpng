@@ -5,7 +5,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"sigs.k8s.io/kpng/client/pkg/tlsflags"
+	"sigs.k8s.io/kpng/client/tlsflags"
 )
 
 type Watch struct {
