@@ -1,5 +1,5 @@
-// +build ignore
-
+/* SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause) */
+/* Copyright Authors of Cilium */
 #include <linux/bpf.h>
 #include <linux/in.h>
 #include <stdbool.h>
@@ -10,7 +10,7 @@
 #define SYS_PROCEED 1
 #define DEFAULT_MAX_EBPF_MAP_ENNTRIES 65536
 
-char __license[] SEC("license") = "BSD-2-Clause";
+char __license[] SEC("license") = "Dual BSD/GPL";
 
 struct V4_key {
   __be32 address;     /* Service virtual IPv4 address  4*/
