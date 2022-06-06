@@ -1,0 +1,35 @@
+name: Unit Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    name: run grpc verify tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Setup Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: '1.18.2'
+        stable: 'false'
+    
+    - name: Install dependencies
+      run: |
+        go version
+        go install golang.org/x/lint/golint@latest
+        sudo apt-get install -y libnl-3-dev libnl-genl-3-dev
+
+    - name: checkout
+      uses: actions/checkout@v2
+     
+    - name: run grpc verify tests
+      run: |
+        ./hack/verify/generate-grpc.sh
+        ./hack/verify/verify-grpc.sh
+
