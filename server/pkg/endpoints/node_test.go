@@ -37,6 +37,7 @@ func ExampleForNodeWithTopology() {
 			},
 
 			InternalTrafficToLocal: true,
+			ExternalTrafficToLocal: true,
 		})
 
 		tx.SetEndpointsOfSource("test", "test-abcde", []*localnetv1.EndpointInfo{
@@ -73,7 +74,7 @@ func ExampleForNodeWithTopology() {
 			tx.Each(proxystore.Services, func(kv *proxystore.KV) (cont bool) {
 				fmt.Print("  - service ", kv.Name, ":\n")
 
-				endpoints, _ /* TODO external endpoints */ := ForNode(tx, kv.Service, host)
+				endpoints := ForNode(tx, kv.Service, host)
 				for _, epi := range endpoints {
 					fmt.Print("    - ep ", epi.Endpoint.IPs, "\n")
 				}
