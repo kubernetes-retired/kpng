@@ -24,7 +24,11 @@ import (
 
 func TestHashIsStable(t *testing.T) {
 	ep := &localnetv1.Endpoint{}
-	ep.PortOverrides = map[string]int32{"a": 1, "b": 2, "c": 3}
+	ep.PortOverrides = []*localnetv1.PortName{
+		{Name: "a", Port: 1},
+		{Name: "b", Port: 2},
+		{Name: "c", Port: 3},
+	}
 
 	ref := Hash(ep)
 	for i := 0; i < 100; i++ {

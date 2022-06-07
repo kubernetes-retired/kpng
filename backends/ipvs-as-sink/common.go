@@ -418,8 +418,8 @@ func (p *proxier) addRealServer(serviceKey, prefix, endPointIP string, endpoint 
 		portMap:         make(map[string]int32),
 	}
 
-	for key, port := range endpoint.PortOverrides {
-		epInfo.portMap[key] = port
+	for _, port := range endpoint.PortOverrides {
+		epInfo.portMap[port.Name] = port.Port
 	}
 	p.endpoints.Set([]byte(prefix), 0, epInfo)
 	for _, sp := range p.servicePorts.GetByPrefix([]byte(serviceKey)) {

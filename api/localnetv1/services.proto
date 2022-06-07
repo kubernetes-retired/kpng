@@ -111,7 +111,7 @@ message Endpoint {
     string Hostname = 1;
     IPSet  IPs = 2;
     bool   Local = 3;
-    map<string, int32> PortOverrides = 4;
+    repeated PortName PortOverrides = 4;
 }
 
 message IPSet {
@@ -119,10 +119,9 @@ message IPSet {
     repeated string V6 = 2;
 }
 
-message Port {
-    string   Name     = 1;
-    Protocol Protocol = 2;
-    int32    Port     = 3;
+message PortName {
+    string Name = 1;
+    int32  Port = 2;
 }
 
 enum Protocol {
