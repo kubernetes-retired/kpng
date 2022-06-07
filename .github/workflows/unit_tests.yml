@@ -23,6 +23,7 @@ jobs:
       run: |
         go version
         go install golang.org/x/lint/golint@latest
+        sudo apt-get install -y libnl-3-dev libnl-genl-3-dev
 
     - name: checkout
       uses: actions/checkout@v2
