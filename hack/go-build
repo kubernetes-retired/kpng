@@ -1,0 +1,2 @@
+set -ex
+CGO_ENABLED=1 go build -trimpath -o dist $(hack/go-list-local-mods)

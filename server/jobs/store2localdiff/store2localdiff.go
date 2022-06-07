@@ -72,7 +72,7 @@ func (s *jobRun) Update(tx *proxystore.Tx, w *watchstate.WatchState) {
 		svcs.Set(key, kv.Service.Hash, kv.Service.Service)
 
 		// filter endpoints for this node
-		endpointInfos := endpoints.ForNode(tx, kv.Service, nodeName)
+		endpointInfos, _ /* TODO external endpoints */ := endpoints.ForNode(tx, kv.Service, nodeName)
 
 		for _, ei := range endpointInfos {
 			// hash only the endpoint

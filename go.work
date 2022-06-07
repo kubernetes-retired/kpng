@@ -1,0 +1,11 @@
+go 1.18
+
+use (
+	./backends/iptables
+	./backends/ipvs-as-sink
+	./backends/nft
+	./backends/userspacelin
+	./client
+	./cmd
+	./server
+)

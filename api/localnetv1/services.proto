@@ -153,7 +153,6 @@ message ServiceInfo {
     uint64 Hash = 1;
 
     Service Service = 2;
-    repeated string TopologyKeys = 3;
 }
 
 message EndpointInfo {

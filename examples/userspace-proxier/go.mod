@@ -3,16 +3,6 @@ module sigs.k8s.io/kpng/examples/userspace-proxier
 go 1.18
 
 require (
-	sigs.k8s.io/kpng/api v0.0.0-20211016163122-10ddff77b5bd
-	sigs.k8s.io/kpng/client v0.0.0-20211016173344-b7254404fb71
-)
-
-replace (
-	sigs.k8s.io/kpng/api => ../../api
-	sigs.k8s.io/kpng/client => ../../client
-)
-
-require (
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/go-logr/logr v0.4.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect

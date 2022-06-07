@@ -2,8 +2,6 @@ module sigs.k8s.io/kpng/examples/pipe-exec
 
 go 1.18
 
-require sigs.k8s.io/kpng/client v0.0.0-20211016181748-7de97d3178cf
-
 require (
 	github.com/go-logr/logr v0.4.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -18,5 +16,4 @@ require (
 	google.golang.org/grpc v1.41.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	k8s.io/klog/v2 v2.9.0 // indirect
-	sigs.k8s.io/kpng/api v0.0.0-20211016163122-10ddff77b5bd // indirect
 )

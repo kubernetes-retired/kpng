@@ -66,7 +66,7 @@ func (s *Backend) Setup() {
 		time.Duration(10),
 	)
 	if err != nil {
-		log.Fatal("unable to create proxier: %v", err)
+		log.Fatal("unable to create proxier: ", err)
 	}
 }
 

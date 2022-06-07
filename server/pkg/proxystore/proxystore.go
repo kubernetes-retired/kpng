@@ -234,13 +234,11 @@ func (tx *Tx) SetSync(set Set) {
 
 // Services funcs
 
-func (tx *Tx) SetService(s *localnetv1.Service, topologyKeys []string) {
+func (tx *Tx) SetService(s *localnetv1.Service) {
 	si := &localnetv1.ServiceInfo{
-		Service:      s,
-		TopologyKeys: topologyKeys,
+		Service: s,
 		Hash: serde.Hash(&localnetv1.ServiceInfo{
-			Service:      s,
-			TopologyKeys: topologyKeys,
+			Service: s,
 		}),
 	}
 

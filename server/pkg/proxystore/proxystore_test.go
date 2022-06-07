@@ -46,7 +46,7 @@ func Example() {
 			tx.SetService(&localnetv1.Service{
 				Namespace: "default",
 				Name:      "svc0",
-			}, []string{"*"})
+			})
 
 			tx.SetEndpointsOfSource("default", "svc0", []*localnetv1.EndpointInfo{
 				endpoint("10.0.0.1", false),
@@ -107,7 +107,7 @@ func TestSessionAffinitySetClientIP(t *testing.T) {
 					Port:       90,
 					TargetPort: 8081},
 			},
-		}, []string{"*"})
+		})
 
 		tx.SetEndpointsOfSource("test", "test-abcde", []*localnetv1.EndpointInfo{
 			{

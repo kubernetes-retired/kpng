@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	k8s.io/klog/v2 v2.20.0
-	sigs.k8s.io/kpng/client v0.0.0-20211016173344-b7254404fb71
 )
 
 require (
@@ -20,5 +19,4 @@ require (
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c // indirect
 	google.golang.org/grpc v1.41.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
-	sigs.k8s.io/kpng/api v0.0.0-20211016163122-10ddff77b5bd // indirect
 )
