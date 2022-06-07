@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 package nft
 
 import (
@@ -49,8 +48,8 @@ func testValues() (ctx *renderContext, seps *fullstate.ServiceEndpoints) {
 		Service: svc,
 		Endpoints: []*v1.Endpoint{
 			{IPs: v1.NewIPSet("10.1.0.1"), Local: true},
-			{IPs: v1.NewIPSet("10.1.0.2"), Local: true, PortOverrides: map[string]int32{"metrics": 1011}},
-			{IPs: v1.NewIPSet("10.1.1.1"), Local: false, PortOverrides: map[string]int32{"metrics": 1042}},
+			{IPs: v1.NewIPSet("10.1.0.2"), Local: true, PortOverrides: []*v1.PortName{{Port: 1011, Name: "metrics"}}},
+			{IPs: v1.NewIPSet("10.1.1.1"), Local: false, PortOverrides: []*v1.PortName{{Port: 1042, Name: "metrics"}}},
 		},
 	}
 

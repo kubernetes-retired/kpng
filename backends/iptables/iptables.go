@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
+	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/backends/iptables/util"
 
 	utilnet "k8s.io/utils/net"
@@ -272,7 +273,7 @@ func (t *iptables) sync() {
 }
 
 func (t *iptables) createServiceSpecificChains(svcInfo *serviceInfo, activeNATChains map[util.Chain]bool,
-	existingNATChains map[util.Chain][]byte, allEndpoints *endpointsInfoByName) ([]*string, *[]util.Chain, *[]util.Chain, map[string]map[string]int32) {
+	existingNATChains map[util.Chain][]byte, allEndpoints *endpointsInfoByName) ([]*string, *[]util.Chain, *[]util.Chain, map[string]int32) {
 	if allEndpoints != nil && len(*allEndpoints) > 0 {
 		// Create the per-service chain, retaining counters if possible.
 		t.copyExistingChains([]util.Chain{svcInfo.servicePortChainName}, existingNATChains, &t.natChains)
@@ -616,12 +617,12 @@ func (t *iptables) writeNodePortsRules(svcInfo *serviceInfo, nodeAddresses sets.
 
 //createEndpointsChain creates chains for each ep
 func (t *iptables) createEndpointsChain(svcInfo *serviceInfo, allEndpoints *endpointsInfoByName,
-	existingNATChains map[util.Chain][]byte, activeNATChains map[util.Chain]bool) ([]*string, *[]util.Chain, *[]util.Chain, map[string]map[string]int32) {
+	existingNATChains map[util.Chain][]byte, activeNATChains map[util.Chain]bool) ([]*string, *[]util.Chain, *[]util.Chain, map[string]int32) {
 	endpoints := make([]*string, 0)
 	localEndpointChains := make([]util.Chain, 0)
 	endpointChains := make([]util.Chain, 0)
 	protocol := strings.ToLower(svcInfo.Protocol().String())
-	endpointPortMap := make(map[string]map[string]int32)
+	endpointPortMap := make(map[string]int32)
 	var endpointChain util.Chain
 	if allEndpoints == nil {
 		return nil, nil, nil, nil
@@ -645,7 +646,12 @@ func (t *iptables) createEndpointsChain(svcInfo *serviceInfo, allEndpoints *endp
 			}
 			ep = epInfo.IPs.V4[0]
 		}
-		endpointPortMap[ep] = epInfo.PortOverrides // TODO migrate to epInfo.Ports() map[string]int32 when ready
+
+		targetPort := epInfo.PortMapping(&localnetv1.PortMapping{
+			TargetPortName: svcInfo.targetPortName,
+			TargetPort:     int32(svcInfo.targetPort),
+		})
+		endpointPortMap[ep] = targetPort
 		endpoints = append(endpoints, &ep)
 
 		endpointChain = servicePortEndpointChainName(svcInfo.serviceNameString, protocol, ep)
@@ -663,7 +669,7 @@ func (t *iptables) createEndpointsChain(svcInfo *serviceInfo, allEndpoints *endp
 
 //writeEndpointRules writes rules to svc to jump to sep and rules to sep to dnat and loadbalance to actual ep ip
 func (t *iptables) writeEndpointRules(svcInfo *serviceInfo, svcName types.NamespacedName, endpointChains *[]util.Chain,
-	endpoints []*string, args *[]string, endpointPortMap map[string]map[string]int32) {
+	endpoints []*string, args *[]string, endpointPortMap map[string]int32) {
 	// First write session affinity rules, if applicable.
 	t.writeSessionAffinityRules(svcInfo, (*args)[:0], endpointChains, svcName)
 	// Now write loadbalancing & DNAT rules.
@@ -720,7 +726,7 @@ func (t *iptables) writeEndpointLBRules(svcInfo *serviceInfo, svcName types.Name
 }
 
 func (t *iptables) writeDNATRules(svcInfo *serviceInfo, svcName types.NamespacedName,
-	endpoints []*string, endpointChains *[]util.Chain, args []string, endpointPortMap map[string]map[string]int32) {
+	endpoints []*string, endpointChains *[]util.Chain, args []string, endpointPortMap map[string]int32) {
 	protocol := strings.ToLower(svcInfo.Protocol().String())
 	for i, endpointChain := range *endpointChains {
 		epIP := endpoints[i]
@@ -755,9 +761,9 @@ func (t *iptables) writeDNATRules(svcInfo *serviceInfo, svcName types.Namespaced
 }
 
 // if the targetPort is string, fetch the value from endpointPortMap
-func (t *iptables) getTargetPort(svcInfo *serviceInfo, endpointPortMap map[string]map[string]int32, endpoint string) int {
+func (t *iptables) getTargetPort(svcInfo *serviceInfo, endpointPortMap map[string]int32, endpoint string) int {
 	if svcInfo.TargetPortName() != "" {
-		return int(endpointPortMap[endpoint][svcInfo.PortName()])
+		return int(endpointPortMap[endpoint])
 	}
 	return svcInfo.TargetPort()
 }

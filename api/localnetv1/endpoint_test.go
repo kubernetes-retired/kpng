@@ -26,7 +26,10 @@ func ExampleEndpointPortMapping() {
 	}
 
 	ep := &Endpoint{
-		PortOverrides: map[string]int32{"metrics": 1011, "http2": 888},
+		PortOverrides: []*PortName{
+			{Name: "metrics", Port: 1011},
+			{Name: "http2", Port: 888},
+		},
 	}
 
 	for _, port := range ports {

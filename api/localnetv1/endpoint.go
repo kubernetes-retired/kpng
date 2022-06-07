@@ -32,9 +32,11 @@ func (ep *Endpoint) AddAddress(s string) (ip net.IP) {
 func (ep *Endpoint) PortMapping(port *PortMapping) (target int32) {
 	target = port.TargetPort
 	if port.TargetPortName != "" {
-		override, ok := ep.PortOverrides[port.Name] // it's the *port* name (not target port name)
-		if ok {
-			target = override
+		for _, override := range ep.PortOverrides {
+			if override.Name == port.Name {
+				target = override.Port
+				break
+			}
 		}
 	}
 	return
@@ -44,6 +46,13 @@ func (ep *Endpoint) PortMappings(ports []*PortMapping) (mapping map[int32]int32)
 	mapping = make(map[int32]int32, len(ports))
 	for _, port := range ports {
 		mapping[port.Port] = ep.PortMapping(port)
+	}
+	return
+}
+func (ep *Endpoint) PortNameMappings(ports []*PortMapping) (mapping map[string]int32) {
+	mapping = make(map[string]int32, len(ports))
+	for _, port := range ports {
+		mapping[port.Name] = ep.PortMapping(port)
 	}
 	return
 }

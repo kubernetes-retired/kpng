@@ -92,11 +92,11 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 			info.Endpoint.AddAddress(addr)
 		}
 
-		epMap := make(map[string]int32, len(eps.Ports))
+		ports := make([]*localnetv1.PortName, 0, len(eps.Ports))
 		for _, port := range eps.Ports {
-			epMap[*port.Name] = *port.Port
+			ports = append(ports, &localnetv1.PortName{Name: *port.Name, Port: *port.Port})
 		}
-		info.Endpoint.PortOverrides = epMap
+		info.Endpoint.PortOverrides = ports
 
 		infos = append(infos, info)
 	}
