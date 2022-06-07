@@ -112,6 +112,12 @@ message Endpoint {
     IPSet  IPs = 2;
     bool   Local = 3;
     repeated PortName PortOverrides = 4;
+    EndpointScopes Scopes = 5;
+}
+
+message EndpointScopes {
+    bool Internal = 1;
+    bool External = 2;
 }
 
 message IPSet {

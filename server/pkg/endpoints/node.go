@@ -25,7 +25,7 @@ import (
 
 const hostnameLabel = "kubernetes.io/hostname"
 
-func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (internalEndpoints, externalEndpoints []*localnetv1.EndpointInfo) {
+func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (endpoints []*localnetv1.EndpointInfo) {
 	node := tx.GetNode(nodeName)
 
 	if node == nil {
@@ -70,17 +70,18 @@ func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (in
 		infos = append(infos, info)
 	})
 
-	internalEndpoints = make([]*localnetv1.EndpointInfo, 0, len(infos))
-	externalEndpoints = make([]*localnetv1.EndpointInfo, 0, len(infos))
+	endpoints = make([]*localnetv1.EndpointInfo, 0, len(infos))
 
 	// select endpoints for this service
 
 	for _, info := range infos {
-		if !(si.Service.InternalTrafficToLocal && !info.Endpoint.Local) {
-			internalEndpoints = append(internalEndpoints, info)
+		info.Endpoint.Scopes = &localnetv1.EndpointScopes{
+			Internal: info.Endpoint.Local || !si.Service.InternalTrafficToLocal,
+			External: info.Endpoint.Local || !si.Service.ExternalTrafficToLocal,
 		}
-		if !(si.Service.ExternalTrafficToLocal && !info.Endpoint.Local) {
-			externalEndpoints = append(externalEndpoints, info)
+
+		if info.Endpoint.Scopes.Any() {
+			endpoints = append(endpoints, info)
 		}
 	}
 

@@ -48,12 +48,16 @@ func testValues() (ctx *renderContext, seps *fullstate.ServiceEndpoints) {
 		Service: svc,
 		Endpoints: []*v1.Endpoint{
 			{IPs: v1.NewIPSet("10.1.0.1"), Local: true},
-			{IPs: v1.NewIPSet("10.1.0.2"), Local: true, PortOverrides: []*v1.PortName{{Port: 1011, Name: "metrics"}}},
-			{IPs: v1.NewIPSet("10.1.1.1"), Local: false, PortOverrides: []*v1.PortName{{Port: 1042, Name: "metrics"}}},
+			{IPs: v1.NewIPSet("10.1.0.2"), Local: true, PortOverrides: singlePortOverride("metrics", 1011)},
+			{IPs: v1.NewIPSet("10.1.1.1"), Local: false, PortOverrides: singlePortOverride("metrics", 1042)},
 		},
 	}
 
 	return
+}
+
+func singlePortOverride(name string, port int32) []*v1.PortName {
+	return []*v1.PortName{{Name: name, Port: port}}
 }
 
 func ExampleRenderBasicService() {
