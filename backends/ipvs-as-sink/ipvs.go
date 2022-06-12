@@ -19,10 +19,13 @@ package ipvssink
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/version"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apiserver/pkg/server/mux"
 	"k8s.io/klog"
 
 	"time"
@@ -266,6 +269,42 @@ func (s *Backend) Setup() {
 
 		s.proxiers[ipFamily].initializeIPSets()
 	}
+
+	go func() {
+		err := s.SetUpHttpListen()
+		if err != nil {
+			return
+		}
+	}()
+}
+
+func (s *Backend) SetUpHttpListen() error {
+	errCh := make(chan error)
+	s.ServeProxyMode(errCh)
+	return <-errCh
+}
+
+func (s *Backend) ServeProxyMode(errCh chan error) {
+	//TODO Get Bind address config. Time being leave it empty, kernel will choose loopback adress 127.0.0.1
+	bindAddress := "127.0.0.1:10249"
+	proxyMode := "ipvs"
+	proxyMux := mux.NewPathRecorderMux("kpng-ipvs")
+	proxyMux.HandleFunc("/proxyMode", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		fmt.Fprintf(w, "%s", proxyMode)
+	})
+
+	fn := func() {
+		err := http.ListenAndServe(bindAddress, proxyMux)
+		if err != nil {
+			klog.Errorf("starting http server for proxyMode failed: %v", err)
+			if errCh != nil {
+				errCh <- err
+			}
+		}
+	}
+	go wait.Until(fn, 5*time.Second, wait.NeverStop)
 }
 
 func (s *Backend) createIPVSDummyInterface() {
