@@ -1,4 +1,4 @@
-from alpine:3.15 as gomods
+from alpine:3.16 as gomods
 
 copy . /src/
 run cd /src/ && find -type f \! \( -name go.work -o -name go.mod -o -name go.sum \) -exec rm {} +

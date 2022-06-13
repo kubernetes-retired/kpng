@@ -1,4 +1,9 @@
-from golang:1.17.0-alpine3.13 as build
+from alpine:3.16 as gomods
+
+copy . /src/
+run cd /src/ && find -type f \! \( -name go.work -o -name go.mod -o -name go.sum \) -exec rm {} +
+
+from golang:1.18.3-alpine3.16 as build
 
 # install dependencies
 run apk add --update --no-cache \
@@ -21,7 +26,7 @@ arg GOPROXY
 arg GONOSUMDB
 
 # cache dependencies, they don't change as much as the code
-add go.mod go.sum ./
+copy --from=gomods /src/ /src/
 run go mod download
 
 # test and build
