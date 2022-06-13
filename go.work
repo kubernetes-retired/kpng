@@ -5,6 +5,7 @@ use (
 	./backends/ipvs-as-sink
 	./backends/nft
 	./backends/userspacelin
+	./backends/windows/userspace
 	./client
 	./cmd
 	./server

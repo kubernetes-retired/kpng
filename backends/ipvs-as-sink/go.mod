@@ -6,9 +6,9 @@ require (
 	github.com/google/seesaw v0.0.0-20220321203705-0e93b4c33bc6
 	github.com/spf13/pflag v1.0.5
 	github.com/vishvananda/netlink v1.1.0
-	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
-	k8s.io/api v0.22.4
-	k8s.io/apimachinery v0.22.4
+	golang.org/x/sys v0.0.0-20220209214540-3681064d5158
+	k8s.io/api v0.24.1
+	k8s.io/apimachinery v0.24.1
 	k8s.io/klog v1.0.0
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
 	sigs.k8s.io/kpng/api v0.0.0-20220521134046-f747cedbe766
@@ -31,6 +31,7 @@ require (
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/klog/v2 v2.20.0 // indirect
+	k8s.io/klog/v2 v2.60.1 // indirect
+	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 )

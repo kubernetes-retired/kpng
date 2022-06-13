@@ -11,7 +11,7 @@ require (
 	golang.org/x/exp v0.0.0-20220317015231-48e79f11773a
 	google.golang.org/grpc v1.41.0
 	google.golang.org/protobuf v1.28.0
-	k8s.io/klog/v2 v2.20.0
+	k8s.io/klog/v2 v2.60.1
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
 	sigs.k8s.io/kpng/api v0.0.0-20220521134046-f747cedbe766
 )
@@ -26,6 +26,6 @@ require (
 	github.com/go-logr/logr v1.2.0 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
+	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
 	golang.org/x/text v0.3.7 // indirect
 )
