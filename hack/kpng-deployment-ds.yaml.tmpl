@@ -72,9 +72,9 @@ spec:
           mountPropagation: Bidirectional
         - name: cgroup-v2-fs
           mountPath: /sys/fs/cgroup/unified
+          readOnly: true
         - name: cgroup-v2-mount
           mountPath: /host-mount/mounts
-          mountPropagation: HostToContainer
         args: [ "local", "--api=unix:///k8s/proxy.sock", "to-${E2E_BACKEND}", "--v=${KPNG_DEBUG_LEVEL}"]
         #- --dry-run
       volumes:
@@ -93,3 +93,9 @@ spec:
       - name: bpf-log
         hostPath:
           path: /sys/kernel/debug/tracing
+      - name: cgroup-v2-fs
+        hostPath:
+          path: /sys/fs/cgroup/unified
+      - name: cgroup-v2-mount
+        hostPath:
+          path: /proc/mounts

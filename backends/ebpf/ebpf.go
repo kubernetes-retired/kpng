@@ -76,7 +76,7 @@ func ebpfSetup() ebpfController {
 // detectCgroupPath returns the first-found mount point of type cgroup2
 // and stores it in the cgroupPath global variable.
 func detectRootCgroupPath() (string, error) {
-	f, err := os.Open("/proc/mounts")
+	f, err := os.Open("/host-mount/mounts")
 	if err != nil {
 		return "", err
 	}
@@ -110,7 +110,6 @@ func (ebc *ebpfController) Callback(ch <-chan *client.ServiceEndpoints) {
 	for serviceEndpoints := range ch {
 		klog.Infof("Iterating fullstate channel, got: %+v", serviceEndpoints)
 
-		klog.Infof("Hi Its Andrew")
 		if serviceEndpoints.Service.Type != "ClusterIP" {
 			klog.Warning("Ebpf Proxy not yet implemented for svc types other than clusterIP")
 			continue
