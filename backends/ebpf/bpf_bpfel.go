@@ -13,6 +13,28 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type bpfLb4Backend struct {
+	Address uint32
+	Port    uint16
+	Flags   uint8
+	_       [1]byte
+}
+
+type bpfLb4Service struct {
+	BackendId   uint32
+	Count       uint16
+	RevNatIndex uint16
+	Flags       uint8
+	Flags2      uint8
+	Pad         [2]uint8
+}
+
+type bpfV4Key struct {
+	Address     uint32
+	Dport       uint16
+	BackendSlot uint16
+}
+
 // loadBpf returns the embedded CollectionSpec for bpf.
 func loadBpf() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_BpfBytes)

@@ -26,7 +26,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/sets"
+	"sigs.k8s.io/kpng/client/lightdiffstore"
 )
 
 // Userspace Types
@@ -48,20 +48,16 @@ type ebpfController struct {
 
 	ipFamily v1.IPFamily
 
-	// Caches of what service info our ebpf MAPs should contain
-	svcMap map[string]svcEndpointMapping
-
-	// Cache of all service keys in the svcMap, used to build deletion lists
-	svcMapKeys sets.String
+	// <namespacedName>/<port>/<protocol> -> serviceEndpoints
+	svcMap *lightdiffstore.DiffStore
 }
 
 func NewEBPFController(objs bpfObjects, bpfProgLink cebpflink.Link, ipFamily v1.IPFamily) ebpfController {
 	return ebpfController{
-		objs:       objs,
-		bpfLink:    bpfProgLink,
-		ipFamily:   ipFamily,
-		svcMap:     make(map[string]svcEndpointMapping),
-		svcMapKeys: sets.NewString(),
+		objs:     objs,
+		bpfLink:  bpfProgLink,
+		ipFamily: ipFamily,
+		svcMap:   lightdiffstore.New(),
 	}
 }
 

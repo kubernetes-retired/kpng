@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -17,10 +18,12 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
 
 	"sigs.k8s.io/kpng/client"
+	"sigs.k8s.io/kpng/client/lightdiffstore"
+
+	"github.com/cespare/xxhash"
 )
 
 //go:generate bpf2go -cc clang -cflags "-O2 -g -Wall -Werror" bpf ./bpf/cgroup_connect4.c -- -I./bpf/headers
@@ -76,6 +79,7 @@ func ebpfSetup() ebpfController {
 // detectCgroupPath returns the first-found mount point of type cgroup2
 // and stores it in the cgroupPath global variable.
 func detectRootCgroupPath() (string, error) {
+	// This corresponds to the host's mount's location in the pod deploying this backend.
 	f, err := os.Open("/host-mount/mounts")
 	if err != nil {
 		return "", err
@@ -101,14 +105,12 @@ func (ebc *ebpfController) Cleanup() {
 }
 
 func (ebc *ebpfController) Callback(ch <-chan *client.ServiceEndpoints) {
-	// Used to determine what services are stale in bpf
-	currentSvcKeys := sets.NewString()
-	// Services that need to be updated
-	keysNeedingSync := []string{}
+	// Reset the diffstore before syncing
+	ebc.svcMap.Reset(lightdiffstore.ItemDeleted)
 
 	// Populate internal cache based on incoming fullstate information
 	for serviceEndpoints := range ch {
-		klog.Infof("Iterating fullstate channel, got: %+v", serviceEndpoints)
+		klog.V(5).Infof("Iterating fullstate channel, got: %+v", serviceEndpoints)
 
 		if serviceEndpoints.Service.Type != "ClusterIP" {
 			klog.Warning("Ebpf Proxy not yet implemented for svc types other than clusterIP")
@@ -119,68 +121,44 @@ func (ebc *ebpfController) Callback(ch <-chan *client.ServiceEndpoints) {
 
 		for i := range serviceEndpoints.Service.Ports {
 			servicePort := serviceEndpoints.Service.Ports[i]
-			svcKey := fmt.Sprintf("%s%d%s", svcUniqueName, servicePort.Port, servicePort.Protocol)
+			svcKey := fmt.Sprintf("%s/%d/%s", svcUniqueName, servicePort.Port, servicePort.Protocol)
 			baseSvcInfo := ebc.newBaseServiceInfo(servicePort, serviceEndpoints.Service)
-			svcEndptRelation := svcEndpointMapping{Svc: baseSvcInfo, Endpoint: serviceEndpoints.Endpoints}
 
-			currentSvcKeys.Insert(svcKey)
-			existing, ok := ebc.svcMap[svcKey]
+			svcEndptRelation := svcEndpointMapping{Svc: baseSvcInfo, Endpoint: serviceEndpoints.Endpoints}
+			// JSON encoding of our services + EP information
+			svcEndptRelationBytes := new(bytes.Buffer)
+			json.NewEncoder(svcEndptRelationBytes).Encode(svcEndptRelation)
 
 			// Always update cache regardless of if sync is needed
-			// Eventually we'll spawn multiple go routines to handle this, and then
-			// we'll need the data lock
+			// Eventually we'll spawn multiple go routines to handle this
+			// (for higher scale scenarios), and then we'll need the data
+			// lock for now do it to be safe.
 			ebc.mu.Lock()
-			ebc.svcMap[svcKey] = svcEndptRelation
-			ebc.svcMapKeys.Insert(svcKey)
+			ebc.svcMap.Set([]byte(svcKey), xxhash.Sum64(svcEndptRelationBytes.Bytes()), svcEndptRelation)
 			ebc.mu.Unlock()
-
-			// If svc did not exist, sync
-			if !ok {
-				keysNeedingSync = append(keysNeedingSync, svcKey)
-				continue
-			}
-
-			// If svc changed, sync
-			if existing.Svc != svcEndptRelation.Svc {
-				keysNeedingSync = append(keysNeedingSync, svcKey)
-			}
-
-			// if # svc endpoints changed sync
-			if len(existing.Endpoint) != len(svcEndptRelation.Endpoint) {
-				keysNeedingSync = append(keysNeedingSync, svcKey)
-				continue
-			}
-
-			// if svc endpoints changed sync
-			for i, _ := range existing.Endpoint {
-				if existing.Endpoint[i] != svcEndptRelation.Endpoint[i] {
-					keysNeedingSync = append(keysNeedingSync, svcKey)
-					break
-				}
-			}
 		}
 
 	}
 
 	// Reconcile what we have in ebc.svcInfo to internal cache and ebpf maps
-	if len(keysNeedingSync) != 0 || !ebc.svcMapKeys.Equal(currentSvcKeys) {
-		ebc.Sync(keysNeedingSync, ebc.svcMapKeys.Difference(currentSvcKeys).List())
-		// Update cache of svc keys
-		ebc.svcMapKeys = currentSvcKeys
+	// The diffstore will let us know if anything changed or was deleted.
+	if len(ebc.svcMap.Updated()) != 0 || len(ebc.svcMap.Deleted()) != 0 {
+		ebc.Sync()
 	}
 }
 
 // Sync will take the new internally cached state and apply it to the bpf maps
 // fully syncing the maps on every iteration.
-func (ebc *ebpfController) Sync(syncKeys, deleteKeys []string) {
+func (ebc *ebpfController) Sync() {
 
-	for _, key := range deleteKeys {
-		svcInfo := ebc.svcMap[key]
+	for _, KV := range ebc.svcMap.Deleted() {
+		svcInfo := KV.Value.(svcEndpointMapping)
+
+		klog.Infof("Deleting ServicePort: %s", string(KV.Key))
 
 		svcKeys, _, backendKeys, _ := makeEbpfMaps(svcInfo)
 
 		if _, err := ebc.objs.V4SvcMap.BatchDelete(svcKeys, &cebpf.BatchOptions{}); err != nil {
-			// Look at not crashing here.
 			klog.Fatalf("Failed Deleting service entries: %v", err)
 			ebc.Cleanup()
 		}
@@ -189,12 +167,15 @@ func (ebc *ebpfController) Sync(syncKeys, deleteKeys []string) {
 			klog.Fatalf("Failed Deleting service backend entries: %v", err)
 			ebc.Cleanup()
 		}
+
 		// Remove service entry from cache
-		delete(ebc.svcMap, key)
+		ebc.svcMap.Delete(KV.Key)
 	}
 
-	for _, key := range syncKeys {
-		svcInfo := ebc.svcMap[key]
+	for _, KV := range ebc.svcMap.Updated() {
+		svcInfo := KV.Value.(svcEndpointMapping)
+
+		klog.Infof("Adding ServicePort: %s", string(KV.Key))
 
 		svcKeys, svcValues, backendKeys, backendValues := makeEbpfMaps(svcInfo)
 
@@ -222,8 +203,6 @@ func makeEbpfMaps(svcMapping svcEndpointMapping) (svcKeys []Service4Key, svcValu
 	addresses := []string{}
 
 	copy(svcAddress[:], svcMapping.Svc.clusterIP.To4())
-
-	klog.Infof("Got SvcMapping %+v", svcMapping)
 
 	// Hack for service Port name
 	binary.BigEndian.PutUint16(targetPort[:], uint16(svcMapping.Svc.targetPort))

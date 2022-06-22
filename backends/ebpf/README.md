@@ -1,4 +1,4 @@
-# KPNG EBPF Backend Implementation 
+# KPNG EBPF Backend Implementation
 
 ## Intro
 
