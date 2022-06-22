@@ -96,13 +96,12 @@ func ExampleDiffPortMapping() {
 
 		fmt.Println("updated:", s.Updated(), "deleted:", s.Deleted())
 	}
+	set(80)
+	set(80, 81)
+	set(443)
 
 	// Output:
-	set(80)
 	// updated: [{my-ns/my-svc:80 => 80}] deleted: []
-	set(80, 81)
 	// updated: [{my-ns/my-svc:81 => 81}] deleted: []
-	set(443)
 	// updated: [{my-ns/my-svc:443 => 443}] deleted: [{my-ns/my-svc:81 => 81} {my-ns/my-svc:80 => 80}]
-
 }
