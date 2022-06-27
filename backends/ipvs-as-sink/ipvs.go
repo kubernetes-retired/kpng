@@ -284,6 +284,9 @@ func (s *Backend) SetUpHttpListen() error {
 	return <-errCh
 }
 
+
+// ServeProxyMode used for creating the type of proxy which can be tested by proxyMode in service.go e2e test 
+// i.e for backward compatbility 
 func (s *Backend) ServeProxyMode(errCh chan error) {
 	//TODO Get Bind address config. Time being leave it empty, kernel will choose loopback adress 127.0.0.1
 	bindAddress := "127.0.0.1:10249"
