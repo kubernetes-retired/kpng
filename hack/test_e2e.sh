@@ -268,6 +268,57 @@ function setup_ginkgo {
     pass_message "The tools ginko and e2e.test have been set up."
 }
 
+command_exists() {
+    ###########################################################################
+    # Description:                                                            #
+    # Checkt if a binary exists                                               #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1: binary name                                                     #
+    ###########################################################################
+    cmd="$1"
+    command -v ${cmd} >/dev/null 2>&1
+}
+
+function setup_j2() {
+    ###########################################################################
+    # Description:                                                            #
+    # Install j2 binary                                                       #
+    ###########################################################################    
+    if ! command_exists j2 ; then 
+        if ! command_exists pip ; then 
+            echo "Dependency not met: 'j2' not installed and cannot install with 'pip'"
+            exit 1
+        fi
+    fi
+    echo "'j2' not found, installing with 'pip'"
+    
+    pip install wheel --user
+    pip freeze | grep j2cli || pip install j2cli[yaml] --user
+    export PATH=~/.local/bin:$PATH
+}
+
+function delete_kind_cluster {
+    ###########################################################################
+    # Description:                                                            #
+    # delete kind cluster                                                     #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1: cluster name                                                    #
+    ###########################################################################
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local cluster_name="${1}"
+
+    if kind get clusters | grep -q "${cluster_name}" &> /dev/null; then
+        kind delete cluster --name "${cluster_name}" &> /dev/null
+        if_error_warning "cannot delete cluster ${cluster_name}"
+
+        pass_message "Cluster ${cluster_name} deleted."
+    fi
+}
+
 function create_cluster {
     ###########################################################################
     # Description:                                                            #
@@ -489,7 +540,7 @@ function install_kpng {
         --namespace "${NAMESPACE}" \
         --from-file "${artifacts_directory}/kubeconfig.conf" 1> /dev/null
     if_error_exit "error creating configmap ${CONFIG_MAP_NAME}"
-    pass_message "Created configmap ${CONFIG_MAP_NAME}."
+    pass_message "Created configmap ${CONFIG_MAP_NAME}." 
 
     if [[ "${E2E_BACKEND}" == "nft" ]]; then
         E2E_BACKEND_ARGS="['local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}', '--cluster-cidrs=${CLUSTER_CIDR}']"
@@ -498,17 +549,14 @@ function install_kpng {
     fi
 
     # Setting vars for generate the kpng deployment based on template
-    export IMAGE="${KPNG_IMAGE_TAG_NAME}"
-    export PULL=IfNotPresent
-    export E2E_BACKEND
-    export CONFIG_MAP_NAME
-    export SERVICE_ACCOUNT_NAME
-    export NAMESPACE
-    export KPNG_DEBUG_LEVEL
-    export E2E_BACKEND_ARGS
-    export KPNG_SERVER_ADDRESS
-
-    envsubst <"${0%/*}"/kpng-deployment-ds.yaml.tmpl > "${artifacts_directory}"/kpng-deployment-ds.yaml
+    kpng_image="${KPNG_IMAGE_TAG_NAME}" \
+    image_pull_policy="IfNotPresent" \
+    backend="${E2E_BACKEND}" \
+    config_map_name="${CONFIG_MAP_NAME}" \
+    service_account_name="${SERVICE_ACCOUNT_NAME}" \
+    namespace="${NAMESPACE}" \
+    e2e_backend_args="${E2E_BACKEND_ARGS}"\
+    j2 ${SCRIPT_DIR}/kpng-deployment-ds.yaml.j2 -o "${artifacts_directory}"/kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 
     kubectl --context "${k8s_context}" create -f "${artifacts_directory}"/kpng-deployment-ds.yaml 1> /dev/null
@@ -740,6 +788,7 @@ function install_binaries {
     setup_kind "${bin_directory}"
     setup_kubectl "${bin_directory}"
     setup_ginkgo "${bin_directory}" "${k8s_version}" "${os}"
+    setup_j2
 }
 
 function set_e2e_dir {

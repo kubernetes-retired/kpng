@@ -5,7 +5,7 @@ metadata:
   labels:
     app: kpng
   name: kpng
-  namespace: ${NAMESPACE}
+  namespace: {{ namespace }}
 spec:
   selector:
     matchLabels:
@@ -18,16 +18,17 @@ spec:
       # to enable progressive deployment on existing cluster you can use node labels:
       #nodeSelector:
       #  kpng: kpng
-      serviceAccountName: ${SERVICE_ACCOUNT_NAME}
+      serviceAccountName: {{ service_account_name }}
       hostNetwork: true
       # so that kpng always runs on the controlplane nodes...
       tolerations:
       - operator: "Exists"
         effect: "NoSchedule"
       containers:
-      # We'll sed-replace this with a valid kpng image at creat time
+      # only spin up bptools image if ebpf is the selected backend. 
+      {%- if backend == "ebpf"%}
       - image: cilium/cilium-bpftool:b5ba881d2a7ec68d88ecd72efd60ac551c720701
-        imagePullPolicy: ${PULL}
+        imagePullPolicy: {{ image_pull_policy }}
         name: kpng-ebpf-tools
         securityContext:
           privileged: true
@@ -41,8 +42,9 @@ spec:
           mountPropagation: Bidirectional
         - name: bpf-log
           mountPath: /tracing
-      - image: ${IMAGE}
-        imagePullPolicy: ${PULL}
+      {%- endif %}
+      - image: {{ kpng_image }}
+        imagePullPolicy: {{ image_pull_policy }}
         env:
         - name: GOLANG_PROTOBUF_REGISTRATION_CONFLICT
           value: warn
@@ -52,13 +54,17 @@ spec:
           mountPath: /k8s
         - mountPath: /var/lib/kpng
           name: kpng-config
-        args: ['kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', 'to-api', '--listen=${KPNG_SERVER_ADDRESS}']
-      - image: ${IMAGE}
-        imagePullPolicy: ${PULL}
+        args:
+        - kube
+        - --kubeconfig=/var/lib/kpng/kubeconfig.conf
+        - to-api
+        - --listen=unix:///k8s/proxy.sock
+      - image: {{ kpng_image }}
+        imagePullPolicy: {{ image_pull_policy }}
         env:
         - name: GOLANG_PROTOBUF_REGISTRATION_CONFLICT
           value: warn
-        name: kpng-${E2E_BACKEND}
+        name: kpng-{{ backend }}
         securityContext:
             privileged: true
         volumeMounts:
@@ -67,6 +73,7 @@ spec:
         - name: modules
           mountPath: /lib/modules
           readOnly: true
+        {%- if backend == "ebpf"%}
         - name: bpf-maps
           mountPath: /sys/fs/bpf
           mountPropagation: Bidirectional
@@ -75,7 +82,9 @@ spec:
           readOnly: true
         - name: cgroup-v2-mount
           mountPath: /host-mount/mounts
-        args: [ "local", "--api=unix:///k8s/proxy.sock", "to-${E2E_BACKEND}", "--v=${KPNG_DEBUG_LEVEL}"]
+          mountPropagation: HostToContainer
+        {%- endif %}
+        args: {{ e2e_backend_args }}
         #- --dry-run
       volumes:
       - name: empty
@@ -85,7 +94,8 @@ spec:
           path: /lib/modules
       - name: kpng-config
         configMap:
-          name: ${CONFIG_MAP_NAME}
+          name: {{ config_map_name }}
+      {%- if backend == "ebpf"%}
       - name: bpf-maps
         hostPath:
           path: /sys/fs/bpf
@@ -99,3 +109,4 @@ spec:
       - name: cgroup-v2-mount
         hostPath:
           path: /proc/mounts
+      {%- endif %}
