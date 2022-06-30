@@ -1,5 +1,18 @@
 # KPNG EBPF Backend Implementation
 
+## OS pre-requisites
+
+* Linux Kernel > 5.15 (hasn't be tested on earlier versions)
+* LLVM 
+    - Fedora: `sudo dnf install -y llvm-devel`
+    - Ubuntu: `apt-get install -y llvm-dev` 
+* Glibc
+    - Fedora: `sudo dnf install glibc-devel.i686` 
+    - Ubuntu: `apt-get install -y linux-libc-dev` 
+* [cilium/ebpf requirements](https://github.com/cilium/ebpf#requirements)
+* Bpf2go 
+    - `go install github.com/cilium/ebpf/cmd/bpf2go@master`
+
 ## Intro
 
 NOTE: This KPNG ebpf based backend is currently a POC and is limited in functionality
@@ -9,19 +22,22 @@ service features.
 
 ## Compile ebpf program
 
-This will automatically use cillium/ebpf to compile the go program into bytecode
+This will automatically use `cilium/ebpf` to compile the go program into bytecode
 using clang, and build go bindings
 
-`go generate`
+`cd /backends/ebpf && go generate`
 
 ## Start a local kpng ebpf backend kind cluster
+
+Starting a local KIND cluster with the ebpf backend will automatically install 
+bpf2go if needed, and recompile the BPF program. 
 
 `./hack/test_e2e.sh -i ipv4 -b ebpf -d`
 
 ## Testing Local Changes quickly
 
 1. `docker build -t kpng:test -f Dockerfile .` 
-NOTE: If any changes was made to the c source code `go generate` much be run 
+NOTE: If any changes was made to the c source code `go generate` must be manually run 
 prior to image building.
 
 2. `kind load docker-image kpng:test --name=kpng-e2e-ipv4-ebpf`
