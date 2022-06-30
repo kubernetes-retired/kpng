@@ -30,6 +30,7 @@ OS=$(uname| tr '[:upper:]' '[:lower:]')
 CONTAINER_ENGINE="docker"
 KPNG_IMAGE_TAG_NAME="kpng:test"
 KUBECONFIG_TESTS="kubeconfig_tests.conf"
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # kind
 KIND_VERSION="v0.11.1"
@@ -290,12 +291,34 @@ function setup_j2() {
             echo "Dependency not met: 'j2' not installed and cannot install with 'pip'"
             exit 1
         fi
+
+        echo "'j2' not found, installing with 'pip'"
+
+        pip install wheel --user
+        pip freeze | grep j2cli || pip install j2cli[yaml] --user
+        export PATH=~/.local/bin:$PATH
+        if_error_exit "cannot download j2"
     fi
-    echo "'j2' not found, installing with 'pip'"
-    
-    pip install wheel --user
-    pip freeze | grep j2cli || pip install j2cli[yaml] --user
-    export PATH=~/.local/bin:$PATH
+    pass_message "The tool j2 is installed."
+}
+
+function setup_bpf2go() {
+    ###########################################################################
+    # Description:                                                            #
+    # Install bpf2go binary                                                       #
+    ###########################################################################    
+    if ! command_exists bpf2go ; then 
+        if ! command_exists go ; then 
+            echo "Dependency not met: 'bpf2go' not installed and cannot install with 'go'"
+            exit 1
+        fi
+
+        echo "'bpf2go' not found, installing with 'go'"
+        go install github.com/cilium/ebpf/cmd/bpf2go@master
+        if_error_exit "cannot install bpf2go"
+    fi 
+
+    pass_message "The tool bpf2go is installed."
 }
 
 function delete_kind_cluster {
@@ -789,6 +812,7 @@ function install_binaries {
     setup_kubectl "${bin_directory}"
     setup_ginkgo "${bin_directory}" "${k8s_version}" "${os}"
     setup_j2
+    setup_bpf2go
 }
 
 function set_e2e_dir {
@@ -835,6 +859,20 @@ function prepare_container {
     # Detect container engine
     detect_container_engine
     container_build "${dockerfile}" "${ci_mode}"
+}
+
+function compile_bpf {
+    ###########################################################################
+    # Description:                                                            #
+    # compile bpf elf files for ebpf backend                                  #
+    ###########################################################################
+
+    pushd ${SCRIPT_DIR}/../backends/ebpf
+    go generate
+    if_error_exit "Failed to compile EBPF Programs"
+    popd
+
+    pass_message "Compiled BPF programs"
 }
 
 function create_infrastructure_and_run_tests {
@@ -1050,9 +1088,14 @@ function main {
         set_host_network_settings "${ip_family}"
     fi
 
+    install_binaries "${bin_dir}" "${E2E_K8S_VERSION}" "${OS}"
+    # compile bpf bytecode and bindings so build completes successfully
+    if [ "${backend}" == "ebpf" ] ; then 
+        compile_bpf 
+    fi
+
     verify_host_network_settings "${ip_family}"
     prepare_container "${dockerfile}" "${ci_mode}"
-    install_binaries "${bin_dir}" "${E2E_K8S_VERSION}" "${OS}"
 
     if [ "${cluster_count}" -eq "1" ] ; then
         local tmp_suffix=${suffix:+"-${suffix}"}
