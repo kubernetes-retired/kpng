@@ -20,7 +20,7 @@ func setupConntrack() {
 
 func cleanupIPPortEntries(ipp IPPort) {
 	parameters := parametersWithFamily(utilnet.IsIPv6String(ipp.DnatIP), "-D",
-		"-p", protoStr(ipp.Protocol), "--sport", strconv.Itoa(int(ipp.Port)))
+		"-p", protoStr(ipp.Protocol), "--dport", strconv.Itoa(int(ipp.Port)))
 	if ipp.DnatIP != "node" {
 		parameters = append(parameters, "--orig-dst", ipp.DnatIP)
 	}
