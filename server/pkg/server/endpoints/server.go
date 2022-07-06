@@ -21,7 +21,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/server/jobs/store2localdiff"

@@ -18,8 +18,9 @@ package kube2store
 
 import (
 	"context"
-	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
 	"time"
+
+	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
 
 	"github.com/spf13/pflag"
 	v1 "k8s.io/api/core/v1"
@@ -29,7 +30,7 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 type Config struct {

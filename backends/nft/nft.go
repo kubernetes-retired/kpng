@@ -29,7 +29,7 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"sigs.k8s.io/kpng/client"
 )
@@ -176,7 +176,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			// too fast and deletes fail... :(
 			//time.Sleep(100 * time.Millisecond)
 
-			if klog.V(2) {
+			if klog.V(2).Enabled() {
 				os.Stdout.Write(deferred.Bytes())
 			}
 
@@ -295,7 +295,7 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 	outputs := make([]io.Writer, 0, 2)
 	outputs = append(outputs, output)
 
-	if klog.V(2) {
+	if klog.V(2).Enabled() {
 		outputs = append(outputs, os.Stdout)
 	}
 

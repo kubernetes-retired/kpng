@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	"github.com/google/btree"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/server/serde"
@@ -85,9 +85,9 @@ func (s *Store) Update(update func(tx *Tx)) {
 	s.c.Broadcast()
 	s.c.L.Unlock()
 
-	if log := klog.V(3); log {
+	if log := klog.V(3); log.Enabled() {
 		log.Info("store updated to rev ", s.rev, " with ", s.tree.Len(), " entries")
-		if log := klog.V(4); log {
+		if log := klog.V(4); log.Enabled() {
 			s.tree.Ascend(func(i btree.Item) bool {
 				kv := i.(*KV)
 				log.Info("- entry: ", kv.Sync, "/", kv.Set, ": ", kv.Namespace, "/", kv.Name, "/", kv.Source, "/", kv.Key)

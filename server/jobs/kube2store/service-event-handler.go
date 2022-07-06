@@ -19,7 +19,7 @@ package kube2store
 import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/server/pkg/proxystore"

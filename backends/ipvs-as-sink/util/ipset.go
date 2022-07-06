@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/version"
 	"sigs.k8s.io/kpng/backends/ipvs-as-sink/exec"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // Interface is an injectable interface for running ipset commands.  Implementations must be goroutine-safe.

@@ -25,7 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"sigs.k8s.io/kpng/server/pkg/proxy"
 )
