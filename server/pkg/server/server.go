@@ -21,7 +21,7 @@ import (
 	"os"
 	"strings"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 func MustListen(bindSpec string) net.Listener {

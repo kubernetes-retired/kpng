@@ -17,7 +17,7 @@ limitations under the License.
 package ipvssink
 
 import (
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/kpng/api/localnetv1"
 	ipsetutil "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
 	"sigs.k8s.io/kpng/client/serviceevents"

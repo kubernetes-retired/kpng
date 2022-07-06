@@ -4,11 +4,12 @@ go 1.18
 
 require (
 	github.com/spf13/pflag v1.0.5
-	k8s.io/klog v1.0.0
+	k8s.io/klog/v2 v2.60.1
 	sigs.k8s.io/kpng/api v0.0.0-20220521134046-f747cedbe766
 )
 
 require (
+	github.com/go-logr/logr v1.2.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect

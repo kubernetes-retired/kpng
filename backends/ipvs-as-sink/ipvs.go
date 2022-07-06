@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/server/mux"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"time"
 
@@ -373,7 +373,7 @@ func (s *Backend) WaitRequest() (nodeName string, err error) {
 func (s *Backend) Reset() { /* noop, we're wrapped in filterreset */ }
 
 func (s *Backend) Sync() {
-	if log := klog.V(1); log {
+	if log := klog.V(1); log.Enabled() {
 		klog.Info("Sync()")
 
 		start := time.Now()

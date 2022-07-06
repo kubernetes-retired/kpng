@@ -26,7 +26,7 @@ import (
 	"sigs.k8s.io/kpng/client/serviceevents"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	netutils "k8s.io/utils/net"
 
 	"sigs.k8s.io/kpng/api/localnetv1"

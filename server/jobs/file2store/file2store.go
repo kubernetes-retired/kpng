@@ -9,7 +9,7 @@ import (
 
 	"github.com/cespare/xxhash"
 	"gopkg.in/yaml.v2"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/lightdiffstore"
