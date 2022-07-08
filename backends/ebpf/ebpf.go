@@ -191,10 +191,8 @@ func (ebc *ebpfController) Sync() {
 	}
 }
 
-func makeEbpfMaps(svcMapping svcEndpointMapping) (svcKeys []Service4Key, svcValues []Service4Value,
-	backendKeys []Backend4Key, backendValues []Backend4Value) {
-	// Make sure what we store here is in network endian
-	var svcAddress [4]byte
+func makeEbpfMaps(svcMapping svcEndpointMapping) (svcKeys []bpfV4Key, svcValues []bpfLb4Service,
+	backendKeys []uint32, backendValues []bpfLb4Backend) {
 	var svcPort [2]byte
 	var targetPort [2]byte
 	var backendAddress [4]byte
@@ -202,9 +200,8 @@ func makeEbpfMaps(svcMapping svcEndpointMapping) (svcKeys []Service4Key, svcValu
 	var err error
 	addresses := []string{}
 
-	copy(svcAddress[:], svcMapping.Svc.clusterIP.To4())
-
-	// Hack for service Port name
+	// Encode Port in LE and then Load in NE to ensure the int value that's loaded
+	// is in fact in Network Endian
 	binary.BigEndian.PutUint16(targetPort[:], uint16(svcMapping.Svc.targetPort))
 	binary.BigEndian.PutUint16(svcPort[:], uint16(svcMapping.Svc.port))
 
@@ -212,23 +209,25 @@ func makeEbpfMaps(svcMapping svcEndpointMapping) (svcKeys []Service4Key, svcValu
 		addresses = append(addresses, endpoint.IPs.V4...)
 	}
 
-	// Make root (backendID 0, count != 0) key/value for service
-	svcKeys = append(svcKeys, Service4Key{
-		Address:     svcAddress,
-		Port:        svcPort,
+	// Make root (backendID 0, count != # of backends) key/value for service
+	svcKeys = append(svcKeys, bpfV4Key{
+		// Load to map in network endian
+		// net package automatically represents in NE, no need to convert
+		Address:     binary.LittleEndian.Uint32(svcMapping.Svc.clusterIP.To4()),
+		Dport:       binary.LittleEndian.Uint16(svcPort[:]),
 		BackendSlot: 0,
 	})
 
-	svcValues = append(svcValues, Service4Value{Count: uint16(len(addresses))})
+	svcValues = append(svcValues, bpfLb4Service{Count: uint16(len(addresses))})
 
 	// Make rest of svc and backend entries for service
 	for i, address := range addresses {
 		i := i
 		copy(backendAddress[:], net.ParseIP(address).To4())
 
-		svcKeys = append(svcKeys, Service4Key{
-			Address:     svcAddress,
-			Port:        svcPort,
+		svcKeys = append(svcKeys, bpfV4Key{
+			Address:     binary.LittleEndian.Uint32(svcMapping.Svc.clusterIP.To4()),
+			Dport:       binary.LittleEndian.Uint16(svcPort[:]),
 			BackendSlot: uint16(i + 1),
 		})
 
@@ -241,17 +240,16 @@ func makeEbpfMaps(svcMapping svcEndpointMapping) (svcKeys []Service4Key, svcValu
 		// Increment by port to have unique backend value for each svcPort
 		ID = ID + uint32(svcMapping.Svc.port)
 
-		svcValues = append(svcValues, Service4Value{Count: 0,
-			BackendID: ID,
+		svcValues = append(svcValues, bpfLb4Service{
+			Count:     0,
+			BackendId: ID,
 		})
 
-		backendKeys = append(backendKeys, Backend4Key{
-			ID: uint32(ID),
-		})
+		backendKeys = append(backendKeys, uint32(ID))
 
-		backendValues = append(backendValues, Backend4Value{
-			Address: backendAddress,
-			Port:    targetPort,
+		backendValues = append(backendValues, bpfLb4Backend{
+			Address: binary.LittleEndian.Uint32(net.ParseIP(address).To4()),
+			Port:    binary.LittleEndian.Uint16(targetPort[:]),
 		})
 	}
 	klog.V(5).Infof("Writing svcKeys %+v \nsvcValues %+v \nbackendKeys %+v \nbackendValues %+v",
