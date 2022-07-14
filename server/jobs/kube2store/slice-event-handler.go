@@ -18,7 +18,7 @@ package kube2store
 
 import (
 	discovery "k8s.io/api/discovery/v1beta1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
@@ -85,7 +85,7 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 		tx.SetEndpointsOfSource(eps.Namespace, eps.Name, infos)
 		h.updateSync(proxystore.Endpoints, tx)
 
-		if log := klog.V(3); log {
+		if log := klog.V(3); log.Enabled() {
 			log.Info("endpoints of ", eps.Namespace, "/", serviceName, ":")
 			tx.EachEndpointOfService(eps.Namespace, serviceName, func(ei *localnetv1.EndpointInfo) {
 				log.Info("- ", ei.Endpoint.IPs, " | topo: ", ei.Topology)

@@ -38,11 +38,7 @@ spec:
           mountPath: /k8s
         - mountPath: /var/lib/kpng
           name: kpng-config
-        args:
-        - kube
-        - --kubeconfig=/var/lib/kpng/kubeconfig.conf
-        - to-api
-        - --listen=unix:///k8s/proxy.sock
+        args: ['kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', 'to-api', '--listen=${KPNG_SERVER_ADDRESS}']
       - image: ${IMAGE}
         imagePullPolicy: ${PULL}
         env:
@@ -57,8 +53,7 @@ spec:
         - name: modules
           mountPath: /lib/modules
           readOnly: true
-        args: [ "local", "--api=unix:///k8s/proxy.sock", "to-${E2E_BACKEND}", "--v=${KPNG_DEBUG_LEVEL}"]
-        #- --dry-run
+        args: ${E2E_BACKEND_ARGS}
       volumes:
       - name: empty
         emptyDir: {}

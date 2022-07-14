@@ -22,7 +22,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	ipsetutil "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
 )
