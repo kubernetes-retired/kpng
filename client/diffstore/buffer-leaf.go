@@ -1,4 +1,4 @@
-package diffstore2
+package diffstore
 
 import (
 	"bytes"

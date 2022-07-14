@@ -14,16 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package diffstore
+package lightdiffstore
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
 
-	"github.com/cespare/xxhash"
 	"github.com/google/btree"
-	"google.golang.org/protobuf/proto"
 )
 
 const DefaultSeparator = '|'
@@ -85,28 +81,6 @@ func (s *DiffStore) Set(key []byte, hash uint64, value interface{}) {
 	v.hash = hash
 	v.value = value
 	v.state = ItemChanged
-}
-
-// SetJSON is a helper that calls Set with hash of the JSON representation of value
-func (s *DiffStore) SetJSON(key []byte, value interface{}) {
-	valueBytes, err := json.Marshal(value)
-	if err != nil {
-		panic(fmt.Errorf("failed to JSON marshal value: %w", err))
-	}
-
-	h := xxhash.Sum64(valueBytes)
-	s.Set(key, h, value)
-}
-
-// SetProto is a helper that calls Set with hash of the protobuf representation of value
-func (s *DiffStore) SetProto(key []byte, value proto.Message) {
-	valueBytes, err := proto.Marshal(value)
-	if err != nil {
-		panic(fmt.Errorf("failed to proto marshal value: %w", err))
-	}
-
-	h := xxhash.Sum64(valueBytes)
-	s.Set(key, h, value)
 }
 
 // Delete an entry from the store

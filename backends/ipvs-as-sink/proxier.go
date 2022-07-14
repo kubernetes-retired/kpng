@@ -21,12 +21,12 @@ import (
 
 	"github.com/vishvananda/netlink"
 	v1 "k8s.io/api/core/v1"
+
 	"sigs.k8s.io/kpng/api/localnetv1"
 	iptablesutil "sigs.k8s.io/kpng/backends/iptables/util"
 	"sigs.k8s.io/kpng/backends/ipvs-as-sink/exec"
 	util "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
-
-	"sigs.k8s.io/kpng/client/pkg/diffstore"
+	"sigs.k8s.io/kpng/client/lightdiffstore"
 )
 
 type proxier struct {
@@ -52,9 +52,9 @@ type proxier struct {
 	//healthzServer       healthcheck.ProxierHealthUpdater
 
 	// <namespace>/<service-name>/<endpoint key>/<ip> -> <ip>
-	endpoints *diffstore.DiffStore
+	endpoints *lightdiffstore.DiffStore
 	// <namespace>/<service-name>/<ip>/<protocol>:<port> -> ipvsLB
-	servicePorts *diffstore.DiffStore
+	servicePorts *lightdiffstore.DiffStore
 
 	ipsetList map[string]*IPSet
 	//servicePortMap map[string]map[string]*BaseServicePortInfo
@@ -89,8 +89,8 @@ func NewProxier(ipFamily v1.IPFamily,
 		masqueradeAll:    masqueradeAll,
 		ipsetList:        make(map[string]*IPSet),
 		portMap:          make(map[string]map[string]localnetv1.PortMapping),
-		endpoints:        diffstore.New(),
-		servicePorts:     diffstore.New(),
+		endpoints:        lightdiffstore.New(),
+		servicePorts:     lightdiffstore.New(),
 		iptablesData:     bytes.NewBuffer(nil),
 		filterChainsData: bytes.NewBuffer(nil),
 		natChains:        iptablesutil.LineBuffer{},

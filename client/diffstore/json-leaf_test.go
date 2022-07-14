@@ -1,4 +1,4 @@
-package diffstore2
+package diffstore
 
 func ExampleJSONLeafStore() {
 	type myT struct {

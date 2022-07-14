@@ -24,20 +24,20 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/client/pkg/diffstore"
+	"sigs.k8s.io/kpng/client/lightdiffstore"
 )
 
 type WatchState struct {
 	res   localnetv1.OpSink
 	sets  []localnetv1.Set
-	diffs []*diffstore.DiffStore
+	diffs []*lightdiffstore.DiffStore
 	Err   error
 }
 
 func New(res localnetv1.OpSink, sets []localnetv1.Set) *WatchState {
-	diffs := make([]*diffstore.DiffStore, len(sets))
+	diffs := make([]*lightdiffstore.DiffStore, len(sets))
 	for i := range sets {
-		diffs[i] = diffstore.New()
+		diffs[i] = lightdiffstore.New()
 	}
 
 	return &WatchState{
@@ -47,7 +47,7 @@ func New(res localnetv1.OpSink, sets []localnetv1.Set) *WatchState {
 	}
 }
 
-func (w *WatchState) StoreFor(set localnetv1.Set) *diffstore.DiffStore {
+func (w *WatchState) StoreFor(set localnetv1.Set) *lightdiffstore.DiffStore {
 	for i, s := range w.sets {
 		if s == set {
 			return w.diffs[i]
@@ -122,7 +122,7 @@ func (w *WatchState) sendDelete(set localnetv1.Set, path string) {
 	})
 }
 
-func (w *WatchState) Reset(state diffstore.ItemState) {
+func (w *WatchState) Reset(state lightdiffstore.ItemState) {
 	for _, s := range w.diffs {
 		s.Reset(state)
 	}

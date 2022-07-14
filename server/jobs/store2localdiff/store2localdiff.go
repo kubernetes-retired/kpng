@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/client/lightdiffstore"
 	"sigs.k8s.io/kpng/client/localsink"
-	"sigs.k8s.io/kpng/client/pkg/diffstore"
 	"sigs.k8s.io/kpng/server/jobs/store2diff"
 	"sigs.k8s.io/kpng/server/pkg/endpoints"
 	"sigs.k8s.io/kpng/server/pkg/proxystore"
@@ -72,7 +72,7 @@ func (s *jobRun) Update(tx *proxystore.Tx, w *watchstate.WatchState) {
 		svcs.Set(key, kv.Service.Hash, kv.Service.Service)
 
 		// filter endpoints for this node
-		endpointInfos := endpoints.ForNode(tx, kv.Service, nodeName)
+		endpointInfos, _ /* TODO external endpoints */ := endpoints.ForNode(tx, kv.Service, nodeName)
 
 		for _, ei := range endpointInfos {
 			// hash only the endpoint
@@ -104,7 +104,7 @@ func (_ *jobRun) SendDiff(w *watchstate.WatchState) (updated bool) {
 	count += w.SendDeletes(localnetv1.Set_EndpointsSet)
 	count += w.SendDeletes(localnetv1.Set_ServicesSet)
 
-	w.Reset(diffstore.ItemDeleted)
+	w.Reset(lightdiffstore.ItemDeleted)
 
 	return count != 0
 }

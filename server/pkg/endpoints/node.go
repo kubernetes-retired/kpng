@@ -25,7 +25,7 @@ import (
 
 const hostnameLabel = "kubernetes.io/hostname"
 
-func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (selection []*localnetv1.EndpointInfo) {
+func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (internalEndpoints, externalEndpoints []*localnetv1.EndpointInfo) {
 	node := tx.GetNode(nodeName)
 
 	var labels map[string]string
@@ -42,51 +42,41 @@ func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (se
 		labels[hostnameLabel] = nodeName
 	}
 
-	topologyKeys := si.TopologyKeys
-	if len(topologyKeys) == 0 {
-		topologyKeys = []string{"*"}
-	}
-
 	svc := si.Service
 
 	infos := make([]*localnetv1.EndpointInfo, 0)
 	tx.EachEndpointOfService(svc.Namespace, svc.Name, func(info *localnetv1.EndpointInfo) {
 		info = proto.Clone(info).(*localnetv1.EndpointInfo)
 
-		info.Endpoint.Local = info.NodeName == nodeName
+		epNodeName := info.NodeName
+		if epNodeName == "" {
+			epNodeName = info.Topology[hostnameLabel]
+		}
+
+		info.Endpoint.Local = epNodeName == nodeName
+
+		if !info.Conditions.Ready {
+			return
+		}
 
 		infos = append(infos, info)
 	})
 
-	selection = make([]*localnetv1.EndpointInfo, 0, len(infos))
+	internalEndpoints = make([]*localnetv1.EndpointInfo, 0, len(infos))
+	externalEndpoints = make([]*localnetv1.EndpointInfo, 0, len(infos))
 
-	for _, topoKey := range topologyKeys {
-		ref := ""
+	// select endpoints for this service
 
-		if topoKey != "*" {
-			ref = labels[topoKey]
-
-			if ref == "" {
-				// we do not have that key, skip
-				continue
-			}
+	for _, info := range infos {
+		if !(si.Service.InternalTrafficToLocal && !info.Endpoint.Local) {
+			internalEndpoints = append(internalEndpoints, info)
 		}
-
-		for _, info := range infos {
-			if !info.Conditions.Ready {
-				continue
-			}
-			if topoKey != "*" && (info.Topology == nil || info.Topology[topoKey] != ref) {
-				continue
-			}
-
-			selection = append(selection, info)
-		}
-
-		if len(selection) != 0 {
-			return
+		if !(si.Service.ExternalTrafficToLocal && !info.Endpoint.Local) {
+			externalEndpoints = append(externalEndpoints, info)
 		}
 	}
+
+	// TODO handle TopologyAwareHints
 
 	return
 }

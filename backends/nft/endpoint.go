@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/client/diffstore2"
+	"sigs.k8s.io/kpng/client/diffstore"
 )
 
 func (ctx *renderContext) epChainName(svc *localnetv1.Service, ep *localnetv1.Endpoint) string {
@@ -16,7 +16,7 @@ func (ctx *renderContext) epChainName(svc *localnetv1.Service, ep *localnetv1.En
 	return ctx.svcNftName(svc) + "_ep_" + ipHex
 }
 
-func (ctx *renderContext) addEndpointChain(svc *localnetv1.Service, epIP EpIP, svcChain *diffstore2.BufferLeaf) (epChainName string) {
+func (ctx *renderContext) addEndpointChain(svc *localnetv1.Service, epIP EpIP, svcChain *diffstore.BufferLeaf) (epChainName string) {
 	ep := epIP.Endpoint
 
 	epChainName = ctx.epChainName(svc, ep)

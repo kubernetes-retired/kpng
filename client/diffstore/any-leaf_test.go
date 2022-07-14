@@ -1,4 +1,4 @@
-package diffstore2
+package diffstore
 
 func ExampleAnyLeafStore() {
 	store := NewAnyStore[string](func(a, b string) bool { return a == b })

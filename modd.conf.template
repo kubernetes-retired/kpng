@@ -5,22 +5,10 @@ api/**/*.proto {
     prep: protoc -I ./ --go_out=paths=source_relative:. --go-grpc_out=paths=source_relative:. $(find -name '*.proto')
 }
 
-api/**    { prep: "cd api      && go test ./..." }
-client/** { prep: "cd client   && go test ./..." }
-server/** { prep: "cd server   && go test ./..." }
-cmd/**    { prep: "cd cmd      && go test ./..." }
-
-backends/iptables/**     { prep: "cd backends/iptables     && go test ./..." }
-backends/ipvs/**         { prep: "cd backends/ipvs         && go test ./..." }
-backends/ipvs-as-sink/** { prep: "cd backends/ipvs-as-sink && go test ./..." }
-backends/nft/**          { prep: "cd backends/nft          && go test ./..." }
-
 **/*.go */go.mod */go.sum {
+  prep: sh -c "hack/go-test-local-mods"
   prep: mkdir -p dist
-  prep: cd cmd      && go build -trimpath -o ../dist          ./...
-
-  prep: mkdir -p dist/examples
-  prep: cd examples && go build -trimpath -o ../dist/examples ./...
+  prep: cd cmd && go build -trimpath -o ../dist/ ./...
 }
 
 #dist/kpng {
