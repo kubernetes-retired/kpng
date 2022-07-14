@@ -21,6 +21,10 @@ shopt -s expand_aliases
 : "${E2E_K8S_VERSION:="v1.23.3"}"
 : "${E2E_TIMEOUT_MINUTES:=100}"
 : "${KPNG_DEBUG_LEVEL:=4}"
+: "${KPNG_SERVER_ADDRESS:="unix:///k8s/proxy.sock"}"
+# Ensure that CLUSTER_CIDR and SERVICE_CLUSTER_IP_RANGE don't overlap
+: "${CLUSTER_CIDR:="10.1.0.0/16"}"
+: "${SERVICE_CLUSTER_IP_RANGE:="10.2.0.0/16"}"
 
 OS=$(uname| tr '[:upper:]' '[:lower:]')
 CONTAINER_ENGINE="docker"
@@ -323,6 +327,8 @@ function create_cluster {
       apiVersion: kind.x-k8s.io/v1alpha4
       networking:
           ipFamily: "${ip_family}"
+          podSubnet: "${CLUSTER_CIDR}"
+          serviceSubnet: "${SERVICE_CLUSTER_IP_RANGE}"
       nodes:
       - role: control-plane
       - role: worker
@@ -485,6 +491,12 @@ function install_kpng {
     if_error_exit "error creating configmap ${CONFIG_MAP_NAME}"
     pass_message "Created configmap ${CONFIG_MAP_NAME}."
 
+    if [[ "${E2E_BACKEND}" == "nft" ]]; then
+        E2E_BACKEND_ARGS="['local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}', '--cluster-cidrs=${CLUSTER_CIDR}']"
+    else
+        E2E_BACKEND_ARGS="['local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}']"
+    fi
+
     # Setting vars for generate the kpng deployment based on template
     export IMAGE="${KPNG_IMAGE_TAG_NAME}"
     export PULL=IfNotPresent
@@ -493,6 +505,9 @@ function install_kpng {
     export SERVICE_ACCOUNT_NAME
     export NAMESPACE
     export KPNG_DEBUG_LEVEL
+    export E2E_BACKEND_ARGS
+    export KPNG_SERVER_ADDRESS
+
     envsubst <"${0%/*}"/kpng-deployment-ds.yaml.tmpl > "${artifacts_directory}"/kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 

@@ -265,6 +265,7 @@ func addPostroutingChain(table *nftable, clusterCIDRs []string, localEndpointIPs
 		if hasLocalEPs {
 			fmt.Fprint(chain, "  ", table.Family, " daddr != { ", strings.Join(localEndpointIPs, ", "), " } \\\n")
 		}
+		fmt.Fprint(chain, "  fib daddr type != local \\\n")
 		fmt.Fprint(chain, "  masquerade\n")
 	}
 

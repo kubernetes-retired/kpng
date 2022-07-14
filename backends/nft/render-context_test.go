@@ -125,6 +125,7 @@ func ExampleRenderBasicService() {
 	//   # masquerade non-cluster traffic to non-local endpoints
 	//   ip saddr != { 10.1.0.0/16 } \
 	//   ip daddr != { 10.1.0.1, 10.1.0.2 } \
+	//   fib daddr type != local \
 	//   masquerade
 	//
 	//   # masquerade hairpin traffic
@@ -239,6 +240,7 @@ func ExampleRenderServiceWithClientIPAffinity() {
 	//   # masquerade non-cluster traffic to non-local endpoints
 	//   ip saddr != { 10.1.0.0/16 } \
 	//   ip daddr != { 10.1.0.1, 10.1.0.2 } \
+	//   fib daddr type != local \
 	//   masquerade
 	//
 	//   # masquerade hairpin traffic
