@@ -71,8 +71,8 @@ func ExampleConntrack() {
 
 	// Output:
 	// -- initial state --
-	// /bin/conntrack [-D -p tcp --sport 80 --orig-dst 10.1.1.1]
-	// /bin/conntrack [-D -p udp --sport 53 --orig-dst 10.1.1.1]
+	// /bin/conntrack [-D -p tcp --dport 80 --orig-dst 10.1.1.1]
+	// /bin/conntrack [-D -p udp --dport 53 --orig-dst 10.1.1.1]
 	// -- add one endpoint --
 	// -- remove one endpoint --
 	// /bin/conntrack [-D -p udp --dport 53 --dst-nat 10.1.3.1 --orig-dst 10.1.1.1]
