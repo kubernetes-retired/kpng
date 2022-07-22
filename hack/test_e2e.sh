@@ -490,27 +490,6 @@ function wait_until_cluster_is_ready {
     pass_message "${cluster_name} is operational."
 }
 
-function delete_kind_cluster {
-    ###########################################################################
-    # Description:                                                            #
-    # delete kind cluster                                                     #
-    #                                                                         #
-    # Arguments:                                                              #
-    #   arg1: cluster name                                                    #
-    ###########################################################################
-    [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
-
-    local cluster_name="${1}"
-
-    if kind get clusters | grep -q "${cluster_name}" &> /dev/null; then
-        kind delete cluster --name "${cluster_name}" &> /dev/null
-        if_error_warning "cannot delete cluster ${cluster_name}"
-
-        pass_message "Cluster ${cluster_name} deleted."
-    fi
-}
-
 function install_kpng {
     ###########################################################################
     # Description:                                                            #
