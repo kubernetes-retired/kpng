@@ -17,7 +17,7 @@ limitations under the License.
 package kube2store
 
 import (
-	discovery "k8s.io/api/discovery/v1beta1"
+	discovery "k8s.io/api/discovery/v1"
 	"k8s.io/klog/v2"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
@@ -51,13 +51,8 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 			Namespace:   eps.Namespace,
 			ServiceName: serviceName,
 			SourceName:  eps.Name,
-			Topology:    sliceEndpoint.Topology,
 			Endpoint:    &localnetv1.Endpoint{},
 			Conditions:  &localnetv1.EndpointConditions{},
-		}
-
-		if sliceEndpoint.Topology != nil {
-			info.NodeName = sliceEndpoint.Topology[hostNameLabel]
 		}
 
 		if h := sliceEndpoint.Hostname; h != nil {
@@ -88,7 +83,7 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 		if log := klog.V(3); log.Enabled() {
 			log.Info("endpoints of ", eps.Namespace, "/", serviceName, ":")
 			tx.EachEndpointOfService(eps.Namespace, serviceName, func(ei *localnetv1.EndpointInfo) {
-				log.Info("- ", ei.Endpoint.IPs, " | topo: ", ei.Topology)
+				log.Info("- ", ei.Endpoint.IPs)
 			})
 		}
 	})
