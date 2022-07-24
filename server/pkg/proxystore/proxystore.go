@@ -21,12 +21,11 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/cespare/xxhash"
 	"github.com/google/btree"
-	"google.golang.org/protobuf/proto"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/server/serde"
 )
 
 type Store struct {
@@ -62,14 +61,6 @@ func New() *Store {
 	}
 }
 
-func (s *Store) hashOf(m proto.Message) (h uint64) {
-	message, err := proto.Marshal(m)
-	if err != nil {
-		panic(err) // should not happen
-	}
-	return xxhash.Sum64(message)
-}
-
 func (s *Store) Close() {
 	s.c.L.Lock()
 	s.closed = true
@@ -94,9 +85,9 @@ func (s *Store) Update(update func(tx *Tx)) {
 	s.c.Broadcast()
 	s.c.L.Unlock()
 
-	if log := klog.V(3); log {
+	if log := klog.V(3); log.Enabled() {
 		log.Info("store updated to rev ", s.rev, " with ", s.tree.Len(), " entries")
-		if log := klog.V(4); log {
+		if log := klog.V(4); log.Enabled() {
 			s.tree.Ascend(func(i btree.Item) bool {
 				kv := i.(*KV)
 				log.Info("- entry: ", kv.Sync, "/", kv.Set, ": ", kv.Namespace, "/", kv.Name, "/", kv.Source, "/", kv.Key)
@@ -243,13 +234,11 @@ func (tx *Tx) SetSync(set Set) {
 
 // Services funcs
 
-func (tx *Tx) SetService(s *localnetv1.Service, topologyKeys []string) {
+func (tx *Tx) SetService(s *localnetv1.Service) {
 	si := &localnetv1.ServiceInfo{
-		Service:      s,
-		TopologyKeys: topologyKeys,
-		Hash: tx.s.hashOf(&localnetv1.ServiceInfo{
-			Service:      s,
-			TopologyKeys: topologyKeys,
+		Service: s,
+		Hash: serde.Hash(&localnetv1.ServiceInfo{
+			Service: s,
 		}),
 	}
 
@@ -304,7 +293,7 @@ func (tx *Tx) SetEndpointsOfSource(namespace, sourceName string, eis []*localnet
 			panic("inconsistent source: " + sourceName + " != " + ei.SourceName)
 		}
 
-		ei.Hash = tx.s.hashOf(&localnetv1.EndpointInfo{
+		ei.Hash = serde.Hash(&localnetv1.EndpointInfo{
 			Endpoint:   ei.Endpoint,
 			Conditions: ei.Conditions,
 			Topology:   ei.Topology,
@@ -413,7 +402,7 @@ func (tx *Tx) DelEndpointsOfSource(namespace, sourceName string) {
 func (tx *Tx) SetEndpoint(ei *localnetv1.EndpointInfo) {
 	tx.roPanic()
 
-	newHash := tx.s.hashOf(&localnetv1.EndpointInfo{
+	newHash := serde.Hash(&localnetv1.EndpointInfo{
 		Endpoint:   ei.Endpoint,
 		Conditions: ei.Conditions,
 		Topology:   ei.Topology,
@@ -482,7 +471,7 @@ func (tx *Tx) GetNode(name string) *localnetv1.Node {
 func (tx *Tx) SetNode(n *localnetv1.Node) {
 	ni := &localnetv1.NodeInfo{
 		Node: n,
-		Hash: tx.s.hashOf(n),
+		Hash: serde.Hash(n),
 	}
 
 	tx.set(&KV{

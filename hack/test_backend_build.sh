@@ -43,6 +43,7 @@ case $package in
   "iptables")  build_package backends/iptables ;;
   "ipvs")     build_package backends/ipvs-as-sink ;;
   "nft")      build_package backends/nft ;;
+  "ebpf")      build_package backends/ebpf ;;
   "")         build_all_backends ;;
   *)          echo "invalid argument: '$package'" ;;
 esac

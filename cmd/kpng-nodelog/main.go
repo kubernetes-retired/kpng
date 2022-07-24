@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client"

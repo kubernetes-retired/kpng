@@ -29,7 +29,7 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"sigs.k8s.io/kpng/client"
 )
@@ -176,7 +176,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			// too fast and deletes fail... :(
 			//time.Sleep(100 * time.Millisecond)
 
-			if klog.V(2) {
+			if klog.V(2).Enabled() {
 				os.Stdout.Write(deferred.Bytes())
 			}
 
@@ -205,17 +205,21 @@ func addDispatchChains(table *nftable) {
 	}
 
 	// DNAT
-	if table.Chains.Get("dnat_external").Len() != 0 {
+	if table.Chains.Has("z_dispatch_svc_dnat") {
+		fmt.Fprint(dnatAll, "  jump z_dispatch_svc_dnat\n")
+	}
+
+	if table.Chains.Has("dnat_external") {
 		fmt.Fprint(dnatAll, "  jump dnat_external\n")
 	}
 
-	if table.Chains.Get("nodeports").Len() != 0 {
-		dnatAll.WriteString("  fib daddr type local jump nodeports\n")
+	if table.Chains.Has("nodeports_dnat") {
+		dnatAll.WriteString("  fib daddr type local jump nodeports_dnat\n")
 	}
 
 	if dnatAll.Len() != 0 {
 		for _, hook := range []string{"prerouting", "output"} {
-			fmt.Fprintf(table.Chains.Get("hook_nat_"+hook),
+			fmt.Fprintf(table.Chains.Get("z_hook_nat_"+hook),
 				"  type nat hook "+hook+" priority %d;\n  jump z_dnat_all\n", *hookPrio)
 		}
 	}
@@ -224,13 +228,21 @@ func addDispatchChains(table *nftable) {
 	filterAll := table.Chains.Get("z_filter_all")
 	fmt.Fprint(filterAll, "  ct state invalid drop\n")
 
-	if table.Chains.Get("filter_external").Len() != 0 {
+	if table.Chains.Has("z_dispatch_svc_filter") {
+		fmt.Fprint(filterAll, "  jump z_dispatch_svc_filter\n")
+	}
+
+	if table.Chains.Has("filter_external") {
 		fmt.Fprint(filterAll, "  jump filter_external\n")
 	}
 
-	fmt.Fprintf(table.Chains.Get("hook_filter_forward"),
+	if table.Chains.Has("nodeports_filter") {
+		filterAll.WriteString("  fib daddr type local jump nodeports_filter\n")
+	}
+
+	fmt.Fprintf(table.Chains.Get("z_hook_filter_forward"),
 		"  type filter hook forward priority %d;\n  jump z_filter_all\n", *hookPrio)
-	fmt.Fprintf(table.Chains.Get("hook_filter_output"),
+	fmt.Fprintf(table.Chains.Get("z_hook_filter_output"),
 		"  type filter hook output priority %d;\n  jump z_filter_all\n", *hookPrio)
 }
 
@@ -242,7 +254,7 @@ func addPostroutingChain(table *nftable, clusterCIDRs []string, localEndpointIPs
 		return
 	}
 
-	chain := table.Chains.Get("hook_nat_postrouting")
+	chain := table.Chains.Get("zz_hook_nat_postrouting")
 	fmt.Fprintf(chain, "  type nat hook postrouting priority %d;\n", *hookPrio)
 	if hasCIDRs {
 		chain.Writeln()
@@ -253,6 +265,7 @@ func addPostroutingChain(table *nftable, clusterCIDRs []string, localEndpointIPs
 		if hasLocalEPs {
 			fmt.Fprint(chain, "  ", table.Family, " daddr != { ", strings.Join(localEndpointIPs, ", "), " } \\\n")
 		}
+		fmt.Fprint(chain, "  fib daddr type != local \\\n")
 		fmt.Fprint(chain, "  masquerade\n")
 	}
 
@@ -282,7 +295,7 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 	outputs := make([]io.Writer, 0, 2)
 	outputs = append(outputs, output)
 
-	if klog.V(2) {
+	if klog.V(2).Enabled() {
 		outputs = append(outputs, os.Stdout)
 	}
 
@@ -312,27 +325,13 @@ func renderNftables(output io.WriteCloser, deferred io.Writer) {
 		}
 
 		// create/update changed elements
-		for _, ks := range table.KindStores() {
-			var items []*Item
-			if fullResync {
-				items = ks.Store.List()
-			} else {
-				items = ks.Store.Changed()
-			}
-
-			if len(items) == 0 {
-				continue
-			}
-
-			fmt.Fprintf(out, "table %s %s {\n", table.Family, table.Name)
-			for _, item := range items {
-				fmt.Fprintf(out, " %s %s {\n", ks.Kind, item.Key())
-				io.Copy(out, item.Value())
-				fmt.Fprintln(out, " }")
-			}
-
-			fmt.Fprintln(out, "}")
+		fmt.Fprintf(out, "table %s %s {\n", table.Family, table.Name)
+		for _, ki := range table.OrderedChanges(fullResync) {
+			fmt.Fprintf(out, " %s %s {\n", ki.Kind, ki.Item.Key())
+			io.Copy(out, ki.Item.Value())
+			fmt.Fprintln(out, " }")
 		}
+		fmt.Fprintln(out, "}")
 
 		// delete removed elements (already done by deleting the table on fullResync)
 		if !fullResync {

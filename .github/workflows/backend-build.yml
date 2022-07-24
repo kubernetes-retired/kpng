@@ -55,3 +55,15 @@ jobs:
     
     - name: build backends/nft
       run: ./hack/test_backend_build.sh nft
+
+  ebpf: 
+    name: build backend package ebpf
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+    
+    - name: build backends/ebpf
+      run: ./hack/test_backend_build.sh ebpf
+      

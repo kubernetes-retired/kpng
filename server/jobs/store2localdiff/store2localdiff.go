@@ -5,16 +5,14 @@ import (
 	"runtime/trace"
 	"strconv"
 
-	"github.com/cespare/xxhash"
-	"github.com/golang/protobuf/proto"
-
 	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/client/lightdiffstore"
 	"sigs.k8s.io/kpng/client/localsink"
-	"sigs.k8s.io/kpng/client/pkg/diffstore"
 	"sigs.k8s.io/kpng/server/jobs/store2diff"
 	"sigs.k8s.io/kpng/server/pkg/endpoints"
 	"sigs.k8s.io/kpng/server/pkg/proxystore"
 	"sigs.k8s.io/kpng/server/pkg/server/watchstate"
+	"sigs.k8s.io/kpng/server/serde"
 )
 
 type Job struct {
@@ -25,7 +23,6 @@ type Job struct {
 func (j *Job) Run(ctx context.Context) error {
 	run := &jobRun{
 		Sink: j.Sink,
-		buf:  proto.NewBuffer(make([]byte, 0, 256)),
 	}
 
 	job := &store2diff.Job{
@@ -45,7 +42,6 @@ func (j *Job) Run(ctx context.Context) error {
 type jobRun struct {
 	localsink.Sink
 	nodeName string
-	buf      *proto.Buffer
 }
 
 func (s *jobRun) Wait() (err error) {
@@ -76,13 +72,11 @@ func (s *jobRun) Update(tx *proxystore.Tx, w *watchstate.WatchState) {
 		svcs.Set(key, kv.Service.Hash, kv.Service.Service)
 
 		// filter endpoints for this node
-		endpointInfos := endpoints.ForNode(tx, kv.Service, nodeName)
+		endpointInfos, _ /* TODO external endpoints */ := endpoints.ForNode(tx, kv.Service, nodeName)
 
 		for _, ei := range endpointInfos {
 			// hash only the endpoint
-			s.buf.Marshal(ei.Endpoint)
-			hash := xxhash.Sum64(s.buf.Bytes())
-			s.buf.Reset()
+			hash := serde.Hash(ei.Endpoint)
 
 			// key is service key + endpoint hash (64 bits, in hex)
 			key := append(make([]byte, 0, len(key)+1+64/8*2), key...)
@@ -110,7 +104,7 @@ func (_ *jobRun) SendDiff(w *watchstate.WatchState) (updated bool) {
 	count += w.SendDeletes(localnetv1.Set_EndpointsSet)
 	count += w.SendDeletes(localnetv1.Set_ServicesSet)
 
-	w.Reset(diffstore.ItemDeleted)
+	w.Reset(lightdiffstore.ItemDeleted)
 
 	return count != 0
 }

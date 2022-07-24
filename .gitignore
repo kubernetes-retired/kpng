@@ -6,3 +6,5 @@
 /tmp
 *~
 modd.conf
+temp/
+.vscode/

@@ -18,12 +18,15 @@ package ipvssink
 
 import (
 	"bytes"
+
 	"github.com/vishvananda/netlink"
 	v1 "k8s.io/api/core/v1"
-	utilexec "k8s.io/utils/exec"
+
+	"sigs.k8s.io/kpng/api/localnetv1"
 	iptablesutil "sigs.k8s.io/kpng/backends/iptables/util"
-	ipsetutil "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
-	"sigs.k8s.io/kpng/client/pkg/diffstore"
+	"sigs.k8s.io/kpng/backends/ipvs-as-sink/exec"
+	util "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
+	"sigs.k8s.io/kpng/client/lightdiffstore"
 )
 
 type proxier struct {
@@ -38,11 +41,9 @@ type proxier struct {
 
 	dummy netlink.Link
 
-	dummyIPsRefCounts map[string]int
-
-	iptables iptablesutil.Interface
-	ipset    ipsetutil.Interface
-	exec     utilexec.Interface
+	iptables util.IPTableInterface
+	ipset    util.Interface
+	exec     exec.Interface
 	//ipvs           util.Interface
 	//localDetector  proxyutiliptables.LocalTrafficDetector
 	//portMapper     netutils.PortOpener
@@ -50,15 +51,14 @@ type proxier struct {
 	//serviceHealthServer healthcheck.ServiceHealthServer
 	//healthzServer       healthcheck.ProxierHealthUpdater
 
-	// <namespace>/<service-name>/<ip>/<protocol>:<port> -> ipvsLB
-	lbs *diffstore.DiffStore
 	// <namespace>/<service-name>/<endpoint key>/<ip> -> <ip>
-	endpoints *diffstore.DiffStore
-	// <namespace>/<service-name>/<ip>/<protocol>:<port>/<ip> -> ipvsSvcDst
-	dests *diffstore.DiffStore
+	endpoints *lightdiffstore.DiffStore
+	// <namespace>/<service-name>/<ip>/<protocol>:<port> -> ipvsLB
+	servicePorts *lightdiffstore.DiffStore
 
 	ipsetList map[string]*IPSet
-
+	//servicePortMap map[string]map[string]*BaseServicePortInfo
+	portMap map[string]map[string]localnetv1.PortMapping
 	// The following buffers are used to reuse memory and avoid allocations
 	// that are significantly impacting performance.
 	iptablesData     *bytes.Buffer
@@ -71,33 +71,32 @@ type proxier struct {
 
 func NewProxier(ipFamily v1.IPFamily,
 	dummy netlink.Link,
-	ipsetInterface ipsetutil.Interface,
-	iptInterface iptablesutil.Interface,
+	ipsetInterface util.Interface,
+	iptInterface util.IPTableInterface,
 	nodeIPs []string,
 	schedulingMethod, masqueradeMark string,
 	masqueradeAll bool,
 	weight int32) *proxier {
 	return &proxier{
-		ipFamily:          ipFamily,
-		dummy:             dummy,
-		nodeAddresses:     nodeIPs,
-		schedulingMethod:  schedulingMethod,
-		weight:            weight,
-		ipset:             ipsetInterface,
-		iptables:          iptInterface,
-		masqueradeMark:    masqueradeMark,
-		masqueradeAll:     masqueradeAll,
-		dummyIPsRefCounts: map[string]int{},
-		ipsetList:         make(map[string]*IPSet),
-		lbs:               diffstore.New(),
-		endpoints:         diffstore.New(),
-		dests:             diffstore.New(),
-		iptablesData:      bytes.NewBuffer(nil),
-		filterChainsData:  bytes.NewBuffer(nil),
-		natChains:         iptablesutil.LineBuffer{},
-		natRules:          iptablesutil.LineBuffer{},
-		filterChains:      iptablesutil.LineBuffer{},
-		filterRules:       iptablesutil.LineBuffer{},
+		ipFamily:         ipFamily,
+		dummy:            dummy,
+		nodeAddresses:    nodeIPs,
+		schedulingMethod: schedulingMethod,
+		weight:           weight,
+		ipset:            ipsetInterface,
+		iptables:         iptInterface,
+		masqueradeMark:   masqueradeMark,
+		masqueradeAll:    masqueradeAll,
+		ipsetList:        make(map[string]*IPSet),
+		portMap:          make(map[string]map[string]localnetv1.PortMapping),
+		endpoints:        lightdiffstore.New(),
+		servicePorts:     lightdiffstore.New(),
+		iptablesData:     bytes.NewBuffer(nil),
+		filterChainsData: bytes.NewBuffer(nil),
+		natChains:        iptablesutil.LineBuffer{},
+		natRules:         iptablesutil.LineBuffer{},
+		filterChains:     iptablesutil.LineBuffer{},
+		filterRules:      iptablesutil.LineBuffer{},
 	}
 }
 
@@ -106,6 +105,7 @@ func (p *proxier) initializeIPSets() {
 	for _, is := range ipsetInfo {
 		p.ipsetList[is.name] = newIPSet(p.ipset, is.name, is.setType, p.ipFamily, is.comment)
 	}
+
 	// make sure ip sets exists in the system.
 	for _, set := range p.ipsetList {
 		if err := ensureIPSet(set); err != nil {

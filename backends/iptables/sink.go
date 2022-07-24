@@ -12,6 +12,8 @@ import (
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
 	"sigs.k8s.io/kpng/client/localsink/filterreset"
+	"sigs.k8s.io/kpng/client/localsink/filterreset/pipe"
+	"sigs.k8s.io/kpng/client/plugins/conntrack"
 )
 
 type Backend struct {
@@ -28,7 +30,7 @@ func New() *Backend {
 }
 
 func (s *Backend) Sink() localsink.Sink {
-	return filterreset.New(decoder.New(s))
+	return filterreset.New(pipe.New(decoder.New(s), decoder.New(conntrack.NewSink())))
 }
 
 func (s *Backend) BindFlags(flags *pflag.FlagSet) {

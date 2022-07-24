@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
@@ -48,8 +48,7 @@ func (j *Job) Run(ctx context.Context) (err error) {
 
 			tx.Each(proxystore.Services, func(kv *proxystore.KV) bool {
 				sae := ServiceAndEndpoints{
-					Service:      kv.Service.Service,
-					TopologyKeys: kv.Service.TopologyKeys,
+					Service: kv.Service.Service,
 				}
 
 				tx.EachEndpointOfService(kv.Namespace, kv.Name, func(ep *localnetv1.EndpointInfo) {
@@ -93,7 +92,6 @@ type GlobalState struct {
 }
 
 type ServiceAndEndpoints struct {
-	Service      *localnetv1.Service
-	TopologyKeys []string
-	Endpoints    []*localnetv1.EndpointInfo
+	Service   *localnetv1.Service
+	Endpoints []*localnetv1.EndpointInfo
 }

@@ -22,7 +22,7 @@ import (
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 type dnatRule struct {
@@ -30,7 +30,7 @@ type dnatRule struct {
 	Name        string
 	Protocol    localnetv1.Protocol
 	Ports       []*localnetv1.PortMapping
-	EndpointIPs []string
+	EndpointIPs []EpIP
 }
 
 // inlined write helpers
@@ -94,7 +94,7 @@ func (d dnatRule) WriteTo(rule *bytes.Buffer, nodePorts bool, endpointsMap strin
 		if len(d.EndpointIPs) == 1 {
 			// single destination
 			rule.WriteString(" counter dnat to ")
-			rule.Write([]byte(d.EndpointIPs[0]))
+			rule.Write([]byte(d.EndpointIPs[0].IP))
 
 		} else {
 			rule.WriteString(" counter dnat to numgen random mod ")

@@ -119,7 +119,6 @@ func (t *iptables) sync() {
 	t.serviceMap.Update(t.serviceChanges)
 	endpointUpdateResult := t.endpointsMap.Update(t.endpointsChanges)
 
-	t.detectStaleConntrackEntries()
 	klog.InfoS("Syncing iptables rules")
 
 	// success := false
@@ -201,7 +200,7 @@ func (t *iptables) sync() {
 			if allEndpoints != nil {
 				hasEndpoints = len(*allEndpoints) > 0
 			}
-			endpoints, endpointChains, endpointPortMap := t.createServiceSpecificChains(svcInfo, activeNATChains, existingNATChains, allEndpoints)
+			endpoints, endpointChains, localEndpointChains, endpointPortMap := t.createServiceSpecificChains(svcInfo, activeNATChains, existingNATChains, allEndpoints)
 
 			t.writeClusterIPRules(svcInfo, svcName, args[:0])
 			t.writeExternalIPRules(svcInfo, svcName, args[:0], localAddrSet, replacementPortsMap)
@@ -212,12 +211,11 @@ func (t *iptables) sync() {
 				continue
 			}
 
-			readyEndpointChains, readyEndpoints, localReadyEndpointChains := t.getReadyEndpointsInfo(endpoints, endpointChains)
-			t.writeEndpointRules(svcInfo, svcName, endpointChains, readyEndpointChains, endpoints, readyEndpoints, &args, endpointPortMap)
+			t.writeEndpointRules(svcInfo, svcName, endpointChains, endpoints, &args, endpointPortMap)
 
 			// The logic below this applies only if this service is marked as OnlyLocal
 			if svcInfo.NodeLocalExternal() {
-				t.writeLocalExtTrafficPolicyRules(svcInfo, svcName, localReadyEndpointChains, args[:0])
+				t.writeLocalExtTrafficPolicyRules(svcInfo, svcName, localEndpointChains, args[:0])
 			}
 		}
 	}
@@ -258,7 +256,7 @@ func (t *iptables) sync() {
 }
 
 func (t *iptables) createServiceSpecificChains(svcInfo *serviceInfo, activeNATChains map[util.Chain]bool,
-	existingNATChains map[util.Chain][]byte, allEndpoints *endpointsInfoByName) ([]*string, *[]util.Chain, map[string]map[string]int32) {
+	existingNATChains map[util.Chain][]byte, allEndpoints *endpointsInfoByName) ([]*string, *[]util.Chain, *[]util.Chain, map[string]map[string]int32) {
 	if allEndpoints != nil && len(*allEndpoints) > 0 {
 		// Create the per-service chain, retaining counters if possible.
 		t.copyExistingChains([]util.Chain{svcInfo.servicePortChainName}, existingNATChains, &t.natChains)
@@ -322,30 +320,6 @@ func (t *iptables) writePostRoutingMasqRules() {
 		"-A", string(KubeMarkMasqChain),
 		"-j", "MARK", "--or-mark", t.masqueradeMark,
 	)
-}
-
-func (t *iptables) detectStaleConntrackEntries() {
-	//TODO is this not required or should it move to kpng controller?
-	// // We need to detect stale connections to UDP Services so we
-	// // can clean dangling conntrack entries that can blackhole traffic.
-	// conntrackCleanupServiceIPs := serviceUpdateResult.UDPStaleClusterIP
-	// conntrackCleanupServiceNodePorts := sets.NewInt()
-	// merge stale services gathered from updateEndpointsMap
-	// an UDP service that changes from 0 to non-0 endpoints is considered stale.
-	// for _, svcPortName := range endpointUpdateResult.StaleServiceNames {
-	// 	if svcInfo, ok := t.serviceMap[svcPortName]; ok && svcInfo != nil && conntrack.IsClearConntrackNeeded(svcInfo.Protocol()) {
-	// 		klog.V(2).InfoS("Stale service", "protocol", strings.ToLower(string(svcInfo.Protocol())), "svcPortName", svcPortName.String(), "clusterIP", svcInfo.ClusterIP().String())
-	// 		conntrackCleanupServiceIPs.Insert(svcInfo.ClusterIP().String())
-	// 		for _, extIP := range svcInfo.ExternalIPStrings() {
-	// 			conntrackCleanupServiceIPs.Insert(extIP)
-	// 		}
-	// 		nodePort := svcInfo.NodePort()
-	// 		if svcInfo.Protocol() == v1.ProtocolUDP && nodePort != 0 {
-	// 			klog.V(2).Infof("Stale %s service NodePort %v -> %d", strings.ToLower(string(svcInfo.Protocol())), svcPortName, nodePort)
-	// 			conntrackCleanupServiceNodePorts.Insert(nodePort)
-	// 		}
-	// 	}
-	// }
 }
 
 func (t *iptables) deleteStaleChains(existingNATChains map[util.Chain][]byte, activeNATChains map[util.Chain]bool) {
@@ -626,14 +600,15 @@ func (t *iptables) writeNodePortsRules(svcInfo *serviceInfo, nodeAddresses sets.
 
 //createEndpointsChain creates chains for each ep
 func (t *iptables) createEndpointsChain(svcInfo *serviceInfo, allEndpoints *endpointsInfoByName,
-	existingNATChains map[util.Chain][]byte, activeNATChains map[util.Chain]bool) ([]*string, *[]util.Chain, map[string]map[string]int32) {
+	existingNATChains map[util.Chain][]byte, activeNATChains map[util.Chain]bool) ([]*string, *[]util.Chain, *[]util.Chain, map[string]map[string]int32) {
 	endpoints := make([]*string, 0)
+	localEndpointChains := make([]util.Chain, 0)
 	endpointChains := make([]util.Chain, 0)
 	protocol := strings.ToLower(svcInfo.Protocol().String())
 	endpointPortMap := make(map[string]map[string]int32)
 	var endpointChain util.Chain
 	if allEndpoints == nil {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 
 	for _, epInfo := range *allEndpoints {
@@ -654,26 +629,29 @@ func (t *iptables) createEndpointsChain(svcInfo *serviceInfo, allEndpoints *endp
 			}
 			ep = epInfo.IPs.V4[0]
 		}
-		endpointPortMap[ep] = epInfo.EndpointPortMap
+		endpointPortMap[ep] = epInfo.PortOverrides // TODO migrate to epInfo.Ports() map[string]int32 when ready
 		endpoints = append(endpoints, &ep)
 
 		endpointChain = servicePortEndpointChainName(svcInfo.serviceNameString, protocol, ep)
 		endpointChains = append(endpointChains, endpointChain)
+		if epInfo.Local {
+			localEndpointChains = append(localEndpointChains, endpointChain)
+		}
 
 		// Create the endpoint chain, retaining counters if possible.
 		t.copyExistingChains([]util.Chain{endpointChain}, existingNATChains, &t.natChains)
 		activeNATChains[endpointChain] = true
 	}
-	return endpoints, &endpointChains, endpointPortMap
+	return endpoints, &endpointChains, &localEndpointChains, endpointPortMap
 }
 
 //writeEndpointRules writes rules to svc to jump to sep and rules to sep to dnat and loadbalance to actual ep ip
 func (t *iptables) writeEndpointRules(svcInfo *serviceInfo, svcName types.NamespacedName, endpointChains *[]util.Chain,
-	readyEndpointChains *[]util.Chain, endpoints []*string, readyEndpoints []*string, args *[]string, endpointPortMap map[string]map[string]int32) {
+	endpoints []*string, args *[]string, endpointPortMap map[string]map[string]int32) {
 	// First write session affinity rules, if applicable.
 	t.writeSessionAffinityRules(svcInfo, (*args)[:0], endpointChains, svcName)
 	// Now write loadbalancing & DNAT rules.
-	t.writeEndpointLBRules(svcInfo, svcName, readyEndpointChains, readyEndpoints, (*args)[:0])
+	t.writeEndpointLBRules(svcInfo, svcName, endpointChains, endpoints, (*args)[:0])
 	t.writeDNATRules(svcInfo, svcName, endpoints, endpointChains, (*args)[:0], endpointPortMap)
 }
 
@@ -694,40 +672,6 @@ func (t *iptables) writeSessionAffinityRules(svcInfo *serviceInfo, args []string
 			t.natRules.Write(args)
 		}
 	}
-}
-
-func (t *iptables) getReadyEndpointsInfo(endpoints []*string, endpointChains *[]util.Chain) (*[]util.Chain, []*string, *[]util.Chain) {
-	//TODO: KPng EP doesnot have ready states.This logic needs to be checked.
-	//I have removed the ready checks,else EP chains wont be added.
-	// Firstly, categorize each endpoint into three buckets:
-	//   1. all endpoints that are ready and NOT terminating.
-	//   2. all endpoints that are local, ready and NOT terminating, and externalTrafficPolicy=Local
-	//   3. all endpoints that are local, serving and terminating, and externalTrafficPolicy=Local
-	readyEndpointChains := make([]util.Chain, 0)
-	readyEndpointChains = readyEndpointChains[:0]
-	readyEndpoints := make([]*string, 0)
-	readyEndpoints = readyEndpoints[:0]
-	localReadyEndpointChains := make([]util.Chain, 0)
-	localReadyEndpointChains = localReadyEndpointChains[:0]
-	//TODO: Check below line
-	// localServingTerminatingEndpointChains := localServingTerminatingEndpointChains[:0]
-	for i, endpointChain := range *endpointChains {
-		// if endpoints[i].Ready {
-		readyEndpointChains = append(readyEndpointChains, endpointChain)
-		readyEndpoints = append(readyEndpoints, endpoints[i])
-		// }
-
-		// TODO: CHECK node local external how to check
-		// if svc.NodeLocalExternal() && endpoints[i].IsLocal {
-		// 	// if endpoints[i].Ready {
-		// 	localReadyEndpointChains = append(localReadyEndpointChains, endpointChain)
-		// 	// } else if endpoints[i].Serving && endpoints[i].Terminating {
-		// 	// 	localServingTerminatingEndpointChains = append(localServingTerminatingEndpointChains, endpointChain)
-		// 	// }
-		// }
-	}
-	return &readyEndpointChains, readyEndpoints, &localReadyEndpointChains
-
 }
 
 func (t *iptables) writeEndpointLBRules(svcInfo *serviceInfo, svcName types.NamespacedName,
@@ -1068,26 +1012,6 @@ func (t *iptables) cleanUp() {
 	// if err := proxier.serviceHealthServer.SyncEndpoints(endpointUpdateResult.HCEndpointsLocalIPSize); err != nil {
 	// 	klog.ErrorS(err, "Error syncing healthcheck endpoints")
 	// }
-
-	// Finish housekeeping.
-	// Clear stale conntrack entries for UDP Services, this has to be done AFTER the iptables rules are programmed.
-	// TODO: these could be made more consistent.
-	// TODO: conntrack cleanup commented for now as above also it wasnt included
-	// klog.V(4).InfoS("Deleting conntrack stale entries for Services", "ips", conntrackCleanupServiceIPs.UnsortedList())
-	// for _, svcIP := range conntrackCleanupServiceIPs.UnsortedList() {
-	// 	if err := conntrack.ClearEntriesForIP(proxier.exec, svcIP, v1.ProtocolUDP); err != nil {
-	// 		klog.ErrorS(err, "Failed to delete stale service connections", "ip", svcIP)
-	// 	}
-	// }
-	// klog.V(4).InfoS("Deleting conntrack stale entries for Services", "nodeports", conntrackCleanupServiceNodePorts.UnsortedList())
-	// for _, nodePort := range conntrackCleanupServiceNodePorts.UnsortedList() {
-	// 	err := conntrack.ClearEntriesForPort(proxier.exec, nodePort, isIPv6, v1.ProtocolUDP)
-	// 	if err != nil {
-	// 		klog.ErrorS(err, "Failed to clear udp conntrack", "port", nodePort)
-	// 	}
-	// }
-	// klog.V(4).InfoS("Deleting stale endpoint connections", "endpoints", endpointUpdateResult.StaleEndpoints)
-	// deleteEndpointConnections(endpointUpdateResult.StaleEndpoints)
 }
 
 const endpointChainsNumberThreshold = 1000
@@ -1124,40 +1048,3 @@ func (t *iptables) precomputeProbabilities(numberOfPrecomputed int) {
 func (t *iptables) computeProbability(n int) string {
 	return fmt.Sprintf("%0.10f", 1.0/float64(n))
 }
-
-// After a UDP or SCTP endpoint has been removed, we must flush any pending conntrack entries to it, or else we
-// risk sending more traffic to it, all of which will be lost.
-// This assumes the proxier mutex is held
-// TODO: move it to util
-// func (proxier *Proxier) deleteEndpointConnections(connectionMap []proxy.ServiceEndpoint) {
-// 	for _, epSvcPair := range connectionMap {
-// 		if svcInfo, ok := proxier.serviceMap[epSvcPair.ServicePortName]; ok && conntrack.IsClearConntrackNeeded(svcInfo.Protocol()) {
-// 			endpointIP := utilproxy.IPPart(epSvcPair.Endpoint)
-// 			nodePort := svcInfo.NodePort()
-// 			svcProto := svcInfo.Protocol()
-// 			var err error
-// 			if nodePort != 0 {
-// 				err = conntrack.ClearEntriesForPortNAT(proxier.exec, endpointIP, nodePort, svcProto)
-// 				if err != nil {
-// 					klog.ErrorS(err, "Failed to delete nodeport-related endpoint connections", "servicePortName", epSvcPair.ServicePortName.String())
-// 				}
-// 			}
-// 			err = conntrack.ClearEntriesForNAT(proxier.exec, svcInfo.ClusterIP().String(), endpointIP, svcProto)
-// 			if err != nil {
-// 				klog.ErrorS(err, "Failed to delete endpoint connections", "servicePortName", epSvcPair.ServicePortName.String())
-// 			}
-// 			for _, extIP := range svcInfo.ExternalIPStrings() {
-// 				err := conntrack.ClearEntriesForNAT(proxier.exec, extIP, endpointIP, svcProto)
-// 				if err != nil {
-// 					klog.ErrorS(err, "Failed to delete endpoint connections for externalIP", "servicePortName", epSvcPair.ServicePortName.String(), "externalIP", extIP)
-// 				}
-// 			}
-// 			for _, lbIP := range svcInfo.LoadBalancerIPStrings() {
-// 				err := conntrack.ClearEntriesForNAT(proxier.exec, lbIP, endpointIP, svcProto)
-// 				if err != nil {
-// 					klog.ErrorS(err, "Failed to delete endpoint connections for LoadBalancerIP", "servicePortName", epSvcPair.ServicePortName.String(), "loadBalancerIP", lbIP)
-// 				}
-// 			}
-// 		}
-// 	}
-// }

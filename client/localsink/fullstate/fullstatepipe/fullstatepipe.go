@@ -13,9 +13,13 @@ type Strategy int
 const (
 	// Sequence calls to each pipe stage in sequence. Implies storing the state in a buffer.
 	Sequence = iota
-	// Parallel calls each pipe stage in parallel. No buffer required, but the stages are not really stages anymore.
+	// Parallel calls each pipe stage in parallel. No buffering required, but
+	// the stages are not really stages anymore.
 	Parallel
-	// Parallel calls each pipe entry in parallel but closes the channel of a stage only after the previous has finished. No buffer required but still a meaningful sequencing, especially when using the diffstore.
+	// ParallelSendSequenceClose calls each pipe entry in parallel but closes
+	// the channel of a stage only after the previous has finished. No
+	// buffering required but still a meaningful sequencing, especially when
+	// using the diffstore.
 	ParallelSendSequenceClose
 )
 

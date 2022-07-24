@@ -17,45 +17,58 @@ limitations under the License.
 package ipvssink
 
 import (
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
-func (p *proxier) handleNewExternalIP(key, externalIP, svcType string, port *localnetv1.PortMapping, sessAff SessionAffinity) {
-	// External IP is stored in LB tree
-	p.storeLBSvc(port, sessAff, externalIP, key, svcType)
+func (p *proxier) handleNewExternalIP(serviceKey, externalIP, svcType string, svc *localnetv1.Service, port *localnetv1.PortMapping) {
+	spKey := getServicePortKey(serviceKey, externalIP, port)
+	portInfo := NewBaseServicePortInfo(svc, port, externalIP, svcType, p.schedulingMethod, p.weight)
+	p.servicePorts.Set([]byte(spKey), 0, *portInfo)
 
-	// External IP needs to be programmed in ipset.
-	p.AddOrDelExternalIPInIPSet(externalIP, []*localnetv1.PortMapping{port}, AddService)
+	p.addVirtualServer(portInfo)
+
+	//Cluster service IP needs to be programmed in ipset.
+	p.AddOrDelExternalIPInIPSet(externalIP, portInfo, AddService)
 }
 
-func (p *proxier) handleUpdatedExternalIP(key, externalIP, svcType string, port *localnetv1.PortMapping, sessAff SessionAffinity) {
-	//Update the externalIP with added ports into LB tree
-	p.storeLBSvc(port, sessAff, externalIP, key, svcType)
+func (p *proxier) handleUpdatedExternalIP(serviceKey, externalIP, svcType string, svc *localnetv1.Service, port *localnetv1.PortMapping) {
+	spKey := getServicePortKey(serviceKey, externalIP, port)
+	portInfo := NewBaseServicePortInfo(svc, port, externalIP, svcType, p.schedulingMethod, p.weight)
+	p.servicePorts.Set([]byte(spKey), 0, *portInfo)
 
-	p.updateIPVSDestWithPort(key, externalIP, port)
+	//Update the service with added ports into LB tree
+	p.addVirtualServer(portInfo)
+	//Cluster service IP needs to be programmed in ipset with added ports.
+	p.AddOrDelExternalIPInIPSet(externalIP, portInfo, AddService)
 
-	//externalIP needs to be programmed in ipset with added ports.
-	p.AddOrDelExternalIPInIPSet(externalIP, []*localnetv1.PortMapping{port}, AddService)
+	p.addRealServerForPort(serviceKey, []*BaseServicePortInfo{portInfo})
 }
 
-func (p *proxier) AddOrDelExternalIPInIPSet(externalIP string, portList []*localnetv1.PortMapping, op Operation) {
-	for _, port := range portList {
-		entry := getIPSetEntry(externalIP, "", port)
-		// We have to SNAT packets to external IPs.
-		if valid := p.ipsetList[kubeExternalIPSet].validateEntry(entry); !valid {
-			klog.Errorf("error adding entry :%s, to ipset:%s", entry.String(), p.ipsetList[kubeClusterIPSet].Name)
-			return
+func (p *proxier) AddOrDelExternalIPInIPSet(externalIP string, port *BaseServicePortInfo, op Operation) {
+	entry := getIPSetEntry(externalIP, port)
+	// We have to SNAT packets to external IPs.
+	if valid := p.ipsetList[kubeExternalIPSet].validateEntry(entry); !valid {
+		klog.Errorf("error adding entry :%s, to ipset:%s", entry.String(), p.ipsetList[kubeClusterIPSet].Name)
+		return
+	}
+	set := p.ipsetList[kubeExternalIPSet]
+	if op == AddService {
+		if err := set.handle.AddEntry(entry.String(), &set.IPSet, true); err != nil {
+			klog.Errorf("Failed to add entry %v into ip set: %s, error: %v", entry, set.Name, err)
+		} else {
+			klog.V(3).Infof("Successfully add entry: %v into ip set: %s", entry, set.Name)
 		}
-		if op == AddService {
-			p.ipsetList[kubeExternalIPSet].newEntries.Insert(entry.String())
-			//Increment ref count
-			p.updateRefCountForIPSet(kubeExternalIPSet, op)
+		//Increment ref count
+		p.updateRefCountForIPSet(kubeExternalIPSet, op)
+	}
+	if op == DeleteService {
+		if err := set.handle.DelEntry(entry.String(), set.Name); err != nil {
+			klog.Errorf("Failed to delete entry: %v from ip set: %s, error: %v", entry, set.Name, err)
+		} else {
+			klog.V(3).Infof("Successfully deleted entry: %v to ip set: %s", entry, set.Name)
 		}
-		if op == DeleteService {
-			p.ipsetList[kubeExternalIPSet].deleteEntries.Insert(entry.String())
-			//Decrement ref count
-			p.updateRefCountForIPSet(kubeExternalIPSet, op)
-		}
+		//Decrement ref count
+		p.updateRefCountForIPSet(kubeExternalIPSet, op)
 	}
 }

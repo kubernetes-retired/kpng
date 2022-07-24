@@ -20,11 +20,17 @@ shopt -s expand_aliases
 : "${E2E_GO_VERSION:="1.17.3"}"
 : "${E2E_K8S_VERSION:="v1.23.3"}"
 : "${E2E_TIMEOUT_MINUTES:=100}"
+: "${KPNG_DEBUG_LEVEL:=4}"
+: "${KPNG_SERVER_ADDRESS:="unix:///k8s/proxy.sock"}"
+# Ensure that CLUSTER_CIDR and SERVICE_CLUSTER_IP_RANGE don't overlap
+: "${CLUSTER_CIDR:="10.1.0.0/16"}"
+: "${SERVICE_CLUSTER_IP_RANGE:="10.2.0.0/16"}"
 
 OS=$(uname| tr '[:upper:]' '[:lower:]')
 CONTAINER_ENGINE="docker"
 KPNG_IMAGE_TAG_NAME="kpng:test"
 KUBECONFIG_TESTS="kubeconfig_tests.conf"
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # kind
 KIND_VERSION="v0.11.1"
@@ -263,6 +269,79 @@ function setup_ginkgo {
     pass_message "The tools ginko and e2e.test have been set up."
 }
 
+command_exists() {
+    ###########################################################################
+    # Description:                                                            #
+    # Checkt if a binary exists                                               #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1: binary name                                                     #
+    ###########################################################################
+    cmd="$1"
+    command -v ${cmd} >/dev/null 2>&1
+}
+
+function setup_j2() {
+    ###########################################################################
+    # Description:                                                            #
+    # Install j2 binary                                                       #
+    ###########################################################################    
+    if ! command_exists j2 ; then 
+        if ! command_exists pip ; then 
+            echo "Dependency not met: 'j2' not installed and cannot install with 'pip'"
+            exit 1
+        fi
+
+        echo "'j2' not found, installing with 'pip'"
+
+        pip install wheel --user
+        pip freeze | grep j2cli || pip install j2cli[yaml] --user
+        export PATH=~/.local/bin:$PATH
+        if_error_exit "cannot download j2"
+    fi
+    pass_message "The tool j2 is installed."
+}
+
+function setup_bpf2go() {
+    ###########################################################################
+    # Description:                                                            #
+    # Install bpf2go binary                                                       #
+    ###########################################################################    
+    if ! command_exists bpf2go ; then 
+        if ! command_exists go ; then 
+            echo "Dependency not met: 'bpf2go' not installed and cannot install with 'go'"
+            exit 1
+        fi
+
+        echo "'bpf2go' not found, installing with 'go'"
+        go install github.com/cilium/ebpf/cmd/bpf2go@master
+        if_error_exit "cannot install bpf2go"
+    fi 
+
+    pass_message "The tool bpf2go is installed."
+}
+
+function delete_kind_cluster {
+    ###########################################################################
+    # Description:                                                            #
+    # delete kind cluster                                                     #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1: cluster name                                                    #
+    ###########################################################################
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local cluster_name="${1}"
+
+    if kind get clusters | grep -q "${cluster_name}" &> /dev/null; then
+        kind delete cluster --name "${cluster_name}" &> /dev/null
+        if_error_warning "cannot delete cluster ${cluster_name}"
+
+        pass_message "Cluster ${cluster_name} deleted."
+    fi
+}
+
 function create_cluster {
     ###########################################################################
     # Description:                                                            #
@@ -322,6 +401,8 @@ function create_cluster {
       apiVersion: kind.x-k8s.io/v1alpha4
       networking:
           ipFamily: "${ip_family}"
+          podSubnet: "${CLUSTER_CIDR}"
+          serviceSubnet: "${SERVICE_CLUSTER_IP_RANGE}"
       nodes:
       - role: control-plane
       - role: worker
@@ -409,27 +490,6 @@ function wait_until_cluster_is_ready {
     pass_message "${cluster_name} is operational."
 }
 
-function delete_kind_cluster {
-    ###########################################################################
-    # Description:                                                            #
-    # delete kind cluster                                                     #
-    #                                                                         #
-    # Arguments:                                                              #
-    #   arg1: cluster name                                                    #
-    ###########################################################################
-    [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
-
-    local cluster_name="${1}"
-
-    if kind get clusters | grep -q "${cluster_name}" &> /dev/null; then
-        kind delete cluster --name "${cluster_name}" &> /dev/null
-        if_error_warning "cannot delete cluster ${cluster_name}"
-
-        pass_message "Cluster ${cluster_name} deleted."
-    fi
-}
-
 function install_kpng {
     ###########################################################################
     # Description:                                                            #
@@ -482,16 +542,23 @@ function install_kpng {
         --namespace "${NAMESPACE}" \
         --from-file "${artifacts_directory}/kubeconfig.conf" 1> /dev/null
     if_error_exit "error creating configmap ${CONFIG_MAP_NAME}"
-    pass_message "Created configmap ${CONFIG_MAP_NAME}."
+    pass_message "Created configmap ${CONFIG_MAP_NAME}." 
+
+    if [[ "${E2E_BACKEND}" == "nft" ]]; then
+        E2E_BACKEND_ARGS="['local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}', '--cluster-cidrs=${CLUSTER_CIDR}']"
+    else
+        E2E_BACKEND_ARGS="['local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}']"
+    fi
 
     # Setting vars for generate the kpng deployment based on template
-    export IMAGE="${KPNG_IMAGE_TAG_NAME}"
-    export PULL=IfNotPresent
-    export E2E_BACKEND
-    export CONFIG_MAP_NAME
-    export SERVICE_ACCOUNT_NAME
-    export NAMESPACE
-    envsubst <"${0%/*}"/kpng-deployment-ds.yaml.tmpl > "${artifacts_directory}"/kpng-deployment-ds.yaml
+    kpng_image="${KPNG_IMAGE_TAG_NAME}" \
+    image_pull_policy="IfNotPresent" \
+    backend="${E2E_BACKEND}" \
+    config_map_name="${CONFIG_MAP_NAME}" \
+    service_account_name="${SERVICE_ACCOUNT_NAME}" \
+    namespace="${NAMESPACE}" \
+    e2e_backend_args="${E2E_BACKEND_ARGS}"\
+    j2 ${SCRIPT_DIR}/kpng-deployment-ds.yaml.j2 -o "${artifacts_directory}"/kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 
     kubectl --context "${k8s_context}" create -f "${artifacts_directory}"/kpng-deployment-ds.yaml 1> /dev/null
@@ -596,17 +663,17 @@ function verify_sysctl_setting {
     #   arg1: attribute                                                       #
     #   arg2: value                                                           #
     ###########################################################################
-   [ $# -eq 2 ]
+    [ $# -eq 2 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
-   local attribute="${1}"
-   local value="${2}"
-   local result=$(sysctl -n  "${attribute}")
-   if_error_exit "\"sysctl -n ${attribute}\" failed}"
+    local attribute="${1}"
+    local value="${2}"
+    local result=$(sysctl -n  "${attribute}")
+    if_error_exit "\"sysctl -n ${attribute}\" failed}"
 
-   if [ ! "${value}" -eq "${result}" ] ; then
+    if [ ! "${value}" -eq "${result}" ] ; then
        echo "Failure: \"sysctl -n ${attribute}\" returned \"${result}\", not \"${value}\" as expected."
        exit
-   fi
+    fi
 }
 
 function set_sysctl {
@@ -618,18 +685,18 @@ function set_sysctl {
     #   arg1: attribute                                                       #
     #   arg2: value                                                           #
     ###########################################################################
-   [ $# -eq 2 ]
-   if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
-   local attribute="${1}"
-   local value="${2}"
-   local result=$(sysctl -n  "${attribute}")
-   if_error_exit "\"sysctl -n ${attribute}\" failed"
+    [ $# -eq 2 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    local attribute="${1}"
+    local value="${2}"
+    local result=$(sysctl -n  "${attribute}")
+    if_error_exit "\"sysctl -n ${attribute}\" failed"
 
-   if [ ! "${value}" -eq "${result}" ] ; then
+    if [ ! "${value}" -eq "${result}" ] ; then
        echo "Setting: \"sysctl -w ${attribute}=${value}\""
        sudo sysctl -w  "${attribute}"="${value}"
        if_error_exit "\"sudo sysctl -w  ${attribute} = ${value}\" failed"
-   fi
+    fi
 }
 
 function verify_host_network_settings {
@@ -638,14 +705,19 @@ function verify_host_network_settings {
      # Verify hosts network settings                                           #
      #                                                                         #
      # Arguments:                                                              #
-     #   None                                                                  #
+     #   arg1: ip_family                                                       #
      ###########################################################################
+     [ $# -eq 1 ]
+     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+     local ip_family="${1}"
 
-    verify_sysctl_setting net.ipv6.conf.all.forwarding 1
-    verify_sysctl_setting net.ipv4.ip_forward 1
-    verify_sysctl_setting net.bridge.bridge-nf-call-arptables 0
-    verify_sysctl_setting net.bridge.bridge-nf-call-ip6tables 0
-    verify_sysctl_setting net.bridge.bridge-nf-call-iptables 0
+     verify_sysctl_setting net.ipv4.ip_forward 1
+     if [ "${ip_family}" = "ipv6" ]; then
+       verify_sysctl_setting net.ipv6.conf.all.forwarding 1
+       verify_sysctl_setting net.bridge.bridge-nf-call-arptables 0
+       verify_sysctl_setting net.bridge.bridge-nf-call-ip6tables 0
+       verify_sysctl_setting net.bridge.bridge-nf-call-iptables 0
+     fi
 }
 
 function set_host_network_settings {
@@ -654,14 +726,19 @@ function set_host_network_settings {
     # prepare hosts network settings                                          #
     #                                                                         #
     # Arguments:                                                              #
-    #   None                                                                  #
+    #   arg1: ip_family                                                       #
     ###########################################################################
+     [ $# -eq 1 ]
+     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+     local ip_family="${1}"
 
      set_sysctl net.ipv6.conf.all.forwarding 1
-     set_sysctl net.ipv4.ip_forward 1
-     set_sysctl net.bridge.bridge-nf-call-arptables 0
-     set_sysctl net.bridge.bridge-nf-call-ip6tables 0
-     set_sysctl net.bridge.bridge-nf-call-iptables 0
+     if [ "${ip_family}" = "ipv6" ]; then
+       set_sysctl net.ipv4.ip_forward 1
+       set_sysctl net.bridge.bridge-nf-call-arptables 0
+       set_sysctl net.bridge.bridge-nf-call-ip6tables 0
+       set_sysctl net.bridge.bridge-nf-call-iptables 0
+     fi
 }
 
 function add_to_path {
@@ -672,7 +749,6 @@ function add_to_path {
     # Arguments:                                                              #
     #   arg1:  directory                                                      #
     ###########################################################################
-
     [ $# -eq 1 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
@@ -714,6 +790,8 @@ function install_binaries {
     setup_kind "${bin_directory}"
     setup_kubectl "${bin_directory}"
     setup_ginkgo "${bin_directory}" "${k8s_version}" "${os}"
+    setup_j2
+    setup_bpf2go
 }
 
 function set_e2e_dir {
@@ -760,6 +838,20 @@ function prepare_container {
     # Detect container engine
     detect_container_engine
     container_build "${dockerfile}" "${ci_mode}"
+}
+
+function compile_bpf {
+    ###########################################################################
+    # Description:                                                            #
+    # compile bpf elf files for ebpf backend                                  #
+    ###########################################################################
+
+    pushd ${SCRIPT_DIR}/../backends/ebpf
+    go generate
+    if_error_exit "Failed to compile EBPF Programs"
+    popd
+
+    pass_message "Compiled BPF programs"
 }
 
 function create_infrastructure_and_run_tests {
@@ -972,12 +1064,17 @@ function main {
         # REMOVE THIS comment out ON THE REPO WITH A PR WHEN LOCAL TESTS ARE ALL GREEN
         # set -e
         echo "this tests can't fail now in ci"
-        set_host_network_settings
+        set_host_network_settings "${ip_family}"
     fi
 
-    verify_host_network_settings
-    prepare_container "${dockerfile}" "${ci_mode}"
     install_binaries "${bin_dir}" "${E2E_K8S_VERSION}" "${OS}"
+    # compile bpf bytecode and bindings so build completes successfully
+    if [ "${backend}" == "ebpf" ] ; then 
+        compile_bpf 
+    fi
+
+    verify_host_network_settings "${ip_family}"
+    prepare_container "${dockerfile}" "${ci_mode}"
 
     if [ "${cluster_count}" -eq "1" ] ; then
         local tmp_suffix=${suffix:+"-${suffix}"}
@@ -1039,7 +1136,7 @@ function help {
     printf "\n"
     printf "Usage: %s [-i ip_family] [-b backend]\n" "$0"
     printf "\t-i set ip_family(ipv4/ipv6/dual) name in the e2e test runs.\n"
-    printf "\t-b set backend (iptables/nft/ipvs/not-kpng) name in the e2e test runs. \
+    printf "\t-b set backend (iptables/nft/ipvs/ebpf/not-kpng) name in the e2e test runs. \
     \"not-kpng\" is used to be able to validate and compare results\n"
     printf "\t-c flag allows for ci_mode. Please don't run on local systems.\n"
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
@@ -1091,7 +1188,7 @@ if  [[ "${cluster_count}" -lt "2" ]] && ${print_report}; then
     help
 fi
 
-if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|not-kpng)$ ]]; then
+if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|ebpf|userspacelin|not-kpng)$ ]]; then
     echo "user must specify the supported backend"
     help
 fi
