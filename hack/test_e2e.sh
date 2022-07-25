@@ -318,7 +318,8 @@ function setup_bpf2go() {
         if_error_exit "cannot install bpf2go"
     fi 
 
-    pass_message "The tool bpf2go is installed."
+    which bpf2go
+    pass_message "The tool bpf2go is installed. at"
 }
 
 function delete_kind_cluster {
@@ -1070,7 +1071,11 @@ function main {
     install_binaries "${bin_dir}" "${E2E_K8S_VERSION}" "${OS}"
     # compile bpf bytecode and bindings so build completes successfully
     if [ "${backend}" == "ebpf" ] ; then 
-        compile_bpf 
+        if [ "${ip_family}" != "ipv4" ] ; then 
+            echo "ebpf backend only supports ipv4"
+            exit 1 
+        fi
+        compile_bpf
     fi
 
     verify_host_network_settings "${ip_family}"
