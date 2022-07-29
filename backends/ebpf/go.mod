@@ -3,6 +3,7 @@ module sigs.k8s.io/kpng/backends/ebpf
 go 1.18
 
 require (
+	github.com/cespare/xxhash v1.1.0
 	github.com/cilium/ebpf v0.8.1
 	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.24.2
@@ -12,6 +13,7 @@ require (
 )
 
 require (
+	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/go-logr/logr v1.2.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
