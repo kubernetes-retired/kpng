@@ -10,5 +10,9 @@ use (
 	./backends/windows/userspace
 	./client
 	./cmd
+	./examples/iptables-extip
+	./examples/pipe-exec
+	./examples/print-state
+	./examples/userspace-proxier
 	./server
 )
