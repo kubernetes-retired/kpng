@@ -99,7 +99,7 @@ func (j Job) Run(ctx context.Context) {
 	}
 
 	if j.Config.UseSlices {
-		slicesInformer := factory.Discovery().V1beta1().EndpointSlices().Informer()
+		slicesInformer := factory.Discovery().V1().EndpointSlices().Informer()
 		slicesInformer.AddEventHandler(&sliceEventHandler{j.eventHandler(slicesInformer)})
 		go slicesInformer.Run(stopCh)
 

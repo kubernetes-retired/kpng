@@ -28,18 +28,14 @@ const hostnameLabel = "kubernetes.io/hostname"
 func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (internalEndpoints, externalEndpoints []*localnetv1.EndpointInfo) {
 	node := tx.GetNode(nodeName)
 
-	var labels map[string]string
-
-	if node == nil || len(node.Labels) == 0 {
-		// node is unknown or has no labels, simulate basic node label
-		labels = map[string]string{}
-	} else {
-		labels = node.Labels
-	}
-
-	if labels[hostnameLabel] == "" {
-		// ensure we have the hostname even if it's filtered
-		labels[hostnameLabel] = nodeName
+	if node == nil {
+		// node is unknown, simulate a basic node
+		node = &localnetv1.Node{
+			Name: nodeName,
+			Topology: &localnetv1.TopologyInfo{
+				Node: nodeName,
+			},
+		}
 	}
 
 	svc := si.Service
@@ -48,15 +44,27 @@ func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (in
 	tx.EachEndpointOfService(svc.Namespace, svc.Name, func(info *localnetv1.EndpointInfo) {
 		info = proto.Clone(info).(*localnetv1.EndpointInfo)
 
-		epNodeName := info.NodeName
-		if epNodeName == "" {
-			epNodeName = info.Topology[hostnameLabel]
-		}
-
-		info.Endpoint.Local = epNodeName == nodeName
+		info.Endpoint.Local = info.Topology.Node == nodeName
 
 		if !info.Conditions.Ready {
 			return
+		}
+
+		if hints := info.Hints; hints != nil {
+			if len(hints.Zones) != 0 {
+				// filter by zone
+				isForNodeZone := false
+				for _, z := range hints.Zones {
+					if z == node.Topology.Zone {
+						isForNodeZone = true
+						break
+					}
+				}
+
+				if !isForNodeZone {
+					return
+				}
+			}
 		}
 
 		infos = append(infos, info)
@@ -75,8 +83,6 @@ func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (in
 			externalEndpoints = append(externalEndpoints, info)
 		}
 	}
-
-	// TODO handle TopologyAwareHints
 
 	return
 }
