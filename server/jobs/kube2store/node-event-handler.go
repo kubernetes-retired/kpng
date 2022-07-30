@@ -17,10 +17,15 @@ limitations under the License.
 package kube2store
 
 import (
+	"github.com/gogo/protobuf/proto"
 	v1 "k8s.io/api/core/v1"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
+)
+
+const (
+	nodeZoneLabel = "topology.kubernetes.io/zone"
 )
 
 type nodeEventHandler struct{ eventHandler }
@@ -30,7 +35,11 @@ func (h *nodeEventHandler) OnAdd(obj interface{}) {
 
 	// keep only what we want
 	n := &localnetv1.Node{
-		Name:        node.Name,
+		Name: node.Name,
+		Topology: &localnetv1.TopologyInfo{
+			Node: node.Name,
+			Zone: node.Labels[nodeZoneLabel],
+		},
 		Labels:      globsFilter(node.Labels, h.config.NodeLabelGlobs),
 		Annotations: globsFilter(node.Annotations, h.config.NodeAnnotationGlobs),
 	}
@@ -42,8 +51,8 @@ func (h *nodeEventHandler) OnAdd(obj interface{}) {
 			// endpoints => need to update all matching topologies
 			toSet := make([]*localnetv1.EndpointInfo, 0)
 			tx.Each(proxystore.Endpoints, func(kv *proxystore.KV) bool {
-				if kv.Endpoint.NodeName == n.Name {
-					kv.Endpoint.Topology = n.Labels
+				if kv.Endpoint.Topology.Node == n.Name && !proto.Equal(kv.Endpoint.Topology, n.Topology) {
+					kv.Endpoint.Topology = n.Topology
 					toSet = append(toSet, kv.Endpoint)
 				}
 				return true

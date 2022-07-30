@@ -161,16 +161,26 @@ message EndpointInfo {
     string Namespace = 2;
     string SourceName = 3;
     string ServiceName = 4;
-    string NodeName = 5;
-    string PodName = 9;
+    reserved 5;
+    string PodName = 8;
 
     Endpoint Endpoint = 6;
     EndpointConditions Conditions = 7;
-    map<string, string> Topology = 8;
+    TopologyInfo Topology = 9;
+    TopologyHints Hints = 10;
 }
 
 message EndpointConditions {
     bool Ready = 1;
+}
+
+message TopologyInfo {
+    string Node = 1;
+    string Zone = 2;
+}
+
+message TopologyHints {
+    repeated string Zones = 1;
 }
 
 message NodeInfo {
@@ -180,6 +190,7 @@ message NodeInfo {
 
 message Node {
     string Name = 1;
+    TopologyInfo Topology = 4;
     map<string, string> Labels = 2;
     map<string, string> Annotations = 3;
 }

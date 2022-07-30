@@ -45,7 +45,7 @@ func ExampleForNodeWithTopology() {
 				SourceName:  "test-abcde",
 				ServiceName: "test",
 				Endpoint:    &localnetv1.Endpoint{IPs: localnetv1.NewIPSet("10.2.0.1")},
-				Topology:    map[string]string{"kubernetes.io/hostname": "host-a"},
+				Topology:    &localnetv1.TopologyInfo{Node: "host-a"},
 				Conditions:  &localnetv1.EndpointConditions{Ready: true},
 			},
 			{
@@ -53,7 +53,7 @@ func ExampleForNodeWithTopology() {
 				SourceName:  "test-abcde",
 				ServiceName: "test",
 				Endpoint:    &localnetv1.Endpoint{IPs: localnetv1.NewIPSet("10.2.1.1")},
-				Topology:    map[string]string{"kubernetes.io/hostname": "host-b"},
+				Topology:    &localnetv1.TopologyInfo{Node: "host-b"},
 				Conditions:  &localnetv1.EndpointConditions{Ready: true},
 			},
 		})
@@ -84,8 +84,8 @@ func ExampleForNodeWithTopology() {
 
 	// Output:
 	// service test:
-	//   - ep IPs:{V4:"10.2.1.1"} (map[kubernetes.io/hostname:host-b])
-	//   - ep IPs:{V4:"10.2.0.1"} (map[kubernetes.io/hostname:host-a])
+	//   - ep IPs:{V4:"10.2.0.1"} (Node:"host-a")
+	//   - ep IPs:{V4:"10.2.1.1"} (Node:"host-b")
 	// host host-a:
 	//   - service test:
 	//     - ep V4:"10.2.0.1"
