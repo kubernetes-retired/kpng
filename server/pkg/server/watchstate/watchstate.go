@@ -48,20 +48,33 @@ func New(res localnetv1.OpSink, sets []localnetv1.Set) *WatchState {
 }
 
 func (w *WatchState) StoreFor(set localnetv1.Set) *lightdiffstore.DiffStore {
+	return w.StoreForN(set, 0)
+}
+
+func (w *WatchState) StoreForN(set localnetv1.Set, setN int) *lightdiffstore.DiffStore {
+	n := 0
 	for i, s := range w.sets {
 		if s == set {
-			return w.diffs[i]
+			if setN == n {
+				return w.diffs[i]
+			} else {
+				n++
+			}
 		}
 	}
-	panic(fmt.Errorf("not watching set %v", set))
+	panic(fmt.Errorf("not watching set %v[%d]", set, setN))
 }
 
 func (w *WatchState) SendUpdates(set localnetv1.Set) (count int) {
+	return w.SendUpdatesN(set, 0)
+}
+
+func (w *WatchState) SendUpdatesN(set localnetv1.Set, setN int) (count int) {
 	if w.Err != nil {
 		return
 	}
 
-	store := w.StoreFor(set)
+	store := w.StoreForN(set, setN)
 
 	updated := store.Updated()
 
@@ -73,11 +86,15 @@ func (w *WatchState) SendUpdates(set localnetv1.Set) (count int) {
 }
 
 func (w *WatchState) SendDeletes(set localnetv1.Set) (count int) {
+	return w.SendDeletesN(set, 0)
+}
+
+func (w *WatchState) SendDeletesN(set localnetv1.Set, setN int) (count int) {
 	if w.Err != nil {
 		return
 	}
 
-	store := w.StoreFor(set)
+	store := w.StoreForN(set, setN)
 
 	deleted := store.Deleted()
 
