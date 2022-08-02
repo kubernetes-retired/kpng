@@ -2,13 +2,13 @@
 # shellcheck disable=SC2181,SC2155,SC2128
 #
 # Copyright 2021 The Kubernetes Authors.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #         http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,14 +17,20 @@
 
 shopt -s expand_aliases
 
-: "${E2E_GO_VERSION:="1.17.3"}"
-: "${E2E_K8S_VERSION:="v1.23.3"}"
+: "${E2E_GO_VERSION:="1.18.4"}"
+: "${E2E_K8S_VERSION:="v1.23.6"}"
 : "${E2E_TIMEOUT_MINUTES:=100}"
 : "${KPNG_DEBUG_LEVEL:=4}"
 : "${KPNG_SERVER_ADDRESS:="unix:///k8s/proxy.sock"}"
+
 # Ensure that CLUSTER_CIDR and SERVICE_CLUSTER_IP_RANGE don't overlap
-: "${CLUSTER_CIDR:="10.1.0.0/16"}"
-: "${SERVICE_CLUSTER_IP_RANGE:="10.2.0.0/16"}"
+
+: "${CLUSTER_CIDR_V4:="10.1.0.0/16"}"
+: "${SERVICE_CLUSTER_IP_RANGE_V4:="10.2.0.0/16"}"
+
+# kpng chars = ..6b:706e:67..
+: "${CLUSTER_CIDR_V6:="fd6d:706e:6701::/56"}"
+: "${SERVICE_CLUSTER_IP_RANGE_V6:="fd6d:706e:6702::/112"}"
 
 OS=$(uname| tr '[:upper:]' '[:lower:]')
 CONTAINER_ENGINE="docker"
@@ -33,7 +39,7 @@ KUBECONFIG_TESTS="kubeconfig_tests.conf"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # kind
-KIND_VERSION="v0.11.1"
+KIND_VERSION="v0.14.0"
 
 # system data
 NAMESPACE="kube-system"
@@ -155,7 +161,7 @@ function container_build {
             ${CMD_BUILD_IMAGE}
         else
             ${CMD_BUILD_IMAGE} &> /dev/null
-        
+
         fi
         if_error_exit "Failed to build kpng, command was: ${CMD_BUILD_IMAGE}"
     popd > /dev/null || exit
@@ -285,9 +291,9 @@ function setup_j2() {
     ###########################################################################
     # Description:                                                            #
     # Install j2 binary                                                       #
-    ###########################################################################    
-    if ! command_exists j2 ; then 
-        if ! command_exists pip ; then 
+    ###########################################################################
+    if ! command_exists j2 ; then
+        if ! command_exists pip ; then
             echo "Dependency not met: 'j2' not installed and cannot install with 'pip'"
             exit 1
         fi
@@ -306,9 +312,9 @@ function setup_bpf2go() {
     ###########################################################################
     # Description:                                                            #
     # Install bpf2go binary                                                       #
-    ###########################################################################    
-    if ! command_exists bpf2go ; then 
-        if ! command_exists go ; then 
+    ###########################################################################
+    if ! command_exists bpf2go ; then
+        if ! command_exists go ; then
             echo "Dependency not met: 'bpf2go' not installed and cannot install with 'go'"
             exit 1
         fi
@@ -316,7 +322,7 @@ function setup_bpf2go() {
         echo "'bpf2go' not found, installing with 'go'"
         go install github.com/cilium/ebpf/cmd/bpf2go@master
         if_error_exit "cannot install bpf2go"
-    fi 
+    fi
 
     which bpf2go
     pass_message "The tool bpf2go is installed. at"
@@ -393,6 +399,21 @@ function create_cluster {
           controllerManager_extra_args="${controllerManager_extra_args}\"logging-format\": \"${CLUSTER_LOG_FORMAT}\""
           apiServer_extra_args="${apiServer_extra_args}\"logging-format\": \"${CLUSTER_LOG_FORMAT}\""
     fi
+
+    case $ip_family in
+        ipv4 )
+            CLUSTER_CIDR="${CLUSTER_CIDR_V4}"
+            SERVICE_CLUSTER_IP_RANGE="${SERVICE_CLUSTER_IP_RANGE_V4}"
+            ;;
+        ipv6 )
+            CLUSTER_CIDR="${CLUSTER_CIDR_V6}"
+            SERVICE_CLUSTER_IP_RANGE="${SERVICE_CLUSTER_IP_RANGE_V6}"
+            ;;
+        dual )
+            CLUSTER_CIDR="${CLUSTER_CIDR_V4},${CLUSTER_CIDR_V6}"
+            SERVICE_CLUSTER_IP_RANGE="${SERVICE_CLUSTER_IP_RANGE_V4},${SERVICE_CLUSTER_IP_RANGE_V6}"
+            ;;
+    esac
 
     echo -e "\nPreparing to setup ${cluster_name} cluster ..."
     # create cluster
@@ -524,7 +545,7 @@ function install_kpng {
     if_error_exit "error loading image to kind, command was: ${CMD_KIND_LOAD_KPNG_TEST_IMAGE}"
     pass_message "Loaded ${KPNG_IMAGE_TAG_NAME} container image."
 
-    # TODO this should be part of the template                
+    # TODO this should be part of the template
     kubectl --context "${k8s_context}" create serviceaccount \
         --namespace "${NAMESPACE}" \
         "${SERVICE_ACCOUNT_NAME}" 1> /dev/null
@@ -543,13 +564,17 @@ function install_kpng {
         --namespace "${NAMESPACE}" \
         --from-file "${artifacts_directory}/kubeconfig.conf" 1> /dev/null
     if_error_exit "error creating configmap ${CONFIG_MAP_NAME}"
-    pass_message "Created configmap ${CONFIG_MAP_NAME}." 
+    pass_message "Created configmap ${CONFIG_MAP_NAME}."
 
+    E2E_BACKEND_ARGS="'local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'"
     if [[ "${E2E_BACKEND}" == "nft" ]]; then
-        E2E_BACKEND_ARGS="['local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}', '--cluster-cidrs=${CLUSTER_CIDR}']"
-    else
-        E2E_BACKEND_ARGS="['local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}']"
+        case $ip_family in
+            ipv4 ) E2E_BACKEND_ARGS="$E2E_BACKEND_ARGS, '--cluster-cidrs=${CLUSTER_CIDR_V4}'" ;;
+            ipv6 ) E2E_BACKEND_ARGS="$E2E_BACKEND_ARGS, '--cluster-cidrs=${CLUSTER_CIDR_V6}'" ;;
+            dual ) E2E_BACKEND_ARGS="$E2E_BACKEND_ARGS, '--cluster-cidrs=${CLUSTER_CIDR_V4}', '--cluster-cidrs=${CLUSTER_CIDR_V6}'" ;;
+        esac
     fi
+    E2E_BACKEND_ARGS="[$E2E_BACKEND_ARGS]"
 
     # Setting vars for generate the kpng deployment based on template
     kpng_image="${KPNG_IMAGE_TAG_NAME}" \
@@ -1061,7 +1086,7 @@ function main {
     echo "+==================================================================+"
 
     # in ci this should fail
-    if [ "${ci_mode}" = true ] ; then 
+    if [ "${ci_mode}" = true ] ; then
         # REMOVE THIS comment out ON THE REPO WITH A PR WHEN LOCAL TESTS ARE ALL GREEN
         # set -e
         echo "this tests can't fail now in ci"
@@ -1070,10 +1095,10 @@ function main {
 
     install_binaries "${bin_dir}" "${E2E_K8S_VERSION}" "${OS}"
     # compile bpf bytecode and bindings so build completes successfully
-    if [ "${backend}" == "ebpf" ] ; then 
-        if [ "${ip_family}" != "ipv4" ] ; then 
+    if [ "${backend}" == "ebpf" ] ; then
+        if [ "${ip_family}" != "ipv4" ] ; then
             echo "ebpf backend only supports ipv4"
-            exit 1 
+            exit 1
         fi
         compile_bpf
     fi
