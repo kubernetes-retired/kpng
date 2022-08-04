@@ -58,7 +58,6 @@ type SessionAffinityListener interface {
 // - AddIPPort
 // - DeleteIPPort
 // - DeleteIP
-//
 type ServicesListener struct {
 	PortsListener           PortsListener
 	IPsListener             IPsListener
@@ -72,7 +71,6 @@ type ServicesListener struct {
 // New creates a new ServicesListener.
 //
 // Reminder: you need to associate listeners for this listener to be useful.
-//
 func New() *ServicesListener {
 	return &ServicesListener{
 		services: map[string]*localnetv1.Service{},
@@ -251,7 +249,12 @@ func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
 }
 
 func samePort(p1, p2 *localnetv1.PortMapping) bool {
-	return p1.Protocol == p2.Protocol && p1.Port == p2.Port
+	return p1.Name == p2.Name &&
+		p1.Protocol == p2.Protocol &&
+		p1.Port == p2.Port &&
+		p1.NodePort == p2.NodePort &&
+		p1.TargetPort == p2.TargetPort &&
+		p1.TargetPortName == p2.TargetPortName
 }
 
 // SessionAffinity contains data about assinged session affinity
