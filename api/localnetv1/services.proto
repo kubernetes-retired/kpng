@@ -162,6 +162,7 @@ message EndpointInfo {
     string SourceName = 3;
     string ServiceName = 4;
     string NodeName = 5;
+    string PodName = 9;
 
     Endpoint Endpoint = 6;
     EndpointConditions Conditions = 7;

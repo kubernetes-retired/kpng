@@ -60,6 +60,10 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 			info.NodeName = sliceEndpoint.Topology[hostNameLabel]
 		}
 
+		if t := sliceEndpoint.TargetRef; t != nil && t.Kind == "Pod" {
+			info.PodName = t.Name
+		}
+
 		if h := sliceEndpoint.Hostname; h != nil {
 			info.Endpoint.Hostname = *h
 		}

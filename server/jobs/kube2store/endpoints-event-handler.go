@@ -70,6 +70,10 @@ func (h *endpointsEventHandler) OnAdd(obj interface{}) {
 						}
 					}
 
+					if t := addr.TargetRef; t != nil && t.Kind == "Pod" {
+						info.PodName = t.Name
+					}
+
 					if addr.IP != "" {
 						info.Endpoint.AddAddress(addr.IP)
 					}
