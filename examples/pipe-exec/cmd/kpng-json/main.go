@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"os"
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
-	// "sigs.k8s.io/kpng/client"
+	 "sigs.k8s.io/kpng/client"
 )
 
 func main() {

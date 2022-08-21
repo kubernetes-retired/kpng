@@ -36,8 +36,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
-	"sigs.k8s.io/kpng/client"
+//	"sigs.k8s.io/kpng/client"
 	"sigs.k8s.io/kpng/client/lightdiffstore"
+	"sigs.k8s.io/kpng/client/localsink/fullstate"
 
 	"github.com/cespare/xxhash"
 )
@@ -120,7 +121,7 @@ func (ebc *ebpfController) Cleanup() {
 	ebc.objs.Close()
 }
 
-func (ebc *ebpfController) Callback(ch <-chan *client.ServiceEndpoints) {
+func (ebc *ebpfController) Callback(ch <-chan *fullstate.ServiceEndpoints) {
 	// Reset the diffstore before syncing
 	ebc.svcMap.Reset(lightdiffstore.ItemDeleted)
 

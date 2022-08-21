@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-
+	"sigs.k8s.io/kpng/client/localsink/fullstate"
 	"sigs.k8s.io/kpng/client"
 )
 
@@ -39,7 +39,7 @@ func main() {
 	client.Run(env.callout)
 }
 
-func (e *env) callout(items []*client.ServiceEndpoints) {
+func (e *env) callout(items []*fullstate.ServiceEndpoints) {
 	cmd := exec.Command(e.prog)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

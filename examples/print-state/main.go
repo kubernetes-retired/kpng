@@ -20,15 +20,15 @@ import (
 	"fmt"
 	"os"
 	"time"
-
-	"sigs.k8s.io/kpng/client"
+"sigs.k8s.io/kpng/client/localsink/fullstate"
+"sigs.k8s.io/kpng/client"
 )
 
 func main() {
 	client.Run(printState)
 }
 
-func printState(items []*client.ServiceEndpoints) {
+func printState(items []*fullstate.ServiceEndpoints) {
 	fmt.Println("# ------------------------------------------------------------------------")
 	fmt.Println("#", time.Now())
 	fmt.Println("#")
