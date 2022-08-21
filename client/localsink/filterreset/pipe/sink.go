@@ -18,13 +18,14 @@ package pipe
 
 import (
 	"sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/client"
+//	"sigs.k8s.io/kpng/client"
 	"sigs.k8s.io/kpng/client/localsink"
+	"sigs.k8s.io/kpng/client/localsink/fullstate"
 )
 
 type Sink struct {
 	targetSinks []localsink.Sink
-	buffer      []*client.ServiceEndpoints
+	buffer      []*fullstate.ServiceEndpoints
 	localsink.Config
 }
 

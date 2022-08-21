@@ -20,7 +20,7 @@ import (
 	"sync"
 
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/kpng/client"
+//	"sigs.k8s.io/kpng/client"
 	"sigs.k8s.io/kpng/client/diffstore"
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
 )
@@ -54,7 +54,7 @@ func (ct Conntrack) done() {
 	ct.ipPorts.Done()
 }
 
-func (ct Conntrack) Callback(ch <-chan *client.ServiceEndpoints) {
+func (ct Conntrack) Callback(ch <-chan *fullstate.ServiceEndpoints) {
 	defer ct.reset()
 
 	ct.once.Do(setupConntrack)

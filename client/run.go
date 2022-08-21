@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
 )
 
-type HandleFunc func(items []*ServiceEndpoints)
+type HandleFunc func(items []*fullstate.ServiceEndpoints)
 type HandleChFunc = fullstate.Callback
 
 func Run(handler HandleFunc, extraBindFlags ...func(*pflag.FlagSet)) {

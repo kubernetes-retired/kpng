@@ -31,7 +31,8 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/kpng/client"
+	"sigs.k8s.io/kpng/client/localsink/fullstate"
+
 )
 
 var (
@@ -89,7 +90,7 @@ func PreRun() {
 	klog.Info("cluster CIDRs V6: ", clusterCIDRsV6)
 }
 
-func Callback(ch <-chan *client.ServiceEndpoints) {
+func Callback(ch <-chan *fullstate.ServiceEndpoints) {
 	svcCount := 0
 	epCount := 0
 

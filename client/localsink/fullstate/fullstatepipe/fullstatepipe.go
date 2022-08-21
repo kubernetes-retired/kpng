@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sync"
 
-	"sigs.k8s.io/kpng/client"
+//	"sigs.k8s.io/kpng/client"
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
 )
 
@@ -42,7 +42,7 @@ const (
 type Pipe struct {
 	strategy Strategy
 	stages   []fullstate.Callback
-	buffer   []*client.ServiceEndpoints
+	buffer   []*fullstate.ServiceEndpoints
 }
 
 func New(strategy Strategy, stages ...fullstate.Callback) *Pipe {
@@ -52,11 +52,11 @@ func New(strategy Strategy, stages ...fullstate.Callback) *Pipe {
 	}
 }
 
-func (pipe *Pipe) Callback(ch <-chan *client.ServiceEndpoints) {
+func (pipe *Pipe) Callback(ch <-chan *fullstate.ServiceEndpoints) {
 	switch pipe.strategy {
 	case Sequence:
 		if pipe.buffer == nil {
-			pipe.buffer = make([]*client.ServiceEndpoints, 0)
+			pipe.buffer = make([]*fullstate.ServiceEndpoints, 0)
 		}
 
 		buf := pipe.buffer
@@ -66,7 +66,7 @@ func (pipe *Pipe) Callback(ch <-chan *client.ServiceEndpoints) {
 		}
 
 		for _, stage := range pipe.stages {
-			myCh := make(chan *client.ServiceEndpoints, 1)
+			myCh := make(chan *fullstate.ServiceEndpoints, 1)
 			go func() {
 				for _, item := range buf {
 					myCh <- item
@@ -80,13 +80,13 @@ func (pipe *Pipe) Callback(ch <-chan *client.ServiceEndpoints) {
 		pipe.buffer = buf[:0]
 
 	case Parallel:
-		channels := make([]chan *client.ServiceEndpoints, len(pipe.stages))
+		channels := make([]chan *fullstate.ServiceEndpoints, len(pipe.stages))
 
 		wg := new(sync.WaitGroup)
 		wg.Add(len(pipe.stages))
 
 		for idx, stage := range pipe.stages {
-			childCh := make(chan *client.ServiceEndpoints, 2)
+			childCh := make(chan *fullstate.ServiceEndpoints, 2)
 			channels[idx] = childCh
 
 			stage := stage
@@ -109,11 +109,11 @@ func (pipe *Pipe) Callback(ch <-chan *client.ServiceEndpoints) {
 		wg.Wait()
 
 	case ParallelSendSequenceClose:
-		channels := make([]chan *client.ServiceEndpoints, len(pipe.stages))
+		channels := make([]chan *fullstate.ServiceEndpoints, len(pipe.stages))
 		waitGroups := make([]*sync.WaitGroup, len(pipe.stages))
 
 		for idx, stage := range pipe.stages {
-			childCh := make(chan *client.ServiceEndpoints, 2)
+			childCh := make(chan *fullstate.ServiceEndpoints, 2)
 			channels[idx] = childCh
 
 			wg := new(sync.WaitGroup)

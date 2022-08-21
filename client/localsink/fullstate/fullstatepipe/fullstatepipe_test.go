@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/client"
+	//"sigs.k8s.io/kpng/client"
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
 )
 
@@ -122,7 +122,7 @@ func (out *syncBuf) print() {
 }
 
 func delayCallback(name string, delay time.Duration) fullstate.Callback {
-	return func(ch <-chan *client.ServiceEndpoints) {
+	return func(ch <-chan *fullstate.ServiceEndpoints) {
 		for item := range ch {
 			time.Sleep(delay)
 			fmt.Fprintln(out, name, "got service", item.Service.Name)
@@ -133,9 +133,9 @@ func delayCallback(name string, delay time.Duration) fullstate.Callback {
 	}
 }
 
-func singleServiceCh(svcName string) (ch chan *client.ServiceEndpoints) {
-	ch = make(chan *client.ServiceEndpoints, 1)
-	ch <- &client.ServiceEndpoints{Service: &localnetv1.Service{Name: svcName}}
+func singleServiceCh(svcName string) (ch chan *fullstate.ServiceEndpoints) {
+	ch = make(chan *fullstate.ServiceEndpoints, 1)
+	ch <- &fullstate.ServiceEndpoints{Service: &localnetv1.Service{Name: svcName}}
 	close(ch)
 	return
 }
