@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/kpng/client/localsink"
 )
 
+// Cmd defines a KPNG backend, which basically has one requirement, implementing the Sink() interface
 type Cmd interface {
 	BindFlags(*pflag.FlagSet)
 	Sink() localsink.Sink
@@ -29,8 +30,11 @@ type Cmd interface {
 
 var registry []UseCmd
 
+// UseCmd defines the cobra bindings for a command
 type UseCmd struct {
+	// This will be attached to the cobra "Use" name
 	Use string
+	// This will create a new Sink
 	New func() Cmd
 }
 

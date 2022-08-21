@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"google.golang.org/protobuf/proto"
-
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/localsink"
 )
@@ -72,6 +72,7 @@ func New(iface Interface) *Sink {
 }
 
 func (s *Sink) Send(op *localnetv1.OpItem) (err error) {
+	klog.Infof("localsinkclient->DECODER->Send %v", op)
 	switch v := op.Op; v.(type) {
 	case *localnetv1.OpItem_Set:
 		set := op.GetSet()
