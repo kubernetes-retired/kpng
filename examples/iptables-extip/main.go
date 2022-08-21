@@ -28,7 +28,9 @@ import (
 
 	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/kpng/client"
+	//"sigs.k8s.io/kpng/client"
+	"sigs.k8s.io/kpng/client/localsink/fullstate"
+
 )
 
 var (
@@ -41,9 +43,9 @@ func main() {
 	client.Run(handleEndpoints)
 }
 
-func handleEndpoints(items []*client.ServiceEndpoints) {
+func handleEndpoints(items []*fullstate.ServiceEndpoints) {
 	// filter endpoints
-	filteredItems := make([]*client.ServiceEndpoints, 0, len(items))
+	filteredItems := make([]*fullstate.ServiceEndpoints, 0, len(items))
 
 	for _, item := range items {
 		if *extLBsOnly && item.Service.Type != "LoadBalancer" {
