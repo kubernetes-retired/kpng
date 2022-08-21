@@ -32,7 +32,6 @@ import (
 	"k8s.io/klog/v2"
 
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
-
 )
 
 var (
