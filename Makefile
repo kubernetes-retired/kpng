@@ -123,6 +123,7 @@ windows:
 	@$(MAKE) -e build
 
 build:
+	@echo "......................."
 	@mkdir -p $(BUILD_DIR)/$(PLATFORM)/$(VERSION)
 	@cd cmd && \
 		env GOOS=$(PLATFORM) \
