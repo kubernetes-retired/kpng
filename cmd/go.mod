@@ -46,6 +46,9 @@ replace (
 	k8s.io/sample-controller => k8s.io/sample-controller v0.23.0
 )
 
+// fixes gnostic
+replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65
+
 require (
 	github.com/spf13/cobra v1.4.0
 	google.golang.org/grpc v1.41.0
