@@ -4,7 +4,7 @@ set -xv
 set -euo pipefail
 
 docker run --rm \
-  -v "$PWD"/../../../:/tmp/kpng \
-  -w /tmp/kpng/backends/windows/kernelspace \
+  -v "$PWD"/../../../:/src \
+  -w /src \
   -e GOOS=windows -e GOARCH=386 \
-  golang:1.18 go build -v -o myapp-windows-386.exe
+  golang:1.19 go build -v -o ./backends/windows/kernelspace/kpng-windows-386.exe ./backends/windows/kernelspace
