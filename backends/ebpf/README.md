@@ -8,7 +8,7 @@
     - Ubuntu: `apt-get install -y llvm-dev` 
 * Glibc
     - Fedora: `sudo dnf install glibc-devel.i686` 
-    - Ubuntu: `apt-get install -y linux-libc-dev` 
+    - Ubuntu: `apt-get install -y linux-libc-dev gcc-multilib` 
 * [cilium/ebpf requirements](https://github.com/cilium/ebpf#requirements)
 * Bpf2go 
     - `go install github.com/cilium/ebpf/cmd/bpf2go@master`
