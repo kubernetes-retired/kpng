@@ -2,8 +2,10 @@ FROM --platform=linux/amd64 golang:1.18.4 as build
 WORKDIR /src/
 COPY . /src/
 RUN VERSION=latest GOFLAGS="-buildvcs=false" make windows
+RUN curl -LO https://raw.githubusercontent.com/microsoft/SDN/master/Kubernetes/windows/hns.psm1
 
 FROM --platform=windows/amd64 mcr.microsoft.com/oss/kubernetes/windows-host-process-containers-base-image:v0.1.0
 COPY --from=build /src/kpng-bin/windows/latest/* /
+COPY --from=build /src/hns.psm1 /
 ENV PATH="C:\Windows\system32;C:\Windows;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;"
 ENTRYPOINT ["kpng.exe"]
