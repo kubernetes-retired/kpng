@@ -44,6 +44,13 @@ replace (
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.23.0
 	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.23.0
 	k8s.io/sample-controller => k8s.io/sample-controller v0.23.0
+	sigs.k8s.io/kpng/backends/ebpf => ../backends/ebpf
+	sigs.k8s.io/kpng/backends/iptables => ../backends/iptables
+	sigs.k8s.io/kpng/backends/ipvs-as-sink => ../backends/ipvs-as-sink
+	sigs.k8s.io/kpng/backends/nft => ../backends/nft
+	sigs.k8s.io/kpng/backends/userspacelin => ../backends/userspacelin
+	sigs.k8s.io/kpng/backends/windows/kernelspace => ../backends/windows/kernelspace
+	sigs.k8s.io/kpng/backends/windows/userspace => ../backends/windows/userspace
 )
 
 // fixes gnostic
