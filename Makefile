@@ -135,3 +135,9 @@ build:
 		./...
 	@echo "\tkpng $(YELLOW)$(PLATFORM)$(RESET) binaries available in: $(GREEN)$(BUILD_DIR)/$(PLATFORM)/$(VERSION)$(RESET)\n"
 
+# See https://github.com/kubernetes/kubernetes/issues/79384 for the backstory
+update-k8s-mod:
+	@read -p "Enter K8s version:" version; \
+	./hack/change-k8s-ver-mod.sh $$version
+
+
