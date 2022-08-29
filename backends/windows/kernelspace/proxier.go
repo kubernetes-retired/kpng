@@ -34,8 +34,6 @@ import (
 	"k8s.io/kubernetes/pkg/proxy/healthcheck"
 	"sigs.k8s.io/kpng/api/localnetv1"
 
-	//	"k8s.io/kubernetes/pkg/proxy/apis/config"
-
 	"net"
 	"os"
 	"strings"
