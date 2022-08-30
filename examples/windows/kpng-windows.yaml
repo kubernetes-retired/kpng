@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    k8s-app: kpng
+  name: kpng-windows
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      k8s-app: kpng-windows
+  template:
+    metadata:
+      labels:
+        k8s-app: kpng-windows
+        namespace: kube-system
+    spec:
+      serviceAccountName: kpng
+      securityContext:
+        windowsOptions:
+          hostProcess: true
+          runAsUserName: "NT AUTHORITY\\system"
+      hostNetwork: true
+      containers:
+      - image: mrosse3/kpng:latest
+        imagePullPolicy: Always # for testing
+        name: kpng-kube-to-api
+        args: ["kube", "to-api","-v=4"]
+        # override Kubernetes service env vars to talk to api-server via
+        # CP node directly since we don't have routes programmed yet.
+        # NOTE: These values are specific to the default CAPZ deployment.
+        env:
+        - name: KUBERNETES_SERVICE_HOST
+          value: "10.0.0.4"
+        - name: KUBERNETES_SERVICE_PORT
+          value: "6443"
+        - name: KUBERNETES_SERVICE_PORT_HTTPS
+          value: "6443"
+      nodeSelector:
+        kubernetes.io/os: windows
+      os:
+        name: windows
+      tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - operator: Exists
+  updateStrategy:
+    type: RollingUpdate
