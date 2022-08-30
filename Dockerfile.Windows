@@ -7,5 +7,7 @@ RUN curl -LO https://raw.githubusercontent.com/microsoft/SDN/master/Kubernetes/w
 FROM --platform=windows/amd64 mcr.microsoft.com/oss/kubernetes/windows-host-process-containers-base-image:v0.1.0
 COPY --from=build /src/kpng-bin/windows/latest/* /
 COPY --from=build /src/hns.psm1 /
+COPY --from=build /src/examples/windows/start-kpng.ps1 /
 ENV PATH="C:\Windows\system32;C:\Windows;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;"
+WORKDIR /hpc/
 ENTRYPOINT ["kpng.exe"]

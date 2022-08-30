@@ -36,6 +36,10 @@ spec:
           value: "6443"
         - name: KUBERNETES_SERVICE_PORT_HTTPS
           value: "6443"
+      - image: mrosse3/kpng:latest
+        imagePullPolicy: Always # for testing
+        name: kpng-local-to-winkernel
+        command: ["powershell", "./start-kpng.ps1"]
       nodeSelector:
         kubernetes.io/os: windows
       os:
