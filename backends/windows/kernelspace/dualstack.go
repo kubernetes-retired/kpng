@@ -21,20 +21,9 @@ package kernelspace
 
 import (
 	"strings"
-	//"time"
-	//"net"
-	//"fmt"
 	"k8s.io/klog/v2"
 
 	"github.com/Microsoft/hcsshim/hcn"
-	// "k8s.io/client-go/tools/events"
-	//"k8s.io/kubernetes/pkg/proxy/metaproxier"
-	// "k8s.io/kubernetes/pkg/proxy/healthcheck"
-	//"k8s.io/kubernetes/pkg/proxy"
-	//"k8s.io/kubernetes/pkg/proxy/apis/config"
-
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	kubefeatures "k8s.io/kubernetes/pkg/features"
 )
 
 func isOverlay(hnsNetworkInfo *hnsNetworkInfo) bool {
@@ -101,7 +90,7 @@ func (t DualStackCompatTester) DualStackCompatible(networkName string) bool {
 		return false
 	}
 
-	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinOverlay) && isOverlay(networkInfo) {
+	if true /* utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinOverlay) */ && isOverlay(networkInfo) {
 		// Overlay (VXLAN) networks on Windows do not support dual-stack networking today
 		klog.InfoS("Winoverlay does not support dual-stack, falling back to single-stack")
 		return false
@@ -120,7 +109,7 @@ func NewDualStackProxier(
         hostname string,
         nodeIP [2]net.IP,
         recorder events.EventRecorder,
-        healthzServer healthcheck.ProxierHealthUpdater,
+        //healthzServer healthcheck.ProxierHealthUpdater,
         config config.KubeProxyWinkernelConfiguration,
 ) (proxy.Provider, error) {
 

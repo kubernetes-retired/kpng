@@ -20,7 +20,6 @@ limitations under the License.
 package kernelspace
 
 import (
-	//"net"
 	"os"
 	"time"
 
@@ -28,8 +27,6 @@ import (
 
 	"k8s.io/client-go/tools/events"
 	klog "k8s.io/klog/v2"
-	// 	"k8s.io/kubernetes/pkg/proxy/apis/config"
-	"k8s.io/kubernetes/pkg/proxy/healthcheck"
 	netutils "k8s.io/utils/net"
 	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/backendcmd"
@@ -53,7 +50,7 @@ var (
 	syncPeriod    time.Duration
 
 	// TODO JAy add this back , avoiding pkg/proxy imports
-	healthzServer healthcheck.ProxierHealthUpdater
+	// healthzServer healthcheck.ProxierHealthUpdater
 	recorder      events.EventRecorder
 
 	masqueradeAll = flag.Bool(
@@ -160,7 +157,6 @@ func (s *Backend) Setup() {
 		*hostname,
 		netutils.ParseIPSloppy(*nodeip),
 		recorder,
-		healthzServer,
 		winkernelConfig)
 
 	if err != nil {

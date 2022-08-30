@@ -21,21 +21,6 @@ package kernelspace
 
 import (
 	"fmt"
-	"github.com/Microsoft/hcsshim/hcn"
-	v1 "k8s.io/api/core/v1"
-	apiutil "k8s.io/apimachinery/pkg/util/net"
-	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/apimachinery/pkg/util/wait"
-
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/client-go/tools/events"
-	"k8s.io/klog/v2"
-	kubefeatures "k8s.io/kubernetes/pkg/features"
-	"k8s.io/kubernetes/pkg/proxy/healthcheck"
-	"sigs.k8s.io/kpng/api/localnetv1"
-
-	//	"k8s.io/kubernetes/pkg/proxy/apis/config"
-
 	"net"
 	"os"
 	"strings"
@@ -43,8 +28,18 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Microsoft/hcsshim/hcn"
+
+	v1 "k8s.io/api/core/v1"
+	apiutil "k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/tools/events"
+	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/util/async"
 	netutils "k8s.io/utils/net"
+
+	"sigs.k8s.io/kpng/api/localnetv1"
 )
 
 // Provider is a proxy interface enforcing services and windowsEndpoint methods
@@ -110,9 +105,6 @@ type Proxier struct {
 	hostname       string
 	nodeIP         net.IP
 	recorder       events.EventRecorder
-
-	serviceHealthServer healthcheck.ServiceHealthServer
-	healthzServer       healthcheck.ProxierHealthUpdater
 
 	// Since converting probabilities (floats) to strings is expensive
 	// and we are using only probabilities in the format of 1/n, we are
@@ -277,7 +269,6 @@ func NewProxier(
 	hostname string,
 	nodeIP net.IP,
 	recorder events.EventRecorder, // ignore
-	healthzServer healthcheck.ProxierHealthUpdater, // ignore
 	config KubeProxyWinkernelConfiguration,
 ) (*Proxier, error) {
 
@@ -295,9 +286,9 @@ func NewProxier(
 	}
 
 	// ** not worrying about svc>HealthServer but do we need it later?
-	serviceHealthServer := healthcheck.NewServiceHealthServer(
-		hostname,
-		recorder, []string{}) /* windows listen to all node addresses */
+	//serviceHealthServer := healthcheck.NewServiceHealthServer(
+	//	hostname,
+	//	recorder, []string{}) /* windows listen to all node addresses */
 
 	// get a empty HNS network object, that we'll use to make system calls to either h1 or h2.
 	// this will introspect the underlying kernel.
@@ -342,7 +333,7 @@ func NewProxier(
 
 	// Direct Server return is a optimization , we can ignore it for now...
 	isDSR := config.EnableDSR
-	if isDSR && !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinDSR) {
+	if isDSR && !true /*utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinDSR)*/ {
 		return nil, fmt.Errorf("WinDSR feature gate not enabled")
 	}
 	err = hcn.DSRSupported()
@@ -355,7 +346,7 @@ func NewProxier(
 	//var sourceVip string
 	var hostMac string
 	if isOverlay(hnsNetworkInfo) {
-		if !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinOverlay) {
+		if !true /*utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinOverlay)*/ {
 			return nil, fmt.Errorf("WinOverlay feature gate not enabled")
 		}
 		err = hcn.RemoteSubnetSupported()
@@ -404,8 +395,6 @@ func NewProxier(
 		hostname:            hostname,
 		nodeIP:              nodeIP,
 		recorder:            recorder,
-		serviceHealthServer: serviceHealthServer,
-		healthzServer:       healthzServer,
 		hns:                 hns,
 		network:             *hnsNetworkInfo,
 		sourceVip:           "100.244.206.65",
@@ -926,20 +915,17 @@ func (proxier *Proxier) syncProxyRules() {
 		}
 	}
 
-	if proxier.healthzServer != nil {
-		proxier.healthzServer.Updated()
-	}
 	//metrics.SyncProxyRulesLastTimestamp.SetToCurrentTime()
 
 	// Update service healthchecks.  The endpoints list might include services that are
 	// not "OnlyLocal", but the services list will not, and the serviceHealthServer
 	// will just drop those endpoints.
-	if err := proxier.serviceHealthServer.SyncServices(serviceUpdateResult.HCServiceNodePorts); err != nil {
-		klog.ErrorS(err, "Error syncing healthcheck services")
-	}
-	if err := proxier.serviceHealthServer.SyncEndpoints(endpointUpdateResult.HCEndpointsLocalIPSize); err != nil {
-		klog.ErrorS(err, "Error syncing healthcheck endpoints")
-	}
+//	if err := proxier.serviceHealthServer.SyncServices(serviceUpdateResult.HCServiceNodePorts); err != nil {
+//		klog.ErrorS(err, "Error syncing healthcheck services")
+//	}
+//	if err := proxier.serviceHealthServer.SyncEndpoints(endpointUpdateResult.HCEndpointsLocalIPSize); err != nil {
+//		klog.ErrorS(err, "Error syncing healthcheck endpoints")
+//	}
 
 	// Finish housekeeping.
 	// TODO: these could be made more consistent.
