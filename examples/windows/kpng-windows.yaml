@@ -40,6 +40,11 @@ spec:
         imagePullPolicy: Always # for testing
         name: kpng-local-to-winkernel
         command: ["powershell", "./start-kpng.ps1"]
+        env:
+        - name: NODE_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
       nodeSelector:
         kubernetes.io/os: windows
       os:

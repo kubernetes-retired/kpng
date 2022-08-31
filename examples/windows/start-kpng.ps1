@@ -11,12 +11,13 @@ while (-Not (Get-HnsNetwork | ? Name -EQ $NetworkName)) {
 }
 Write-Host "Found HNS network '$NetworkName'"
 
-# TODO: add node-ip and cluster-cidr here once those values are exposed as flags
+# TODO: and enable-dsr??
 $argList = @(`
     "local", `
     "to-winkernel", `
-    "-v=4"`
-#    "--enable-dsr=true" TODO expose this as a flag..
+    "-v=4", `
+    "--cluster-cidr=10.96.0.0/12", `
+    "--nodeip=${env:NODE_IP}" `
 )
 
 Write-Host "Getting source vip"
@@ -29,7 +30,7 @@ if ($network.Type -EQ "Overlay") {
     }
     $sourceVip = (Get-HnsEndpoint | ? Name -EQ "${NetworkName}_ep").IpAddress
     Write-Host "Host endpoint found. Source VIP: $sourceVip"
-    # $argList += "--source-vip=$sourceVip" -- right now this is hard-coded :'(
+    $argList += "--source-vip=$sourceVip"
 }
 
 Start-Sleep 5 # wait for kube to-api to start?
