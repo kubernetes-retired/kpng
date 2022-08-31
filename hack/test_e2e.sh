@@ -873,7 +873,7 @@ function compile_bpf {
     ###########################################################################
 
     pushd ${SCRIPT_DIR}/../backends/ebpf
-    go generate
+    make bytecode
     if_error_exit "Failed to compile EBPF Programs"
     popd
 
