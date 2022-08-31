@@ -277,12 +277,12 @@ func NewProxier(
 	masqueradeMark := fmt.Sprintf("%#08x/%#08x", masqueradeValue, masqueradeValue)
 
 	if nodeIP == nil {
-		klog.InfoS("Invalid nodeIP, initializing kube-proxy with 10.20.30.11 as nodeIP")
+		klog.Warning("Invalid nodeIP, initializing kube-proxy with 10.20.30.11 as nodeIP")
 		nodeIP = netutils.ParseIPSloppy("10.20.30.11")
 	}
 
 	if len(clusterCIDR) == 0 {
-		klog.InfoS("ClusterCIDR not specified, unable to distinguish between internal and external traffic")
+		klog.Warning("ClusterCIDR not specified, unable to distinguish between internal and external traffic")
 	}
 
 	// ** not worrying about svc>HealthServer but do we need it later?
@@ -331,15 +331,13 @@ func NewProxier(
 
 	klog.V(1).InfoS("Hns Network loaded", "hnsNetworkInfo", hnsNetworkInfo)
 
-	// Direct Server return is a optimization , we can ignore it for now...
 	isDSR := config.EnableDSR
-	if isDSR && !true /*utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinDSR)*/ {
-		return nil, fmt.Errorf("WinDSR feature gate not enabled")
-	}
 	err = hcn.DSRSupported()
 	if isDSR && err != nil {
 		return nil, err
 	}
+
+	klog.InfoS("Enable DSR?", "isDSR", winkernelConfig.EnableDSR)
 
 	// Why do we need VIPs?
 
@@ -353,10 +351,10 @@ func NewProxier(
 		if err != nil {
 			return nil, err
 		}
-		//sourceVip = config.SourceVip
-		//if len(sourceVip) == 0 {
-		//		return nil, fmt.Errorf("source-vip flag not set")
-		//}
+		sourceVip := config.SourceVip
+		if len(sourceVip) == 0 {
+			return nil, fmt.Errorf("source-vip flag not set and is required for overlay networking")
+		}
 
 		if nodeIP.IsUnspecified() {
 			// attempt to get the correct ip address
@@ -386,22 +384,22 @@ func NewProxier(
 
 	isIPv6 := netutils.IsIPv6(nodeIP)
 	myProxier := &Proxier{
-		endPointsRefCount:   make(endPointsReferenceCountMap),
-		serviceMap:          make(ServicesSnapshot),
-		endpointsMap:        make(EndpointsMap),
-		masqueradeAll:       masqueradeAll,
-		masqueradeMark:      masqueradeMark,
-		clusterCIDR:         clusterCIDR,
-		hostname:            hostname,
-		nodeIP:              nodeIP,
-		recorder:            recorder,
-		hns:                 hns,
-		network:             *hnsNetworkInfo,
-		sourceVip:           "100.244.206.65",
-		hostMac:             hostMac,
-		isDSR:               isDSR,
-		supportedFeatures:   supportedFeatures,
-		isIPv6Mode:          isIPv6,
+		endPointsRefCount: make(endPointsReferenceCountMap),
+		serviceMap:        make(ServicesSnapshot),
+		endpointsMap:      make(EndpointsMap),
+		masqueradeAll:     masqueradeAll,
+		masqueradeMark:    masqueradeMark,
+		clusterCIDR:       clusterCIDR,
+		hostname:          hostname,
+		nodeIP:            nodeIP,
+		recorder:          recorder,
+		hns:               hns,
+		network:           *hnsNetworkInfo,
+		sourceVip:         *sourceVip,
+		hostMac:           hostMac,
+		isDSR:             isDSR,
+		supportedFeatures: supportedFeatures,
+		isIPv6Mode:        isIPv6,
 	}
 
 	ipFamily := v1.IPv4Protocol
@@ -920,12 +918,12 @@ func (proxier *Proxier) syncProxyRules() {
 	// Update service healthchecks.  The endpoints list might include services that are
 	// not "OnlyLocal", but the services list will not, and the serviceHealthServer
 	// will just drop those endpoints.
-//	if err := proxier.serviceHealthServer.SyncServices(serviceUpdateResult.HCServiceNodePorts); err != nil {
-//		klog.ErrorS(err, "Error syncing healthcheck services")
-//	}
-//	if err := proxier.serviceHealthServer.SyncEndpoints(endpointUpdateResult.HCEndpointsLocalIPSize); err != nil {
-//		klog.ErrorS(err, "Error syncing healthcheck endpoints")
-//	}
+	//	if err := proxier.serviceHealthServer.SyncServices(serviceUpdateResult.HCServiceNodePorts); err != nil {
+	//		klog.ErrorS(err, "Error syncing healthcheck services")
+	//	}
+	//	if err := proxier.serviceHealthServer.SyncEndpoints(endpointUpdateResult.HCEndpointsLocalIPSize); err != nil {
+	//		klog.ErrorS(err, "Error syncing healthcheck endpoints")
+	//	}
 
 	// Finish housekeeping.
 	// TODO: these could be made more consistent.
