@@ -37,21 +37,21 @@ import (
 )
 
 type Backend struct {
-	localsink.Config
+	cfg localsink.Config
 }
 
 var (
-	_             decoder.Interface = &Backend{}
+	_ decoder.Interface = &Backend{}
 	//proxier       Provider
 	//proxierState  Proxier
-	proxier 	*Proxier
+	proxier       *Proxier
 	flag          = &pflag.FlagSet{}
 	minSyncPeriod time.Duration
 	syncPeriod    time.Duration
 
 	// TODO JAy add this back , avoiding pkg/proxy imports
 	// healthzServer healthcheck.ProxierHealthUpdater
-	recorder      events.EventRecorder
+	recorder events.EventRecorder
 
 	masqueradeAll = flag.Bool(
 		"masquerade-all",
@@ -70,8 +70,9 @@ var (
 		defaultHostname,
 		"hostname")
 
+	// defaulting to the sig-windows-dev-tools value...
 	clusterCIDR = flag.String(
-		"",
+		"cluster-cidr",
 		"100.244.0.0/24",
 		"cluster IPs CIDR")
 
@@ -79,14 +80,30 @@ var (
 	nodeip = flag.String(
 		"nodeip",
 		"10.20.30.11",
-		"cluster IPs CIDR",
-	)
+		"cluster IPs CIDR")
+
+	// defaulting to the sig-windows-dev-tools value ...
+	sourceVip = flag.String(
+		"source-vip",
+		"100.244.206.65",
+		"Source VIP")
+
+	enableDSR = flag.Bool(
+		"enable-dsr",
+		false,
+		"Set this flag to enable DSR")
+
 	winkernelConfig KubeProxyWinkernelConfiguration
 )
 
 /* BindFlags will bind the flags */
 func BindFlags(flags *pflag.FlagSet) {
 	flags.AddFlagSet(flag)
+}
+
+func (b *Backend) BindFlags(flags *pflag.FlagSet) {
+	b.cfg.BindFlags(flags)
+	BindFlags(flags)
 }
 
 /* init will do all initialization for backend registration */
@@ -141,12 +158,22 @@ func (s *Backend) Setup() {
 		15*time.Second,
 		"sync period duration")
 
-	klog.V(0).InfoS("Using Windows Kernel Proxier. node ip  %v", nodeip)
+	klog.Info("Starting Windows Kernel Proxier.")
+	klog.InfoS("  Cluster CIDR", "clusterCIDR", *clusterCIDR)
+	klog.InfoS("  Enable DSR", "enableDSR", *enableDSR)
+	klog.InfoS("  Masquerade all traffic", "masqueradeAll", *masqueradeAll)
+	klog.InfoS("  Masquerade bit", "masqueradeBit", *masqueradeBit)
+	klog.InfoS("  Node ip", "nodeip", *nodeip)
+	klog.InfoS("  Source VIP", "sourceVip", *sourceVip)
 
 	//proxyMode := getProxyMode(string(config.Mode), WindowsKernelCompatTester{})
 	//dualStackMode := getDualStackMode(config.Winkernel.NetworkName, DualStackCompatTester{})
 	//_ = dualStackMode
 	//_ = proxyMode
+
+	winkernelConfig.EnableDSR = *enableDSR
+	winkernelConfig.NetworkName = "" // remove from config? proxier gets network name from KUBE_NETWORK env var
+	winkernelConfig.SourceVip = *sourceVip
 
 	proxier, err = NewProxier(
 		syncPeriod,
@@ -154,7 +181,7 @@ func (s *Backend) Setup() {
 		*masqueradeAll,
 		*masqueradeBit,
 		*clusterCIDR,
-		*hostname,
+		*hostname, // should this be nodeName?
 		netutils.ParseIPSloppy(*nodeip),
 		recorder,
 		winkernelConfig)
