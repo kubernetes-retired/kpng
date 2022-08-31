@@ -1,14 +1,15 @@
 /* SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause) */
 /* Copyright Authors of Cilium */
-#include <linux/bpf.h>
-#include <linux/in.h>
+#include "uapi/linux/bpf.h"
+#include "bpf/bpf_helpers.h"
+#include <linux/types.h>
 #include <stdbool.h>
 #include <errno.h>
-#include "common.h"
 
 #define SYS_REJECT 0
 #define SYS_PROCEED 1
-#define DEFAULT_MAX_EBPF_MAP_ENNTRIES 65536
+#define DEFAULT_MAX_EBPF_MAP_ENTRIES 65536
+#define IPPROTO_TCP 6
 
 char __license[] SEC("license") = "Dual BSD/GPL";
 
@@ -45,14 +46,14 @@ struct {
   __uint(type, BPF_MAP_TYPE_HASH); 
   __type(key, struct V4_key);
   __type(value, struct lb4_service); 
-  __uint(max_entries, DEFAULT_MAX_EBPF_MAP_ENNTRIES);
+  __uint(max_entries, DEFAULT_MAX_EBPF_MAP_ENTRIES);
 } v4_svc_map SEC(".maps");
 
 struct {
   __uint(type, BPF_MAP_TYPE_HASH); 
-  __type(key, u32);
+  __type(key, __u32);
   __type(value, struct lb4_backend); 
-  __uint(max_entries, DEFAULT_MAX_EBPF_MAP_ENNTRIES);
+  __uint(max_entries, DEFAULT_MAX_EBPF_MAP_ENTRIES);
 } v4_backend_map SEC(".maps");
 
 static __always_inline struct lb4_service *
