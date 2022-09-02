@@ -3,12 +3,10 @@
 ## OS pre-requisites
 
 * Linux Kernel > 5.15 (hasn't be tested on earlier versions)
-* LLVM 
-    - Fedora: `sudo dnf install -y llvm-devel`
-    - Ubuntu: `apt-get install -y llvm-dev` 
-* Glibc
-    - Fedora: `sudo dnf install glibc-devel.i686` 
-    - Ubuntu: `apt-get install -y linux-libc-dev gcc-multilib` 
+* llvm and clang :
+    - Fedora `sudo dnf -y install llvm clang`
+    - Ubuntu `sudo apt-get -y install llvm clang`
+* libbpf -> v0.8.0 is Automatically downloaded with `make bytecode` target
 * [cilium/ebpf requirements](https://github.com/cilium/ebpf#requirements)
 * Bpf2go 
     - `go install github.com/cilium/ebpf/cmd/bpf2go@master`
@@ -20,12 +18,12 @@ exclusively to proxying internal ClusterIP based TCP + UDP services.  Functional
 will be expanded moving forward to include support for the remainder of the defined 
 service features.
 
-## Compile ebpf program
+## Manually download libbpf headers and compile bytecode
 
 This will automatically use `cilium/ebpf` to compile the go program into bytecode
 using clang, and build go bindings
 
-`cd /backends/ebpf && go generate`
+`cd /backends/ebpf && make bytecode`
 
 ## Start a local kpng ebpf backend kind cluster
 

@@ -42,7 +42,7 @@ import (
 	"github.com/cespare/xxhash"
 )
 
-//go:generate bpf2go -cc clang -cflags "-O2 -g -Wall -Werror" bpf ./bpf/cgroup_connect4.c -- -I./bpf/headers
+//go:generate bpf2go -cc $BPF_CLANG -cflags $BPF_CFLAGS bpf ./bpf/cgroup_connect4.c
 func ebpfSetup() ebpfController {
 	var err error
 
