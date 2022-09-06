@@ -18,7 +18,7 @@
 shopt -s expand_aliases
 
 : "${E2E_GO_VERSION:="1.18.4"}"
-: "${E2E_K8S_VERSION:="v1.23.6"}"
+: "${E2E_K8S_VERSION:="v1.25.0"}"
 : "${E2E_TIMEOUT_MINUTES:=100}"
 : "${KPNG_DEBUG_LEVEL:=4}"
 : "${KPNG_SERVER_ADDRESS:="unix:///k8s/proxy.sock"}"
