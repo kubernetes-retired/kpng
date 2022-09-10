@@ -11,7 +11,8 @@ on:
 jobs:
   test:
     name: run grpc verify tests
-    runs-on: ubuntu-latest
+    #runs-on: ubuntu-latest
+    runs_on: rvolosatovs/protoc:latest
     steps:
     - name: Setup Go
       uses: actions/setup-go@v2
