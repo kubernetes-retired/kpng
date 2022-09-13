@@ -294,8 +294,8 @@ function setup_j2() {
     ###########################################################################
     if ! command_exists j2 ; then
 	# Add path to pip --user installation directory
-	if [ -d "${HOME}/.local/bin" ] ; then
-           add_to_path ~/.local/bin
+	if [ -d "${HOME}"/.local/bin ] ; then
+           add_to_path "${HOME}"/.local/bin
 	fi
     fi
 
@@ -324,7 +324,7 @@ function setup_j2() {
 	    echo "cannot find a tool or python that can downlad j2"
 	    exit 1
 	fi
-        add_to_path ~/.local/bin
+        add_to_path "${HOME}"/.local/bin
 	pass_message "The tool j2 is installed."
     fi
 }
