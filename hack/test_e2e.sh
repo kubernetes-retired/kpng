@@ -209,7 +209,7 @@ function setup_kubectl {
     # setup kubectl if not available in the system                            #
     #                                                                         #
     # Arguments:                                                              #
-    #   arg1: installation directory, path to where kubectl will be installed  #
+    #   arg1: installation directory, path to where kubectl will be installed #
     ###########################################################################
 
     [ $# -eq 1 ]
@@ -284,7 +284,7 @@ command_exists() {
     #   arg1: binary name                                                     #
     ###########################################################################
     cmd="$1"
-    command -v ${cmd} >/dev/null 2>&1
+    command -v "${cmd}" >/dev/null 2>&1
 }
 
 function setup_j2() {
@@ -293,39 +293,80 @@ function setup_j2() {
     # Install j2 binary                                                       #
     ###########################################################################
     if ! command_exists j2 ; then
-        if ! command_exists pip ; then
-            echo "Dependency not met: 'j2' not installed and cannot install with 'pip'"
-            exit 1
-        fi
-
-        echo "'j2' not found, installing with 'pip'"
-
-        pip install wheel --user
-        pip freeze | grep j2cli || pip install j2cli[yaml] --user
-        export PATH=~/.local/bin:$PATH
-        if_error_exit "cannot download j2"
+	# Add path to pip --user installation directory
+	if [ -d "${HOME}"/.local/bin ] ; then
+           add_to_path "${HOME}"/.local/bin
+	fi
     fi
-    pass_message "The tool j2 is installed."
+
+    if ! command_exists j2 ; then  
+	if command_exists pip ; then
+            echo "'j2' not found, installing with 'pip'"
+            pip install wheel --user
+            pip freeze | grep j2cli || pip install j2cli[yaml] --user
+            if_error_exit "cannot download j2"
+	elif command_exists python3 ; then
+            echo "'j2' not found, installing with 'python3 -m pip'"
+            python3 -m pip install wheel --user
+            python3 -m pip freeze | grep j2cli || python3 -m pip install j2cli[yaml] --user
+            if_error_exit "cannot download j2"
+	elif command_exists python2 ; then
+            echo "'j2' not found, installing with 'python2 -m pip'"
+            python2 -m pip install wheel --user
+            python2 -m pip freeze | grep j2cli || python2 -m pip install j2cli[yaml] --user
+            if_error_exit "cannot download j2"
+	elif command_exists python ; then
+            echo "'j2' not found, installing with 'python -m pip'"
+            python -m pip install wheel --user
+            python -m pip freeze | grep j2cli || python -m pip install j2cli[yaml] --user
+            if_error_exit "cannot download j2"
+	else
+	    echo "cannot find a tool or python that can downlad j2"
+	    exit 1
+	fi
+        add_to_path "${HOME}"/.local/bin
+	pass_message "The tool j2 is installed."
+    fi
 }
 
 function setup_bpf2go() {
     ###########################################################################
     # Description:                                                            #
-    # Install bpf2go binary                                                       #
+    # Install bpf2go binary                                                   #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1: installation directory, path to where bpf2go will be installed  #
     ###########################################################################
+
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local install_directory=$1
+
+    [ -d "${install_directory}" ]
+    if_error_exit "Directory \"${install_directory}\" does not exist"
+
     if ! command_exists bpf2go ; then
         if ! command_exists go ; then
             echo "Dependency not met: 'bpf2go' not installed and cannot install with 'go'"
             exit 1
         fi
 
+        [ -d "${install_directory}" ]
+        if_error_exit "Directory \"${install_directory}\" does not exist"
+	
         echo "'bpf2go' not found, installing with 'go'"
+	# set GOBIN to bin_directory to endure that binary is in search path
+	export GOBIN=${install_directory}
+	
+	#remove GOPATH just to be sure
+	export GOPATH=""
+	
         go install github.com/cilium/ebpf/cmd/bpf2go@master
         if_error_exit "cannot install bpf2go"
-    fi
 
-    which bpf2go
-    pass_message "The tool bpf2go is installed. at"
+	pass_message "The tool bpf2go is installed. at: $(which bpf2go)"
+    fi
 }
 
 function delete_kind_cluster {
@@ -584,7 +625,7 @@ function install_kpng {
     service_account_name="${SERVICE_ACCOUNT_NAME}" \
     namespace="${NAMESPACE}" \
     e2e_backend_args="${E2E_BACKEND_ARGS}"\
-    j2 ${SCRIPT_DIR}/kpng-deployment-ds.yaml.j2 -o "${artifacts_directory}"/kpng-deployment-ds.yaml
+    j2 "${SCRIPT_DIR}"/kpng-deployment-ds.yaml.j2 -o "${artifacts_directory}"/kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 
     kubectl --context "${k8s_context}" create -f "${artifacts_directory}"/kpng-deployment-ds.yaml 1> /dev/null
@@ -738,6 +779,7 @@ function verify_host_network_settings {
      local ip_family="${1}"
 
      verify_sysctl_setting net.ipv4.ip_forward 1
+
      if [ "${ip_family}" = "ipv6" ]; then
        verify_sysctl_setting net.ipv6.conf.all.forwarding 1
        verify_sysctl_setting net.bridge.bridge-nf-call-arptables 0
@@ -758,9 +800,9 @@ function set_host_network_settings {
      if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
      local ip_family="${1}"
 
-     set_sysctl net.ipv6.conf.all.forwarding 1
+     set_sysctl net.ipv4.ip_forward 1
      if [ "${ip_family}" = "ipv6" ]; then
-       set_sysctl net.ipv4.ip_forward 1
+       set_sysctl net.ipv6.conf.all.forwarding 1
        set_sysctl net.bridge.bridge-nf-call-arptables 0
        set_sysctl net.bridge.bridge-nf-call-ip6tables 0
        set_sysctl net.bridge.bridge-nf-call-iptables 0
@@ -817,7 +859,7 @@ function install_binaries {
     setup_kubectl "${bin_directory}"
     setup_ginkgo "${bin_directory}" "${k8s_version}" "${os}"
     setup_j2
-    setup_bpf2go
+    setup_bpf2go "${bin_directory}"
 }
 
 function set_e2e_dir {
@@ -872,10 +914,11 @@ function compile_bpf {
     # compile bpf elf files for ebpf backend                                  #
     ###########################################################################
 
-    pushd ${SCRIPT_DIR}/../backends/ebpf
+    pushd "${SCRIPT_DIR}"/../backends/ebpf > /dev/null || exit
     make bytecode
     if_error_exit "Failed to compile EBPF Programs"
-    popd
+    popd > /dev/null || exit
+
 
     pass_message "Compiled BPF programs"
 }
@@ -1033,8 +1076,9 @@ function print_reports {
     done
 
     echo -e "\nOccurence\tFailure"
-    awk '/Summarizing/,0' "${combined_output_file}" | awk 'ORS=/\[Fail\]/?", ":RS' | awk '/\[Fail\]/' | \
-          sed 's/\x1b\[90m//g' |sort | uniq -c | sort -nr  | sed 's/\,/\n\t\t/g'
+    grep \"msg\":\"FAILED "${combined_output_file}" |
+    sed 's/^.*\"FAILED/\t/' | sed 's/\,\"completed\".*//' | sed 's/[ \"]$//' |
+    sort | uniq -c | sort -nr  | sed 's/\,/\n\t\t/g'
 
     rm -f "${combined_output_file}"
 }
@@ -1090,8 +1134,8 @@ function main {
         # REMOVE THIS comment out ON THE REPO WITH A PR WHEN LOCAL TESTS ARE ALL GREEN
         # set -e
         echo "this tests can't fail now in ci"
-        set_host_network_settings "${ip_family}"
     fi
+    set_host_network_settings "${ip_family}"
 
     install_binaries "${bin_dir}" "${E2E_K8S_VERSION}" "${OS}"
     # compile bpf bytecode and bindings so build completes successfully
@@ -1172,6 +1216,7 @@ function help {
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
     printf "\t-e erase kind clusters.\n"
     printf "\t-n number of parallel test clusters.\n"
+    printf "\t-p flag, only print reports.\n"
     printf "\t-s suffix, will be appended to the E2@ directory and kind cluster name (makes it possible to run parallel tests.\n"
     printf "\t-B binary directory, specifies the path for the directory where binaries will be installed\n"
     printf "\t-D Dockerfile, specifies the path of the Dockerfile to use\n"
