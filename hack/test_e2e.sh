@@ -275,7 +275,7 @@ function setup_bpf2go() {
 	#remove GOPATH just to be sure
 	export GOPATH=""
 	
-        go install github.com/cilium/ebpf/cmd/bpf2go@master
+        go install github.com/cilium/ebpf/cmd/bpf2go@v0.9.2
         if_error_exit "cannot install bpf2go"
 
 	pass_message "The tool bpf2go is installed. at: $(which bpf2go)"
