@@ -36,7 +36,7 @@ import (
 func ShouldSkipService(service *localnetv1.Service) bool {
 	// if ClusterIP is "None" or empty, skip proxying
 	if !iptables.IsServiceIPSet(service) {
-		klog.V(3).Infof("Skipping service %s in namespace %s due to clusterIP = %q", service.Name, service.Namespace, service.IPs.ClusterIPs.V4[0])
+		klog.V(3).Infof("Skipping service %s in namespace %s due to empty ClusterIPs", service.Name, service.Namespace)
 		return true
 	}
 	// Even if ClusterIP is set, ServiceTypeExternalName services don't get proxied
