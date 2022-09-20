@@ -1168,7 +1168,7 @@ do
         b ) backend="${OPTARG}" ;;
         c ) ci_mode=true ;;
         d ) devel_mode=true ;;
-        e ) erase_clusters=true ;;
+        e ) erase_clusters=false ;;
         n ) cluster_count="${OPTARG}" ;;
         p ) print_report=true ;;
         s ) suffix="${OPTARG}" ;;

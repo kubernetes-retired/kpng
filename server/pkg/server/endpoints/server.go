@@ -43,7 +43,7 @@ func (s *Server) Watch(res localnetv1.Endpoints_WatchServer) error {
 		remote = ctxPeer.Addr.String()
 	}
 
-	klog.Info("new connection from ", remote)
+	klog.Info("new connection from ", remote, res)
 	defer klog.Info("connection from ", remote, " closed")
 
 	job := &store2localdiff.Job{
