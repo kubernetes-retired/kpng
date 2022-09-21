@@ -27,9 +27,11 @@ import (
 
 type serviceEventHandler struct{ eventHandler }
 
+// onChange recieves an incoming Service object (Kubernetes) and makes a new
+// KPNG service object from it ...
 func (h *serviceEventHandler) onChange(obj interface{}) {
 	svc := obj.(*v1.Service)
-
+	klog.V(1).Info("service event for %v %v", svc.Namespace, svc.Name)
 	internalTrafficPolicy := v1.ServiceInternalTrafficPolicyCluster
 	if svc.Spec.InternalTrafficPolicy != nil {
 		internalTrafficPolicy = *svc.Spec.InternalTrafficPolicy
@@ -117,8 +119,9 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 	}
 
 	h.s.Update(func(tx *proxystore.Tx) {
-		klog.V(3).Info("service ", service.Namespace, "/", service.Name)
+		klog.V(1).Info("service update", service.Namespace, "/", service.Name)
 		tx.SetService(service)
+		klog.V(1).Info("Updating proxystore.Services %v with %v", proxystore.Services, tx)
 		h.updateSync(proxystore.Services, tx)
 	})
 }

@@ -19,7 +19,8 @@ package global
 import (
 	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/server/jobs/store2globaldiff"
-	"sigs.k8s.io/kpng/server/proxystore"
+	"sigs.k8s.io/kpng/server/pkg/proxystore"
+	"k8s.io/klog/v2"
 )
 
 type Server struct {
@@ -31,12 +32,15 @@ type Server struct {
 var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
 
 func (s *Server) Watch(res localnetv1.Global_WatchServer) error {
+
 	w := resWrap{res}
 
+	klog.V(1).Info("Running global server job: watch store = %v,  sink = %v", s.Store, w)
 	job := &store2globaldiff.Job{
 		Store: s.Store,
 		Sink:  w,
 	}
+
 
 	return job.Run(res.Context())
 }
@@ -46,6 +50,7 @@ type resWrap struct {
 }
 
 func (w resWrap) Wait() error {
+	klog.V(1).Info("global server, Running Wait()")
 	_, err := w.Recv()
 	return err
 }

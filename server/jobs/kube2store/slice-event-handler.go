@@ -40,6 +40,9 @@ func serviceNameFrom(eps *discovery.EndpointSlice) string {
 func (h sliceEventHandler) OnAdd(obj interface{}) {
 	eps := obj.(*discovery.EndpointSlice)
 	serviceName := serviceNameFrom(eps)
+
+	klog.V(1).Info("Endpoint slice Added %v", serviceName)
+
 	if serviceName == "" {
 		// no name => not associated with a service => ignore
 		return

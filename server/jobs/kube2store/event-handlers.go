@@ -18,8 +18,10 @@ package kube2store
 
 import (
 	"k8s.io/client-go/tools/cache"
-	proxystore "sigs.k8s.io/kpng/server/proxystore"
+	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
+	"k8s.io/klog/v2"
 )
+
 
 type eventHandler struct {
 	config   *Config
@@ -29,6 +31,8 @@ type eventHandler struct {
 }
 
 func (h *eventHandler) updateSync(set proxystore.Set, tx *proxystore.Tx) {
+
+	klog.Info("updateSync")
 	if h.syncSet {
 		return
 	}

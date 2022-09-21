@@ -18,7 +18,7 @@ package kube2store
 
 import (
 	v1 "k8s.io/api/core/v1"
-
+"k8s.io/klog/v2"
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	proxystore "sigs.k8s.io/kpng/server/proxystore"
 )
@@ -32,6 +32,7 @@ type nodeEventHandler struct{ eventHandler }
 func (h *nodeEventHandler) OnAdd(obj interface{}) {
 	node := obj.(*v1.Node)
 
+	klog.Info("Node event: %v", node.Name)
 	// keep only what we want
 	n := &localnetv1.Node{
 		Name: node.Name,

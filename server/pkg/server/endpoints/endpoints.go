@@ -18,11 +18,12 @@ package endpoints
 
 import (
 	"google.golang.org/grpc"
-
+"k8s.io/klog/v2"
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	proxystore "sigs.k8s.io/kpng/server/proxystore"
 )
 
 func Setup(s grpc.ServiceRegistrar, store *proxystore.Store) {
+	klog.V(1).Info("register endpoints server")
 	localnetv1.RegisterEndpointsServer(s, &Server{Store: store})
 }

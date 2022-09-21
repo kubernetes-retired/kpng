@@ -76,7 +76,7 @@ func (j Job) Run(ctx context.Context) {
 	factory.Start(stopCh)
 
 	labelSelector := j.getLabelSelector().String()
-	klog.Info("service label selector: ", labelSelector)
+	klog.Info("Using a service label selector to filter services ", labelSelector)
 	svcFactory := informers.NewSharedInformerFactoryWithOptions(j.Kube, time.Second*30,
 		informers.WithTweakListOptions(func(options *metav1.ListOptions) { options.LabelSelector = labelSelector }))
 	svcFactory.Start(stopCh)
@@ -84,19 +84,35 @@ func (j Job) Run(ctx context.Context) {
 	// start watches
 	coreFactory := factory.Core().V1()
 
-	servicesInformer := svcFactory.Core().V1().Services().Informer()
-	servicesInformer.AddEventHandler(&serviceEventHandler{j.eventHandler(servicesInformer)})
-	go servicesInformer.Run(stopCh)
+	{
+		servicesInformer := svcFactory.Core().V1().Services().Informer()
+		klog.Info("Starting services informer %v", servicesInformer)
+		servicesInformer.AddEventHandler(&serviceEventHandler{j.eventHandler(servicesInformer)})
+		go servicesInformer.Run(stopCh)
 
-	nodesInformer := coreFactory.Nodes().Informer()
-	nodesInformer.AddEventHandler(&nodeEventHandler{j.eventHandler(nodesInformer)})
-	go nodesInformer.Run(stopCh)
+		nodesInformer := coreFactory.Nodes().Informer()
+		klog.Info("Starting nodes informer %v", nodesInformer)
+		nodesInformer.AddEventHandler(&nodeEventHandler{j.eventHandler(nodesInformer)})
+		go nodesInformer.Run(stopCh)
+	}
 
-	slicesInformer := factory.Discovery().V1().EndpointSlices().Informer()
-	slicesInformer.AddEventHandler(&sliceEventHandler{j.eventHandler(slicesInformer)})
-	go slicesInformer.Run(stopCh)
+	if j.Config.UseSlices {
+		slicesInformer := factory.Discovery().V1().EndpointSlices().Informer()
+		slicesInformer.AddEventHandler(&sliceEventHandler{j.eventHandler(slicesInformer)})
+		klog.Info("Using endpoint slices")
+		go slicesInformer.Run(stopCh)
 
+	} else {
+		klog.Info("Using endpoints instead of endpoint slices")
+		endpointsInformer := coreFactory.Endpoints().Informer()
+		endpointsInformer.AddEventHandler(&endpointsEventHandler{j.eventHandler(endpointsInformer)})
+		go endpointsInformer.Run(stopCh)
+	}
+
+	klog.Info("Stop channel will be open now...")
 	_, _ = <-stopCh
+
+	klog.Info("Stop channel called ! shutting the store down")
 	j.Store.Close()
 }
 

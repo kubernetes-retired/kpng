@@ -295,12 +295,19 @@ function delete_kind_cluster {
 
     local cluster_name="${1}"
 
-    if kind get clusters | grep -q "${cluster_name}" &> /dev/null; then
-        kind delete cluster --name "${cluster_name}" &> /dev/null
-        if_error_warning "cannot delete cluster ${cluster_name}"
+    if [[ "${erase_clusters}" == "true" ]]; then 
+	    if kind get clusters | grep -q "${cluster_name}" &> /dev/null; then
+        	kind delete cluster --name "${cluster_name}" &> /dev/null
+        	if_error_warning "cannot delete cluster ${cluster_name}"
+	   else
+   		pass_message "Cluster ${cluster_name} deleted."
+    	   fi
+   else
 
-        pass_message "Cluster ${cluster_name} deleted."
-    fi
+	 echo "didnt delete clusters..., erase_clusters = $erase_clusters "
+   fi
+
+
 }
 
 function create_cluster {
@@ -1036,7 +1043,7 @@ function main {
     e2e_dir=${e2e_dir:="$(pwd)/temp/e2e"}
     bin_dir=${bin_dir:="${e2e_dir}/bin"}
 
-    if ${erase_clusters} ; then
+    if [[ "${erase_clusters}" == "true" ]] ; then
         delete_kind_clusters "${bin_dir}" "${ip_family}" "${backend}" "${suffix}" "${cluster_count}"
         exit 1
     fi

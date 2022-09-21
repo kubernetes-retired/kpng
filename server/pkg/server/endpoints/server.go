@@ -37,6 +37,9 @@ type Server struct {
 var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
 
 func (s *Server) Watch(res localnetv1.Endpoints_WatchServer) error {
+
+	klog.V(1).Info("endpoints server: Watch Endpoints_WatchServer= %v",res)
+
 	remote := ""
 	{
 		ctxPeer, _ := peer.FromContext(res.Context())
@@ -63,7 +66,7 @@ func (s serverSink) Setup() { /* noop */ }
 
 func (s serverSink) WaitRequest() (nodeName string, err error) {
 	req, err := s.Recv()
-
+	klog.V(1).Info("endpoints server: Wait Requeset")
 	if err != nil {
 		err = grpc.Errorf(codes.Aborted, "recv error: %v", err)
 		return
@@ -75,4 +78,6 @@ func (s serverSink) WaitRequest() (nodeName string, err error) {
 	return
 }
 
-func (s serverSink) Reset() {}
+func (s serverSink) Reset() {
+	klog.V(1).Info("reset )noop)")
+}
