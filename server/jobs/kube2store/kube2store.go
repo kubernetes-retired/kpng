@@ -20,8 +20,6 @@ import (
 	"context"
 	"time"
 
-	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
-
 	"github.com/spf13/pflag"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,11 +29,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
+
+	"sigs.k8s.io/kpng/server/pkg/proxystore"
 )
 
 type Config struct {
-	UseSlices bool
-
 	ServiceProxyName string
 
 	ServiceLabelGlobs      []string
@@ -45,7 +43,7 @@ type Config struct {
 	NodeAnnotationGlobs []string
 }
 
-//TODO: need to find a better home for this
+// TODO: need to find a better home for this
 const (
 	// LabelServiceProxyName indicates that an alternative service
 	// proxy will implement this Service.
@@ -53,8 +51,6 @@ const (
 )
 
 func (c *Config) BindFlags(flags *pflag.FlagSet) {
-	flags.BoolVar(&c.UseSlices, "use-slices", true, "use EndpointsSlice (not Endpoints)")
-
 	flags.StringVar(&c.ServiceProxyName, "service-proxy-name", "", "the "+LabelServiceProxyName+" match to use (handle normal services if not set)")
 
 	flags.StringSliceVar(&c.ServiceLabelGlobs, "with-service-labels", nil, "service labels to include")
@@ -88,26 +84,17 @@ func (j Job) Run(ctx context.Context) {
 	// start watches
 	coreFactory := factory.Core().V1()
 
-	{
-		servicesInformer := svcFactory.Core().V1().Services().Informer()
-		servicesInformer.AddEventHandler(&serviceEventHandler{j.eventHandler(servicesInformer)})
-		go servicesInformer.Run(stopCh)
+	servicesInformer := svcFactory.Core().V1().Services().Informer()
+	servicesInformer.AddEventHandler(&serviceEventHandler{j.eventHandler(servicesInformer)})
+	go servicesInformer.Run(stopCh)
 
-		nodesInformer := coreFactory.Nodes().Informer()
-		nodesInformer.AddEventHandler(&nodeEventHandler{j.eventHandler(nodesInformer)})
-		go nodesInformer.Run(stopCh)
-	}
+	nodesInformer := coreFactory.Nodes().Informer()
+	nodesInformer.AddEventHandler(&nodeEventHandler{j.eventHandler(nodesInformer)})
+	go nodesInformer.Run(stopCh)
 
-	if j.Config.UseSlices {
-		slicesInformer := factory.Discovery().V1().EndpointSlices().Informer()
-		slicesInformer.AddEventHandler(&sliceEventHandler{j.eventHandler(slicesInformer)})
-		go slicesInformer.Run(stopCh)
-
-	} else {
-		endpointsInformer := coreFactory.Endpoints().Informer()
-		endpointsInformer.AddEventHandler(&endpointsEventHandler{j.eventHandler(endpointsInformer)})
-		go endpointsInformer.Run(stopCh)
-	}
+	slicesInformer := factory.Discovery().V1().EndpointSlices().Informer()
+	slicesInformer.AddEventHandler(&sliceEventHandler{j.eventHandler(slicesInformer)})
+	go slicesInformer.Run(stopCh)
 
 	_, _ = <-stopCh
 	j.Store.Close()
