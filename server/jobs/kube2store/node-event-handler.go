@@ -17,7 +17,6 @@ limitations under the License.
 package kube2store
 
 import (
-	"github.com/gogo/protobuf/proto"
 	v1 "k8s.io/api/core/v1"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
@@ -46,22 +45,6 @@ func (h *nodeEventHandler) OnAdd(obj interface{}) {
 
 	h.s.Update(func(tx *proxystore.Tx) {
 		tx.SetNode(n)
-
-		if !h.config.UseSlices {
-			// endpoints => need to update all matching topologies
-			toSet := make([]*localnetv1.EndpointInfo, 0)
-			tx.Each(proxystore.Endpoints, func(kv *proxystore.KV) bool {
-				if kv.Endpoint.Topology.Node == n.Name && !proto.Equal(kv.Endpoint.Topology, n.Topology) {
-					kv.Endpoint.Topology = n.Topology
-					toSet = append(toSet, kv.Endpoint)
-				}
-				return true
-			})
-
-			for _, ei := range toSet {
-				tx.SetEndpoint(ei)
-			}
-		}
 
 		h.updateSync(proxystore.Nodes, tx)
 	})
