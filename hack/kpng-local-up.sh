@@ -70,17 +70,16 @@ function install_k8s {
 function install_kpng {
     # substitute it with your changes...
 
-    setup_j2
     echo "Applying template"
     # Setting vars for generate the kpng deployment based on template
-    kpng_image="${IMAGE}" \
-    image_pull_policy="${PULL}" \
-    backend="${BACKEND}" \
-    config_map_name="${CONFIG_MAP_NAME}" \
-    service_account_name="${SERVICE_ACCOUNT_NAME}" \
-    namespace="${NAMESPACE}" \
-    e2e_backend_args="${BACKEND_ARGS}"\
-    j2 ./kpng-deployment-ds.yaml.j2 -o ./kpng-deployment-ds.yaml
+    export kpng_image="${IMAGE}" 
+    export image_pull_policy="${PULL}" 
+    export backend="${BACKEND}" 
+    export config_map_name="${CONFIG_MAP_NAME}" 
+    export service_account_name="${SERVICE_ACCOUNT_NAME}" 
+    export namespace="${NAMESPACE}" 
+    export e2e_backend_args="${BACKEND_ARGS}"
+    go run kpng-ds-yaml-gen.go ./kpng-deployment-ds-template.txt ./kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 
     kind load docker-image $IMAGE --name kpng-proxy

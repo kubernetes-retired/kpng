@@ -531,14 +531,14 @@ function install_kpng {
     E2E_BACKEND_ARGS="[$E2E_BACKEND_ARGS]"
 
     # Setting vars for generate the kpng deployment based on template
-    kpng_image="${KPNG_IMAGE_TAG_NAME}" \
-    image_pull_policy="IfNotPresent" \
-    backend="${E2E_BACKEND}" \
-    config_map_name="${CONFIG_MAP_NAME}" \
-    service_account_name="${SERVICE_ACCOUNT_NAME}" \
-    namespace="${NAMESPACE}" \
-    e2e_backend_args="${E2E_BACKEND_ARGS}"\
-    j2 "${SCRIPT_DIR}"/kpng-deployment-ds.yaml.j2 -o "${artifacts_directory}"/kpng-deployment-ds.yaml
+    export kpng_image="${KPNG_IMAGE_TAG_NAME}" 
+    export image_pull_policy="IfNotPresent" 
+    export backend="${E2E_BACKEND}" 
+    export config_map_name="${CONFIG_MAP_NAME}" 
+    export service_account_name="${SERVICE_ACCOUNT_NAME}" 
+    export namespace="${NAMESPACE}" 
+    export e2e_backend_args="${E2E_BACKEND_ARGS}"
+    go run "${SCRIPT_DIR}"/kpng-ds-yaml-gen.go "${SCRIPT_DIR}"/kpng-deployment-ds-template.txt  "${artifacts_directory}"/kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 
     kubectl --context "${k8s_context}" create -f "${artifacts_directory}"/kpng-deployment-ds.yaml 1> /dev/null
@@ -771,7 +771,6 @@ function install_binaries {
     setup_kind "${bin_directory}"
     setup_kubectl "${bin_directory}"
     setup_ginkgo "${bin_directory}" "${k8s_version}" "${os}"
-    setup_j2
     setup_bpf2go "${bin_directory}"
 }
 
