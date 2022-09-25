@@ -16,6 +16,13 @@
 
 all: help
 
+# kpng build info
+VERSION=$(shell git describe --tags --always --long)
+LDFLAGS="-X main.version=$(VERSION)"
+ARCH="amd64"
+BUILD_DIR="kpng-bin"
+export PLATFORM=""
+
 # Auto Generate help from: https://gist.github.com/prwhite/8168133
 # COLORS
 GREEN  := $(shell tput -Txterm setaf 2)
@@ -58,7 +65,7 @@ modd:
 ## Creates k8s cluster with IPV4 and IPTABLES (No E2E involved)
 debug:
 	./hack/test_e2e.sh -i ipv4 -b iptables -d
-	
+
 ## Trigger unittests
 test: go_mod_tests_requirement ## Execute unittests
 	./hack/test_unit.sh
@@ -109,3 +116,22 @@ e2e: e2e-ipv4-iptables \
 	e2e-ipv4-nft \
 	e2e-ipv6-nft \
 	e2e-dual-nft
+
+## Build binary for Windows platform
+windows: PLATFORM="windows"
+windows:
+	@$(MAKE) -e build
+
+build:
+	@mkdir -p $(BUILD_DIR)/$(PLATFORM)/$(VERSION)
+	@cd cmd && \
+		env GOOS=$(PLATFORM) \
+		GOARCH=$(ARCH) \
+		go build \
+		-trimpath \
+		-o ../$(BUILD_DIR)/$(PLATFORM)/$(VERSION) \
+		-v \
+		-ldflags=$(LDFLAGS) \
+		./...
+	@echo "\tkpng $(YELLOW)$(PLATFORM)$(RESET) binaries available in: $(GREEN)$(BUILD_DIR)/$(PLATFORM)/$(VERSION)$(RESET)\n"
+

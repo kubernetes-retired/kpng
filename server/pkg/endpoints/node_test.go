@@ -1,3 +1,19 @@
+/*
+Copyright 2021 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package endpoints
 
 import (
@@ -21,6 +37,7 @@ func ExampleForNodeWithTopology() {
 			},
 
 			InternalTrafficToLocal: true,
+			ExternalTrafficToLocal: true,
 		})
 
 		tx.SetEndpointsOfSource("test", "test-abcde", []*localnetv1.EndpointInfo{
@@ -29,7 +46,7 @@ func ExampleForNodeWithTopology() {
 				SourceName:  "test-abcde",
 				ServiceName: "test",
 				Endpoint:    &localnetv1.Endpoint{IPs: localnetv1.NewIPSet("10.2.0.1")},
-				Topology:    map[string]string{"kubernetes.io/hostname": "host-a"},
+				Topology:    &localnetv1.TopologyInfo{Node: "host-a"},
 				Conditions:  &localnetv1.EndpointConditions{Ready: true},
 			},
 			{
@@ -37,7 +54,7 @@ func ExampleForNodeWithTopology() {
 				SourceName:  "test-abcde",
 				ServiceName: "test",
 				Endpoint:    &localnetv1.Endpoint{IPs: localnetv1.NewIPSet("10.2.1.1")},
-				Topology:    map[string]string{"kubernetes.io/hostname": "host-b"},
+				Topology:    &localnetv1.TopologyInfo{Node: "host-b"},
 				Conditions:  &localnetv1.EndpointConditions{Ready: true},
 			},
 		})
@@ -57,7 +74,7 @@ func ExampleForNodeWithTopology() {
 			tx.Each(proxystore.Services, func(kv *proxystore.KV) (cont bool) {
 				fmt.Print("  - service ", kv.Name, ":\n")
 
-				endpoints, _ /* TODO external endpoints */ := ForNode(tx, kv.Service, host)
+				endpoints := ForNode(tx, kv.Service, host)
 				for _, epi := range endpoints {
 					fmt.Print("    - ep ", epi.Endpoint.IPs, "\n")
 				}
@@ -68,8 +85,8 @@ func ExampleForNodeWithTopology() {
 
 	// Output:
 	// service test:
-	//   - ep IPs:{V4:"10.2.1.1"} (map[kubernetes.io/hostname:host-b])
-	//   - ep IPs:{V4:"10.2.0.1"} (map[kubernetes.io/hostname:host-a])
+	//   - ep IPs:{V4:"10.2.0.1"} (Node:"host-a")
+	//   - ep IPs:{V4:"10.2.1.1"} (Node:"host-b")
 	// host host-a:
 	//   - service test:
 	//     - ep V4:"10.2.0.1"

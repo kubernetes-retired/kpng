@@ -95,7 +95,6 @@ func (s *Backend) Sink() localsink.Sink {
 
 // ------------------------------------------------------------------------
 // (IP, port) listener interface
-//
 var _ serviceevents.IPPortsListener = &Backend{}
 
 func (s *Backend) AddIPPort(svc *localnetv1.Service, ip string, IPKind serviceevents.IPKind, port *localnetv1.PortMapping) {
@@ -132,7 +131,6 @@ func (s *Backend) DeleteIPPort(svc *localnetv1.Service, ip string, IPKind servic
 
 // ------------------------------------------------------------------------
 // IP listener interface
-//
 var _ serviceevents.IPsListener = &Backend{}
 
 func (s *Backend) AddIP(svc *localnetv1.Service, ip string, ipKind serviceevents.IPKind) {
@@ -170,7 +168,6 @@ func (s *Backend) DisableTrafficPolicy(svc *localnetv1.Service, policyKind servi
 
 // SetService ------------------------------------------------------
 // Service
-//
 func (s *Backend) SetService(svc *localnetv1.Service) {}
 
 func (s *Backend) DeleteService(namespace, name string) {}
@@ -394,6 +391,11 @@ func (s *Backend) addServiceIPToKubeIPVSIntf(serviceIP string) {
 	if err != nil {
 		klog.Fatalf("failed to parse ip/net %q: %v", ip, err)
 	}
+
+	if s.dummy == nil {
+		klog.Fatalf("exit early while adding dummy IP ", ip, "; dummy link device not found")
+		return
+	}
 	klog.V(2).Info("adding dummy IP ", ip)
 	if err = netlink.AddrAdd(s.dummy, &netlink.Addr{IPNet: ipNet}); err != nil {
 		klog.Error("failed to add dummy IP ", ip, ": ", err)
@@ -408,6 +410,11 @@ func (s *Backend) deleteServiceIPToKubeIPVSIntf(serviceIP string) {
 	_, ipNet, err := net.ParseCIDR(ip)
 	if err != nil {
 		klog.Fatalf("failed to parse ip/net %q: %v", ip, err)
+	}
+
+	if s.dummy == nil {
+		klog.Fatalf("exit early while deleting dummy IP ", ip, "; dummy link device not found")
+		return
 	}
 	klog.V(2).Info("deleting dummy IP ", ip)
 	if err = netlink.AddrDel(s.dummy, &netlink.Addr{IPNet: ipNet}); err != nil {

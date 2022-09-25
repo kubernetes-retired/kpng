@@ -2,13 +2,13 @@
 # shellcheck disable=SC2181,SC2155,SC2128
 #
 # Copyright 2021 The Kubernetes Authors.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #         http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,14 +17,20 @@
 
 shopt -s expand_aliases
 
-: "${E2E_GO_VERSION:="1.17.3"}"
-: "${E2E_K8S_VERSION:="v1.23.3"}"
+: "${E2E_GO_VERSION:="1.18.4"}"
+: "${E2E_K8S_VERSION:="v1.25.0"}"
 : "${E2E_TIMEOUT_MINUTES:=100}"
 : "${KPNG_DEBUG_LEVEL:=4}"
 : "${KPNG_SERVER_ADDRESS:="unix:///k8s/proxy.sock"}"
+
 # Ensure that CLUSTER_CIDR and SERVICE_CLUSTER_IP_RANGE don't overlap
-: "${CLUSTER_CIDR:="10.1.0.0/16"}"
-: "${SERVICE_CLUSTER_IP_RANGE:="10.2.0.0/16"}"
+
+: "${CLUSTER_CIDR_V4:="10.1.0.0/16"}"
+: "${SERVICE_CLUSTER_IP_RANGE_V4:="10.2.0.0/16"}"
+
+# kpng chars = ..6b:706e:67..
+: "${CLUSTER_CIDR_V6:="fd6d:706e:6701::/56"}"
+: "${SERVICE_CLUSTER_IP_RANGE_V6:="fd6d:706e:6702::/112"}"
 
 OS=$(uname| tr '[:upper:]' '[:lower:]')
 CONTAINER_ENGINE="docker"
@@ -33,7 +39,7 @@ KUBECONFIG_TESTS="kubeconfig_tests.conf"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # kind
-KIND_VERSION="v0.11.1"
+KIND_VERSION="v0.14.0"
 
 # system data
 NAMESPACE="kube-system"
@@ -54,23 +60,7 @@ GINKGO_PROVIDER="local"
 # Users can specify docker.io, quay.io registry
 KINDEST_NODE_IMAGE="docker.io/kindest/node"
 
-function if_error_exit {
-    ###########################################################################
-    # Description:                                                            #
-    # Validate if previous command failed and show an error msg (if provided) #
-    #                                                                         #
-    # Arguments:                                                              #
-    #   $1 - error message if not provided, it will just exit                 #
-    ###########################################################################
-    if [ "$?" != "0" ]; then
-        if [ -n "$1" ]; then
-            RED="\e[31m"
-            ENDCOLOR="\e[0m"
-            echo -e "[ ${RED}FAILED${ENDCOLOR} ] ${1}"
-        fi
-        exit 1
-    fi
-}
+source "${SCRIPT_DIR}"/utils.sh
 
 function if_error_warning {
     ###########################################################################
@@ -87,23 +77,6 @@ function if_error_warning {
             echo -e "[ ${RED}FAILED${ENDCOLOR} ] ${1}"
         fi
     fi
-}
-
-function pass_message {
-    ###########################################################################
-    # Description:                                                            #
-    # show [PASSED] in green and a message as the validation passed.          #
-    #                                                                         #
-    # Arguments:                                                              #
-    #   $1 - message to output                                                #
-    ###########################################################################
-    if [ -z "${1}" ]; then
-        echo "pass_message() requires a message"
-        exit 1
-    fi
-    GREEN="\e[32m"
-    ENDCOLOR="\e[0m"
-    echo -e "[ ${GREEN}PASSED${ENDCOLOR} ] ${1}"
 }
 
 function detect_container_engine {
@@ -155,7 +128,7 @@ function container_build {
             ${CMD_BUILD_IMAGE}
         else
             ${CMD_BUILD_IMAGE} &> /dev/null
-        
+
         fi
         if_error_exit "Failed to build kpng, command was: ${CMD_BUILD_IMAGE}"
     popd > /dev/null || exit
@@ -203,7 +176,7 @@ function setup_kubectl {
     # setup kubectl if not available in the system                            #
     #                                                                         #
     # Arguments:                                                              #
-    #   arg1: installation directory, path to where kubectl will be installed  #
+    #   arg1: installation directory, path to where kubectl will be installed #
     ###########################################################################
 
     [ $# -eq 1 ]
@@ -269,56 +242,44 @@ function setup_ginkgo {
     pass_message "The tools ginko and e2e.test have been set up."
 }
 
-command_exists() {
-    ###########################################################################
-    # Description:                                                            #
-    # Checkt if a binary exists                                               #
-    #                                                                         #
-    # Arguments:                                                              #
-    #   arg1: binary name                                                     #
-    ###########################################################################
-    cmd="$1"
-    command -v ${cmd} >/dev/null 2>&1
-}
-
-function setup_j2() {
-    ###########################################################################
-    # Description:                                                            #
-    # Install j2 binary                                                       #
-    ###########################################################################    
-    if ! command_exists j2 ; then 
-        if ! command_exists pip ; then 
-            echo "Dependency not met: 'j2' not installed and cannot install with 'pip'"
-            exit 1
-        fi
-
-        echo "'j2' not found, installing with 'pip'"
-
-        pip install wheel --user
-        pip freeze | grep j2cli || pip install j2cli[yaml] --user
-        export PATH=~/.local/bin:$PATH
-        if_error_exit "cannot download j2"
-    fi
-    pass_message "The tool j2 is installed."
-}
-
 function setup_bpf2go() {
     ###########################################################################
     # Description:                                                            #
-    # Install bpf2go binary                                                       #
-    ###########################################################################    
-    if ! command_exists bpf2go ; then 
-        if ! command_exists go ; then 
+    # Install bpf2go binary                                                   #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1: installation directory, path to where bpf2go will be installed  #
+    ###########################################################################
+
+    [ $# -eq 1 ]
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+
+    local install_directory=$1
+
+    [ -d "${install_directory}" ]
+    if_error_exit "Directory \"${install_directory}\" does not exist"
+
+    if ! command_exists bpf2go ; then
+        if ! command_exists go ; then
             echo "Dependency not met: 'bpf2go' not installed and cannot install with 'go'"
             exit 1
         fi
 
+        [ -d "${install_directory}" ]
+        if_error_exit "Directory \"${install_directory}\" does not exist"
+	
         echo "'bpf2go' not found, installing with 'go'"
-        go install github.com/cilium/ebpf/cmd/bpf2go@master
+	# set GOBIN to bin_directory to endure that binary is in search path
+	export GOBIN=${install_directory}
+	
+	#remove GOPATH just to be sure
+	export GOPATH=""
+	
+        go install github.com/cilium/ebpf/cmd/bpf2go@v0.9.2
         if_error_exit "cannot install bpf2go"
-    fi 
 
-    pass_message "The tool bpf2go is installed."
+	pass_message "The tool bpf2go is installed. at: $(which bpf2go)"
+    fi
 }
 
 function delete_kind_cluster {
@@ -392,6 +353,21 @@ function create_cluster {
           controllerManager_extra_args="${controllerManager_extra_args}\"logging-format\": \"${CLUSTER_LOG_FORMAT}\""
           apiServer_extra_args="${apiServer_extra_args}\"logging-format\": \"${CLUSTER_LOG_FORMAT}\""
     fi
+
+    case $ip_family in
+        ipv4 )
+            CLUSTER_CIDR="${CLUSTER_CIDR_V4}"
+            SERVICE_CLUSTER_IP_RANGE="${SERVICE_CLUSTER_IP_RANGE_V4}"
+            ;;
+        ipv6 )
+            CLUSTER_CIDR="${CLUSTER_CIDR_V6}"
+            SERVICE_CLUSTER_IP_RANGE="${SERVICE_CLUSTER_IP_RANGE_V6}"
+            ;;
+        dual )
+            CLUSTER_CIDR="${CLUSTER_CIDR_V4},${CLUSTER_CIDR_V6}"
+            SERVICE_CLUSTER_IP_RANGE="${SERVICE_CLUSTER_IP_RANGE_V4},${SERVICE_CLUSTER_IP_RANGE_V6}"
+            ;;
+    esac
 
     echo -e "\nPreparing to setup ${cluster_name} cluster ..."
     # create cluster
@@ -523,7 +499,7 @@ function install_kpng {
     if_error_exit "error loading image to kind, command was: ${CMD_KIND_LOAD_KPNG_TEST_IMAGE}"
     pass_message "Loaded ${KPNG_IMAGE_TAG_NAME} container image."
 
-    # TODO this should be part of the template                
+    # TODO this should be part of the template
     kubectl --context "${k8s_context}" create serviceaccount \
         --namespace "${NAMESPACE}" \
         "${SERVICE_ACCOUNT_NAME}" 1> /dev/null
@@ -542,13 +518,17 @@ function install_kpng {
         --namespace "${NAMESPACE}" \
         --from-file "${artifacts_directory}/kubeconfig.conf" 1> /dev/null
     if_error_exit "error creating configmap ${CONFIG_MAP_NAME}"
-    pass_message "Created configmap ${CONFIG_MAP_NAME}." 
+    pass_message "Created configmap ${CONFIG_MAP_NAME}."
 
+    E2E_BACKEND_ARGS="'local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'"
     if [[ "${E2E_BACKEND}" == "nft" ]]; then
-        E2E_BACKEND_ARGS="['local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}', '--cluster-cidrs=${CLUSTER_CIDR}']"
-    else
-        E2E_BACKEND_ARGS="['local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}']"
+        case $ip_family in
+            ipv4 ) E2E_BACKEND_ARGS="$E2E_BACKEND_ARGS, '--cluster-cidrs=${CLUSTER_CIDR_V4}'" ;;
+            ipv6 ) E2E_BACKEND_ARGS="$E2E_BACKEND_ARGS, '--cluster-cidrs=${CLUSTER_CIDR_V6}'" ;;
+            dual ) E2E_BACKEND_ARGS="$E2E_BACKEND_ARGS, '--cluster-cidrs=${CLUSTER_CIDR_V4}', '--cluster-cidrs=${CLUSTER_CIDR_V6}'" ;;
+        esac
     fi
+    E2E_BACKEND_ARGS="[$E2E_BACKEND_ARGS]"
 
     # Setting vars for generate the kpng deployment based on template
     kpng_image="${KPNG_IMAGE_TAG_NAME}" \
@@ -558,7 +538,7 @@ function install_kpng {
     service_account_name="${SERVICE_ACCOUNT_NAME}" \
     namespace="${NAMESPACE}" \
     e2e_backend_args="${E2E_BACKEND_ARGS}"\
-    j2 ${SCRIPT_DIR}/kpng-deployment-ds.yaml.j2 -o "${artifacts_directory}"/kpng-deployment-ds.yaml
+    j2 "${SCRIPT_DIR}"/kpng-deployment-ds.yaml.j2 -o "${artifacts_directory}"/kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 
     kubectl --context "${k8s_context}" create -f "${artifacts_directory}"/kpng-deployment-ds.yaml 1> /dev/null
@@ -712,6 +692,7 @@ function verify_host_network_settings {
      local ip_family="${1}"
 
      verify_sysctl_setting net.ipv4.ip_forward 1
+
      if [ "${ip_family}" = "ipv6" ]; then
        verify_sysctl_setting net.ipv6.conf.all.forwarding 1
        verify_sysctl_setting net.bridge.bridge-nf-call-arptables 0
@@ -732,9 +713,9 @@ function set_host_network_settings {
      if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
      local ip_family="${1}"
 
-     set_sysctl net.ipv6.conf.all.forwarding 1
+     set_sysctl net.ipv4.ip_forward 1
      if [ "${ip_family}" = "ipv6" ]; then
-       set_sysctl net.ipv4.ip_forward 1
+       set_sysctl net.ipv6.conf.all.forwarding 1
        set_sysctl net.bridge.bridge-nf-call-arptables 0
        set_sysctl net.bridge.bridge-nf-call-ip6tables 0
        set_sysctl net.bridge.bridge-nf-call-iptables 0
@@ -791,7 +772,7 @@ function install_binaries {
     setup_kubectl "${bin_directory}"
     setup_ginkgo "${bin_directory}" "${k8s_version}" "${os}"
     setup_j2
-    setup_bpf2go
+    setup_bpf2go "${bin_directory}"
 }
 
 function set_e2e_dir {
@@ -846,10 +827,11 @@ function compile_bpf {
     # compile bpf elf files for ebpf backend                                  #
     ###########################################################################
 
-    pushd ${SCRIPT_DIR}/../backends/ebpf
-    go generate
+    pushd "${SCRIPT_DIR}"/../backends/ebpf > /dev/null || exit
+    make bytecode
     if_error_exit "Failed to compile EBPF Programs"
-    popd
+    popd > /dev/null || exit
+
 
     pass_message "Compiled BPF programs"
 }
@@ -1007,8 +989,9 @@ function print_reports {
     done
 
     echo -e "\nOccurence\tFailure"
-    awk '/Summarizing/,0' "${combined_output_file}" | awk 'ORS=/\[Fail\]/?", ":RS' | awk '/\[Fail\]/' | \
-          sed 's/\x1b\[90m//g' |sort | uniq -c | sort -nr  | sed 's/\,/\n\t\t/g'
+    grep \"msg\":\"FAILED "${combined_output_file}" |
+    sed 's/^.*\"FAILED/\t/' | sed 's/\,\"completed\".*//' | sed 's/[ \"]$//' |
+    sort | uniq -c | sort -nr  | sed 's/\,/\n\t\t/g'
 
     rm -f "${combined_output_file}"
 }
@@ -1060,17 +1043,21 @@ function main {
     echo "+==================================================================+"
 
     # in ci this should fail
-    if [ "${ci_mode}" = true ] ; then 
+    if [ "${ci_mode}" = true ] ; then
         # REMOVE THIS comment out ON THE REPO WITH A PR WHEN LOCAL TESTS ARE ALL GREEN
         # set -e
         echo "this tests can't fail now in ci"
-        set_host_network_settings "${ip_family}"
     fi
+    set_host_network_settings "${ip_family}"
 
     install_binaries "${bin_dir}" "${E2E_K8S_VERSION}" "${OS}"
     # compile bpf bytecode and bindings so build completes successfully
-    if [ "${backend}" == "ebpf" ] ; then 
-        compile_bpf 
+    if [ "${backend}" == "ebpf" ] ; then
+        if [ "${ip_family}" != "ipv4" ] ; then
+            echo "ebpf backend only supports ipv4"
+            exit 1
+        fi
+        compile_bpf
     fi
 
     verify_host_network_settings "${ip_family}"
@@ -1142,6 +1129,7 @@ function help {
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
     printf "\t-e erase kind clusters.\n"
     printf "\t-n number of parallel test clusters.\n"
+    printf "\t-p flag, only print reports.\n"
     printf "\t-s suffix, will be appended to the E2@ directory and kind cluster name (makes it possible to run parallel tests.\n"
     printf "\t-B binary directory, specifies the path for the directory where binaries will be installed\n"
     printf "\t-D Dockerfile, specifies the path of the Dockerfile to use\n"

@@ -3,3 +3,4 @@ Dockerfile.static
 dist/*
 hack/*
 .git/*
+temp/*

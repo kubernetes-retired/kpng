@@ -14,22 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+source ./utils.sh
 
 # build the kpng image...
-# TODO Replace with 1.22 once we address 
-#: ${KIND:="kindest/node:v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6"}
-: ${KIND:="kindest/node:v1.22.0@sha256:b8bda84bb3a190e6e028b1760d277454a72267a5454b57db34437c34a588d047"}
+: ${KIND:="kindest/node:v1.22.13@sha256:4904eda4d6e64b402169797805b8ec01f50133960ad6c19af45173a27eadf959"}
 : ${IMAGE:="gauravkghildiyal/kpng:latest"}
 : ${PULL:="IfNotPresent"}
-: ${E2E_BACKEND:="nft"}
+: ${BACKEND:="nft"}
 : ${CONFIG_MAP_NAME:=kpng}
 : ${SERVICE_ACCOUNT_NAME:=kpng}
 : ${NAMESPACE:=kube-system}
 : ${KPNG_DEBUG_LEVEL:=4}
+: ${BACKEND_ARGS:="['local', '--api=unix:///k8s/proxy.sock', 'to-${BACKEND}', '--v=${KPNG_DEBUG_LEVEL}']"}
 
-export IMAGE PULL E2E_BACKEND CONFIG_MAP_NAME SERVICE_ACCOUNT_NAME NAMESPACE KPNG_DEBUG_LEVEL
-
-echo -n "this will deploy kpng with docker image $IMAGE, pull policy '$PULL' and the '$E2E_BACKEND' backend. Press enter to confirm, C-c to cancel"
+echo -n "this will deploy kpng with docker image $IMAGE, pull policy '$PULL' and the '$BACKEND' backend. Press enter to confirm, C-c to cancel"
 read
 
 function build_kpng {
@@ -72,8 +70,18 @@ function install_k8s {
 function install_kpng {
     # substitute it with your changes...
 
+    setup_j2
     echo "Applying template"
-    envsubst <kpng-deployment-ds.yaml.tmpl >kpng-deployment-ds.yaml
+    # Setting vars for generate the kpng deployment based on template
+    kpng_image="${IMAGE}" \
+    image_pull_policy="${PULL}" \
+    backend="${BACKEND}" \
+    config_map_name="${CONFIG_MAP_NAME}" \
+    service_account_name="${SERVICE_ACCOUNT_NAME}" \
+    namespace="${NAMESPACE}" \
+    e2e_backend_args="${BACKEND_ARGS}"\
+    j2 ./kpng-deployment-ds.yaml.j2 -o ./kpng-deployment-ds.yaml
+    if_error_exit "error generating kpng deployment YAML"
 
     kind load docker-image $IMAGE --name kpng-proxy
 
@@ -86,6 +94,7 @@ function install_kpng {
     # Deleting any previous daemonsets.apps kpng
     kubectl delete -f kpng-deployment-ds.yaml 2> /dev/null
     kubectl create -f kpng-deployment-ds.yaml
+    rm -rf kpng-deployment-ds.yaml
 }
 
 # cd to dir of this script

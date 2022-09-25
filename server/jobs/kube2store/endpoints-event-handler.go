@@ -55,19 +55,24 @@ func (h *endpointsEventHandler) OnAdd(obj interface{}) {
 						Endpoint: &localnetv1.Endpoint{
 							Hostname: addr.Hostname,
 						},
+						Topology: &localnetv1.TopologyInfo{},
 						Conditions: &localnetv1.EndpointConditions{
 							Ready: set.ready,
 						},
 					}
 
-					if addr.NodeName != nil && *addr.NodeName != "" {
-						info.NodeName = *addr.NodeName
+					if n := addr.NodeName; n != nil && *n != "" {
+						node := tx.GetNode(*n)
 
-						node := tx.GetNode(info.NodeName)
-
-						if node != nil {
-							info.Topology = node.Labels
+						if node == nil {
+							info.Topology.Node = *n
+						} else {
+							info.Topology = node.Topology
 						}
+					}
+
+					if t := addr.TargetRef; t != nil && t.Kind == "Pod" {
+						info.PodName = t.Name
 					}
 
 					if addr.IP != "" {
