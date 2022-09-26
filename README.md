@@ -19,8 +19,8 @@ The project will provide multiple components, with the core being the API watche
 - [Convert to your timezone](https://dateful.com/convert/pst-pdt-pacific-time?t=830am&tz2=EST-EDT-Eastern-Time)  
 
 ## APAC
-- Every Wednesday at 7:00PM IST / 8:30 EST [zoom link here](https://zoom.us/j/94435779760?pwd=TnJvdDRURktDVTZENU1kQXd5RlFBdz09).  
-- [Convert to your timezone](https://dateful.com/convert/indian-standard-time-ist?t=7pm)
+- Every Wednesday at 4:00PM IST / 6:30 EST [zoom link here](https://zoom.us/j/94435779760?pwd=TnJvdDRURktDVTZENU1kQXd5RlFBdz09).  
+- [Convert to your timezone](https://dateful.com/convert/indian-standard-time-ist?t=4pm)
 
 ## How we work
 
