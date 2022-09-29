@@ -17,7 +17,8 @@
 # Verifying the protobuf
 
 function verify {
-    diff -q api/localnetv1/verify-protobuf/services.pb.go api/localnetv1/services.pb.go && diff -q api/localnetv1/verify-protobuf/services_grpc.pb.go api/localnetv1/services_grpc.pb.go || { echo "File doesn't match"; exit 1; }
+    diff api/localnetv1/verify-protobuf/services.pb.go api/localnetv1/services.pb.go
+    diff -q api/localnetv1/verify-protobuf/services_grpc.pb.go api/localnetv1/services_grpc.pb.go 
 }
 
 function draw_line {

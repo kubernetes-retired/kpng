@@ -11,8 +11,8 @@ on:
 jobs:
   test:
     name: run grpc verify tests
-    #runs-on: ubuntu-latest
-    runs_on: rvolosatovs/protoc:latest
+    runs-on: ubuntu-latest
+    container: riftbit/protoc:latest
     steps:
     - name: Setup Go
       uses: actions/setup-go@v2
@@ -31,6 +31,5 @@ jobs:
      
     - name: run grpc verify tests
       run: |
-        ./hack/verify/generate-grpc.sh
-        ./hack/verify/verify-grpc.sh
+        ./hack/verify/generate-grpc.sh && ./hack/verify/verify-grpc.sh
 
