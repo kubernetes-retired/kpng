@@ -165,7 +165,9 @@ balancer IP as the destination IP rather than DNAT'ing it), thus
 allowing "Direct Server Return" (ie, the node can send the reply
 packets directly back to the original client rather than needing to
 pass them back through the load balancer, since the load balancer
-doesn't need to undo anything).
+doesn't need to undo anything). In this case, it makes sense to create
+the LoadBalancer type service with `.spec.allocateLoadBalancerNodePorts`
+set to `false`. That will ensure no nodePorts are allocated to the service.
 
 Unlike cluster IPs, load balancer IPs are considered to be external to
 the cluster, and the service proxy does not "own" them in the way it
@@ -286,6 +288,10 @@ This is implemented by
 service proxy implementations should probably just copy that code
 exactly for now. (It is not clear if any cloud load balancer
 implementations actually parse the returned JSON?)
+
+Note that setting `.spec.allocateLoadBalancerNodePorts` to `false` for a
+LoadBalancer type service does not have any effect on the allocation of
+`.spec.healthCheckNodePort`.
 
 ## Service Affinity
 
