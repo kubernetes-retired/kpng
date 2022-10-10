@@ -5,7 +5,7 @@ metadata:
   labels:
     app: kpng
   name: kpng
-  namespace: {{.Namespace}}
+  namespace: {{ .Namespace }}
 spec:
   selector:
     matchLabels:
@@ -18,17 +18,17 @@ spec:
       # to enable progressive deployment on existing cluster you can use node labels:
       #nodeSelector:
       #  kpng: kpng
-      serviceAccountName: {{.ServiceAccountName}}
+      serviceAccountName: {{ .ServiceAccountName }}
       hostNetwork: true
       # so that kpng always runs on the controlplane nodes...
       tolerations:
       - operator: "Exists"
         effect: "NoSchedule"
       containers:
-      # only spin up bptools image if ebpf is the selected backend. 
-      {{- if .IsEbpfBackend}}
+      # only spin up bpftools image if ebpf is the selected backend. 
+      {{- if .IsEbpfBackend }}
       - image: cilium/cilium-bpftool:b5ba881d2a7ec68d88ecd72efd60ac551c720701
-        imagePullPolicy: {{.ImagePullPolicy}}
+        imagePullPolicy: {{ .ImagePullPolicy }}
         name: kpng-ebpf-tools
         securityContext:
           privileged: true
@@ -43,8 +43,39 @@ spec:
         - name: bpf-log
           mountPath: /tracing
       {{- end }}
-      - image: {{.KpngImgage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
+      # spinup single container when running in one process
+      {{- if eq .Deployment_model "single-process-per-node" }}
+      - image: {{ .KpngImage }}
+        imagePullPolicy: {{ .ImagePullPolicy }}
+        env:
+        - name: GOLANG_PROTOBUF_REGISTRATION_CONFLICT
+          value: warn
+        name: kpng-{{.Backend }}
+        securityContext:
+            privileged: true
+        volumeMounts:
+        - name: empty
+          mountPath: /k8s
+        - name: modules
+          mountPath: /lib/modules
+          readOnly: true
+        - mountPath: /var/lib/kpng
+          name: kpng-config
+        {{- if .IsEbpfBackend }}
+        - name: bpf-maps
+          mountPath: /sys/fs/bpf
+          mountPropagation: Bidirectional
+        - name: cgroup-v2-fs
+          mountPath: /sys/fs/cgroup/unified
+          readOnly: true
+        - name: cgroup-v2-mount
+          mountPath: /host-mount/mounts
+          mountPropagation: HostToContainer
+        {{- end }}
+        args: {{ .E2eBackendArgs }}
+      {{- else }}
+      - image: {{ .KpngImage }}
+        imagePullPolicy: {{ .ImagePullPolicy }}
         env:
         - name: GOLANG_PROTOBUF_REGISTRATION_CONFLICT
           value: warn
@@ -56,15 +87,17 @@ spec:
           name: kpng-config
         args:
         - kube
+        # In-cluster config won't work here since we can't use the K8s Service to
+        # talk to the APIserver since KPNG implements that service
         - --kubeconfig=/var/lib/kpng/kubeconfig.conf
         - to-api
         - --listen=unix:///k8s/proxy.sock
-      - image: {{.KpngImgage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
+      - image: {{ .KpngImage }}
+        imagePullPolicy: {{ .ImagePullPolicy }}
         env:
         - name: GOLANG_PROTOBUF_REGISTRATION_CONFLICT
           value: warn
-        name: kpng-{{.Backend}}
+        name: kpng-{{ .Backend }}
         securityContext:
             privileged: true
         volumeMounts:
@@ -73,7 +106,7 @@ spec:
         - name: modules
           mountPath: /lib/modules
           readOnly: true
-        {{- if .IsEbpfBackend}}
+        {{- if .IsEbpfBackend }}
         - name: bpf-maps
           mountPath: /sys/fs/bpf
           mountPropagation: Bidirectional
@@ -84,8 +117,9 @@ spec:
           mountPath: /host-mount/mounts
           mountPropagation: HostToContainer
         {{- end }}
-        args: {{.E2eBackendArgs}}
+        args: {{ .E2eBackendArgs }}
         #- --dry-run
+      {{- end }}
       volumes:
       - name: empty
         emptyDir: {}
@@ -94,8 +128,8 @@ spec:
           path: /lib/modules
       - name: kpng-config
         configMap:
-          name: {{.ConfigMapName}}
-      {{- if .IsEbpfBackend}}
+          name: {{ .ConfigMapName }}
+      {{- if .IsEbpfBackend }}
       - name: bpf-maps
         hostPath:
           path: /sys/fs/bpf

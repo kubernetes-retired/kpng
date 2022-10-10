@@ -1,14 +1,14 @@
 # Store Commands
 
 The KPNG `storecmds` package has the "glue" which connects
-the KPNG server (which talkes to K8s), to the a proxy backend.
+the KPNG server (which talks to K8s), to the a proxy backend.
 
 ## How can I use the store programs in KPNG ?
 
 The "store" programs in this package can be used to respond to events
 coming in from the Kubernetes API Server that KPNG cares about.
 
-- api2store: TODO add definition
+- api2store: polling a KPNG grpc API and writing to KPNG globalstate
 - file2store: polling files, and writing them to KPNGs global state.
 - kube2store: polling Kubernetes API, and writing them to KPNGs global state.
 - local2sink: 
@@ -26,7 +26,7 @@ and as examples of how KPNG relates to the original, in-tree kube proxy.
 ## Example
 
 Right now, the store commands are dynamically loaded from the backends that are in-tree
-for KPNG.  For example, the iptables backend has an init function which registes the
+for KPNG.  For example, the iptables backend has an init function which registers the
 `to-iptables` flag, so that iptables backend can automatically be started up by
 KPNG.
 
