@@ -31,6 +31,9 @@ import (
 	"sigs.k8s.io/kpng/client/tlsflags"
 
 	"sigs.k8s.io/kpng/server/pkg/apiwatch"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"sigs.k8s.io/kpng/server/pkg/metrics"
 )
 
 // Config helps building sink with the standard flags (sinks are not required to have a stable node-name, but most will have).
@@ -42,35 +45,47 @@ import (
 //     }
 //
 type Config struct {
-	NodeName string
+	NodeName      string
+	ExportMetrics bool
 }
 
 func (c *Config) BindFlags(flags *pflag.FlagSet) {
+	flags.BoolVar(&c.ExportMetrics, "exportMetrics", false, "Wether or start metrics server")
 	flags.StringVar(&c.NodeName, "node-name", "", "Node name override")
 }
 
 type Job struct {
 	apiwatch.Watch
-	Sink localsink.Sink
+	Sink   localsink.Sink
+	Config Config
 }
 
-func New(sink localsink.Sink) *Job {
+func New(sink localsink.Sink, cfg Config) *Job {
 	return &Job{
 		Watch: apiwatch.Watch{
 			TLSFlags: &tlsflags.Flags{},
 		},
-		Sink: sink,
+		Sink:   sink,
+		Config: cfg,
 	}
 }
 
 func (j *Job) Run(ctx context.Context) {
+	stopCh := ctx.Done()
 	j.Sink.Setup()
+
+	if j.Config.ExportMetrics {
+		prometheus.MustRegister(metrics.Kpng_node_local_events)
+		// Starts client side kube metrics server
+		metrics.StartMetricsServer("0.0.0.0:2113", stopCh)
+	}
 
 	for {
 		err := j.run(ctx)
 
 		if err == context.Canceled || grpc.Code(err) == codes.Canceled {
 			klog.Info("context canceled, closing global watch")
+			<-stopCh
 			return
 		}
 
@@ -111,6 +126,9 @@ func (j *Job) runLoop(watch localnetv1.Endpoints_WatchClient) (err error) {
 	}
 
 	nodeName, err := j.Sink.WaitRequest()
+	if err != nil {
+		klog.Warningf("Failed to wait for next diff request")
+	}
 
 	err = watch.Send(&localnetv1.WatchReq{
 		NodeName: nodeName,
@@ -132,6 +150,7 @@ func (j *Job) runLoop(watch localnetv1.Endpoints_WatchClient) (err error) {
 			j.Sink.Reset()
 
 		default:
+			metrics.Kpng_node_local_events.Inc()
 			err = j.Sink.Send(op)
 			if err != nil {
 				return

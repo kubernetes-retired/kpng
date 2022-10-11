@@ -24,6 +24,8 @@ import (
 	"sigs.k8s.io/kpng/server/jobs/api2local"
 )
 
+var localCfg = &api2local.Config{}
+
 func local2sinkCmd() *cobra.Command {
 	// local to * command
 	cmd := &cobra.Command{
@@ -33,8 +35,9 @@ func local2sinkCmd() *cobra.Command {
 
 	flags := cmd.PersistentFlags()
 
-	job := api2local.New(nil)
-	job.BindFlags(flags)
+	job := api2local.New(nil, *localCfg)
+	job.Config.BindFlags(flags)
+	job.Watch.BindFlags(flags)
 
 	cmd.AddCommand(storecmds.LocalCmds(func(sink localsink.Sink) (err error) {
 		ctx := setupGlobal()

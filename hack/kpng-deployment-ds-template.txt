@@ -57,6 +57,7 @@ spec:
         args:
         - kube
         - --kubeconfig=/var/lib/kpng/kubeconfig.conf
+        - --exportMetrics
         - to-api
         - --listen=unix:///k8s/proxy.sock
       - image: {{.KpngImgage}}

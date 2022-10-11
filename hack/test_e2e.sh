@@ -14,7 +14,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 shopt -s expand_aliases
 
 : "${E2E_GO_VERSION:="1.18.4"}"
@@ -520,7 +519,7 @@ function install_kpng {
     if_error_exit "error creating configmap ${CONFIG_MAP_NAME}"
     pass_message "Created configmap ${CONFIG_MAP_NAME}."
 
-    E2E_BACKEND_ARGS="'local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'"
+    E2E_BACKEND_ARGS="'local', '--api=${KPNG_SERVER_ADDRESS}', '--exportMetrics', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'"
     if [[ "${E2E_BACKEND}" == "nft" ]]; then
         case $ip_family in
             ipv4 ) E2E_BACKEND_ARGS="$E2E_BACKEND_ARGS, '--cluster-cidrs=${CLUSTER_CIDR_V4}'" ;;
@@ -596,7 +595,7 @@ function run_tests {
    export KUBE_CONTAINER_RUNTIME_ENDPOINT=unix:///run/containerd/containerd.sock
    export KUBE_CONTAINER_RUNTIME_NAME=containerd
 
-   ginkgo --nodes="${GINKGO_NUMBER_OF_NODES}" \
+   ${e2e_dir}/bin/ginkgo --nodes="${GINKGO_NUMBER_OF_NODES}" \
            --focus="${ginkgo_focus}" \
            --skip="${ginkgo_skip}" \
            "${e2e_test}" \
@@ -1004,7 +1003,7 @@ function main {
     #   None                                                                  #
     ###########################################################################
 
-    [ $# -eq 11 ]
+    [ $# -eq 12 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
@@ -1019,6 +1018,7 @@ function main {
     local erase_clusters="${9}"
     local print_report="${10}"
     local devel_mode="${11}"
+    local run_tests_on_existing_cluster="${12}"
 
     [ "${cluster_count}" -ge "1" ]
     if_error_exit "cluster_count must be larger or equal to one"
@@ -1040,6 +1040,15 @@ function main {
     echo "+==================================================================+"
     echo -e "\t\tStarting KPNG E2E testing"
     echo "+==================================================================+"
+    if [ "${run_tests_on_existing_cluster}" = true ] ; then
+        run_tests "${e2e_dir}${tmp_suffix}" "${bin_dir}/e2e.test" "false"
+        #need to clean this up
+       if [ "${ci_mode}" = false ] ; then
+          clean_artifacts "${e2e_dir}${tmp_suffix}"
+       fi
+
+       exit 1
+    fi
 
     # in ci this should fail
     if [ "${ci_mode}" = true ] ; then
@@ -1133,6 +1142,7 @@ function help {
     printf "\t-B binary directory, specifies the path for the directory where binaries will be installed\n"
     printf "\t-D Dockerfile, specifies the path of the Dockerfile to use\n"
     printf "\t-E set E2E directory, specifies the path for the E2E directory\n"
+    printf "\t-t Run tests on existing deployment\n"
     printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}"
     exit 1 # Exit script after printing help
 }
@@ -1147,8 +1157,9 @@ suffix=""
 cluster_count="1"
 erase_clusters=false
 print_report=false
+run_tests_on_existing_cluster=false
 
-while getopts "i:b:B:cdD:eE:n:ps:" flag
+while getopts "i:b:B:cdD:eE:n:ps:t" flag
 do
     case "${flag}" in
         i ) ip_family="${OPTARG}" ;;
@@ -1162,6 +1173,7 @@ do
         B ) bin_dir="${OPTARG}" ;;
         D ) dockerfile="${OPTARG}" ;;
         E ) e2e_dir="${OPTARG}" ;;
+        t ) run_tests_on_existing_cluster=true ;;
         ? ) help ;; #Print help
     esac
 done
@@ -1182,7 +1194,7 @@ fi
 
 if [[ -n "${ip_family}" && -n "${backend}" ]]; then
     main "${ip_family}" "${backend}" "${ci_mode}" "${e2e_dir}" "${bin_dir}" "${dockerfile}" \
-         "${suffix}" "${cluster_count}" "${erase_clusters}" "${print_report}" "${devel_mode}"
+         "${suffix}" "${cluster_count}" "${erase_clusters}" "${print_report}" "${devel_mode}" "${run_tests_on_existing_cluster}"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help
