@@ -22,7 +22,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"sigs.k8s.io/kpng/api/localnetv1"
-	"sigs.k8s.io/kpng/server/pkg/proxystore"
+	"sigs.k8s.io/kpng/server/proxystore"
 )
 
 type serviceEventHandler struct{ eventHandler }

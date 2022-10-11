@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+
 	"sigs.k8s.io/kpng/cmd/kpng/storecmds"
 
 	"github.com/spf13/cobra"
@@ -29,7 +30,7 @@ import (
 
 	// this depends on the kpng server to run the integrated app
 	"sigs.k8s.io/kpng/server/jobs/kube2store"
-	"sigs.k8s.io/kpng/server/pkg/proxystore"
+	"sigs.k8s.io/kpng/server/proxystore"
 )
 
 // FIXME separate package

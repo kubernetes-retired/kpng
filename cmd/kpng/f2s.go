@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"sigs.k8s.io/kpng/server/jobs/file2store"
-	"sigs.k8s.io/kpng/server/pkg/proxystore"
+	"sigs.k8s.io/kpng/server/proxystore"
 
 	"sigs.k8s.io/kpng/cmd/kpng/storecmds"
 )

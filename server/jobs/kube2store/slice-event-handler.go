@@ -23,7 +23,7 @@ import (
 	"k8s.io/klog/v2"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
+	proxystore "sigs.k8s.io/kpng/server/proxystore"
 )
 
 const hostNameLabel = "kubernetes.io/hostname"
