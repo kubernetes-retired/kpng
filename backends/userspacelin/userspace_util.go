@@ -120,10 +120,9 @@ func buildPortsToEndpointsMap(ep *localv1.Endpoint, svc *localv1.Service) map[st
 	portsToEndpoints := map[string][]string{}
 
 	for _, ip := range ep.IPs.GetV4() {
-		for _, port := range svc.Ports {
+		for _, port := range ep.PortOverrides {
 			if isValidEndpoint(ip, int(port.Port)) {
-				portsToEndpoints[port.Name] = append(portsToEndpoints[port.Name], net.JoinHostPort(ip, strconv.Itoa(int(port.TargetPort))))
-
+				portsToEndpoints[port.Name] = append(portsToEndpoints[port.Name], net.JoinHostPort(ip, strconv.Itoa(int(port.Port))))
 			}
 		}
 	}
