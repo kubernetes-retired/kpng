@@ -26,8 +26,8 @@ import (
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/server/jobs/store2diff"
 	"sigs.k8s.io/kpng/server/pkg/endpoints"
-	"sigs.k8s.io/kpng/server/pkg/proxystore"
 	"sigs.k8s.io/kpng/server/pkg/server/watchstate"
+	"sigs.k8s.io/kpng/server/proxystore"
 	"sigs.k8s.io/kpng/server/serde"
 )
 

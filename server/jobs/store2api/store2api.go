@@ -25,10 +25,10 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"sigs.k8s.io/kpng/client/tlsflags"
-	"sigs.k8s.io/kpng/server/pkg/proxystore"
 	"sigs.k8s.io/kpng/server/pkg/server"
 	"sigs.k8s.io/kpng/server/pkg/server/endpoints"
 	"sigs.k8s.io/kpng/server/pkg/server/global"
+	"sigs.k8s.io/kpng/server/proxystore"
 )
 
 type Config struct {

@@ -19,7 +19,7 @@ package global
 import (
 	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/server/jobs/store2globaldiff"
-	"sigs.k8s.io/kpng/server/pkg/proxystore"
+	"sigs.k8s.io/kpng/server/proxystore"
 )
 
 type Server struct {
