@@ -50,6 +50,24 @@ function pass_message {
     echo -e "[ ${GREEN}PASSED${ENDCOLOR} ] ${1}"
 }
 
+function info_message {
+    ###########################################################################
+    # Description:                                                            #
+    # show [INFO] in blue and a message as the validation passed.          #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   $1 - message to output                                                #
+    ###########################################################################
+    if [ -z "${1}" ]; then
+        echo "info_message() requires a message"
+        exit 1
+    fi
+    BLUE="\e[34m"
+    ENDCOLOR="\e[0m"
+    echo -e "[ ${BLUE}INFO${ENDCOLOR} ] ${1}"
+}
+
+
 function add_to_path {
     ###########################################################################
     # Description:                                                            #

@@ -14,6 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+if [[ $OSTYPE == 'darwin'* ]]; then
+  info_message "The kpng build script only works on linux... Exiting now!"
+  exit 1
+fi
 
 shopt -s expand_aliases
 
@@ -108,7 +112,7 @@ function container_build {
     #   arg2: ci_mode         #
     ###########################################################################
     [ $# -eq 2 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "container_build args $# Wrong number of arguments to ${FUNCNAME[0]}... args: $#"
 
     local CONTAINER_FILE=${1}
     local ci_mode=${2}
@@ -145,7 +149,7 @@ function setup_kind {
     #   arg1: installation directory, path to where kind will be installed     #
     ###########################################################################
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "setup_kind $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local install_directory=$1
 
@@ -154,7 +158,7 @@ function setup_kind {
 
 
     if ! [ -f "${install_directory}"/kind ] ; then
-        echo -e "\nDownloading kind ..."
+        info_message -e "\nDownloading kind ..."
 
         local tmp_file=$(mktemp -q)
         if_error_exit "Could not create temp file, mktemp failed"
@@ -180,7 +184,7 @@ function setup_kubectl {
     ###########################################################################
 
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "setup_kubectl $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local install_directory=$1
 
@@ -189,7 +193,7 @@ function setup_kubectl {
 
 
     if ! [ -f "${install_directory}"/kubectl ] ; then
-        echo -e "\nDownloading kubectl ..."
+        info_message -e "\nDownloading kubectl ..."
 
         local tmp_file=$(mktemp -q)
         if_error_exit "Could not create temp file, mktemp failed"
@@ -217,7 +221,7 @@ function setup_ginkgo {
     ###########################################################################
 
     [ $# -eq 3 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "ginkgo e2e.test $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local bin_directory=${1}
     local k8s_version=${2}
@@ -225,7 +229,7 @@ function setup_ginkgo {
     local temp_directory=$(mktemp -qd)
 
     if ! [ -f "${bin_directory}"/ginkgo ] || ! [ -f "${bin_directory}"/e2e.test ] ; then
-        echo -e "\nDownloading ginkgo and e2e.test ..."
+        info_message -e "\nDownloading ginkgo and e2e.test ..."
         curl -L https://dl.k8s.io/"${k8s_version}"/kubernetes-test-"${os}"-amd64.tar.gz \
             -o "${temp_directory}"/kubernetes-test-"${os}"-amd64.tar.gz
         if_error_exit "cannot download kubernetes-test package"
@@ -252,7 +256,7 @@ function setup_bpf2go() {
     ###########################################################################
 
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "bpf $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local install_directory=$1
 
@@ -268,7 +272,7 @@ function setup_bpf2go() {
         [ -d "${install_directory}" ]
         if_error_exit "Directory \"${install_directory}\" does not exist"
 	
-        echo "'bpf2go' not found, installing with 'go'"
+        info_message "'bpf2go' not found, installing with 'go'"
 	# set GOBIN to bin_directory to endure that binary is in search path
 	export GOBIN=${install_directory}
 	
@@ -291,7 +295,7 @@ function delete_kind_cluster {
     #   arg1: cluster name                                                    #
     ###########################################################################
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "delete kind $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local cluster_name="${1}"
 
@@ -315,7 +319,7 @@ function create_cluster {
     #   arg4: ci_mode                                                         #
     ###########################################################################
     [ $# -eq 4 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "create kind $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local cluster_name=${1}
     local ip_family=${2}
@@ -369,7 +373,7 @@ function create_cluster {
             ;;
     esac
 
-    echo -e "\nPreparing to setup ${cluster_name} cluster ..."
+    info_message -e "\nPreparing to setup ${cluster_name} cluster ..."
     # create cluster
     # create the config file
      cat <<EOF > "${artifacts_directory}/kind-config.yaml"
@@ -413,8 +417,8 @@ EOF
         local k8s_context="kind-${cluster_name}"
        # Get the current config
         local original_coredns=$(kubectl --context "${k8s_context}" get -oyaml -n=kube-system configmap/coredns)
-        echo "Original CoreDNS config:"
-        echo "${original_coredns}"
+        info_message "Original CoreDNS config:"
+        info_message "${original_coredns}"
         # Patch it
         local fixed_coredns=$(
         printf '%s' "${original_coredns}" | sed \
@@ -424,8 +428,8 @@ EOF
          -e '/^.*forward . \/etc\/resolv.conf$/d' \
          -e '/^.*loop$/d' \
         )
-        echo "Patched CoreDNS config:"
-        echo "${fixed_coredns}"
+        info_message "Patched CoreDNS config:"
+        info_message "${fixed_coredns}"
         printf '%s' "${fixed_coredns}" | kubectl --context "${k8s_context}" apply -f -
   fi
 
@@ -443,7 +447,7 @@ function wait_until_cluster_is_ready {
     ###########################################################################
 
     [ $# -eq 2 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "wait until cluster $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local cluster_name=${1}
     local ci_mode=${2}
@@ -479,7 +483,7 @@ function install_kpng {
     #   arg1: cluster name                                                    #
     ###########################################################################
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "install kpng Wrong number of arguments to ${FUNCNAME[0]}"
 
     local cluster_name=$1
     local k8s_context="kind-${cluster_name}"
@@ -520,9 +524,23 @@ function install_kpng {
     if_error_exit "error creating configmap ${CONFIG_MAP_NAME}"
     pass_message "Created configmap ${CONFIG_MAP_NAME}."
 
+    # TODO this is hacky we should build the KPNG args one level at a time...i.e 
+    # Data source + Flags -> KPNG sink + flags
+    E2E_SERVER_ARGS="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', 'to-api', '--listen=unix:///k8s/proxy.sock'"
     E2E_BACKEND_ARGS="'local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'"
+    
+    if [[ "$E2E_EXPORT_METRICS" == "true" ]]; then 
+        info_message "Enabling Metrics"
+        E2E_SERVER_ARGS="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', '--exportMetrics=0.0.0.0:9099', 'to-api', '--listen=unix:///k8s/proxy.sock'"
+        E2E_BACKEND_ARGS="'local', '--api=${KPNG_SERVER_ADDRESS}', '--exportMetrics=0.0.0.0:9098',  'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'"
+    fi
+
     if [[ "${E2E_DEPLOYMENT_MODEL}" == "single-process-per-node" ]]; then
         E2E_BACKEND_ARGS="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', 'to-local', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'"
+        if [[ "$E2E_EXPORT_METRICS" ]]; then
+            info_message "Enabling Metrics"
+            E2E_BACKEND_ARGS="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', '--exportMetrics=0.0.0.0:9099', 'to-local', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'"
+        fi
     fi
 
     if [[ "${E2E_BACKEND}" == "nft" ]]; then
@@ -533,6 +551,7 @@ function install_kpng {
         esac
     fi
     E2E_BACKEND_ARGS="[$E2E_BACKEND_ARGS]"
+    E2E_SERVER_ARGS="[$E2E_SERVER_ARGS]"
 
     # Setting vars for generate the kpng deployment based on template
     export kpng_image="${KPNG_IMAGE_TAG_NAME}" 
@@ -543,6 +562,7 @@ function install_kpng {
     export namespace="${NAMESPACE}" 
     export e2e_backend_args="${E2E_BACKEND_ARGS}"
     export deployment_model="${E2E_DEPLOYMENT_MODEL}"
+    export e2e_server_args="${E2E_SERVER_ARGS}"
     go run "${SCRIPT_DIR}"/kpng-ds-yaml-gen.go "${SCRIPT_DIR}"/kpng-deployment-ds-template.txt  "${artifacts_directory}"/kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 
@@ -567,7 +587,7 @@ function run_tests {
      ###########################################################################
 
     [ $# -eq 3 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "exec tests $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
     local e2e_test="${2}"
@@ -601,7 +621,7 @@ function run_tests {
    export KUBE_CONTAINER_RUNTIME_ENDPOINT=unix:///run/containerd/containerd.sock
    export KUBE_CONTAINER_RUNTIME_NAME=containerd
 
-   ginkgo --nodes="${GINKGO_NUMBER_OF_NODES}" \
+   ${e2e_dir}/bin/ginkgo --nodes="${GINKGO_NUMBER_OF_NODES}" \
            --focus="${ginkgo_focus}" \
            --skip="${ginkgo_skip}" \
            "${e2e_test}" \
@@ -623,7 +643,7 @@ function clean_artifacts {
     ###########################################################################
 
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "clean artifacts $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
     local log_dir="${E2E_LOGS:-${e2e_dir}/artifacts/logs}"
@@ -649,7 +669,7 @@ function verify_sysctl_setting {
     #   arg2: value                                                           #
     ###########################################################################
     [ $# -eq 2 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "sysctl $# Wrong number of arguments to ${FUNCNAME[0]}"
     local attribute="${1}"
     local value="${2}"
     local result=$(sysctl -n  "${attribute}")
@@ -662,6 +682,7 @@ function verify_sysctl_setting {
 }
 
 function set_sysctl {
+    info_message "Setting sysctls"
     ###########################################################################
     # Description:                                                            #
     # Set a sysctl attribute to value                                         #
@@ -671,14 +692,15 @@ function set_sysctl {
     #   arg2: value                                                           #
     ###########################################################################
     [ $# -eq 2 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "set_sysctl $# Wrong number of arguments to ${FUNCNAME[0]}"
     local attribute="${1}"
     local value="${2}"
     local result=$(sysctl -n  "${attribute}")
     if_error_exit "\"sysctl -n ${attribute}\" failed"
 
+    info_message "checking sysctls $value vs $result"
     if [ ! "${value}" -eq "${result}" ] ; then
-       echo "Setting: \"sysctl -w ${attribute}=${value}\""
+       info_message "Setting: \"sysctl -w ${attribute}=${value}\""
        sudo sysctl -w  "${attribute}"="${value}"
        if_error_exit "\"sudo sysctl -w  ${attribute} = ${value}\" failed"
     fi
@@ -693,7 +715,7 @@ function verify_host_network_settings {
      #   arg1: ip_family                                                       #
      ###########################################################################
      [ $# -eq 1 ]
-     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+     if_error_exit "verify_host $# Wrong number of arguments to ${FUNCNAME[0]}"
      local ip_family="${1}"
 
      verify_sysctl_setting net.ipv4.ip_forward 1
@@ -715,7 +737,7 @@ function set_host_network_settings {
     #   arg1: ip_family                                                       #
     ###########################################################################
      [ $# -eq 1 ]
-     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+     if_error_exit "set_host $# Wrong number of arguments to ${FUNCNAME[0]}"
      local ip_family="${1}"
 
      set_sysctl net.ipv4.ip_forward 1
@@ -736,7 +758,7 @@ function add_to_path {
     #   arg1:  directory                                                      #
     ###########################################################################
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "add_to $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local directory="${1}"
 
@@ -761,7 +783,7 @@ function install_binaries {
     ###########################################################################
 
     [ $# -eq 3 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "copybin $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local bin_directory="${1}"
     local k8s_version="${2}"
@@ -790,7 +812,7 @@ function set_e2e_dir {
     ###########################################################################
 
     [ $# -eq 2 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "set e2e $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
     local bin_dir="${2}"
@@ -815,7 +837,7 @@ function prepare_container {
     ###########################################################################
 
     [ $# -eq 2 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "prepare_cont $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local dockerfile="${1}"
     local ci_mode="${2}"
@@ -854,10 +876,10 @@ function create_infrastructure_and_run_tests {
     #   arg6: developer_mode                                                  #
     #   arg7: <ci_mode>                                                       #
     #   arg8: deployment_model                                                #
+    #   arg9: export_metrics                                                  #
     ###########################################################################
-
-    [ $# -eq 8 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    [ $# -eq 9 ]
+    if_error_exit "create and run $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
     local ip_family="${2}"
@@ -867,6 +889,7 @@ function create_infrastructure_and_run_tests {
     local devel_mode="${6}"
     local ci_mode="${7}"
     local deployment_model="${8}"
+    local export_metrics="${9}"
 
     local artifacts_directory="${e2e_dir}/artifacts"
     local cluster_name="kpng-e2e-${ip_family}-${backend}${suffix}"
@@ -877,8 +900,8 @@ function create_infrastructure_and_run_tests {
     export E2E_IP_FAMILY="${ip_family}"
     export E2E_BACKEND="${backend}"
     export E2E_DIR="${e2e_dir}"
-    export E2E_ARTIFACTS="${artifacts_directory}"
     export E2E_DEPLOYMENT_MODEL="${deployment_model}"
+    export E2E_EXPORT_METRICS="${export_metrics}"
 
     [ -d "${artifacts_directory}" ]
     if_error_exit "Directory \"${artifacts_directory}\" does not exist"
@@ -886,12 +909,12 @@ function create_infrastructure_and_run_tests {
     [ -f "${e2e_test}" ]
     if_error_exit "File \"${e2e_test}\" does not exist"
 
-    echo "${cluster_name}"
+    info_message "${cluster_name}"
 
     create_cluster "${cluster_name}" "${ip_family}" "${artifacts_directory}" "${ci_mode}"
     wait_until_cluster_is_ready "${cluster_name}" "${ci_mode}"
 
-    echo "${cluster_name}" > "${e2e_dir}"/clustername
+    info_message "${cluster_name}" > "${e2e_dir}"/clustername
 
     if [ "${backend}" != "not-kpng" ] ; then
         install_kpng "${cluster_name}"
@@ -923,7 +946,7 @@ function delete_kind_clusters {
     echo "+==================================================================+"
 
     [ $# -eq 5 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "Erase kind $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
     local bin_directory="${1}"
@@ -964,7 +987,7 @@ function print_reports {
     ###########################################################################
 
     [ $# -eq 5 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "create infra + run $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
     local ip_family="${1}"
@@ -984,11 +1007,11 @@ function print_reports {
        local test_directory="${e2e_directory}${suffix}${i}"
 
        if ! [ -d "${test_directory}" ] ; then
-          echo "directory \"${test_directory}\" not found, skipping"
+          info_message "directory \"${test_directory}\" not found, skipping"
           continue
        fi
 
-       echo -e "Summary report from cluster \"${i}\" in directory: \"${test_directory}\""
+       info_message -e "Summary report from cluster \"${i}\" in directory: \"${test_directory}\""
        local output_file="${test_directory}/output.log"
        cat "${output_file}" >> "${combined_output_file}"
 
@@ -1012,7 +1035,7 @@ function main {
     #   None                                                                  #
     ###########################################################################
 
-    [ $# -eq 12 ]
+    [ $# -eq 14 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
@@ -1028,6 +1051,8 @@ function main {
     local print_report="${10}"
     local devel_mode="${11}"
     local deployment_model="${12}"
+    local run_tests_on_existing_cluster="${13}"
+    local export_metrics="${14}"
 
     [ "${cluster_count}" -ge "1" ]
     if_error_exit "cluster_count must be larger or equal to one"
@@ -1049,12 +1074,21 @@ function main {
     echo "+==================================================================+"
     echo -e "\t\tStarting KPNG E2E testing"
     echo "+==================================================================+"
+    if [ "${run_tests_on_existing_cluster}" = true ] ; then
+        run_tests "${e2e_dir}${tmp_suffix}" "${bin_dir}/e2e.test" "false"
+        #need to clean this up
+       if [ "${ci_mode}" = false ] ; then
+          clean_artifacts "${e2e_dir}${tmp_suffix}"
+       fi
+
+       exit 1
+    fi
 
     # in ci this should fail
     if [ "${ci_mode}" = true ] ; then
         # REMOVE THIS comment out ON THE REPO WITH A PR WHEN LOCAL TESTS ARE ALL GREEN
         # set -e
-        echo "this tests can't fail now in ci"
+        info_message "this tests can't fail now in ci"
     fi
     set_host_network_settings "${ip_family}"
 
@@ -1085,7 +1119,7 @@ function main {
     if [ "${cluster_count}" -eq "1" ] ; then
         local tmp_suffix=${suffix:+"-${suffix}"}
         create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
-              "${bin_dir}/e2e.test" "${tmp_suffix}" "${devel_mode}" "${ci_mode}" "${deployment_model}"
+              "${bin_dir}/e2e.test" "${tmp_suffix}" "${devel_mode}" "${ci_mode}" "${deployment_model}" "${export_metrics}"
     else
         local pids
 
@@ -1143,8 +1177,10 @@ function help {
     printf "\t-D Dockerfile, specifies the path of the Dockerfile to use\n"
     printf "\t-E set E2E directory, specifies the path for the E2E directory\n"
     printf "\t-m set the KPNG deployment model, can either be: \n\
-            * split-process-per-node [legacy/default] -> (To run KPNG server + client in separate containers/processes per node)
-            * single-process-per-node -> (To run KPNG server + client in a single container/process per node)"
+            * split-process-per-node [legacy/debug] -> (To run KPNG server + client in separate containers/processes per node)
+            * single-process-per-node [default] -> (To run KPNG server + client in a single container/process per node)"
+    printf "\t-t Run tests on existing deployment\n"
+    printf "\t-M Configure kpng to export prometheus metrics\n"
     printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}"
     exit 1 # Exit script after printing help
 }
@@ -1160,8 +1196,9 @@ cluster_count="1"
 erase_clusters=false
 print_report=false
 deployment_model="single-process-per-node"
+export_metrics=false
 
-while getopts "i:b:B:cdD:eE:n:ps:m:" flag
+while getopts "i:b:B:cdD:eE:n:ps:mt:M" flag
 do
     case "${flag}" in
         i ) ip_family="${OPTARG}" ;;
@@ -1176,6 +1213,8 @@ do
         D ) dockerfile="${OPTARG}" ;;
         E ) e2e_dir="${OPTARG}" ;;
         m ) deployment_model="${OPTARG}" ;;
+        t ) run_tests_on_existing_cluster=true ;;
+        M ) export_metrics=true ;; 
         ? ) help ;; #Print help
     esac
 done
@@ -1196,7 +1235,8 @@ fi
 
 if [[ -n "${ip_family}" && -n "${backend}" ]]; then
     main "${ip_family}" "${backend}" "${ci_mode}" "${e2e_dir}" "${bin_dir}" "${dockerfile}" \
-         "${suffix}" "${cluster_count}" "${erase_clusters}" "${print_report}" "${devel_mode}" "${deployment_model}"
+         "${suffix}" "${cluster_count}" "${erase_clusters}" "${print_report}" "${devel_mode}" \
+         "${deployment_model}" "${run_tests_on_existing_cluster}" "${export_metrics}"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help

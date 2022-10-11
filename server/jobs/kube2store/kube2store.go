@@ -34,6 +34,8 @@ import (
 )
 
 type Config struct {
+	UseSlices     bool
+
 	ServiceProxyName string
 
 	ServiceLabelGlobs      []string
@@ -96,7 +98,7 @@ func (j Job) Run(ctx context.Context) {
 	slicesInformer.AddEventHandler(&sliceEventHandler{j.eventHandler(slicesInformer)})
 	go slicesInformer.Run(stopCh)
 
-	_, _ = <-stopCh
+	<-stopCh
 	j.Store.Close()
 }
 

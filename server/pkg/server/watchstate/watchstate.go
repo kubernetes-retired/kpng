@@ -25,6 +25,7 @@ import (
 
 	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/client/lightdiffstore"
+	"sigs.k8s.io/kpng/server/pkg/metrics"
 )
 
 type WatchState struct {
@@ -109,6 +110,7 @@ func (w *WatchState) send(item *localnetv1.OpItem) {
 	if w.Err != nil {
 		return
 	}
+	metrics.Kpng_node_local_events.Inc()
 	err := w.res.Send(item)
 	if err != nil {
 		w.Err = grpc.Errorf(codes.Aborted, "send error: %v", err)

@@ -23,7 +23,9 @@ import (
 	"os"
 	"runtime/pprof"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
+	"sigs.k8s.io/kpng/server/pkg/metrics"
 
 	"k8s.io/klog/v2"
 
@@ -31,8 +33,10 @@ import (
 )
 
 var (
-	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
-	version    = "(unknown)"
+	cpuprofile    = flag.String("cpuprofile", "", "write cpu profile to file")
+	exportMetrics = flag.String("exportMetrics", "", "start metrics server on the specified IP:PORT")
+
+	version = "(unknown)"
 )
 
 func main() {
@@ -59,6 +63,13 @@ func main() {
 
 func setupGlobal() (ctx context.Context) {
 	ctx, cancel := context.WithCancel(context.Background())
+
+	if len(*exportMetrics) != 0 {
+		prometheus.MustRegister(metrics.Kpng_k8s_api_events)
+		prometheus.MustRegister(metrics.Kpng_node_local_events)
+		klog.Infof("exporting metrics to: %v ", *exportMetrics)
+		metrics.StartMetricsServer(*exportMetrics, ctx.Done())
+	}
 
 	// handle exit signals
 	go func() {

@@ -25,6 +25,7 @@ import (
 	"k8s.io/klog/v2"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/server/pkg/metrics"
 	"sigs.k8s.io/kpng/server/serde"
 )
 
@@ -71,6 +72,8 @@ func (s *Store) Close() {
 func (s *Store) Update(update func(tx *Tx)) {
 	s.Lock()
 	defer s.Unlock()
+
+	metrics.Kpng_k8s_api_events.Inc()
 
 	tx := &Tx{s: s}
 	update(tx)

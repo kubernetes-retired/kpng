@@ -50,7 +50,7 @@ spec:
         env:
         - name: GOLANG_PROTOBUF_REGISTRATION_CONFLICT
           value: warn
-        name: kpng-{{.Backend }}
+        name: kpng-{{ .Backend }}
         securityContext:
             privileged: true
         volumeMounts:
@@ -85,13 +85,7 @@ spec:
           mountPath: /k8s
         - mountPath: /var/lib/kpng
           name: kpng-config
-        args:
-        - kube
-        # In-cluster config won't work here since we can't use the K8s Service to
-        # talk to the APIserver since KPNG implements that service
-        - --kubeconfig=/var/lib/kpng/kubeconfig.conf
-        - to-api
-        - --listen=unix:///k8s/proxy.sock
+        args: {{ .E2eServerArgs }}
       - image: {{ .KpngImage }}
         imagePullPolicy: {{ .ImagePullPolicy }}
         env:
@@ -118,7 +112,6 @@ spec:
           mountPropagation: HostToContainer
         {{- end }}
         args: {{ .E2eBackendArgs }}
-        #- --dry-run
       {{- end }}
       volumes:
       - name: empty
