@@ -12,14 +12,17 @@ require (
 	k8s.io/apiserver v0.25.0
 	k8s.io/klog/v2 v2.70.1
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
-	sigs.k8s.io/kpng/api v0.0.0-20220521134046-f747cedbe766
+	sigs.k8s.io/kpng/api v0.0.0-20220824013548-88b8a1d9bc62
 	sigs.k8s.io/kpng/backends/iptables v0.0.0-20220824013548-88b8a1d9bc62
+	sigs.k8s.io/kpng/client v0.0.0-20221011133104-469299451522
 )
 
 require (
+	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/google/btree v1.0.1 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
