@@ -1,0 +1,6 @@
+#! /bin/sh
+
+set -ex
+
+protoc -I ./ --go_out=paths=source_relative:. --go-grpc_out=paths=source_relative:. $(find api/ -name '*.proto')
+

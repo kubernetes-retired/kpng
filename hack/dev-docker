@@ -1,0 +1,6 @@
+#! /bin/sh
+
+image=kpng-dev-env
+
+docker build -t $image hack/docker-dev-env
+exec docker run --rm -it -v kpng-dev-go:/go -v kpng-dev-home:/home/user -v $PWD:/src $image $(id -u) "$@"
