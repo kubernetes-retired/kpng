@@ -35,12 +35,16 @@ jobs:
       fail-fast: false
       matrix:
         ipFamily: ["ipv4", "ipv6", "dual"]
-        backend: ["iptables", "nft", "ipvs", "ebpf"]
+        backend: ["iptables", "nft", "ipvs", "ebpf", "userspacelin"]
         exclude: 
           - ipFamily: "ipv6"
             backend: "ebpf"
           - ipFamily: "dual"
             backend: "ebpf"
+          - ipFamily: "ipv6"
+            backend: "userspacelin"
+          - ipFamily: "dual"
+            backend: "userspacelin"
     env:
       JOB_NAME: "kpng-e2e-${{ matrix.ipFamily }}-${{ matrix.backend }}"
       IP_FAMILY: ${{ matrix.ipFamily }}
