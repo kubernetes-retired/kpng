@@ -27,10 +27,11 @@ type KnpgDameonSetData struct {
 	ServiceAccountName string
 	ImagePullPolicy    string
 	IsEbpfBackend      bool
-	KpngImgage         string
+	KpngImage          string
 	Backend            string
 	E2eBackendArgs     string
 	ConfigMapName      string
+	Deployment_model   string
 }
 
 func main() {
@@ -51,10 +52,11 @@ func main() {
 		ServiceAccountName: os.Getenv("service_account_name"),
 		ImagePullPolicy:    os.Getenv("image_pull_policy"),
 		IsEbpfBackend:      os.Getenv("backend") == "ebpf",
-		KpngImgage:         os.Getenv("kpng_image"),
+		KpngImage:          os.Getenv("kpng_image"),
 		Backend:            os.Getenv("backend"),
 		E2eBackendArgs:     os.Getenv("e2e_backend_args"),
 		ConfigMapName:      os.Getenv("config_map_name"),
+		Deployment_model:   os.Getenv("deployment_model"),
 	}
 
 	f, err := os.Create(yamlDestPath)
