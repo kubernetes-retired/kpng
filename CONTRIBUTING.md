@@ -1,5 +1,19 @@
 # Contributing to KPNG
 
+## Change something and see if it works
+
+Just run
+```
+make test
+```
+
+Then try running:
+```
+./test_e2e.sh -i ipv4 -b iptables
+```
+
+you'll see a running kind cluster, and you can see what conformance and sig-net tests pass/fail.
+
 ## Join the team
 
 Since KPNG has a very lofty goal, replacing the kube-proxy, working together is important.
