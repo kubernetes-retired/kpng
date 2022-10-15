@@ -19,7 +19,7 @@ package kube2store
 import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	proxystore "sigs.k8s.io/kpng/server/proxystore"
+	"sigs.k8s.io/kpng/server/proxystore"
 )
 
 type eventHandler struct {
