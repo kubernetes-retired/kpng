@@ -17,10 +17,10 @@ limitations under the License.
 package global
 
 import (
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/kpng/api/localnetv1"
 	"sigs.k8s.io/kpng/server/jobs/store2globaldiff"
-	"sigs.k8s.io/kpng/server/pkg/proxystore"
-	"k8s.io/klog/v2"
+	"sigs.k8s.io/kpng/server/proxystore"
 )
 
 type Server struct {
@@ -40,7 +40,6 @@ func (s *Server) Watch(res localnetv1.Global_WatchServer) error {
 		Store: s.Store,
 		Sink:  w,
 	}
-
 
 	return job.Run(res.Context())
 }

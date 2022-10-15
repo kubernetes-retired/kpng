@@ -18,7 +18,10 @@
 #
 MIN_GO_VERSION="1.18"
 
+echo "go_version"
 go_version=$(go version | { read _ _ v _; echo ${v#go}; })
+
+echo "$?"
 if [ "$?" != "0" ]; then
     echo "go is required"
     exit 1
@@ -29,6 +32,8 @@ if expr "${go_version}" '<' "${MIN_GO_VERSION}" 1>/dev/null; then
     exit 1
 fi
 
-for f in $(find -name go.mod); do
+echo "tidying..."
+for f in $(find ./ -name go.mod); do
+    echo "$f"
     (cd $(dirname $f) && go mod tidy -compat="${MIN_GO_VERSION}");
 done
