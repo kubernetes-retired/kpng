@@ -61,6 +61,7 @@ func main() {
 }
 
 func setupGlobal() (ctx context.Context) {
+	ctx = context.Background()
 	stopCh := ctx.Done()
 
 	if *exportMetrics {
