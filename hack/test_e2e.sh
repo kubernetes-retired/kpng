@@ -1222,11 +1222,7 @@ fi
 
 if [[ -n "${ip_family}" && -n "${backend}" ]]; then
     main "${ip_family}" "${backend}" "${ci_mode}" "${e2e_dir}" "${bin_dir}" "${dockerfile}" \
-<<<<<<< HEAD
-         "${suffix}" "${cluster_count}" "${erase_clusters}" "${print_report}" "${devel_mode}" "${deployment_model}"
-=======
-         "${suffix}" "${cluster_count}" "${erase_clusters}" "${print_report}" "${devel_mode}" "${run_tests_on_existing_cluster}"
->>>>>>> stoyocos/add-metrics
+         "${suffix}" "${cluster_count}" "${erase_clusters}" "${print_report}" "${devel_mode}" "${deployment_model}" "${run_tests_on_existing_cluster}"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help
