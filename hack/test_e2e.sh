@@ -14,6 +14,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+if [[ $OSTYPE == 'darwin'* ]]; then
+  echo "The kpng build script only works on linux... Exiting now!"
+  exit 1
+fi
+
 shopt -s expand_aliases
 
 : "${E2E_GO_VERSION:="1.18.4"}"
@@ -668,6 +674,7 @@ function verify_sysctl_setting {
 }
 
 function set_sysctl {
+    echo "Setting sysctls"
     ###########################################################################
     # Description:                                                            #
     # Set a sysctl attribute to value                                         #
@@ -683,6 +690,7 @@ function set_sysctl {
     local result=$(sysctl -n  "${attribute}")
     if_error_exit "\"sysctl -n ${attribute}\" failed"
 
+    echo "checking sysctls $value vs $result"
     if [ ! "${value}" -eq "${result}" ] ; then
        echo "Setting: \"sysctl -w ${attribute}=${value}\""
        sudo sysctl -w  "${attribute}"="${value}"
