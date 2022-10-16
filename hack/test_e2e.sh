@@ -107,7 +107,7 @@ function container_build {
     #   arg2: ci_mode         #
     ###########################################################################
     [ $# -eq 2 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}... $#"
+    if_error_exit "container_build args $# Wrong number of arguments to ${FUNCNAME[0]}... args: $#"
 
     local CONTAINER_FILE=${1}
     local ci_mode=${2}
@@ -144,7 +144,7 @@ function setup_kind {
     #   arg1: installation directory, path to where kind will be installed     #
     ###########################################################################
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "setup_kind $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local install_directory=$1
 
@@ -179,7 +179,7 @@ function setup_kubectl {
     ###########################################################################
 
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "setup_kubectl $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local install_directory=$1
 
@@ -216,7 +216,7 @@ function setup_ginkgo {
     ###########################################################################
 
     [ $# -eq 3 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "ginkgo e2e.test $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local bin_directory=${1}
     local k8s_version=${2}
@@ -251,7 +251,7 @@ function setup_bpf2go() {
     ###########################################################################
 
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "bpf $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local install_directory=$1
 
@@ -290,7 +290,7 @@ function delete_kind_cluster {
     #   arg1: cluster name                                                    #
     ###########################################################################
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "delete kind $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local cluster_name="${1}"
 
@@ -321,7 +321,7 @@ function create_cluster {
     #   arg4: ci_mode                                                         #
     ###########################################################################
     [ $# -eq 4 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "create kind $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local cluster_name=${1}
     local ip_family=${2}
@@ -449,7 +449,7 @@ function wait_until_cluster_is_ready {
     ###########################################################################
 
     [ $# -eq 2 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "wait until cluster $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local cluster_name=${1}
     local ci_mode=${2}
@@ -485,7 +485,7 @@ function install_kpng {
     #   arg1: cluster name                                                    #
     ###########################################################################
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "install kpng Wrong number of arguments to ${FUNCNAME[0]}"
 
     local cluster_name=$1
     local k8s_context="kind-${cluster_name}"
@@ -573,7 +573,7 @@ function run_tests {
      ###########################################################################
 
     [ $# -eq 3 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "exec tests $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
     local e2e_test="${2}"
@@ -629,7 +629,7 @@ function clean_artifacts {
     ###########################################################################
 
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "clean artifacts $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
     local log_dir="${E2E_LOGS:-${e2e_dir}/artifacts/logs}"
@@ -655,7 +655,7 @@ function verify_sysctl_setting {
     #   arg2: value                                                           #
     ###########################################################################
     [ $# -eq 2 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "sysctl $# Wrong number of arguments to ${FUNCNAME[0]}"
     local attribute="${1}"
     local value="${2}"
     local result=$(sysctl -n  "${attribute}")
@@ -677,7 +677,7 @@ function set_sysctl {
     #   arg2: value                                                           #
     ###########################################################################
     [ $# -eq 2 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "set_sysctl $# Wrong number of arguments to ${FUNCNAME[0]}"
     local attribute="${1}"
     local value="${2}"
     local result=$(sysctl -n  "${attribute}")
@@ -699,7 +699,7 @@ function verify_host_network_settings {
      #   arg1: ip_family                                                       #
      ###########################################################################
      [ $# -eq 1 ]
-     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+     if_error_exit "verify_host $# Wrong number of arguments to ${FUNCNAME[0]}"
      local ip_family="${1}"
 
      verify_sysctl_setting net.ipv4.ip_forward 1
@@ -721,7 +721,7 @@ function set_host_network_settings {
     #   arg1: ip_family                                                       #
     ###########################################################################
      [ $# -eq 1 ]
-     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+     if_error_exit "set_host $# Wrong number of arguments to ${FUNCNAME[0]}"
      local ip_family="${1}"
 
      set_sysctl net.ipv4.ip_forward 1
@@ -742,7 +742,7 @@ function add_to_path {
     #   arg1:  directory                                                      #
     ###########################################################################
     [ $# -eq 1 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "add_to $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local directory="${1}"
 
@@ -767,7 +767,7 @@ function install_binaries {
     ###########################################################################
 
     [ $# -eq 3 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "copybin $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local bin_directory="${1}"
     local k8s_version="${2}"
@@ -796,7 +796,7 @@ function set_e2e_dir {
     ###########################################################################
 
     [ $# -eq 2 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "set e2e $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
     local bin_dir="${2}"
@@ -821,7 +821,7 @@ function prepare_container {
     ###########################################################################
 
     [ $# -eq 2 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "prepare_cont $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local dockerfile="${1}"
     local ci_mode="${2}"
@@ -863,7 +863,7 @@ function create_infrastructure_and_run_tests {
     ###########################################################################
 
     [ $# -eq 8 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "create and run $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
     local ip_family="${2}"
@@ -929,7 +929,7 @@ function delete_kind_clusters {
     echo "+==================================================================+"
 
     [ $# -eq 5 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "Erase kind $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
     local bin_directory="${1}"
@@ -970,7 +970,7 @@ function print_reports {
     ###########################################################################
 
     [ $# -eq 5 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "create infra + run $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
     local ip_family="${1}"
@@ -1018,8 +1018,8 @@ function main {
     #   None                                                                  #
     ###########################################################################
 
-    [ $# -eq 12 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    [ $# -eq 13 ]
+    if_error_exit "main $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
     local ip_family="${1}"
