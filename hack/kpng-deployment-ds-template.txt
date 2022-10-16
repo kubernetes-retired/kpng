@@ -90,6 +90,7 @@ spec:
         # In-cluster config won't work here since we can't use the K8s Service to
         # talk to the APIserver since KPNG implements that service
         - --kubeconfig=/var/lib/kpng/kubeconfig.conf
+        - --exportMetrics
         - to-api
         - --listen=unix:///k8s/proxy.sock
       - image: {{ .KpngImage }}

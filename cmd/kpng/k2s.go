@@ -35,9 +35,10 @@ import (
 
 // FIXME separate package
 var (
-	kubeConfig string
-	kubeServer string
-	k2sCfg     = &kube2store.Config{}
+	kubeConfig    string
+	kubeServer    string
+	k2sCfg        = &kube2store.Config{}
+	exportMetrics bool
 )
 
 func kube2storeCmd() *cobra.Command {
