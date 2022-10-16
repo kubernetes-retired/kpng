@@ -23,21 +23,23 @@ import (
 )
 
 type eventHandler struct {
-	config   *Config
-	s        *proxystore.Store
-	informer cache.SharedIndexInformer
-	syncSet  bool
+	config    *Config
+	s         *proxystore.Store
+	informer  cache.SharedIndexInformer
+	isSyncSet bool
 }
 
 func (h *eventHandler) updateSync(set proxystore.Set, tx *proxystore.Tx) {
 
-	klog.Info("updateSync")
-	if h.syncSet {
+	if h.isSyncSet {
+		// this happens 5x a second, so definetly V(2)
+		klog.V(2).Info("updateSync: Skipping")
 		return
 	}
 
 	if h.informer.HasSynced() {
+		klog.V(2).Info("updateSync: Skipping")
 		tx.SetSync(set)
-		h.syncSet = true
+		h.isSyncSet = true
 	}
 }
