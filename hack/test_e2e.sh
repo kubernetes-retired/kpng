@@ -526,9 +526,9 @@ function install_kpng {
     if_error_exit "error creating configmap ${CONFIG_MAP_NAME}"
     pass_message "Created configmap ${CONFIG_MAP_NAME}."
 
-    E2E_BACKEND_ARGS="'local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'", '--exportMetrics',
+    E2E_BACKEND_ARGS="'local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}', '--exportMetrics',"
     if [[ "${E2E_DEPLOYMENT_MODEL}" == "single-process-per-node" ]]; then
-        E2E_BACKEND_ARGS="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', 'to-local', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'"
+        E2E_BACKEND_ARGS="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', 'to-local', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}', --exportMetrics"
     fi
 
     if [[ "${E2E_BACKEND}" == "nft" ]]; then
