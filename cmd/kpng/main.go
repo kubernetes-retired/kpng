@@ -33,7 +33,7 @@ import (
 
 var (
 	cpuprofile    = flag.String("cpuprofile", "", "write cpu profile to file")
-	exportMetrics = flag.Bool("exportMetrics", true, "export metrics")
+	exportMetrics = flag.Int("exportMetrics", 9090, "export metrics")
 
 	version = "(unknown)"
 )

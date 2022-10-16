@@ -63,8 +63,7 @@ func (c *Config) BindFlags(flags *pflag.FlagSet) {
 		"kubernetes.io/hostname", "topology.kubernetes.io/zone", "topology.kubernetes.io/region",
 	}, "node labels to include")
 	flags.StringSliceVar(&c.NodeAnnotationGlobs, "with-node-annotations", nil, "node annotations to include")
-	flags.BoolVar(&c.ExportMetrics, "exportMetrics", false, "Wether or start metrics server")
-
+	// flags.BoolVar(&c.ExportMetrics, "exportMetrics", false, "Wether or start metrics server")
 }
 
 type Job struct {

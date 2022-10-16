@@ -40,17 +40,16 @@ import (
 //
 // Simplest usage:
 //
-//     type MySink struct {
-//         api2local.Config
-//     }
-//
+//	type MySink struct {
+//	    api2local.Config
+//	}
 type Config struct {
 	NodeName      string
 	ExportMetrics bool
 }
 
 func (c *Config) BindFlags(flags *pflag.FlagSet) {
-	flags.BoolVar(&c.ExportMetrics, "exportMetrics", false, "Wether or start metrics server")
+	//flags.BoolVar(&c.ExportMetrics, "exportMetrics", false, "Wether or start metrics server")
 	flags.StringVar(&c.NodeName, "node-name", "", "Node name override")
 }
 
