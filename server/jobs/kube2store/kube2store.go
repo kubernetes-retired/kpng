@@ -20,8 +20,6 @@ import (
 	"context"
 	"time"
 
-	"sigs.k8s.io/kpng/server/pkg/metrics"
-
 	"github.com/spf13/pflag"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,7 +29,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	"github.com/prometheus/client_golang/prometheus"
 
 	proxystore "sigs.k8s.io/kpng/server/proxystore"
 )
@@ -79,12 +76,6 @@ type Job struct {
 func (j Job) Run(ctx context.Context) {
 	stopCh := ctx.Done()
 	// Start prometheus metrics server
-
-	if j.Config.ExportMetrics {
-		prometheus.MustRegister(metrics.Kpng_k8s_api_events)
-		// Starts server side kube metrics server
-		metrics.StartMetricsServer("0.0.0.0:2112", stopCh)
-	}
 
 	// start informers
 	factory := informers.NewSharedInformerFactoryWithOptions(j.Kube, time.Second*30)

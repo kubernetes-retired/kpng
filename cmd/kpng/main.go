@@ -20,20 +20,22 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/spf13/cobra"
 	"os"
 	"runtime/pprof"
-
-	"github.com/spf13/cobra"
+	"sigs.k8s.io/kpng/server/pkg/metrics"
 
 	"k8s.io/klog/v2"
 
 	"sigs.k8s.io/kpng/server/pkg/proxy"
-
 )
 
 var (
-	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
-	version    = "(unknown)"
+	cpuprofile    = flag.String("cpuprofile", "", "write cpu profile to file")
+	exportMetrics = flag.Bool("exportMetrics", true, "export metrics")
+
+	version = "(unknown)"
 )
 
 func main() {
@@ -59,6 +61,15 @@ func main() {
 }
 
 func setupGlobal() (ctx context.Context) {
+	stopCh := ctx.Done()
+
+	if *exportMetrics {
+		prometheus.MustRegister(metrics.Kpng_k8s_api_events)
+		klog.Info("export metrics")
+		// TODO this stop channel doesnt do anything...
+		metrics.StartMetricsServer("0.0.0.0:9090", stopCh)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// handle exit signals
