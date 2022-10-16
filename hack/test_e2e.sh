@@ -526,15 +526,11 @@ function install_kpng {
     if_error_exit "error creating configmap ${CONFIG_MAP_NAME}"
     pass_message "Created configmap ${CONFIG_MAP_NAME}."
 
-<<<<<<< HEAD
-    E2E_BACKEND_ARGS="'local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'"
+    E2E_BACKEND_ARGS="'local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'", '--exportMetrics',
     if [[ "${E2E_DEPLOYMENT_MODEL}" == "single-process-per-node" ]]; then
         E2E_BACKEND_ARGS="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', 'to-local', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'"
     fi
 
-=======
-    E2E_BACKEND_ARGS="'local', '--api=${KPNG_SERVER_ADDRESS}', '--exportMetrics', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'"
->>>>>>> stoyocos/add-metrics
     if [[ "${E2E_BACKEND}" == "nft" ]]; then
         case $ip_family in
             ipv4 ) E2E_BACKEND_ARGS="$E2E_BACKEND_ARGS, '--cluster-cidrs=${CLUSTER_CIDR_V4}'" ;;
