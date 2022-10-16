@@ -64,11 +64,11 @@ func setupGlobal() (ctx context.Context) {
 	ctx = context.Background()
 	stopCh := ctx.Done()
 
-	if *exportMetrics {
+	if *exportMetrics != 0 {
 		prometheus.MustRegister(metrics.Kpng_k8s_api_events)
-		klog.Info("export metrics")
+		klog.Infof("export metrics %v ", exportMetrics)
 		// TODO this stop channel doesnt do anything...
-		metrics.StartMetricsServer("0.0.0.0:9090", stopCh)
+		metrics.StartMetricsServer(fmt.Sprintf("0.0.0.0:%v", exportMetrics), stopCh)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
