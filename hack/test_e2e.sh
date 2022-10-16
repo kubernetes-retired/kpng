@@ -1158,7 +1158,6 @@ function help {
     printf "\t-B binary directory, specifies the path for the directory where binaries will be installed\n"
     printf "\t-D Dockerfile, specifies the path of the Dockerfile to use\n"
     printf "\t-E set E2E directory, specifies the path for the E2E directory\n"
-<<<<<<< HEAD
     printf "\t-m set the KPNG deployment model, can either be: \n\
             * split-process-per-node [legacy/default] -> (To run KPNG server + client in separate containers/processes per node)
             * single-process-per-node -> (To run KPNG server + client in a single container/process per node)"
