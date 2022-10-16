@@ -107,7 +107,7 @@ function container_build {
     #   arg2: ci_mode         #
     ###########################################################################
     [ $# -eq 2 ]
-    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
+    if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}... $#"
 
     local CONTAINER_FILE=${1}
     local ci_mode=${2}
