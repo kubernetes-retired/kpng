@@ -91,6 +91,7 @@ spec:
         # talk to the APIserver since KPNG implements that service
         - --kubeconfig=/var/lib/kpng/kubeconfig.conf
         - --exportMetrics
+        - "9090"
         - to-api
         - --listen=unix:///k8s/proxy.sock
       - image: {{ .KpngImage }}
