@@ -18,7 +18,7 @@ package localnetv1;
 
 option go_package = "sigs.k8s.io/kpng/server/pkg/api/localnetv1";
 
-service Endpoints { // FIXME rename to Local
+service Local {
     // Returns all the endpoints for this node.
     rpc Watch (stream WatchReq) returns (stream OpItem);
 }
@@ -47,8 +47,8 @@ message EmptyOp {
 
 enum Set {
     UnknownSet = 0;
-    ServicesSet = 1;
-    EndpointsSet = 2;
+    LocalServicesSet = 1;
+    LocalEndpointsSet = 2;
 
     GlobalServiceInfos = 10;
     GlobalEndpointInfos = 11;

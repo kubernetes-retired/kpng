@@ -78,9 +78,9 @@ func (s *sink) Send(op *localnetv1.OpItem) (err error) {
 
 		var v proto.Message
 		switch set.Ref.Set {
-		case localnetv1.Set_ServicesSet:
+		case localnetv1.Set_LocalServicesSet:
 			v = &localnetv1.Service{}
-		case localnetv1.Set_EndpointsSet:
+		case localnetv1.Set_LocalEndpointsSet:
 			v = &localnetv1.Endpoint{}
 
 		case localnetv1.Set_GlobalEndpointInfos:

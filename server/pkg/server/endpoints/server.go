@@ -29,14 +29,14 @@ import (
 )
 
 type Server struct {
-	localnetv1.UnimplementedEndpointsServer
+	localnetv1.UnimplementedLocalServer
 
 	Store *proxystore.Store
 }
 
 var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
 
-func (s *Server) Watch(res localnetv1.Endpoints_WatchServer) error {
+func (s *Server) Watch(res localnetv1.Local_WatchServer) error {
 	remote := ""
 	{
 		ctxPeer, _ := peer.FromContext(res.Context())
@@ -55,7 +55,7 @@ func (s *Server) Watch(res localnetv1.Endpoints_WatchServer) error {
 }
 
 type serverSink struct {
-	localnetv1.Endpoints_WatchServer
+	localnetv1.Local_WatchServer
 	remote string
 }
 

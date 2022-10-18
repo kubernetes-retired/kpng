@@ -39,7 +39,7 @@ func TestAddRemoveService(t *testing.T) {
 	})
 
 	svcRef := &localnetv1.Ref{
-		Set:  localnetv1.Set_ServicesSet,
+		Set:  localnetv1.Set_LocalServicesSet,
 		Path: "test/nginx",
 	}
 	svcBytes, _ := proto.Marshal(&localnetv1.Service{

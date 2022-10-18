@@ -50,7 +50,7 @@ func main() {
 
 	srv := grpc.NewServer()
 
-	localnetv1.RegisterEndpointsServer(srv, watchSrv{})
+	localnetv1.RegisterLocalServer(srv, watchSrv{})
 
 	lis := server.MustListen(*bindSpec)
 	srv.Serve(lis)
@@ -59,11 +59,11 @@ func main() {
 var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
 
 type watchSrv struct {
-	localnetv1.UnimplementedEndpointsServer
+	localnetv1.UnimplementedLocalServer
 }
 
-func (s watchSrv) Watch(res localnetv1.Endpoints_WatchServer) error {
-	w := watchstate.New(res, []localnetv1.Set{localnetv1.Set_ServicesSet, localnetv1.Set_EndpointsSet})
+func (s watchSrv) Watch(res localnetv1.Local_WatchServer) error {
+	w := watchstate.New(res, []localnetv1.Set{localnetv1.Set_LocalServicesSet, localnetv1.Set_LocalEndpointsSet})
 
 	var i uint64
 	for {
@@ -77,10 +77,10 @@ func (s watchSrv) Watch(res localnetv1.Endpoints_WatchServer) error {
 		i++
 
 		// send diff
-		w.SendUpdates(localnetv1.Set_ServicesSet)
-		w.SendUpdates(localnetv1.Set_EndpointsSet)
-		w.SendDeletes(localnetv1.Set_EndpointsSet)
-		w.SendDeletes(localnetv1.Set_ServicesSet)
+		w.SendUpdates(localnetv1.Set_LocalServicesSet)
+		w.SendUpdates(localnetv1.Set_LocalEndpointsSet)
+		w.SendDeletes(localnetv1.Set_LocalEndpointsSet)
+		w.SendDeletes(localnetv1.Set_LocalServicesSet)
 
 		w.Reset(lightdiffstore.ItemDeleted)
 
@@ -96,8 +96,8 @@ func (s watchSrv) Watch(res localnetv1.Endpoints_WatchServer) error {
 func injectState(rev uint64, w *watchstate.WatchState) {
 	time.Sleep(*sleepFlag)
 
-	svcs := w.StoreFor(localnetv1.Set_ServicesSet)
-	seps := w.StoreFor(localnetv1.Set_EndpointsSet)
+	svcs := w.StoreFor(localnetv1.Set_LocalServicesSet)
+	seps := w.StoreFor(localnetv1.Set_LocalEndpointsSet)
 
 	args := flag.Args()
 

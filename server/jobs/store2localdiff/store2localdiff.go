@@ -44,9 +44,9 @@ func (j *Job) Run(ctx context.Context) error {
 	job := &store2diff.Job{
 		Store: j.Store,
 		Sets: []localnetv1.Set{
-			localnetv1.Set_ServicesSet,
-			localnetv1.Set_EndpointsSet,
-			localnetv1.Set_EndpointsSet, // 2nd endpoints set for endpoints which do not have a corresponding pod name
+			localnetv1.Set_LocalServicesSet,
+			localnetv1.Set_LocalEndpointsSet,
+			localnetv1.Set_LocalEndpointsSet, // 2nd endpoints set for endpoints which do not have a corresponding pod name
 		},
 		Sink: run,
 	}
@@ -76,9 +76,9 @@ func (s *jobRun) Update(tx *proxystore.Tx, w *watchstate.WatchState) {
 	ctx, task := trace.NewTask(context.Background(), "LocalState.Update")
 	defer task.End()
 
-	svcs := w.StoreFor(localnetv1.Set_ServicesSet)
-	seps := w.StoreFor(localnetv1.Set_EndpointsSet)
-	sepsAnonymous := w.StoreForN(localnetv1.Set_EndpointsSet, 1)
+	svcs := w.StoreFor(localnetv1.Set_LocalServicesSet)
+	seps := w.StoreFor(localnetv1.Set_LocalEndpointsSet)
+	sepsAnonymous := w.StoreForN(localnetv1.Set_LocalEndpointsSet, 1)
 
 	// set all new values
 	tx.Each(proxystore.Services, func(kv *proxystore.KV) bool {
@@ -129,12 +129,12 @@ func (*jobRun) SendDiff(w *watchstate.WatchState) (updated bool) {
 	defer task.End()
 
 	count := 0
-	count += w.SendUpdates(localnetv1.Set_ServicesSet)
-	count += w.SendDeletesN(localnetv1.Set_EndpointsSet, 1)
-	count += w.SendUpdates(localnetv1.Set_EndpointsSet)
-	count += w.SendDeletes(localnetv1.Set_EndpointsSet)
-	count += w.SendUpdatesN(localnetv1.Set_EndpointsSet, 1)
-	count += w.SendDeletes(localnetv1.Set_ServicesSet)
+	count += w.SendUpdates(localnetv1.Set_LocalServicesSet)
+	count += w.SendDeletesN(localnetv1.Set_LocalEndpointsSet, 1)
+	count += w.SendUpdates(localnetv1.Set_LocalEndpointsSet)
+	count += w.SendDeletes(localnetv1.Set_LocalEndpointsSet)
+	count += w.SendUpdatesN(localnetv1.Set_LocalEndpointsSet, 1)
+	count += w.SendDeletes(localnetv1.Set_LocalServicesSet)
 
 	w.Reset(lightdiffstore.ItemDeleted)
 

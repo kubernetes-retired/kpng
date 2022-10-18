@@ -88,7 +88,7 @@ func (j *Job) run(ctx context.Context) (err error) {
 	defer conn.Close()
 
 	// watch local state
-	local := localnetv1.NewEndpointsClient(conn)
+	local := localnetv1.NewLocalClient(conn)
 
 	watch, err := local.Watch(ctx)
 	if err != nil {
@@ -103,7 +103,7 @@ func (j *Job) run(ctx context.Context) (err error) {
 	}
 }
 
-func (j *Job) runLoop(watch localnetv1.Endpoints_WatchClient) (err error) {
+func (j *Job) runLoop(watch localnetv1.Local_WatchClient) (err error) {
 	ctx := watch.Context()
 
 	if err = ctx.Err(); err != nil {

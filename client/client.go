@@ -68,7 +68,7 @@ type EndpointsClient struct {
 	Sink localsink.Sink
 
 	conn     *grpc.ClientConn
-	watch    localnetv1.Endpoints_WatchClient
+	watch    localnetv1.Local_WatchClient
 	watchReq *localnetv1.WatchReq
 
 	ctx    context.Context
@@ -204,7 +204,7 @@ retry:
 	}
 
 	epc.conn = conn
-	epc.watch, err = localnetv1.NewEndpointsClient(epc.conn).Watch(epc.ctx)
+	epc.watch, err = localnetv1.NewLocalClient(epc.conn).Watch(epc.ctx)
 
 	if err != nil {
 		conn.Close()

@@ -77,7 +77,7 @@ func (s *Sink) Send(op *localnetv1.OpItem) (err error) {
 		set := op.GetSet()
 
 		switch set.Ref.Set {
-		case localnetv1.Set_ServicesSet:
+		case localnetv1.Set_LocalServicesSet:
 			v := &localnetv1.Service{}
 
 			err = proto.Unmarshal(set.Bytes, v)
@@ -87,7 +87,7 @@ func (s *Sink) Send(op *localnetv1.OpItem) (err error) {
 
 			s.SetService(v)
 
-		case localnetv1.Set_EndpointsSet:
+		case localnetv1.Set_LocalEndpointsSet:
 			v := &localnetv1.Endpoint{}
 
 			err = proto.Unmarshal(set.Bytes, v)
@@ -107,10 +107,10 @@ func (s *Sink) Send(op *localnetv1.OpItem) (err error) {
 		parts := strings.Split(del.Path, "/")
 
 		switch del.Set {
-		case localnetv1.Set_ServicesSet: // Service: namespace/name
+		case localnetv1.Set_LocalServicesSet: // Service: namespace/name
 			s.DeleteService(parts[0], parts[1])
 
-		case localnetv1.Set_EndpointsSet: // Endpoint: namespace/name/key
+		case localnetv1.Set_LocalEndpointsSet: // Endpoint: namespace/name/key
 			s.DeleteEndpoint(parts[0], parts[1], parts[2])
 
 		default:

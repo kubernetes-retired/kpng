@@ -18,46 +18,46 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// EndpointsClient is the client API for Endpoints service.
+// LocalClient is the client API for Local service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type EndpointsClient interface {
+type LocalClient interface {
 	// Returns all the endpoints for this node.
-	Watch(ctx context.Context, opts ...grpc.CallOption) (Endpoints_WatchClient, error)
+	Watch(ctx context.Context, opts ...grpc.CallOption) (Local_WatchClient, error)
 }
 
-type endpointsClient struct {
+type localClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewEndpointsClient(cc grpc.ClientConnInterface) EndpointsClient {
-	return &endpointsClient{cc}
+func NewLocalClient(cc grpc.ClientConnInterface) LocalClient {
+	return &localClient{cc}
 }
 
-func (c *endpointsClient) Watch(ctx context.Context, opts ...grpc.CallOption) (Endpoints_WatchClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Endpoints_ServiceDesc.Streams[0], "/localnetv1.Endpoints/Watch", opts...)
+func (c *localClient) Watch(ctx context.Context, opts ...grpc.CallOption) (Local_WatchClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Local_ServiceDesc.Streams[0], "/localnetv1.Local/Watch", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &endpointsWatchClient{stream}
+	x := &localWatchClient{stream}
 	return x, nil
 }
 
-type Endpoints_WatchClient interface {
+type Local_WatchClient interface {
 	Send(*WatchReq) error
 	Recv() (*OpItem, error)
 	grpc.ClientStream
 }
 
-type endpointsWatchClient struct {
+type localWatchClient struct {
 	grpc.ClientStream
 }
 
-func (x *endpointsWatchClient) Send(m *WatchReq) error {
+func (x *localWatchClient) Send(m *WatchReq) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *endpointsWatchClient) Recv() (*OpItem, error) {
+func (x *localWatchClient) Recv() (*OpItem, error) {
 	m := new(OpItem)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -65,54 +65,54 @@ func (x *endpointsWatchClient) Recv() (*OpItem, error) {
 	return m, nil
 }
 
-// EndpointsServer is the server API for Endpoints service.
-// All implementations must embed UnimplementedEndpointsServer
+// LocalServer is the server API for Local service.
+// All implementations must embed UnimplementedLocalServer
 // for forward compatibility
-type EndpointsServer interface {
+type LocalServer interface {
 	// Returns all the endpoints for this node.
-	Watch(Endpoints_WatchServer) error
-	mustEmbedUnimplementedEndpointsServer()
+	Watch(Local_WatchServer) error
+	mustEmbedUnimplementedLocalServer()
 }
 
-// UnimplementedEndpointsServer must be embedded to have forward compatible implementations.
-type UnimplementedEndpointsServer struct {
+// UnimplementedLocalServer must be embedded to have forward compatible implementations.
+type UnimplementedLocalServer struct {
 }
 
-func (UnimplementedEndpointsServer) Watch(Endpoints_WatchServer) error {
+func (UnimplementedLocalServer) Watch(Local_WatchServer) error {
 	return status.Errorf(codes.Unimplemented, "method Watch not implemented")
 }
-func (UnimplementedEndpointsServer) mustEmbedUnimplementedEndpointsServer() {}
+func (UnimplementedLocalServer) mustEmbedUnimplementedLocalServer() {}
 
-// UnsafeEndpointsServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to EndpointsServer will
+// UnsafeLocalServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to LocalServer will
 // result in compilation errors.
-type UnsafeEndpointsServer interface {
-	mustEmbedUnimplementedEndpointsServer()
+type UnsafeLocalServer interface {
+	mustEmbedUnimplementedLocalServer()
 }
 
-func RegisterEndpointsServer(s grpc.ServiceRegistrar, srv EndpointsServer) {
-	s.RegisterService(&Endpoints_ServiceDesc, srv)
+func RegisterLocalServer(s grpc.ServiceRegistrar, srv LocalServer) {
+	s.RegisterService(&Local_ServiceDesc, srv)
 }
 
-func _Endpoints_Watch_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(EndpointsServer).Watch(&endpointsWatchServer{stream})
+func _Local_Watch_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(LocalServer).Watch(&localWatchServer{stream})
 }
 
-type Endpoints_WatchServer interface {
+type Local_WatchServer interface {
 	Send(*OpItem) error
 	Recv() (*WatchReq, error)
 	grpc.ServerStream
 }
 
-type endpointsWatchServer struct {
+type localWatchServer struct {
 	grpc.ServerStream
 }
 
-func (x *endpointsWatchServer) Send(m *OpItem) error {
+func (x *localWatchServer) Send(m *OpItem) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *endpointsWatchServer) Recv() (*WatchReq, error) {
+func (x *localWatchServer) Recv() (*WatchReq, error) {
 	m := new(WatchReq)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -120,17 +120,17 @@ func (x *endpointsWatchServer) Recv() (*WatchReq, error) {
 	return m, nil
 }
 
-// Endpoints_ServiceDesc is the grpc.ServiceDesc for Endpoints service.
+// Local_ServiceDesc is the grpc.ServiceDesc for Local service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Endpoints_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "localnetv1.Endpoints",
-	HandlerType: (*EndpointsServer)(nil),
+var Local_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "localnetv1.Local",
+	HandlerType: (*LocalServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Watch",
-			Handler:       _Endpoints_Watch_Handler,
+			Handler:       _Local_Watch_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
