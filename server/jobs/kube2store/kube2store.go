@@ -87,23 +87,23 @@ func (j Job) Run(ctx context.Context) {
 	coreFactory := factory.Core().V1()
 
 	servicesInformer := svcFactory.Core().V1().Services().Informer()
-	servicesInformer.AddEventHandler(&serviceEventHandler{j.eventHandler(servicesInformer)})
+	servicesInformer.AddEventHandler(&serviceEventHandler{j.kpngEventHandler(servicesInformer)})
 	go servicesInformer.Run(stopCh)
 
 	nodesInformer := coreFactory.Nodes().Informer()
-	nodesInformer.AddEventHandler(&nodeEventHandler{j.eventHandler(nodesInformer)})
+	nodesInformer.AddEventHandler(&nodeEventHandler{j.kpngEventHandler(nodesInformer)})
 	go nodesInformer.Run(stopCh)
 
 	slicesInformer := factory.Discovery().V1().EndpointSlices().Informer()
-	slicesInformer.AddEventHandler(&sliceEventHandler{j.eventHandler(slicesInformer)})
+	slicesInformer.AddEventHandler(&sliceEventHandler{j.kpngEventHandler(slicesInformer)})
 	go slicesInformer.Run(stopCh)
 
 	<-stopCh
 	j.Store.Close()
 }
 
-func (j Job) eventHandler(informer cache.SharedIndexInformer) eventHandler {
-	return eventHandler{
+func (j Job) kpngEventHandler(informer cache.SharedIndexInformer) kpngEventHandler {
+	return kpngEventHandler{
 		config:   j.Config,
 		s:        j.Store,
 		informer: informer,

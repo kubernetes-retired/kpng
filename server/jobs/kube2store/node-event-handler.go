@@ -27,7 +27,7 @@ const (
 	nodeZoneLabel = "topology.kubernetes.io/zone"
 )
 
-type nodeEventHandler struct{ eventHandler }
+type nodeEventHandler struct{ kpngEventHandler }
 
 func (h *nodeEventHandler) OnAdd(obj interface{}) {
 	node := obj.(*v1.Node)

@@ -13,7 +13,7 @@ func TestServiceEventHandlerTrafficPolicy(t *testing.T) {
 	store := proxystore.New()
 
 	handler := serviceEventHandler{
-		eventHandler: eventHandler{
+		kpngEventHandler: kpngEventHandler{
 			s:       store,
 			syncSet: true,
 			config:  &Config{

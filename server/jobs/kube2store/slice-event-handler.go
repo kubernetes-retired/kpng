@@ -28,7 +28,7 @@ import (
 
 const hostNameLabel = "kubernetes.io/hostname"
 
-type sliceEventHandler struct{ eventHandler }
+type sliceEventHandler struct{ kpngEventHandler }
 
 func serviceNameFrom(eps *discovery.EndpointSlice) string {
 	if eps.Labels == nil {

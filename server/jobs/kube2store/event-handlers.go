@@ -21,14 +21,14 @@ import (
 	proxystore "sigs.k8s.io/kpng/server/proxystore"
 )
 
-type eventHandler struct {
+type kpngEventHandler struct {
 	config   *Config
 	s        *proxystore.Store
 	informer cache.SharedIndexInformer
 	syncSet  bool
 }
 
-func (h *eventHandler) updateSync(set proxystore.Set, tx *proxystore.Tx) {
+func (h *kpngEventHandler) updateSync(set proxystore.Set, tx *proxystore.Tx) {
 	if h.syncSet {
 		return
 	}

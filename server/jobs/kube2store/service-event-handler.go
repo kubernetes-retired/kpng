@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/kpng/server/proxystore"
 )
 
-type serviceEventHandler struct{ eventHandler }
+type serviceEventHandler struct{ kpngEventHandler }
 
 func (h *serviceEventHandler) onChange(obj interface{}) {
 	svc := obj.(*v1.Service)
