@@ -1,0 +1,31 @@
+name: Code format verify
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      — master
+
+jobs:
+  gofmt:
+    name: Run gofmt verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.19'
+          stable: 'false'
+
+      - name: Install dependencies
+        run: |
+          go version
+          go install golang.org/x/lint/golint@latest
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: run gofmt tests
+        run: ./hack/verify-gofmt.sh
