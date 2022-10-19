@@ -64,6 +64,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
+	golang.org/x/exp v0.0.0-20220317015231-48e79f11773a // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20220928191237-829ce0c27909 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect

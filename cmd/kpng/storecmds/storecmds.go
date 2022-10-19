@@ -113,6 +113,29 @@ func (c SetupFunc) ToLocalCmd() (cmd *cobra.Command) {
 	return
 }
 
+// // ToLocalCmd sends the incoming events to a local backend, such as IPVS or IPTABLES or NFT.
+// // This gives users an out of the box KPNG implementation.
+// func (c SetupFunc) ToInterfaceCmd() (cmd *cobra.Command) {
+// 	cmd = &cobra.Command{
+// 		Use: "to-interface",
+// 	}
+
+// 	var ctx context.Context
+// 	job := &store2localinterface.SendNodeLocalState{}
+
+// 	cmd.PersistentPreRunE = func(_ *cobra.Command, _ []string) (err error) {
+// 		ctx, job.Store, err = c()
+// 		return
+// 	}
+
+// 	cmd.AddCommand(LocalCmds(func(sink store2localinterface.NodeLocalStateConsumer) error {
+// 		job.Sink = sink
+// 		return job.Run(ctx)
+// 	})...)
+
+// 	return
+// }
+
 func LocalCmds(run func(sink localsink.Sink) error) (cmds []*cobra.Command) {
 	// sink backends
 	for _, useCmd := range backendcmd.Registered() {

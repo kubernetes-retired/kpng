@@ -45,3 +45,25 @@ func local2sinkCmd() *cobra.Command {
 
 	return cmd
 }
+
+func Watch() *cobra.Command {
+	// local to * command
+	cmd := &cobra.Command{
+		Use:   "local",
+		Short: "watch kpng API's local state",
+	}
+
+	flags := cmd.PersistentFlags()
+
+	job := api2local.New(nil)
+	job.BindFlags(flags)
+
+	cmd.AddCommand(storecmds.LocalCmds(func(sink localsink.Sink) (err error) {
+		ctx := setupGlobal()
+		job.Sink = sink
+		job.Run(ctx)
+		return
+	})...)
+
+	return cmd
+}

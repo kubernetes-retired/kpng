@@ -11,6 +11,7 @@ use (
 	./backends/windows/userspace
 	./client
 	./cmd
+	./examples/interface-print-state
 	./examples/iptables-extip
 	./examples/pipe-exec
 	./examples/print-state
