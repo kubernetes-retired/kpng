@@ -18,6 +18,7 @@ package endpoints
 
 import (
 	"google.golang.org/protobuf/proto"
+	"k8s.io/klog/v2"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
 	proxystore "sigs.k8s.io/kpng/server/proxystore"
@@ -29,6 +30,7 @@ func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (en
 	node := tx.GetNode(nodeName)
 
 	if node == nil {
+		klog.V(3).Infof("failed to fetch node: %s from proxystore, simulating basic node")
 		// node is unknown, simulate a basic node
 		node = &localnetv1.Node{
 			Name: nodeName,
