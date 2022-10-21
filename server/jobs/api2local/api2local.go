@@ -31,18 +31,18 @@ import (
 	"sigs.k8s.io/kpng/client/tlsflags"
 
 	"sigs.k8s.io/kpng/server/pkg/apiwatch"
+	"sigs.k8s.io/kpng/server/pkg/metrics"
 )
 
 // Config helps building sink with the standard flags (sinks are not required to have a stable node-name, but most will have).
 //
 // Simplest usage:
 //
-//     type MySink struct {
-//         api2local.Config
-//     }
-//
+//	type MySink struct {
+//	    api2local.Config
+//	}
 type Config struct {
-	NodeName string
+	NodeName      string
 }
 
 func (c *Config) BindFlags(flags *pflag.FlagSet) {
@@ -111,6 +111,9 @@ func (j *Job) runLoop(watch localnetv1.Endpoints_WatchClient) (err error) {
 	}
 
 	nodeName, err := j.Sink.WaitRequest()
+	if err != nil {
+		klog.Warningf("Failed to wait for next diff request")
+	}
 
 	err = watch.Send(&localnetv1.WatchReq{
 		NodeName: nodeName,
@@ -132,6 +135,7 @@ func (j *Job) runLoop(watch localnetv1.Endpoints_WatchClient) (err error) {
 			j.Sink.Reset()
 
 		default:
+			metrics.Kpng_node_local_events.Inc()
 			err = j.Sink.Send(op)
 			if err != nil {
 				return

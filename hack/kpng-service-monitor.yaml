@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: kpng
+    app.kubernetes.io/instance: main
+    app.kubernetes.io/name: kpng
+    app.kubernetes.io/part-of: kube-prometheus
+    app.kubernetes.io/version: 0.24.0
+  name: kpng-main
+  namespace: kube-system
+spec:
+  ports:
+  - name: kpng-metrics
+    port: 9099
+  selector:
+    app: kpng
+  sessionAffinity: ClientIP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/component: kpng
+    app.kubernetes.io/instance: main
+    app.kubernetes.io/name: kpng
+    app.kubernetes.io/part-of: kube-prometheus
+    app.kubernetes.io/version: 0.24.0
+  name: kpng-main
+  namespace: kube-system
+spec:
+  endpoints:
+  - interval: 1s
+    port: kpng-metrics
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: kpng
+      app.kubernetes.io/instance: main
+      app.kubernetes.io/name: kpng
+      app.kubernetes.io/part-of: kube-prometheus
+      app.kubernetes.io/version: 0.24.0

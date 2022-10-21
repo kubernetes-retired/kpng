@@ -30,6 +30,7 @@ type KnpgDameonSetData struct {
 	KpngImage          string
 	Backend            string
 	E2eBackendArgs     string
+	E2eServerArgs      string
 	ConfigMapName      string
 	Deployment_model   string
 }
@@ -55,6 +56,7 @@ func main() {
 		KpngImage:          os.Getenv("kpng_image"),
 		Backend:            os.Getenv("backend"),
 		E2eBackendArgs:     os.Getenv("e2e_backend_args"),
+		E2eServerArgs:      os.Getenv("e2e_server_args"),
 		ConfigMapName:      os.Getenv("config_map_name"),
 		Deployment_model:   os.Getenv("deployment_model"),
 	}
