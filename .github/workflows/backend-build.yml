@@ -16,12 +16,7 @@ jobs:
     - name: setup Go
       uses: actions/setup-go@v2
       with:
-        go-version: '1.17.3'
-
-    - name: Install dependencies
-      run: |
-        go version
-        go get -u golang.org/x/lint/golint
+        go-version: '1.19'
 
   iptables:
     name: build backend package iptables
@@ -55,3 +50,26 @@ jobs:
     
     - name: build backends/nft
       run: ./hack/test_backend_build.sh nft
+
+  ebpf: 
+    name: build backend package ebpf
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+    
+    - name: build backends/ebpf
+      run: ./hack/test_backend_build.sh ebpf
+
+  userspacelin:
+    name: build backend package userspacelin
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+
+    - name: build backends/userspacelin
+      run: ./hack/test_backend_build.sh userspacelin
+

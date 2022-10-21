@@ -20,7 +20,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
+	proxystore "sigs.k8s.io/kpng/server/proxystore"
+)
+
+const (
+	nodeZoneLabel = "topology.kubernetes.io/zone"
 )
 
 type nodeEventHandler struct{ eventHandler }
@@ -30,29 +34,17 @@ func (h *nodeEventHandler) OnAdd(obj interface{}) {
 
 	// keep only what we want
 	n := &localnetv1.Node{
-		Name:        node.Name,
+		Name: node.Name,
+		Topology: &localnetv1.TopologyInfo{
+			Node: node.Name,
+			Zone: node.Labels[nodeZoneLabel],
+		},
 		Labels:      globsFilter(node.Labels, h.config.NodeLabelGlobs),
 		Annotations: globsFilter(node.Annotations, h.config.NodeAnnotationGlobs),
 	}
 
 	h.s.Update(func(tx *proxystore.Tx) {
 		tx.SetNode(n)
-
-		if !h.config.UseSlices {
-			// endpoints => need to update all matching topologies
-			toSet := make([]*localnetv1.EndpointInfo, 0)
-			tx.Each(proxystore.Endpoints, func(kv *proxystore.KV) bool {
-				if kv.Endpoint.NodeName == n.Name {
-					kv.Endpoint.Topology = n.Labels
-					toSet = append(toSet, kv.Endpoint)
-				}
-				return true
-			})
-
-			for _, ei := range toSet {
-				tx.SetEndpoint(ei)
-			}
-		}
 
 		h.updateSync(proxystore.Nodes, tx)
 	})

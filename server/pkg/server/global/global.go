@@ -20,7 +20,7 @@ import (
 	"google.golang.org/grpc"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
+	proxystore "sigs.k8s.io/kpng/server/proxystore"
 )
 
 func Setup(s grpc.ServiceRegistrar, store *proxystore.Store) {

@@ -1,3 +1,19 @@
+/*
+Copyright 2021 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package userspacelin
 
 import (
@@ -20,7 +36,7 @@ import (
 func ShouldSkipService(service *localnetv1.Service) bool {
 	// if ClusterIP is "None" or empty, skip proxying
 	if !iptables.IsServiceIPSet(service) {
-		klog.V(3).Infof("Skipping service %s in namespace %s due to clusterIP = %q", service.Name, service.Namespace, service.IPs.ClusterIPs.V4[0])
+		klog.V(3).Infof("Skipping service %s in namespace %s due to empty ClusterIPs", service.Name, service.Namespace)
 		return true
 	}
 	// Even if ClusterIP is set, ServiceTypeExternalName services don't get proxied

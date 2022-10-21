@@ -20,26 +20,22 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
+	proxystore "sigs.k8s.io/kpng/server/proxystore"
 )
 
 const hostnameLabel = "kubernetes.io/hostname"
 
-func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (internalEndpoints, externalEndpoints []*localnetv1.EndpointInfo) {
+func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (endpoints []*localnetv1.EndpointInfo) {
 	node := tx.GetNode(nodeName)
 
-	var labels map[string]string
-
-	if node == nil || len(node.Labels) == 0 {
-		// node is unknown or has no labels, simulate basic node label
-		labels = map[string]string{}
-	} else {
-		labels = node.Labels
-	}
-
-	if labels[hostnameLabel] == "" {
-		// ensure we have the hostname even if it's filtered
-		labels[hostnameLabel] = nodeName
+	if node == nil {
+		// node is unknown, simulate a basic node
+		node = &localnetv1.Node{
+			Name: nodeName,
+			Topology: &localnetv1.TopologyInfo{
+				Node: nodeName,
+			},
+		}
 	}
 
 	svc := si.Service
@@ -48,35 +44,46 @@ func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (in
 	tx.EachEndpointOfService(svc.Namespace, svc.Name, func(info *localnetv1.EndpointInfo) {
 		info = proto.Clone(info).(*localnetv1.EndpointInfo)
 
-		epNodeName := info.NodeName
-		if epNodeName == "" {
-			epNodeName = info.Topology[hostnameLabel]
-		}
-
-		info.Endpoint.Local = epNodeName == nodeName
+		info.Endpoint.Local = info.Topology.Node == nodeName
 
 		if !info.Conditions.Ready {
 			return
 		}
 
+		if hints := info.Hints; hints != nil {
+			if len(hints.Zones) != 0 {
+				// filter by zone
+				isForNodeZone := false
+				for _, z := range hints.Zones {
+					if z == node.Topology.Zone {
+						isForNodeZone = true
+						break
+					}
+				}
+
+				if !isForNodeZone {
+					return
+				}
+			}
+		}
+
 		infos = append(infos, info)
 	})
 
-	internalEndpoints = make([]*localnetv1.EndpointInfo, 0, len(infos))
-	externalEndpoints = make([]*localnetv1.EndpointInfo, 0, len(infos))
+	endpoints = make([]*localnetv1.EndpointInfo, 0, len(infos))
 
 	// select endpoints for this service
 
 	for _, info := range infos {
-		if !(si.Service.InternalTrafficToLocal && !info.Endpoint.Local) {
-			internalEndpoints = append(internalEndpoints, info)
+		info.Endpoint.Scopes = &localnetv1.EndpointScopes{
+			Internal: info.Endpoint.Local || !si.Service.InternalTrafficToLocal,
+			External: info.Endpoint.Local || !si.Service.ExternalTrafficToLocal,
 		}
-		if !(si.Service.ExternalTrafficToLocal && !info.Endpoint.Local) {
-			externalEndpoints = append(externalEndpoints, info)
+
+		if info.Endpoint.Scopes.Any() {
+			endpoints = append(endpoints, info)
 		}
 	}
-
-	// TODO handle TopologyAwareHints
 
 	return
 }

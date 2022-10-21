@@ -17,11 +17,13 @@ limitations under the License.
 package kube2store
 
 import (
-	discovery "k8s.io/api/discovery/v1beta1"
+	"sort"
+
+	discovery "k8s.io/api/discovery/v1"
 	"k8s.io/klog/v2"
 
 	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore "sigs.k8s.io/kpng/server/pkg/proxystore"
+	proxystore "sigs.k8s.io/kpng/server/proxystore"
 )
 
 const hostNameLabel = "kubernetes.io/hostname"
@@ -51,17 +53,35 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 			Namespace:   eps.Namespace,
 			ServiceName: serviceName,
 			SourceName:  eps.Name,
-			Topology:    sliceEndpoint.Topology,
 			Endpoint:    &localnetv1.Endpoint{},
 			Conditions:  &localnetv1.EndpointConditions{},
+			Topology:    &localnetv1.TopologyInfo{},
 		}
 
-		if sliceEndpoint.Topology != nil {
-			info.NodeName = sliceEndpoint.Topology[hostNameLabel]
+		if t := sliceEndpoint.TargetRef; t != nil && t.Kind == "Pod" {
+			info.PodName = t.Name
 		}
 
 		if h := sliceEndpoint.Hostname; h != nil {
 			info.Endpoint.Hostname = *h
+		}
+
+		if n := sliceEndpoint.NodeName; n != nil {
+			info.Topology.Node = *n
+		}
+		if z := sliceEndpoint.Zone; z != nil {
+			info.Topology.Zone = *z
+		}
+
+		if hints := sliceEndpoint.Hints; hints != nil {
+			info.Hints = &localnetv1.TopologyHints{
+				Zones: make([]string, 0, len(hints.ForZones)),
+			}
+
+			for _, z := range hints.ForZones {
+				info.Hints.Zones = append(info.Hints.Zones, z.Name)
+			}
+			sort.Strings(info.Hints.Zones) // stable zone order
 		}
 
 		if r := sliceEndpoint.Conditions.Ready; r != nil && *r {
@@ -72,11 +92,11 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 			info.Endpoint.AddAddress(addr)
 		}
 
-		epMap := make(map[string]int32, len(eps.Ports))
+		ports := make([]*localnetv1.PortName, 0, len(eps.Ports))
 		for _, port := range eps.Ports {
-			epMap[*port.Name] = *port.Port
+			ports = append(ports, &localnetv1.PortName{Name: *port.Name, Port: *port.Port})
 		}
-		info.Endpoint.PortOverrides = epMap
+		info.Endpoint.PortOverrides = ports
 
 		infos = append(infos, info)
 	}

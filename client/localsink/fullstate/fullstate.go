@@ -1,3 +1,19 @@
+/*
+Copyright 2021 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package fullstate
 
 import (
@@ -14,11 +30,13 @@ type ServiceEndpoints struct {
 }
 
 type Callback func(item <-chan *ServiceEndpoints)
+type Setup func()
 
 // EndpointsClient is a simple client to kube-proxy's Endpoints API.
 type Sink struct {
-	Config   *localsink.Config
-	Callback Callback
+	Config    *localsink.Config
+	Callback  Callback
+	SetupFunc Setup
 
 	data *btree.BTree
 }
@@ -49,7 +67,11 @@ func ArrayCallback(callback func([]*ServiceEndpoints)) Callback {
 	}
 }
 
-func (s *Sink) Setup() { /* noop */ }
+func (s *Sink) Setup() {
+	if s.SetupFunc != nil {
+		s.SetupFunc()
+	}
+}
 
 func (s *Sink) WaitRequest() (nodeName string, err error) {
 	return s.Config.NodeName, nil
