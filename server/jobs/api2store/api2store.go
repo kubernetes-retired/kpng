@@ -26,7 +26,8 @@ import (
 
 	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
+	"sigs.k8s.io/kpng/api/globalv1"
 	"sigs.k8s.io/kpng/server/pkg/apiwatch"
 	"sigs.k8s.io/kpng/server/proxystore"
 )
@@ -43,11 +44,11 @@ func (j *Job) Run(ctx context.Context) {
 		err := j.run(ctx)
 
 		if err == context.Canceled || grpc.Code(err) == codes.Canceled {
-			klog.Info("context canceled, closing global watch")
+			klog.Info("context canceled, closing watch")
 			return
 		}
 
-		klog.Error("global watch error: ", err)
+		klog.Error("watch error: ", err)
 		time.Sleep(5 * time.Second) // TODO parameter?
 	}
 }
@@ -60,8 +61,8 @@ func (j *Job) run(ctx context.Context) (err error) {
 	}
 	defer conn.Close()
 
-	// watch global state
-	global := localnetv1.NewGlobalClient(conn)
+	// watch globalv1 state
+	global := globalv1.NewSetsClient(conn)
 
 	watch, err := global.Watch(ctx)
 	if err != nil {
@@ -74,13 +75,13 @@ func (j *Job) run(ctx context.Context) (err error) {
 			return
 		}
 
-		watch.Send(&localnetv1.GlobalWatchReq{})
+		watch.Send(&globalv1.GlobalWatchReq{})
 
 		todo := make([]func(tx *proxystore.Tx), 0)
 
 	recvLoop:
 		for {
-			var op *localnetv1.OpItem
+			var op *localv1.OpItem
 			op, err = watch.Recv()
 
 			if err != nil {
@@ -90,27 +91,27 @@ func (j *Job) run(ctx context.Context) (err error) {
 			var storeOp func(tx *proxystore.Tx)
 
 			switch v := op.Op.(type) {
-			case *localnetv1.OpItem_Reset_:
+			case *localv1.OpItem_Reset_:
 				storeOp = func(tx *proxystore.Tx) {
 					tx.Reset()
 				}
 
-			case *localnetv1.OpItem_Set:
+			case *localv1.OpItem_Set:
 				var value proxystore.Hashed
 
 				switch v.Set.Ref.Set {
-				case localnetv1.Set_GlobalNodeInfos:
-					info := &localnetv1.NodeInfo{}
+				case localv1.Set_GlobalNodeInfos:
+					info := &globalv1.NodeInfo{}
 					err = proto.Unmarshal(v.Set.Bytes, info)
 					value = info
 
-				case localnetv1.Set_GlobalServiceInfos:
-					info := &localnetv1.ServiceInfo{}
+				case localv1.Set_GlobalServiceInfos:
+					info := &globalv1.ServiceInfo{}
 					err = proto.Unmarshal(v.Set.Bytes, info)
 					value = info
 
-				case localnetv1.Set_GlobalEndpointInfos:
-					info := &localnetv1.EndpointInfo{}
+				case localv1.Set_GlobalEndpointInfos:
+					info := &globalv1.EndpointInfo{}
 					err = proto.Unmarshal(v.Set.Bytes, info)
 					value = info
 				}
@@ -119,12 +120,12 @@ func (j *Job) run(ctx context.Context) (err error) {
 					tx.SetRaw(v.Set.Ref.Set, v.Set.Ref.Path, value)
 				}
 
-			case *localnetv1.OpItem_Delete:
+			case *localv1.OpItem_Delete:
 				storeOp = func(tx *proxystore.Tx) {
 					tx.DelRaw(v.Delete.Set, v.Delete.Path)
 				}
 
-			case *localnetv1.OpItem_Sync:
+			case *localv1.OpItem_Sync:
 				// break on sync
 				break recvLoop
 			}

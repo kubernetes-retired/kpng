@@ -38,5 +38,3 @@ gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8
 gopkg.in/yaml.v2 v2.4.0/go.mod h1:RDklbk79AGWmwhnvt/jBztapEOGDOx6ZbXqjP6csGnQ=
 k8s.io/klog/v2 v2.80.1 h1:atnLQ121W371wYYFawwYx1aEY2eUfs4l3J72wtgAwV4=
 k8s.io/utils v0.0.0-20221011040102-427025108f67 h1:ZmUY7x0cwj9e7pGyCTIalBi5jpNfigO5sU46/xFoF/w=
-sigs.k8s.io/kpng/api v0.0.0-20220824013548-88b8a1d9bc62 h1:yCjRx4awGZF5+7nt1PDz9b514W/v/oeEOLLZ63Q9HQY=
-sigs.k8s.io/kpng/api v0.0.0-20220824013548-88b8a1d9bc62/go.mod h1:/HtZVzi7kD0lv9+jH+IAQ5fgq716KbLr40lOo2dNCcs=

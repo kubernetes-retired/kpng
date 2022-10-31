@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 )
 
 // ServicePortPortalName carries a namespace + name + portname + portalip.  This is the unique
@@ -40,7 +40,7 @@ func (spn ServicePortPortalName) String() string {
 type ServicePortName struct {
 	types.NamespacedName
 	Port     string
-	Protocol localnetv1.Protocol
+	Protocol localv1.Protocol
 }
 
 func (spn ServicePortName) String() string {

@@ -5,7 +5,6 @@ go 1.19
 require (
 	github.com/spf13/pflag v1.0.5
 	k8s.io/klog/v2 v2.80.1
-	sigs.k8s.io/kpng/api v0.0.0-20220824013548-88b8a1d9bc62
 	sigs.k8s.io/kpng/client v0.0.0-20221011133104-469299451522
 )
 
@@ -25,4 +24,5 @@ require (
 	google.golang.org/grpc v1.50.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	k8s.io/utils v0.0.0-20221011040102-427025108f67 // indirect
+	sigs.k8s.io/kpng/api v0.0.0-20220824013548-88b8a1d9bc62 // indirect
 )

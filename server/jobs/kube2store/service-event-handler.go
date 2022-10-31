@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/server/proxystore"
 )
 
@@ -35,15 +35,15 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 		internalTrafficPolicy = *svc.Spec.InternalTrafficPolicy
 	}
 	// build the service
-	service := &localnetv1.Service{
+	service := &localv1.Service{
 		Namespace:   svc.Namespace,
 		Name:        svc.Name,
 		Type:        string(svc.Spec.Type),
 		Labels:      globsFilter(svc.Labels, h.config.ServiceLabelGlobs),
 		Annotations: globsFilter(svc.Annotations, h.config.ServiceAnnonationGlobs),
-		IPs: &localnetv1.ServiceIPs{
-			ClusterIPs:  &localnetv1.IPSet{},
-			ExternalIPs: localnetv1.NewIPSet(svc.Spec.ExternalIPs...),
+		IPs: &localv1.ServiceIPs{
+			ClusterIPs:  &localv1.IPSet{},
+			ExternalIPs: localv1.NewIPSet(svc.Spec.ExternalIPs...),
 		},
 		ExternalTrafficToLocal: svc.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal,
 		InternalTrafficToLocal: internalTrafficPolicy == v1.ServiceInternalTrafficPolicyLocal,
@@ -71,8 +71,8 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 	switch svc.Spec.SessionAffinity {
 	case "ClientIP":
 		cfg := svc.Spec.SessionAffinityConfig.ClientIP
-		service.SessionAffinity = &localnetv1.Service_ClientIP{
-			ClientIP: &localnetv1.ClientIPAffinity{
+		service.SessionAffinity = &localv1.Service_ClientIP{
+			ClientIP: &localv1.ClientIPAffinity{
 				TimeoutSeconds: *cfg.TimeoutSeconds,
 			},
 		}
@@ -80,7 +80,7 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 
 	// load balancer IPs
 	if len(svc.Status.LoadBalancer.Ingress) != 0 {
-		ips := localnetv1.NewIPSet()
+		ips := localv1.NewIPSet()
 		for _, ingress := range svc.Status.LoadBalancer.Ingress {
 			if ingress.IP != "" {
 				ips.Add(ingress.IP)
@@ -91,20 +91,20 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 
 	// load balancer source ranges
 	if len(svc.Spec.LoadBalancerSourceRanges) != 0 {
-		service.IPFilters = append(service.IPFilters, &localnetv1.IPFilter{
+		service.IPFilters = append(service.IPFilters, &localv1.IPFilter{
 			SourceRanges: svc.Spec.LoadBalancerSourceRanges,
 		})
 	}
 
 	// ports information
-	service.Ports = make([]*localnetv1.PortMapping, 0, len(svc.Spec.Ports))
+	service.Ports = make([]*localv1.PortMapping, 0, len(svc.Spec.Ports))
 
 	for _, port := range svc.Spec.Ports {
-		p := &localnetv1.PortMapping{
+		p := &localv1.PortMapping{
 			Name:     port.Name,
 			NodePort: port.NodePort,
 			Port:     port.Port,
-			Protocol: localnetv1.ParseProtocol(string(port.Protocol)),
+			Protocol: localv1.ParseProtocol(string(port.Protocol)),
 		}
 
 		if port.TargetPort.Type == intstr.Int {

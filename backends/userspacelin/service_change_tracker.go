@@ -25,12 +25,12 @@ import (
 	//	"sigs.k8s.io/kpng/backends/userspacelin/metrics"
 
 	// "k8s.io/kubernetes/pkg/proxy/metrics"
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 )
 
 type userspaceServiceChange struct {
-	current  *localnetv1.Service
-	previous *localnetv1.Service
+	current  *localv1.Service
+	previous *localv1.Service
 }
 
 type UserspaceServiceChangeTracker struct {
@@ -47,11 +47,13 @@ type UserspaceServiceChangeTracker struct {
 // otherwise return false.  Update can be used to add/update/delete items of ServiceChangeMap.  For example,
 // Add item
 //   - pass <nil, service> as the <previous, current> pair.
+//
 // Update item
 //   - pass <oldService, service> as the <previous, current> pair.
+//
 // Delete item
 //   - pass <service, nil> as the <previous, current> pair.
-func (sct *UserspaceServiceChangeTracker) Update(current *localnetv1.Service) bool {
+func (sct *UserspaceServiceChangeTracker) Update(current *localv1.Service) bool {
 	svc := current
 	if svc == nil {
 		return false
@@ -92,7 +94,7 @@ func (sct *UserspaceServiceChangeTracker) Delete(namespace, name string) bool {
 type ServicePortName struct {
 	types.NamespacedName
 	Port     string
-	Protocol localnetv1.Protocol
+	Protocol localv1.Protocol
 	PortName string // FYI Jay added this, because we needed it for the BuildPortsToEndpointsMap function by KPNG
 }
 
@@ -100,7 +102,7 @@ type ServicePortName struct {
 // serviceToServiceMap translates a single Service object to a ServiceMap.
 //
 // NOTE: service object should NOT be modified.
-func (sct *UserspaceServiceChangeTracker) serviceToServiceMap(service *localnetv1.Service) userspaceServiceChange {
+func (sct *UserspaceServiceChangeTracker) serviceToServiceMap(service *kpng.Service) userspaceServiceChange {
 	if service == nil {
 		return nil
 	}

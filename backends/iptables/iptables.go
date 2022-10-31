@@ -33,7 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	localv1 "sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/backends/iptables/util"
 
 	utilnet "k8s.io/utils/net"
@@ -370,7 +370,7 @@ func (t *iptables) copyExistingChains(chains []util.Chain, existingChainData map
 	}
 }
 
-//writeClusterIPRules writes rules to reach svc chain from kube-services
+// writeClusterIPRules writes rules to reach svc chain from kube-services
 func (t *iptables) writeClusterIPRules(svcInfo *serviceInfo, svcName types.NamespacedName, args []string) {
 	svcChain := svcInfo.servicePortChainName
 	protocol := strings.ToLower(svcInfo.Protocol().String())
@@ -405,7 +405,7 @@ func (t *iptables) writeClusterIPRules(svcInfo *serviceInfo, svcName types.Names
 	}
 }
 
-//writeExternalIPRules writes rules in kube-services to jump to xlb/svc chain
+// writeExternalIPRules writes rules in kube-services to jump to xlb/svc chain
 func (t *iptables) writeExternalIPRules(svcInfo *serviceInfo, svcName types.NamespacedName, args []string,
 	localAddrSet utilnet.IPSet, replacementPortsMap map[utilnet.LocalPort]utilnet.Closeable) {
 	svcChain := svcInfo.servicePortChainName
@@ -542,7 +542,7 @@ func (t *iptables) writeLoadBalancerRules(svcInfo *serviceInfo, svcName types.Na
 	}
 }
 
-//writeNodePortsRules write rules to nodeports to jump to xlb/svc.
+// writeNodePortsRules write rules to nodeports to jump to xlb/svc.
 func (t *iptables) writeNodePortsRules(svcInfo *serviceInfo, nodeAddresses sets.String,
 	svcName types.NamespacedName, localAddrSet utilnet.IPSet,
 	replacementPortsMap map[utilnet.LocalPort]utilnet.Closeable, args []string) {
@@ -615,7 +615,7 @@ func (t *iptables) writeNodePortsRules(svcInfo *serviceInfo, nodeAddresses sets.
 	}
 }
 
-//createEndpointsChain creates chains for each ep
+// createEndpointsChain creates chains for each ep
 func (t *iptables) createEndpointsChain(svcInfo *serviceInfo, allEndpoints *endpointsInfoByName,
 	existingNATChains map[util.Chain][]byte, activeNATChains map[util.Chain]bool) ([]*string, *[]util.Chain, *[]util.Chain, map[string]int32) {
 	endpoints := make([]*string, 0)
@@ -647,7 +647,7 @@ func (t *iptables) createEndpointsChain(svcInfo *serviceInfo, allEndpoints *endp
 			ep = epInfo.IPs.V4[0]
 		}
 
-		targetPort := epInfo.PortMapping(&localnetv1.PortMapping{
+		targetPort := epInfo.PortMapping(&localv1.PortMapping{
 			TargetPortName: svcInfo.targetPortName,
 			TargetPort:     int32(svcInfo.targetPort),
 		})
@@ -667,7 +667,7 @@ func (t *iptables) createEndpointsChain(svcInfo *serviceInfo, allEndpoints *endp
 	return endpoints, &endpointChains, &localEndpointChains, endpointPortMap
 }
 
-//writeEndpointRules writes rules to svc to jump to sep and rules to sep to dnat and loadbalance to actual ep ip
+// writeEndpointRules writes rules to svc to jump to sep and rules to sep to dnat and loadbalance to actual ep ip
 func (t *iptables) writeEndpointRules(svcInfo *serviceInfo, svcName types.NamespacedName, endpointChains *[]util.Chain,
 	endpoints []*string, args *[]string, endpointPortMap map[string]int32) {
 	// First write session affinity rules, if applicable.
@@ -850,7 +850,7 @@ func (t *iptables) writeLocalExtTrafficPolicyRules(svcInfo *serviceInfo, svcName
 	}
 }
 
-//writeNodePortJumpRule writes rules to jump to NODEPORTS from kube-service for nodeips/zerocidr
+// writeNodePortJumpRule writes rules to jump to NODEPORTS from kube-service for nodeips/zerocidr
 func (t *iptables) writeNodePortJumpRule(nodeAddresses sets.String, args []string) {
 	isIPv6 := t.iptInterface.IsIPv6()
 	for address := range nodeAddresses {

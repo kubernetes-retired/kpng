@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	cebpflink "github.com/cilium/ebpf/link"
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	localv1 "sigs.k8s.io/kpng/api/localv1"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -33,7 +33,7 @@ import (
 type svcEndpointMapping struct {
 	Svc *BaseServiceInfo
 
-	Endpoint []*localnetv1.Endpoint
+	Endpoint []*localv1.Endpoint
 }
 
 type ebpfController struct {
@@ -66,7 +66,7 @@ func NewEBPFController(objs bpfObjects, bpfProgLink cebpflink.Link, ipFamily v1.
 type ServicePortName struct {
 	types.NamespacedName
 	Port     string
-	Protocol localnetv1.Protocol
+	Protocol localv1.Protocol
 }
 
 func (spn ServicePortName) String() string {
@@ -98,7 +98,7 @@ type ServicePort interface {
 	// LoadBalancerIPStrings returns service LoadBalancerIPs as a string array.
 	LoadBalancerIPStrings() []string
 	// GetProtocol returns service protocol.
-	Protocol() localnetv1.Protocol
+	Protocol() localv1.Protocol
 	// LoadBalancerSourceRanges returns service LoadBalancerSourceRanges if present empty array if not
 	LoadBalancerSourceRanges() []string
 	// GetHealthCheckNodePort returns service health check node port if present.  If return 0, it means not present.
@@ -122,7 +122,7 @@ type ServicePort interface {
 type BaseServiceInfo struct {
 	clusterIP                net.IP
 	port                     int
-	protocol                 localnetv1.Protocol
+	protocol                 localv1.Protocol
 	nodePort                 int
 	loadBalancerIPs          []string
 	sessionAffinity          SessionAffinity
@@ -141,7 +141,7 @@ type BaseServiceInfo struct {
 
 // SessionAffinity contains data about assinged session affinity
 type SessionAffinity struct {
-	ClientIP *localnetv1.Service_ClientIP
+	ClientIP *localv1.Service_ClientIP
 }
 
 var _ ServicePort = &BaseServiceInfo{}
@@ -181,7 +181,7 @@ func (info *BaseServiceInfo) SessionAffinity() SessionAffinity {
 }
 
 // Protocol is part of ServicePort interface.
-func (info *BaseServiceInfo) Protocol() localnetv1.Protocol {
+func (info *BaseServiceInfo) Protocol() localv1.Protocol {
 	return info.protocol
 }
 
@@ -234,7 +234,7 @@ func (info *BaseServiceInfo) HintsAnnotation() string {
 	return info.hintsAnnotation
 }
 
-func (sct *ebpfController) newBaseServiceInfo(port *localnetv1.PortMapping, service *localnetv1.Service) *BaseServiceInfo {
+func (sct *ebpfController) newBaseServiceInfo(port *localv1.PortMapping, service *localv1.Service) *BaseServiceInfo {
 	nodeLocalExternal := false
 	if RequestsOnlyLocalTraffic(service) {
 		nodeLocalExternal = true
@@ -290,7 +290,7 @@ func (sct *ebpfController) newBaseServiceInfo(port *localnetv1.PortMapping, serv
 }
 
 // GetClusterIPByFamily returns a service clusterip by family
-func GetClusterIPByFamily(ipFamily v1.IPFamily, service *localnetv1.Service) string {
+func GetClusterIPByFamily(ipFamily v1.IPFamily, service *localv1.Service) string {
 	if ipFamily == v1.IPv4Protocol {
 		if len(service.IPs.ClusterIPs.V4) > 0 {
 			return service.IPs.ClusterIPs.V4[0]
@@ -307,13 +307,13 @@ func GetClusterIPByFamily(ipFamily v1.IPFamily, service *localnetv1.Service) str
 func getSessionAffinity(affinity interface{}) SessionAffinity {
 	var sessionAffinity SessionAffinity
 	switch affinity.(type) {
-	case *localnetv1.Service_ClientIP:
-		sessionAffinity.ClientIP = affinity.(*localnetv1.Service_ClientIP)
+	case *localv1.Service_ClientIP:
+		sessionAffinity.ClientIP = affinity.(*localv1.Service_ClientIP)
 	}
 	return sessionAffinity
 }
 
-func getLoadBalancerIPs(ips *localnetv1.IPSet, ipFamily v1.IPFamily) []string {
+func getLoadBalancerIPs(ips *localv1.IPSet, ipFamily v1.IPFamily) []string {
 	if ips == nil {
 		return nil
 	}
@@ -324,9 +324,9 @@ func getLoadBalancerIPs(ips *localnetv1.IPSet, ipFamily v1.IPFamily) []string {
 
 }
 
-//TODO: Would be better to have SourceRanges also as IPSet instead?
-//Change the code to return based on ipfamily once that is done.
-func getLoadbalancerSourceRanges(filters []*localnetv1.IPFilter) []string {
+// TODO: Would be better to have SourceRanges also as IPSet instead?
+// Change the code to return based on ipfamily once that is done.
+func getLoadbalancerSourceRanges(filters []*localv1.IPFilter) []string {
 	var sourceRanges []string
 	for _, filter := range filters {
 		if len(filter.SourceRanges) <= 0 {
@@ -338,7 +338,7 @@ func getLoadbalancerSourceRanges(filters []*localnetv1.IPFilter) []string {
 }
 
 // RequestsOnlyLocalTraffic checks if service requests OnlyLocal traffic.
-func RequestsOnlyLocalTraffic(service *localnetv1.Service) bool {
+func RequestsOnlyLocalTraffic(service *localv1.Service) bool {
 	if service.Type != string(v1.ServiceTypeLoadBalancer) &&
 		service.Type != string(v1.ServiceTypeNodePort) {
 		return false

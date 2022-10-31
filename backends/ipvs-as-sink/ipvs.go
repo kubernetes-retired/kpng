@@ -37,7 +37,7 @@ import (
 	"github.com/google/seesaw/ipvs"
 	"github.com/vishvananda/netlink"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/backendcmd"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
@@ -65,7 +65,7 @@ func init() {
 
 type Backend struct {
 	localsink.Config
-	svcs     map[string]*localnetv1.Service
+	svcs     map[string]*localv1.Service
 	proxiers map[v1.IPFamily]*proxier
 	svcEPMap map[string]int
 
@@ -84,7 +84,7 @@ var _ decoder.Interface = &Backend{}
 func New() *Backend {
 	return &Backend{
 		proxiers: make(map[v1.IPFamily]*proxier),
-		svcs:     map[string]*localnetv1.Service{},
+		svcs:     map[string]*localv1.Service{},
 		svcEPMap: map[string]int{},
 	}
 }
@@ -97,7 +97,7 @@ func (s *Backend) Sink() localsink.Sink {
 // (IP, port) listener interface
 var _ serviceevents.IPPortsListener = &Backend{}
 
-func (s *Backend) AddIPPort(svc *localnetv1.Service, ip string, IPKind serviceevents.IPKind, port *localnetv1.PortMapping) {
+func (s *Backend) AddIPPort(svc *localv1.Service, ip string, IPKind serviceevents.IPKind, port *localv1.PortMapping) {
 	klog.V(2).Infof("AddIPPort (svc: %v, svc-ip: %v, port: %v)", svc, ip, port)
 	serviceKey := getServiceKey(svc)
 	s.svcs[serviceKey] = svc
@@ -114,7 +114,7 @@ func (s *Backend) AddIPPort(svc *localnetv1.Service, ip string, IPKind serviceev
 	}
 }
 
-func (s *Backend) DeleteIPPort(svc *localnetv1.Service, ip string, IPKind serviceevents.IPKind, port *localnetv1.PortMapping) {
+func (s *Backend) DeleteIPPort(svc *localv1.Service, ip string, IPKind serviceevents.IPKind, port *localv1.PortMapping) {
 	klog.V(2).Infof("DeleteIPPort (svc: %v, svc-ip: %v, port: %v)", svc, ip, port)
 	if svc.Type == ClusterIPService {
 		s.deleteClusterIPService(svc, ip, IPKind, port)
@@ -133,11 +133,11 @@ func (s *Backend) DeleteIPPort(svc *localnetv1.Service, ip string, IPKind servic
 // IP listener interface
 var _ serviceevents.IPsListener = &Backend{}
 
-func (s *Backend) AddIP(svc *localnetv1.Service, ip string, ipKind serviceevents.IPKind) {
+func (s *Backend) AddIP(svc *localv1.Service, ip string, ipKind serviceevents.IPKind) {
 	klog.V(2).Infof("AddIP (svc: %v, svc-ip: %v, type: %v)", svc, ip, ipKind)
 	s.addServiceIPToKubeIPVSIntf(ip)
 }
-func (s *Backend) DeleteIP(svc *localnetv1.Service, ip string, ipKind serviceevents.IPKind) {
+func (s *Backend) DeleteIP(svc *localv1.Service, ip string, ipKind serviceevents.IPKind) {
 	klog.V(2).Infof("DeleteIP (svc: %v, svc-ip: %v, type: %v)", svc, ip, ipKind)
 	s.deleteServiceIPToKubeIPVSIntf(ip)
 }
@@ -145,12 +145,12 @@ func (s *Backend) DeleteIP(svc *localnetv1.Service, ip string, ipKind serviceeve
 // Handle session affinity
 var _ serviceevents.SessionAffinityListener = &Backend{}
 
-func (s *Backend) EnableSessionAffinity(svc *localnetv1.Service, sessionAffinity serviceevents.SessionAffinity) {
+func (s *Backend) EnableSessionAffinity(svc *localv1.Service, sessionAffinity serviceevents.SessionAffinity) {
 	klog.V(2).Infof("EnableSessionAffinity (svc: %v, sessionAffinity: %v)", svc, sessionAffinity)
 	s.enableSessionAffinityForServiceIPs(svc, sessionAffinity)
 }
 
-func (s *Backend) DisableSessionAffinity(svc *localnetv1.Service) {
+func (s *Backend) DisableSessionAffinity(svc *localv1.Service) {
 	klog.V(2).Infof("DisableSessionAffinity (svc: %v,)", svc)
 	s.disableSessionAffinityForServiceIPs(svc)
 }
@@ -158,21 +158,21 @@ func (s *Backend) DisableSessionAffinity(svc *localnetv1.Service) {
 // Handle traffic policy
 var _ serviceevents.TrafficPolicyListener = &Backend{}
 
-func (s *Backend) EnableTrafficPolicy(svc *localnetv1.Service, policyKind serviceevents.TrafficPolicyKind) {
+func (s *Backend) EnableTrafficPolicy(svc *localv1.Service, policyKind serviceevents.TrafficPolicyKind) {
 	klog.V(2).Infof("EnableTrafficPolicy (svc: %v, policyKind: %v)", svc, policyKind)
 }
 
-func (s *Backend) DisableTrafficPolicy(svc *localnetv1.Service, policyKind serviceevents.TrafficPolicyKind) {
+func (s *Backend) DisableTrafficPolicy(svc *localv1.Service, policyKind serviceevents.TrafficPolicyKind) {
 	klog.V(2).Infof("DisableTrafficPolicy (svc: %v, policyKind: %v)", svc, policyKind)
 }
 
 // SetService ------------------------------------------------------
 // Service
-func (s *Backend) SetService(svc *localnetv1.Service) {}
+func (s *Backend) SetService(svc *localv1.Service) {}
 
 func (s *Backend) DeleteService(namespace, name string) {}
 
-func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint) {
+func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localv1.Endpoint) {
 	klog.V(2).Infof("SetEndpoint(%q, %q, %q, %v)", namespace, serviceName, key, endpoint)
 	svcKey := namespace + "/" + serviceName
 	//TODO Check whether IPVS handles headless service

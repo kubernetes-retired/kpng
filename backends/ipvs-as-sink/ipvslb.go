@@ -21,7 +21,7 @@ import (
 	"net"
 	"syscall"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 
 	"github.com/google/seesaw/ipvs"
 )
@@ -40,7 +40,7 @@ type ipvsLB struct {
 	Timeout          uint32
 	Port             uint16
 	NodePort         uint16
-	Protocol         localnetv1.Protocol
+	Protocol         localv1.Protocol
 }
 
 func (lb ipvsLB) String() string {
@@ -68,11 +68,11 @@ func (lb ipvsLB) ToService() ipvs.Service {
 	}
 
 	switch lb.Protocol {
-	case localnetv1.Protocol_TCP:
+	case localv1.Protocol_TCP:
 		s.Protocol = syscall.IPPROTO_TCP
-	case localnetv1.Protocol_UDP:
+	case localv1.Protocol_UDP:
 		s.Protocol = syscall.IPPROTO_UDP
-	case localnetv1.Protocol_SCTP:
+	case localv1.Protocol_SCTP:
 		s.Protocol = syscall.IPPROTO_SCTP
 	}
 

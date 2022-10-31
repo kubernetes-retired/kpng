@@ -20,7 +20,7 @@ import (
 	"sort"
 	"strings"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/diffstore"
 )
 
@@ -64,7 +64,7 @@ func (n *nftable) nftIPType() string {
 	}
 }
 
-func (n *nftable) IPsFromSet(set *localnetv1.IPSet) []string {
+func (n *nftable) IPsFromSet(set *localv1.IPSet) []string {
 	switch n.Family {
 	case "ip":
 		return set.V4

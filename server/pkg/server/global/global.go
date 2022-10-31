@@ -19,10 +19,10 @@ package global
 import (
 	"google.golang.org/grpc"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	globalv1 "sigs.k8s.io/kpng/api/globalv1"
 	proxystore "sigs.k8s.io/kpng/server/proxystore"
 )
 
 func Setup(s grpc.ServiceRegistrar, store *proxystore.Store) {
-	localnetv1.RegisterGlobalServer(s, &Server{Store: store})
+	globalv1.RegisterSetsServer(s, &Server{Store: store})
 }

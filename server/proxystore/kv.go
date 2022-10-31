@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/btree"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/globalv1"
 )
 
 type KV struct {
@@ -34,9 +34,9 @@ type KV struct {
 
 	Value Hashed
 
-	Service  *localnetv1.ServiceInfo
-	Endpoint *localnetv1.EndpointInfo
-	Node     *localnetv1.NodeInfo
+	Service  *globalv1.ServiceInfo
+	Endpoint *globalv1.EndpointInfo
+	Node     *globalv1.NodeInfo
 }
 
 func (a *KV) Path() string {

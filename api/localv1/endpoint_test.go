@@ -14,8 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package localnetv1
+package localv1
 
-func ParseProtocol(s string) Protocol {
-	return Protocol(Protocol_value[s]) // default is Unknown
+import "fmt"
+
+func ExampleEndpointPortMapping() {
+	ports := []*PortMapping{
+		{Name: "http", TargetPortName: "t-http", TargetPort: 8080},
+		{Name: "http2", TargetPortName: "t-http2", TargetPort: 800},
+		{Name: "metrics", TargetPortName: "t-metrics"},
+	}
+
+	ep := &Endpoint{
+		PortOverrides: []*PortName{
+			{Name: "metrics", Port: 1011},
+			{Name: "http2", Port: 888},
+		},
+	}
+
+	for _, port := range ports {
+		fmt.Println(port.Name, ep.PortMapping(port))
+	}
+
+	// Output:
+	// http 8080
+	// http2 888
+	// metrics 1011
 }

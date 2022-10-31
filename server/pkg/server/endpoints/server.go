@@ -23,20 +23,20 @@ import (
 
 	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/server/jobs/store2localdiff"
 	"sigs.k8s.io/kpng/server/proxystore"
 )
 
 type Server struct {
-	localnetv1.UnimplementedEndpointsServer
+	localv1.UnimplementedSetsServer
 
 	Store *proxystore.Store
 }
 
-var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
+var syncItem = &localv1.OpItem{Op: &localv1.OpItem_Sync{}}
 
-func (s *Server) Watch(res localnetv1.Endpoints_WatchServer) error {
+func (s *Server) Watch(res localv1.Sets_WatchServer) error {
 	remote := ""
 	{
 		ctxPeer, _ := peer.FromContext(res.Context())
@@ -55,7 +55,7 @@ func (s *Server) Watch(res localnetv1.Endpoints_WatchServer) error {
 }
 
 type serverSink struct {
-	localnetv1.Endpoints_WatchServer
+	localv1.Sets_WatchServer
 	remote string
 }
 

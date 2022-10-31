@@ -28,7 +28,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/lightdiffstore"
 	"sigs.k8s.io/kpng/server/pkg/server"
 	"sigs.k8s.io/kpng/server/pkg/server/watchstate"
@@ -50,20 +50,20 @@ func main() {
 
 	srv := grpc.NewServer()
 
-	localnetv1.RegisterEndpointsServer(srv, watchSrv{})
+	localv1.RegisterSetsServer(srv, watchSrv{})
 
 	lis := server.MustListen(*bindSpec)
 	srv.Serve(lis)
 }
 
-var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
+var syncItem = &localv1.OpItem{Op: &localv1.OpItem_Sync{}}
 
 type watchSrv struct {
-	localnetv1.UnimplementedEndpointsServer
+	localv1.UnimplementedSetsServer
 }
 
-func (s watchSrv) Watch(res localnetv1.Endpoints_WatchServer) error {
-	w := watchstate.New(res, []localnetv1.Set{localnetv1.Set_ServicesSet, localnetv1.Set_EndpointsSet})
+func (s watchSrv) Watch(res localv1.Sets_WatchServer) error {
+	w := watchstate.New(res, []localv1.Set{localv1.Set_ServicesSet, localv1.Set_EndpointsSet})
 
 	var i uint64
 	for {
@@ -77,10 +77,10 @@ func (s watchSrv) Watch(res localnetv1.Endpoints_WatchServer) error {
 		i++
 
 		// send diff
-		w.SendUpdates(localnetv1.Set_ServicesSet)
-		w.SendUpdates(localnetv1.Set_EndpointsSet)
-		w.SendDeletes(localnetv1.Set_EndpointsSet)
-		w.SendDeletes(localnetv1.Set_ServicesSet)
+		w.SendUpdates(localv1.Set_ServicesSet)
+		w.SendUpdates(localv1.Set_EndpointsSet)
+		w.SendDeletes(localv1.Set_EndpointsSet)
+		w.SendDeletes(localv1.Set_ServicesSet)
 
 		w.Reset(lightdiffstore.ItemDeleted)
 
@@ -96,8 +96,8 @@ func (s watchSrv) Watch(res localnetv1.Endpoints_WatchServer) error {
 func injectState(rev uint64, w *watchstate.WatchState) {
 	time.Sleep(*sleepFlag)
 
-	svcs := w.StoreFor(localnetv1.Set_ServicesSet)
-	seps := w.StoreFor(localnetv1.Set_EndpointsSet)
+	svcs := w.StoreFor(localv1.Set_ServicesSet)
+	seps := w.StoreFor(localv1.Set_EndpointsSet)
 
 	args := flag.Args()
 
@@ -121,17 +121,17 @@ func injectState(rev uint64, w *watchstate.WatchState) {
 	epIP := ipGen(net.ParseIP("10.128.0.0"))
 
 	for s := 0; s < nSvc; s++ {
-		svc := &localnetv1.Service{
+		svc := &localv1.Service{
 			Namespace: "default",
 			Name:      fmt.Sprintf("svc-%d", s),
 			Type:      "ClusterIP",
-			IPs: &localnetv1.ServiceIPs{
-				ClusterIPs:  localnetv1.NewIPSet(svcIP.Next().String()),
-				ExternalIPs: &localnetv1.IPSet{},
+			IPs: &localv1.ServiceIPs{
+				ClusterIPs:  localv1.NewIPSet(svcIP.Next().String()),
+				ExternalIPs: &localv1.IPSet{},
 			},
-			Ports: []*localnetv1.PortMapping{
+			Ports: []*localv1.PortMapping{
 				{
-					Protocol:   localnetv1.Protocol_TCP,
+					Protocol:   localv1.Protocol_TCP,
 					Port:       80,
 					TargetPort: 8080,
 				},
@@ -141,7 +141,7 @@ func injectState(rev uint64, w *watchstate.WatchState) {
 		svcs.Set([]byte(svc.Namespace+"/"+svc.Name), serde.Hash(svc), svc)
 
 		for e := 0; e < nEpPerSvc; e++ {
-			ep := &localnetv1.Endpoint{}
+			ep := &localv1.Endpoint{}
 			ep.AddAddress(epIP.Next().String())
 
 			h := serde.Hash(ep)

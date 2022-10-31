@@ -22,17 +22,17 @@ import (
 	"net/netip"
 	"strconv"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	localv1 "sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/diffstore"
 )
 
-func (ctx *renderContext) epChainName(svc *localnetv1.Service, ep *localnetv1.Endpoint) string {
+func (ctx *renderContext) epChainName(svc *localv1.Service, ep *localv1.Endpoint) string {
 	ips := ctx.table.IPsFromSet(ep.IPs)
 	ipHex := hex.EncodeToString(netip.MustParseAddr(ips[0]).AsSlice())
 	return ctx.svcNftName(svc) + "_ep_" + ipHex
 }
 
-func (ctx *renderContext) addEndpointChain(svc *localnetv1.Service, epIP EpIP, svcChain *diffstore.BufferLeaf) (epChainName string) {
+func (ctx *renderContext) addEndpointChain(svc *localv1.Service, epIP EpIP, svcChain *diffstore.BufferLeaf) (epChainName string) {
 	ep := epIP.Endpoint
 
 	epChainName = ctx.epChainName(svc, ep)
@@ -41,7 +41,7 @@ func (ctx *renderContext) addEndpointChain(svc *localnetv1.Service, epIP EpIP, s
 	family := ctx.table.Family
 
 	switch sa := svc.SessionAffinity.(type) {
-	case *localnetv1.Service_ClientIP:
+	case *localv1.Service_ClientIP:
 		recentSet := epChainName + "_recent"
 		if recentSetV := ctx.table.Sets.Get(recentSet); recentSetV.Len() == 0 {
 			recentSetV.WriteString("  type " + ctx.table.nftIPType() + "; flags timeout;\n")

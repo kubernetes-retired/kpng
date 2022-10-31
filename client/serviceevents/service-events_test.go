@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 )
 
 // fix the protobuf "I'll randomly choose to double spaces or not" bug (it's a bug right???)
@@ -34,37 +34,37 @@ func cleanStr(v fmt.Stringer) string {
 
 type portsLsnr struct{}
 
-func (_ portsLsnr) AddPort(svc *localnetv1.Service, port *localnetv1.PortMapping) {
+func (_ portsLsnr) AddPort(svc *localv1.Service, port *localv1.PortMapping) {
 	fmt.Print("ADD svc: ", cleanStr(svc), "\n    port: ", cleanStr(port), "\n")
 }
-func (_ portsLsnr) DeletePort(svc *localnetv1.Service, port *localnetv1.PortMapping) {
+func (_ portsLsnr) DeletePort(svc *localv1.Service, port *localv1.PortMapping) {
 	fmt.Print("DEL svc: ", cleanStr(svc), "\n    port: ", cleanStr(port), "\n")
 }
 
 type ipsLsnr struct{}
 
-func (_ ipsLsnr) AddIP(svc *localnetv1.Service, ip string, ipKind IPKind) {
+func (_ ipsLsnr) AddIP(svc *localv1.Service, ip string, ipKind IPKind) {
 	fmt.Print("ADD svc: ", cleanStr(svc), "\n    ip: ", ip, " (", ipKind, ")\n")
 }
-func (_ ipsLsnr) DeleteIP(svc *localnetv1.Service, ip string, ipKind IPKind) {
+func (_ ipsLsnr) DeleteIP(svc *localv1.Service, ip string, ipKind IPKind) {
 	fmt.Print("DEL svc: ", cleanStr(svc), "\n    ip: ", ip, " (", ipKind, ")\n")
 }
 
 type ipPortsLsnr struct{}
 
-func (_ ipPortsLsnr) AddIPPort(svc *localnetv1.Service, ip string, ipKind IPKind, port *localnetv1.PortMapping) {
+func (_ ipPortsLsnr) AddIPPort(svc *localv1.Service, ip string, ipKind IPKind, port *localv1.PortMapping) {
 	fmt.Print("ADD svc: ", cleanStr(svc), "\n    ip: ", ip, " (", ipKind, ")\n    port: ", cleanStr(port), "\n")
 }
-func (_ ipPortsLsnr) DeleteIPPort(svc *localnetv1.Service, ip string, ipKind IPKind, port *localnetv1.PortMapping) {
+func (_ ipPortsLsnr) DeleteIPPort(svc *localv1.Service, ip string, ipKind IPKind, port *localv1.PortMapping) {
 	fmt.Print("DEL svc: ", cleanStr(svc), "\n    ip: ", ip, " (", ipKind, ")\n    port: ", cleanStr(port), "\n")
 }
 
 type sessAffLsnr struct{}
 
-func (_ sessAffLsnr) EnableSessionAffinity(svc *localnetv1.Service, sessionAffinity SessionAffinity) {
+func (_ sessAffLsnr) EnableSessionAffinity(svc *localv1.Service, sessionAffinity SessionAffinity) {
 	fmt.Print("ENABLE sessionAffinity svc: ", cleanStr(svc), "sessionAffinity: ", sessionAffinity, "\n")
 }
-func (_ sessAffLsnr) DisableSessionAffinity(svc *localnetv1.Service) {
+func (_ sessAffLsnr) DisableSessionAffinity(svc *localv1.Service) {
 	fmt.Print("DISABLE sessionAffinity svc: ", cleanStr(svc), "\n")
 }
 
@@ -76,132 +76,132 @@ func Example() {
 	sl.SessionAffinityListener = sessAffLsnr{}
 
 	fmt.Println("add svc with port 80")
-	sl.SetService(&localnetv1.Service{
+	sl.SetService(&localv1.Service{
 		Namespace: "ns",
 		Name:      "svc-1",
-		Ports: []*localnetv1.PortMapping{
-			{Protocol: localnetv1.Protocol_TCP, Port: 80},
+		Ports: []*localv1.PortMapping{
+			{Protocol: localv1.Protocol_TCP, Port: 80},
 		},
 	})
 
 	fmt.Println("\nadd port 81")
-	sl.SetService(&localnetv1.Service{
+	sl.SetService(&localv1.Service{
 		Namespace: "ns",
 		Name:      "svc-1",
-		Ports: []*localnetv1.PortMapping{
-			{Protocol: localnetv1.Protocol_TCP, Port: 80},
-			{Protocol: localnetv1.Protocol_TCP, Port: 81},
+		Ports: []*localv1.PortMapping{
+			{Protocol: localv1.Protocol_TCP, Port: 80},
+			{Protocol: localv1.Protocol_TCP, Port: 81},
 		},
 	})
 
 	fmt.Println("\nadd port 82, remove port 81")
-	sl.SetService(&localnetv1.Service{
+	sl.SetService(&localv1.Service{
 		Namespace: "ns",
 		Name:      "svc-1",
-		Ports: []*localnetv1.PortMapping{
-			{Protocol: localnetv1.Protocol_TCP, Port: 80},
-			{Protocol: localnetv1.Protocol_TCP, Port: 82},
+		Ports: []*localv1.PortMapping{
+			{Protocol: localv1.Protocol_TCP, Port: 80},
+			{Protocol: localv1.Protocol_TCP, Port: 82},
 		},
 	})
 
 	fmt.Println("\nadd cluster IP")
-	sl.SetService(&localnetv1.Service{
+	sl.SetService(&localv1.Service{
 		Namespace: "ns",
 		Name:      "svc-1",
-		IPs: &localnetv1.ServiceIPs{
-			ClusterIPs: localnetv1.NewIPSet("10.1.1.1"),
+		IPs: &localv1.ServiceIPs{
+			ClusterIPs: localv1.NewIPSet("10.1.1.1"),
 		},
-		Ports: []*localnetv1.PortMapping{
-			{Protocol: localnetv1.Protocol_TCP, Port: 80},
-			{Protocol: localnetv1.Protocol_TCP, Port: 82},
+		Ports: []*localv1.PortMapping{
+			{Protocol: localv1.Protocol_TCP, Port: 80},
+			{Protocol: localv1.Protocol_TCP, Port: 82},
 		},
 	})
 
 	fmt.Println("\nenable external traffic policy")
-	sl.SetService(&localnetv1.Service{
+	sl.SetService(&localv1.Service{
 		Namespace: "ns",
 		Name:      "svc-1",
-		IPs: &localnetv1.ServiceIPs{
-			ClusterIPs: localnetv1.NewIPSet("10.1.1.1"),
+		IPs: &localv1.ServiceIPs{
+			ClusterIPs: localv1.NewIPSet("10.1.1.1"),
 		},
-		Ports: []*localnetv1.PortMapping{
-			{Protocol: localnetv1.Protocol_TCP, Port: 80},
-			{Protocol: localnetv1.Protocol_TCP, Port: 82},
+		Ports: []*localv1.PortMapping{
+			{Protocol: localv1.Protocol_TCP, Port: 80},
+			{Protocol: localv1.Protocol_TCP, Port: 82},
 		},
 		ExternalTrafficToLocal: true,
 	})
 
 	fmt.Println("\ndisable external traffic policy")
-	sl.SetService(&localnetv1.Service{
+	sl.SetService(&localv1.Service{
 		Namespace: "ns",
 		Name:      "svc-1",
-		IPs: &localnetv1.ServiceIPs{
-			ClusterIPs: localnetv1.NewIPSet("10.1.1.1"),
+		IPs: &localv1.ServiceIPs{
+			ClusterIPs: localv1.NewIPSet("10.1.1.1"),
 		},
-		Ports: []*localnetv1.PortMapping{
-			{Protocol: localnetv1.Protocol_TCP, Port: 80},
-			{Protocol: localnetv1.Protocol_TCP, Port: 82},
+		Ports: []*localv1.PortMapping{
+			{Protocol: localv1.Protocol_TCP, Port: 80},
+			{Protocol: localv1.Protocol_TCP, Port: 82},
 		},
 		ExternalTrafficToLocal: false,
 	})
 
 	fmt.Println("\nenable internal traffic policy")
-	sl.SetService(&localnetv1.Service{
+	sl.SetService(&localv1.Service{
 		Namespace: "ns",
 		Name:      "svc-1",
-		IPs: &localnetv1.ServiceIPs{
-			ClusterIPs: localnetv1.NewIPSet("10.1.1.1"),
+		IPs: &localv1.ServiceIPs{
+			ClusterIPs: localv1.NewIPSet("10.1.1.1"),
 		},
-		Ports: []*localnetv1.PortMapping{
-			{Protocol: localnetv1.Protocol_TCP, Port: 80},
-			{Protocol: localnetv1.Protocol_TCP, Port: 82},
+		Ports: []*localv1.PortMapping{
+			{Protocol: localv1.Protocol_TCP, Port: 80},
+			{Protocol: localv1.Protocol_TCP, Port: 82},
 		},
 		InternalTrafficToLocal: true,
 	})
 
 	fmt.Println("\ndisable internal traffic policy")
-	sl.SetService(&localnetv1.Service{
+	sl.SetService(&localv1.Service{
 		Namespace: "ns",
 		Name:      "svc-1",
-		IPs: &localnetv1.ServiceIPs{
-			ClusterIPs: localnetv1.NewIPSet("10.1.1.1"),
+		IPs: &localv1.ServiceIPs{
+			ClusterIPs: localv1.NewIPSet("10.1.1.1"),
 		},
-		Ports: []*localnetv1.PortMapping{
-			{Protocol: localnetv1.Protocol_TCP, Port: 80},
-			{Protocol: localnetv1.Protocol_TCP, Port: 82},
+		Ports: []*localv1.PortMapping{
+			{Protocol: localv1.Protocol_TCP, Port: 80},
+			{Protocol: localv1.Protocol_TCP, Port: 82},
 		},
 		InternalTrafficToLocal: false,
 	})
 
 	fmt.Println("\nenable session affinity")
-	svc := &localnetv1.Service{
+	svc := &localv1.Service{
 		Namespace: "ns",
 		Name:      "svc-session-affinity-1",
-		IPs: &localnetv1.ServiceIPs{
-			ClusterIPs: localnetv1.NewIPSet("10.1.1.1"),
+		IPs: &localv1.ServiceIPs{
+			ClusterIPs: localv1.NewIPSet("10.1.1.1"),
 		},
-		Ports: []*localnetv1.PortMapping{
-			{Protocol: localnetv1.Protocol_TCP, Port: 80},
-			{Protocol: localnetv1.Protocol_TCP, Port: 82},
+		Ports: []*localv1.PortMapping{
+			{Protocol: localv1.Protocol_TCP, Port: 80},
+			{Protocol: localv1.Protocol_TCP, Port: 82},
 		},
 	}
-	svc.SessionAffinity = &localnetv1.Service_ClientIP{
-		ClientIP: &localnetv1.ClientIPAffinity{
+	svc.SessionAffinity = &localv1.Service_ClientIP{
+		ClientIP: &localv1.ClientIPAffinity{
 			TimeoutSeconds: 10,
 		},
 	}
 	sl.SetService(svc)
 
 	fmt.Println("\ndisable session affinity")
-	svc = &localnetv1.Service{
+	svc = &localv1.Service{
 		Namespace: "ns",
 		Name:      "svc-session-affinity-1",
-		IPs: &localnetv1.ServiceIPs{
-			ClusterIPs: localnetv1.NewIPSet("10.1.1.1"),
+		IPs: &localv1.ServiceIPs{
+			ClusterIPs: localv1.NewIPSet("10.1.1.1"),
 		},
-		Ports: []*localnetv1.PortMapping{
-			{Protocol: localnetv1.Protocol_TCP, Port: 80},
-			{Protocol: localnetv1.Protocol_TCP, Port: 82},
+		Ports: []*localv1.PortMapping{
+			{Protocol: localv1.Protocol_TCP, Port: 80},
+			{Protocol: localv1.Protocol_TCP, Port: 82},
 		},
 	}
 	sl.SetService(svc)

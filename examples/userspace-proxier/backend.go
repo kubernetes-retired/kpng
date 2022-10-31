@@ -21,7 +21,7 @@ import (
 	"log"
 	"strconv"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/serviceevents"
 )
 
@@ -48,7 +48,7 @@ func (b *userspaceBackend) WaitRequest() (nodeName string, err error) {
 func (b *userspaceBackend) Reset() { /* noop */ }
 
 // SetService is called when a service is added or updated
-func (b *userspaceBackend) SetService(svc *localnetv1.Service) {
+func (b *userspaceBackend) SetService(svc *localv1.Service) {
 	key := svc.NamespacedName()
 
 	if _, ok := b.services[key]; ok {
@@ -64,7 +64,7 @@ func (b *userspaceBackend) DeleteService(namespace, name string) {
 }
 
 // SetEndpoint is called when an endpoint is added or updated
-func (b *userspaceBackend) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint) {
+func (b *userspaceBackend) SetEndpoint(namespace, serviceName, key string, endpoint *localv1.Endpoint) {
 	b.services[namespace+"/"+serviceName].AddEndpoint(key, endpoint)
 }
 
@@ -79,13 +79,13 @@ func (b *userspaceBackend) DeleteEndpoint(namespace, serviceName, key string) {
 
 var _ serviceevents.IPPortsListener = &userspaceBackend{}
 
-func (b *userspaceBackend) AddIPPort(svc *localnetv1.Service, ip string, _ serviceevents.IPKind, port *localnetv1.PortMapping) {
+func (b *userspaceBackend) AddIPPort(svc *localv1.Service, ip string, _ serviceevents.IPKind, port *localv1.PortMapping) {
 	key := portKey(svc, ip, port)
 
 	ipPort := ip + ":" + strconv.Itoa(int(port.Port))
 
 	switch port.Protocol {
-	case localnetv1.Protocol_TCP:
+	case localv1.Protocol_TCP:
 		lsnr := tcpProxy{
 			svc:           b.services[svc.NamespacedName()],
 			localAddrPort: ipPort,
@@ -96,8 +96,8 @@ func (b *userspaceBackend) AddIPPort(svc *localnetv1.Service, ip string, _ servi
 			b.listeners[key] = lsnr
 		}
 
-	// TODO case localnetv1.Protocol_UDP:
-	// TODO case localnetv1.Protocol_SCTP:
+	// TODO case kpng.Protocol_UDP:
+	// TODO case kpng.Protocol_SCTP:
 
 	default:
 		log.Print("warning: ignoring port on unmanaged protocol ", port.Protocol)
@@ -105,7 +105,7 @@ func (b *userspaceBackend) AddIPPort(svc *localnetv1.Service, ip string, _ servi
 	}
 }
 
-func (b *userspaceBackend) DeleteIPPort(svc *localnetv1.Service, ip string, _ serviceevents.IPKind, port *localnetv1.PortMapping) {
+func (b *userspaceBackend) DeleteIPPort(svc *localv1.Service, ip string, _ serviceevents.IPKind, port *localv1.PortMapping) {
 	key := portKey(svc, ip, port)
 
 	lsnr, ok := b.listeners[key]
@@ -118,6 +118,6 @@ func (b *userspaceBackend) DeleteIPPort(svc *localnetv1.Service, ip string, _ se
 	delete(b.listeners, key)
 }
 
-func portKey(svc *localnetv1.Service, ip string, port *localnetv1.PortMapping) string {
+func portKey(svc *localv1.Service, ip string, port *localv1.PortMapping) string {
 	return svc.NamespacedName() + "@" + port.Protocol.String() + ":" + strconv.Itoa(int(port.Port))
 }

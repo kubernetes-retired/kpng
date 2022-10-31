@@ -27,7 +27,7 @@ import (
 
 	"k8s.io/klog/v2"
 	"k8s.io/utils/exec"
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/backendcmd"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
@@ -104,7 +104,7 @@ func (b *userspaceBackend) WaitRequest() (NodeName string, err error) {
 func (b *userspaceBackend) Reset() { /* noop */ }
 
 // SetService is called when a service is added or updated
-func (b *userspaceBackend) SetService(svc *localnetv1.Service) {
+func (b *userspaceBackend) SetService(svc *localv1.Service) {
 	key := svc.NamespacedName()
 	if oldSvc, ok := b.services[key]; ok {
 		proxier.OnServiceUpdate(oldSvc.internalSvc, svc)
@@ -122,7 +122,7 @@ func (b *userspaceBackend) DeleteService(namespace, name string) {
 }
 
 // SetEndpoint is called when an endpoint is added or updated
-func (b *userspaceBackend) SetEndpoint(namespace, serviceName, epKey string, endpoint *localnetv1.Endpoint) {
+func (b *userspaceBackend) SetEndpoint(namespace, serviceName, epKey string, endpoint *localv1.Endpoint) {
 	svc := b.services[namespace+"/"+serviceName]
 	svc.AddEndpoint(epKey, endpoint)
 	proxier.OnEndpointsAdd(endpoint, svc.internalSvc)

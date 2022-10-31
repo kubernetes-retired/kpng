@@ -26,12 +26,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"k8s.io/klog/v2"
-
 	// allow multi gRPC URLs
 	//_ "github.com/Jille/grpc-multi-resolver"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"k8s.io/klog/v2"
+
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
 	"sigs.k8s.io/kpng/client/tlsflags"
@@ -68,8 +68,8 @@ type EndpointsClient struct {
 	Sink localsink.Sink
 
 	conn     *grpc.ClientConn
-	watch    localnetv1.Endpoints_WatchClient
-	watchReq *localnetv1.WatchReq
+	watch    localv1.Sets_WatchClient
+	watchReq *localv1.WatchReq
 
 	ctx    context.Context
 	cancel func()
@@ -106,7 +106,7 @@ retry:
 		return
 	}
 
-	err = epc.watch.Send(&localnetv1.WatchReq{
+	err = epc.watch.Send(&localv1.WatchReq{
 		NodeName: nodeName,
 	})
 	if err != nil {
@@ -128,7 +128,7 @@ retry:
 
 		// break on sync
 		switch v := op.Op; v.(type) {
-		case *localnetv1.OpItem_Sync:
+		case *localv1.OpItem_Sync:
 			return
 		}
 	}
@@ -204,7 +204,7 @@ retry:
 	}
 
 	epc.conn = conn
-	epc.watch, err = localnetv1.NewEndpointsClient(epc.conn).Watch(epc.ctx)
+	epc.watch, err = localv1.NewSetsClient(epc.conn).Watch(epc.ctx)
 
 	if err != nil {
 		conn.Close()

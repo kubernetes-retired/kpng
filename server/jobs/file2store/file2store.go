@@ -27,7 +27,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/globalv1"
 	"sigs.k8s.io/kpng/client/lightdiffstore"
 	"sigs.k8s.io/kpng/server/jobs/store2file"
 	"sigs.k8s.io/kpng/server/pkg/server/watchstate"
@@ -93,7 +93,7 @@ func (j *Job) Run(ctx context.Context) {
 				svc.Namespace = "default"
 			}
 
-			si := &localnetv1.ServiceInfo{
+			si := &globalv1.ServiceInfo{
 				Service: se.Service,
 			}
 
@@ -109,7 +109,7 @@ func (j *Job) Run(ctx context.Context) {
 					ep.ServiceName = svc.Name
 
 					if ep.Conditions == nil {
-						ep.Conditions = &localnetv1.EndpointConditions{Ready: true}
+						ep.Conditions = &globalv1.EndpointConditions{Ready: true}
 					}
 
 					h.Write(serde.Marshal(ep))
@@ -122,17 +122,17 @@ func (j *Job) Run(ctx context.Context) {
 		store.Update(func(tx *proxystore.Tx) {
 			for _, u := range diffNodes.Updated() {
 				klog.Info("U node ", string(u.Key))
-				tx.SetNode(u.Value.(*localnetv1.Node))
+				tx.SetNode(u.Value.(*globalv1.Node))
 			}
 			for _, u := range diffSvcs.Updated() {
 				klog.Info("U service ", string(u.Key))
-				si := u.Value.(*localnetv1.ServiceInfo)
+				si := u.Value.(*globalv1.ServiceInfo)
 				tx.SetService(si.Service)
 			}
 			for _, u := range diffEPs.Updated() {
 				klog.Info("U endpoints ", string(u.Key))
 				key := string(u.Key)
-				eis := u.Value.([]*localnetv1.EndpointInfo)
+				eis := u.Value.([]*globalv1.EndpointInfo)
 
 				tx.SetEndpointsOfSource(path.Dir(key), path.Base(key), eis)
 			}

@@ -37,7 +37,7 @@ require (
 )
 
 require (
-	sigs.k8s.io/kpng/api v0.0.0-20221010162120-e8ab99a40f22
+	sigs.k8s.io/kpng/api v0.0.0-20221010162120-e8ab99a40f22 // indirect
 	sigs.k8s.io/kpng/client v0.0.0-20221010162120-e8ab99a40f22
 )
 

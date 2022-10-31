@@ -14,18 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package localnetv1
+package localv1
 
-func (p *PortMapping) SrcPorts() []int32 {
-	switch {
-	case p.Port == 0 && p.NodePort == 0:
-		return []int32{}
-	case p.Port != 0 && p.NodePort == 0:
-		return []int32{p.Port}
-	case p.Port == 0 && p.NodePort != 0:
-		return []int32{p.NodePort}
-	case p.Port != 0 && p.NodePort != 0:
-		return []int32{p.Port, p.NodePort}
-	}
-	panic("unreachable")
+func (s *ServiceIPs) All() (all *IPSet) {
+	all = NewIPSet()
+	all.AddSet(s.ClusterIPs)
+	all.AddSet(s.ExternalIPs)
+	all.AddSet(s.LoadBalancerIPs)
+	return
+}
+
+func (s *ServiceIPs) AllIngress() (all *IPSet) {
+	all = NewIPSet()
+	all.AddSet(s.ExternalIPs)
+	all.AddSet(s.LoadBalancerIPs)
+	return
 }

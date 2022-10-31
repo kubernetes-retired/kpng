@@ -19,11 +19,12 @@ package kube2store
 import (
 	"sort"
 
-	discovery "k8s.io/api/discovery/v1"
 	"k8s.io/klog/v2"
+	discovery "k8s.io/api/discovery/v1"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore "sigs.k8s.io/kpng/server/proxystore"
+	"sigs.k8s.io/kpng/api/localv1"
+	"sigs.k8s.io/kpng/api/globalv1"
+	"sigs.k8s.io/kpng/server/proxystore"
 )
 
 const hostNameLabel = "kubernetes.io/hostname"
@@ -46,16 +47,16 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 	}
 
 	// compute endpoints
-	infos := make([]*localnetv1.EndpointInfo, 0, len(eps.Endpoints))
+	infos := make([]*globalv1.EndpointInfo, 0, len(eps.Endpoints))
 
 	for _, sliceEndpoint := range eps.Endpoints {
-		info := &localnetv1.EndpointInfo{
+		info := &globalv1.EndpointInfo{
 			Namespace:   eps.Namespace,
 			ServiceName: serviceName,
 			SourceName:  eps.Name,
-			Endpoint:    &localnetv1.Endpoint{},
-			Conditions:  &localnetv1.EndpointConditions{},
-			Topology:    &localnetv1.TopologyInfo{},
+			Endpoint:    &localv1.Endpoint{},
+			Conditions:  &globalv1.EndpointConditions{},
+			Topology:    &globalv1.TopologyInfo{},
 		}
 
 		if t := sliceEndpoint.TargetRef; t != nil && t.Kind == "Pod" {
@@ -74,7 +75,7 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 		}
 
 		if hints := sliceEndpoint.Hints; hints != nil {
-			info.Hints = &localnetv1.TopologyHints{
+			info.Hints = &globalv1.TopologyHints{
 				Zones: make([]string, 0, len(hints.ForZones)),
 			}
 
@@ -92,9 +93,9 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 			info.Endpoint.AddAddress(addr)
 		}
 
-		ports := make([]*localnetv1.PortName, 0, len(eps.Ports))
+		ports := make([]*localv1.PortName, 0, len(eps.Ports))
 		for _, port := range eps.Ports {
-			ports = append(ports, &localnetv1.PortName{Name: *port.Name, Port: *port.Port})
+			ports = append(ports, &localv1.PortName{Name: *port.Name, Port: *port.Port})
 		}
 		info.Endpoint.PortOverrides = ports
 
@@ -107,7 +108,7 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 
 		if log := klog.V(3); log.Enabled() {
 			log.Info("endpoints of ", eps.Namespace, "/", serviceName, ":")
-			tx.EachEndpointOfService(eps.Namespace, serviceName, func(ei *localnetv1.EndpointInfo) {
+			tx.EachEndpointOfService(eps.Namespace, serviceName, func(ei *globalv1.EndpointInfo) {
 				log.Info("- ", ei.Endpoint.IPs, " | topo: ", ei.Topology)
 			})
 		}

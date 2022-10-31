@@ -19,19 +19,19 @@ package store2diff
 import (
 	"context"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/server/pkg/server/watchstate"
 	"sigs.k8s.io/kpng/server/proxystore"
 )
 
 type Job struct {
 	Store *proxystore.Store
-	Sets  []localnetv1.Set
+	Sets  []localv1.Set
 	Sink  Sink
 }
 
 type Sink interface {
-	localnetv1.OpSink
+	localv1.OpSink
 
 	Wait() error
 	Update(tx *proxystore.Tx, w *watchstate.WatchState)

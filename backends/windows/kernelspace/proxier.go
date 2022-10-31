@@ -39,7 +39,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/async"
 	netutils "k8s.io/utils/net"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 )
 
 // Provider is a proxy interface enforcing services and windowsEndpoint methods
@@ -47,22 +47,22 @@ import (
 type Provider interface {
 	// OnEndpointsAdd is called whenever creation of new windowsEndpoint object
 	// is observed.
-	OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service)
+	OnEndpointsAdd(ep *localv1.Endpoint, svc *localv1.Service)
 	// OnEndpointsDelete is called whenever deletion of an existing windowsEndpoint
 	// object is observed.
-	OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service)
+	OnEndpointsDelete(ep *localv1.Endpoint, svc *localv1.Service)
 	// OnEndpointsSynced is called once all the initial event handlers were
 	// called and the state is fully propagated to local cache.
 	OnEndpointsSynced()
 	// OnServiceAdd is called whenever creation of new service object
 	// is observed.
-	OnServiceAdd(service *localnetv1.Service)
+	OnServiceAdd(service *localv1.Service)
 	// OnServiceUpdate is called whenever modification of an existing
 	// service object is observed.
-	OnServiceUpdate(oldService, service *localnetv1.Service)
+	OnServiceUpdate(oldService, service *localv1.Service)
 	// OnServiceDelete is called whenever deletion of an existing service
 	// object is observed.
-	OnServiceDelete(service *localnetv1.Service)
+	OnServiceDelete(service *localv1.Service)
 	// OnServiceSynced is called once all the initial event handlers were
 	// called and the state is fully propagated to local cache.
 	OnServiceSynced()
@@ -261,7 +261,7 @@ func getNetworkInfo(hns HCNUtils, hnsNetworkName string) (*hnsNetworkInfo, error
 
 // NewProxier returns a new Proxier
 func NewProxier(
-	syncPeriod time.Duration, //
+	syncPeriod time.Duration,    //
 	minSyncPeriod time.Duration, //
 	masqueradeAll bool,
 	masqueradeBit int,
@@ -408,7 +408,7 @@ func NewProxier(
 	}
 
 	/**
-	func(*localnetv1.PortMapping, *localnetv1.Service, *BaseServiceInfo)
+	func(*kpng.PortMapping, *kpng.Service, *BaseServiceInfo)
 		(port *v1.ServicePort,    service *v1.Service, baseInfo *BaseServiceInfo)
 	- (string,
 		func(baseInfo *proxy.BaseEndpointInfo)

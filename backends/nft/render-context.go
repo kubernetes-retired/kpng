@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	localv1 "sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
 )
 
@@ -61,7 +61,7 @@ func newRenderContext(table *nftable, clusterCIDRs []string, ipMask net.IPMask) 
 
 type EpIP struct {
 	IP       string
-	Endpoint *localnetv1.Endpoint
+	Endpoint *localv1.Endpoint
 }
 
 func (ctx *renderContext) addServiceEndpoints(serviceEndpoints *fullstate.ServiceEndpoints) {
@@ -88,8 +88,8 @@ func (ctx *renderContext) addServiceEndpoints(serviceEndpoints *fullstate.Servic
 	ctx.addSvcChain(svc, endpointIPs)
 
 	// add the service IPs to the dispatch
-	clusterIPs := &localnetv1.IPSet{}
-	allSvcIPs := &localnetv1.IPSet{}
+	clusterIPs := &localv1.IPSet{}
+	allSvcIPs := &localv1.IPSet{}
 
 	if svc.IPs.ClusterIPs != nil {
 		clusterIPs.AddSet(svc.IPs.ClusterIPs)
@@ -150,7 +150,7 @@ func (ctx *renderContext) Finalize() {
 	ctx.table.Done()
 }
 
-func (ctx *renderContext) epIPs(endpoints []*localnetv1.Endpoint) (endpointIPs []EpIP) {
+func (ctx *renderContext) epIPs(endpoints []*localv1.Endpoint) (endpointIPs []EpIP) {
 	endpointIPs = make([]EpIP, 0, len(endpoints))
 	for _, ep := range endpoints {
 		epIPs := ctx.table.IPsFromSet(ep.IPs)
@@ -176,7 +176,7 @@ func (ctx *renderContext) epIPs(endpoints []*localnetv1.Endpoint) (endpointIPs [
 	return
 }
 
-func (ctx *renderContext) recordNodePort(port *localnetv1.PortMapping, targetChain string) {
+func (ctx *renderContext) recordNodePort(port *localv1.PortMapping, targetChain string) {
 	chain := ctx.table.Chains.Get("nodeports_dnat")
 	if strings.HasSuffix(targetChain, "_filter") {
 		chain = ctx.table.Chains.Get("nodeports_filter")
@@ -191,7 +191,7 @@ func (ctx *renderContext) recordNodePort(port *localnetv1.PortMapping, targetCha
 	chain.WriteByte('\n')
 }
 
-func (ctx *renderContext) svcChainNames(svc *localnetv1.Service) (chainPrefix, dnatChainName, filterChainName string) {
+func (ctx *renderContext) svcChainNames(svc *localv1.Service) (chainPrefix, dnatChainName, filterChainName string) {
 	chainPrefix = ctx.svcNftName(svc)
 	dnatChainName = chainPrefix + "_dnat"
 	filterChainName = chainPrefix + "_filter"

@@ -29,7 +29,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog/v2"
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	localv1 "sigs.k8s.io/kpng/api/localv1"
 )
 
 // Abstraction over TCP/UDP sockets which are proxied.
@@ -48,7 +48,7 @@ type ProxySocket interface {
 
 // newProxySocket creates a socket that has a listener that copies
 // bytes on new connections
-func newProxySocket(protocol localnetv1.Protocol, ip net.IP, port int) (ProxySocket, error) {
+func newProxySocket(protocol localv1.Protocol, ip net.IP, port int) (ProxySocket, error) {
 	host := ""
 	if ip != nil {
 		host = ip.String()

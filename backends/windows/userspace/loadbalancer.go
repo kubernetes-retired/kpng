@@ -19,7 +19,7 @@ package userspace
 import (
 	"net"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 )
 
 // EndpointsHandler is an abstract interface of objects which receive
@@ -27,10 +27,10 @@ import (
 type EndpointsHandler interface {
 	// OnEndpointsAdd is called whenever creation of new endpoints object
 	// is observed.
-	OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service)
+	OnEndpointsAdd(ep *localv1.Endpoint, svc *localv1.Service)
 	// OnEndpointsDelete is called whenever deletion of an existing endpoints
 	// object is observed.
-	OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service)
+	OnEndpointsDelete(ep *localv1.Endpoint, svc *localv1.Service)
 	// OnEndpointsSynced is called once all the initial event handlers were
 	// called and the state is fully propagated to local cache.
 	OnEndpointsSynced()
@@ -41,7 +41,7 @@ type LoadBalancer interface {
 	// NextEndpoint returns the endpoint to handle a request for the given
 	// service-port and source address.
 	NextEndpoint(service ServicePortName, srcAddr net.Addr, sessionAffinityReset bool) (string, error)
-	NewService(service ServicePortName, affinityClientIP *localnetv1.ClientIPAffinity, stickyMaxAgeMinutes int) error
+	NewService(service ServicePortName, affinityClientIP *localv1.ClientIPAffinity, stickyMaxAgeMinutes int) error
 	DeleteService(service ServicePortName)
 	CleanupStaleStickySessions(service ServicePortName)
 

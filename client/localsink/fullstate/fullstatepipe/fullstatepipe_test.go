@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client"
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
 )
@@ -135,7 +135,7 @@ func delayCallback(name string, delay time.Duration) fullstate.Callback {
 
 func singleServiceCh(svcName string) (ch chan *client.ServiceEndpoints) {
 	ch = make(chan *client.ServiceEndpoints, 1)
-	ch <- &client.ServiceEndpoints{Service: &localnetv1.Service{Name: svcName}}
+	ch <- &client.ServiceEndpoints{Service: &localv1.Service{Name: svcName}}
 	close(ch)
 	return
 }

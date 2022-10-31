@@ -31,7 +31,7 @@ import (
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/klog/v2"
 	netutils "k8s.io/utils/net"
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 )
 
 const allAvailableInterfaces string = ""
@@ -45,11 +45,11 @@ type portal struct {
 type serviceInfo struct {
 	isAliveAtomic           int32 // Only access this with atomic ops
 	portal                  portal
-	protocol                localnetv1.Protocol
+	protocol                localv1.Protocol
 	socket                  proxySocket
 	timeout                 time.Duration
 	activeClients           *clientCache
-	sessionClientIPAffinity *localnetv1.ClientIPAffinity
+	sessionClientIPAffinity *localv1.ClientIPAffinity
 }
 
 func (info *serviceInfo) setAlive(b bool) {
@@ -81,13 +81,13 @@ type Provider interface {
 
 	// OnServiceAdd is called whenever creation of new service object
 	// is observed.
-	OnServiceAdd(service *localnetv1.Service)
+	OnServiceAdd(service *localv1.Service)
 	// OnServiceUpdate is called whenever modification of an existing
 	// service object is observed.
-	OnServiceUpdate(oldService, service *localnetv1.Service)
+	OnServiceUpdate(oldService, service *localv1.Service)
 	// OnServiceDelete is called whenever deletion of an existing service
 	// object is observed.
-	OnServiceDelete(service *localnetv1.Service)
+	OnServiceDelete(service *localv1.Service)
 	// OnServiceSynced is called once all the initial event handlers were
 	// called and the state is fully propagated to local cache.
 	OnServiceSynced()
@@ -228,7 +228,7 @@ func (proxier *Proxier) setServiceInfo(service ServicePortPortalName, info *serv
 
 // addServicePortPortal starts listening for a new service, returning the serviceInfo.
 // The timeout only applies to UDP connections, for now.
-func (proxier *Proxier) addServicePortPortal(servicePortPortalName ServicePortPortalName, protocol localnetv1.Protocol, listenIP string, port int, timeout time.Duration) (*serviceInfo, error) {
+func (proxier *Proxier) addServicePortPortal(servicePortPortalName ServicePortPortalName, protocol localv1.Protocol, listenIP string, port int, timeout time.Duration) (*serviceInfo, error) {
 	var serviceIP net.IP
 	if listenIP != allAvailableInterfaces {
 		if serviceIP = netutils.ParseIPSloppy(listenIP); serviceIP == nil {
@@ -292,7 +292,7 @@ func (proxier *Proxier) closeServicePortPortal(servicePortPortalName ServicePort
 }
 
 // getListenIPPortMap returns a slice of all listen IPs for a service.
-func getListenIPPortMap(service *localnetv1.Service, listenPort, nodePort int) map[string]int {
+func getListenIPPortMap(service *localv1.Service, listenPort, nodePort int) map[string]int {
 	listenIPPortMap := make(map[string]int)
 
 	for _, ip := range service.IPs.GetClusterIPs().All() {
@@ -314,7 +314,7 @@ func getListenIPPortMap(service *localnetv1.Service, listenPort, nodePort int) m
 	return listenIPPortMap
 }
 
-func (proxier *Proxier) mergeService(service *localnetv1.Service) map[ServicePortPortalName]bool {
+func (proxier *Proxier) mergeService(service *localv1.Service) map[ServicePortPortalName]bool {
 	if service == nil {
 		return nil
 	}
@@ -381,7 +381,7 @@ func (proxier *Proxier) mergeService(service *localnetv1.Service) map[ServicePor
 	return existingPortPortals
 }
 
-func (proxier *Proxier) unmergeService(service *localnetv1.Service, existingPortPortals map[ServicePortPortalName]bool) {
+func (proxier *Proxier) unmergeService(service *localv1.Service, existingPortPortals map[ServicePortPortalName]bool) {
 	if service == nil {
 		return
 	}
@@ -440,20 +440,20 @@ func (proxier *Proxier) unmergeService(service *localnetv1.Service, existingPort
 
 // OnServiceAdd is called whenever creation of new service object
 // is observed.
-func (proxier *Proxier) OnServiceAdd(service *localnetv1.Service) {
+func (proxier *Proxier) OnServiceAdd(service *localv1.Service) {
 	_ = proxier.mergeService(service)
 }
 
 // OnServiceUpdate is called whenever modification of an existing
 // service object is observed.
-func (proxier *Proxier) OnServiceUpdate(oldService, service *localnetv1.Service) {
+func (proxier *Proxier) OnServiceUpdate(oldService, service *localv1.Service) {
 	existingPortPortals := proxier.mergeService(service)
 	proxier.unmergeService(oldService, existingPortPortals)
 }
 
 // OnServiceDelete is called whenever deletion of an existing service
 // object is observed.
-func (proxier *Proxier) OnServiceDelete(service *localnetv1.Service) {
+func (proxier *Proxier) OnServiceDelete(service *localv1.Service) {
 	proxier.unmergeService(service, map[ServicePortPortalName]bool{})
 }
 
@@ -464,19 +464,19 @@ func (proxier *Proxier) OnServiceSynced() {
 
 // OnEndpointsAdd is called whenever creation of new endpoints object
 // is observed.
-func (proxier *Proxier) OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
+func (proxier *Proxier) OnEndpointsAdd(ep *localv1.Endpoint, svc *localv1.Service) {
 	proxier.loadBalancer.OnEndpointsAdd(ep, svc)
 }
 
 // OnEndpointsUpdate is called whenever modification of an existing
 // endpoints object is observed.
-func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *localnetv1.Endpoint) {
+func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *localv1.Endpoint) {
 	//proxier.loadBalancer.OnEndpointsUpdate(oldEndpoints, endpoints)
 }
 
 // OnEndpointsDelete is called whenever deletion of an existing endpoints
 // object is observed. Service object
-func (proxier *Proxier) OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
+func (proxier *Proxier) OnEndpointsDelete(ep *localv1.Endpoint, svc *localv1.Service) {
 	proxier.loadBalancer.OnEndpointsDelete(ep, svc)
 }
 
@@ -497,7 +497,7 @@ func isClosedError(err error) bool {
 	return strings.HasSuffix(err.Error(), "use of closed network connection")
 }
 
-func sameConfig(info *serviceInfo, service *localnetv1.Service, protocol localnetv1.Protocol, listenPort int) bool {
+func sameConfig(info *serviceInfo, service *localv1.Service, protocol localv1.Protocol, listenPort int) bool {
 	return info.protocol == protocol && info.portal.port == listenPort && info.sessionClientIPAffinity != service.GetClientIP()
 }
 

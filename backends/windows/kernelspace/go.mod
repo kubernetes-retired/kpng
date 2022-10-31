@@ -11,7 +11,6 @@ require (
 	k8s.io/klog/v2 v2.80.1
 	k8s.io/kubernetes v1.13.0
 	k8s.io/utils v0.0.0-20221011040102-427025108f67
-	sigs.k8s.io/kpng/api v0.0.0-20220824013548-88b8a1d9bc62
 	sigs.k8s.io/kpng/client v0.0.0-20221011133104-469299451522
 )
 
@@ -74,4 +73,5 @@ require (
 	google.golang.org/genproto v0.0.0-20221010155953-15ba04fc1c0e // indirect
 	google.golang.org/grpc v1.50.0 // indirect
 	k8s.io/klog v1.0.0 // indirect
+	sigs.k8s.io/kpng/api v0.0.0-20220824013548-88b8a1d9bc62 // indirect
 )
