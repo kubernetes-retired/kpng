@@ -23,7 +23,7 @@ service Sets {
     rpc Watch (stream WatchReq) returns (stream OpItem);
 }
 
-// any time were watching for the local model, we need to send the
+// To request ENLS(Expected Node Local State) a client must specify the desired NodeName
 // "location" from where we are watching.
 message WatchReq {
     // NodeName of the requester
