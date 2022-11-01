@@ -18,6 +18,8 @@ package localv1;
 
 option go_package = "sigs.k8s.io/kpng/api/localv1";
 
+// Sets can be any of the "Set" types defined in the enumeration below.  When a
+// client requests a watch, it defines the "Set" of things it wants to watch...
 service Sets {
     // Returns all the endpoints for this node.
     rpc Watch (stream WatchReq) returns (stream OpItem);

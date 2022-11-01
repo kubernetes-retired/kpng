@@ -64,7 +64,9 @@ func (j *Job) Run(ctx context.Context) (err error) {
 
 		updated := false
 		for !updated {
-			// update the state
+			// block until the revision has been
+			// incremented... then, we update our state from the
+			// proxystore
 			rev, closed = j.Store.View(rev, func(tx *proxystore.Tx) {
 				j.Sink.Update(tx, w)
 			})

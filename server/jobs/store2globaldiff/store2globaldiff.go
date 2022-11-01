@@ -69,6 +69,10 @@ func (j *Job) Update(tx *proxystore.Tx, w *watchstate.WatchState) {
 	for _, set := range sets {
 		diff := w.StoreFor(set)
 		tx.Each(set, func(kv *proxystore.KV) bool {
+			// Hashes are gauranteed to be in any
+			// kv b/c either they are read from a pre-existing
+			// KPNG, or else calculated (i.e. in kube2store) on
+			// first write.
 			h := kv.Value.GetHash()
 			diff.Set([]byte(kv.Path()), h, kv.Value)
 			return true

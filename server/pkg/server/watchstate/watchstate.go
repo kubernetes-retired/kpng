@@ -28,11 +28,20 @@ import (
 	"sigs.k8s.io/kpng/server/pkg/metrics"
 )
 
+// WatchState represents the data in a watch
 type WatchState struct {
-	res   localv1.OpSink
+	// sink is the thing that this watch will send events to.  for example,
+	// a grpc client is the typical "consumer" or sink that the watch is
+	// connected to.
+	sink localv1.OpSink
+
+	// sets and diffs: each diff[i] corresponds to set[i]
 	sets  []localv1.Set
 	diffs []*lightdiffstore.DiffStore
-	Err   error
+
+	// Err indicates that this watch is now toxic and you should
+	// create a new one!
+	Err error
 }
 
 func New(res localv1.OpSink, sets []localv1.Set) *WatchState {
@@ -42,16 +51,21 @@ func New(res localv1.OpSink, sets []localv1.Set) *WatchState {
 	}
 
 	return &WatchState{
-		res:   res,
+		sink:  res,
 		sets:  sets,
 		diffs: diffs,
 	}
 }
 
+// StoreFor is syntactic sugar for StoreForN(.., 0) to get the first
+// instance of a given type stored in this database.
 func (w *WatchState) StoreFor(set localv1.Set) *lightdiffstore.DiffStore {
 	return w.StoreForN(set, 0)
 }
 
+// StoreForN returns the Nth instances of a given type.  For example, you might
+// store (Services, Endpoints, Endpoints).  The latter set of Endpoints would be accessible
+// via the 1 index.
 func (w *WatchState) StoreForN(set localv1.Set, setN int) *lightdiffstore.DiffStore {
 	n := 0
 	for i, s := range w.sets {
@@ -106,12 +120,15 @@ func (w *WatchState) SendDeletesN(set localv1.Set, setN int) (count int) {
 	return len(deleted)
 }
 
+// send "sends" an item into the watch's underlying sink (i.e. a client).  We
+// set a GRPC compatible error if the watch fails when sending.
 func (w *WatchState) send(item *localv1.OpItem) {
 	if w.Err != nil {
 		return
 	}
 	metrics.Kpng_node_local_events.Inc()
-	err := w.res.Send(item)
+	err := w.sink.Send(item)
+	// client not recieving !
 	if err != nil {
 		w.Err = grpc.Errorf(codes.Aborted, "send error: %v", err)
 	}
