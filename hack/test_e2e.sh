@@ -879,7 +879,7 @@ function create_infrastructure_and_run_tests {
     #   arg7: developer_mode                                                  #
     #   arg8: <ci_mode>                                                       #
     #   arg9: deployment_model                                                #
-    #   arg10: export_metrics                                                  #
+    #   arg10: export_metrics                                                 #
     ###########################################################################
     [ $# -eq 10 ]
     if_error_exit "create and run $# Wrong number of arguments to ${FUNCNAME[0]}"
@@ -1141,7 +1141,7 @@ function main {
             create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
 						"${bin_dir}/e2e.test" "${bin_dir}/ginkgo" "${tmp_suffix}" \
 						"${devel_mode}" "${ci_mode}" \
-						"${deployment_model}" "${export_metrics}"          \
+						"${deployment_model}" "${export_metrics}" \
                   &> "${e2e_dir}${tmp_suffix}/output.log" &
             pids[${i}]=$!
         done
@@ -1245,7 +1245,7 @@ fi
 if [[ -n "${ip_family}" && -n "${backend}" ]]; then
     main "${ip_family}" "${backend}" "${ci_mode}" "${e2e_dir}" "${bin_dir}" "${dockerfile}" \
          "${suffix}" "${cluster_count}" "${erase_clusters}" "${print_report}" "${devel_mode}" \
-         "${deployment_model}" "${run_tests_on_existing_cluster}" "${export_metrics}"         
+         "${deployment_model}" "${run_tests_on_existing_cluster}" "${export_metrics}"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help
