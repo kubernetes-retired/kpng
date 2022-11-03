@@ -22,7 +22,7 @@ fi
 shopt -s expand_aliases
 
 : "${E2E_GO_VERSION:="1.18.4"}"
-: "${E2E_K8S_VERSION:="v1.25.0"}"
+: "${E2E_K8S_VERSION:="v1.25.3"}"
 : "${E2E_TIMEOUT_MINUTES:=100}"
 : "${KPNG_DEBUG_LEVEL:=4}"
 : "${KPNG_SERVER_ADDRESS:="unix:///k8s/proxy.sock"}"
@@ -43,7 +43,7 @@ KUBECONFIG_TESTS="kubeconfig_tests.conf"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # kind
-KIND_VERSION="v0.14.0"
+KIND_VERSION="v0.17.0"
 
 # system data
 NAMESPACE="kube-system"
@@ -583,15 +583,17 @@ function run_tests {
      # Arguments:                                                              #
      #   arg1: e2e directory                                                   #
      #   arg2: e2e_test, path to test binary                                   #
-     #   arg3: parallel ginkgo tests boolean                                   #
+     #   arg3: ginkgo path to ginko binary                                     #
+     #   arg4: parallel ginkgo tests boolean                                   #
      ###########################################################################
 
-    [ $# -eq 3 ]
+    [ $# -eq 4 ]
     if_error_exit "exec tests $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
     local e2e_test="${2}"
-    local parallel="${3}"
+    local ginkgo="${3}"
+    local parallel="${4}"
 
     local artifacts_directory="${e2e_dir}/artifacts"
 
@@ -621,7 +623,7 @@ function run_tests {
    export KUBE_CONTAINER_RUNTIME_ENDPOINT=unix:///run/containerd/containerd.sock
    export KUBE_CONTAINER_RUNTIME_NAME=containerd
 
-   ${e2e_dir}/bin/ginkgo --nodes="${GINKGO_NUMBER_OF_NODES}" \
+   ${ginkgo} --nodes="${GINKGO_NUMBER_OF_NODES}" \
            --focus="${ginkgo_focus}" \
            --skip="${ginkgo_skip}" \
            "${e2e_test}" \
@@ -872,24 +874,26 @@ function create_infrastructure_and_run_tests {
     #   arg2: ip_family                                                       #
     #   arg3: backend                                                         #
     #   arg4: e2e_test                                                        #
-    #   arg5: suffix                                                          #
-    #   arg6: developer_mode                                                  #
-    #   arg7: <ci_mode>                                                       #
-    #   arg8: deployment_model                                                #
-    #   arg9: export_metrics                                                  #
+    #   arg5: ginkgo                                                          #
+    #   arg6: suffix                                                          #
+    #   arg7: developer_mode                                                  #
+    #   arg8: <ci_mode>                                                       #
+    #   arg9: deployment_model                                                #
+    #   arg10: export_metrics                                                  #
     ###########################################################################
-    [ $# -eq 9 ]
+    [ $# -eq 10 ]
     if_error_exit "create and run $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
     local ip_family="${2}"
     local backend="${3}"
     local e2e_test="${4}"
-    local suffix="${5}"
-    local devel_mode="${6}"
-    local ci_mode="${7}"
-    local deployment_model="${8}"
-    local export_metrics="${9}"
+    local ginkgo="${5}"
+    local suffix="${6}"
+    local devel_mode="${7}"
+    local ci_mode="${8}"
+    local deployment_model="${9}"
+    local export_metrics="${10}"
 
     local artifacts_directory="${e2e_dir}/artifacts"
     local cluster_name="kpng-e2e-${ip_family}-${backend}${suffix}"
@@ -921,7 +925,7 @@ function create_infrastructure_and_run_tests {
     fi
 
     if ! ${devel_mode} ; then
-        run_tests "${e2e_dir}" "${e2e_test}" "false"
+        run_tests "${e2e_dir}" "${e2e_test}" "${ginkgo}" "false"
         #need to clean this up
        if [ "${ci_mode}" = false ] ; then
           clean_artifacts "${e2e_dir}"
@@ -932,7 +936,7 @@ function create_infrastructure_and_run_tests {
 function delete_kind_clusters {
     ###########################################################################
     # Description:                                                            #
-    # create_infrastructure_and_run_tests                                     #
+    # delete_kind_clusters                                                    #
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: bin_directory                                                   #
@@ -976,7 +980,7 @@ function delete_kind_clusters {
 function print_reports {
     ###########################################################################
     # Description:                                                            #
-    # create_infrastructure_and_run_tests                                     #
+    # print_reports                                                           #
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: ip_family                                                       #
@@ -1075,7 +1079,7 @@ function main {
     echo -e "\t\tStarting KPNG E2E testing"
     echo "+==================================================================+"
     if [ "${run_tests_on_existing_cluster}" = true ] ; then
-        run_tests "${e2e_dir}${tmp_suffix}" "${bin_dir}/e2e.test" "false"
+        run_tests "${e2e_dir}${tmp_suffix}" "${bin_dir}/e2e.test" "${bin_dir}/ginkgo" "false"
         #need to clean this up
        if [ "${ci_mode}" = false ] ; then
           clean_artifacts "${e2e_dir}${tmp_suffix}"
@@ -1119,7 +1123,9 @@ function main {
     if [ "${cluster_count}" -eq "1" ] ; then
         local tmp_suffix=${suffix:+"-${suffix}"}
         create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
-              "${bin_dir}/e2e.test" "${tmp_suffix}" "${devel_mode}" "${ci_mode}" "${deployment_model}" "${export_metrics}"
+					    "${bin_dir}/e2e.test" "${bin_dir}/ginkgo" "${tmp_suffix}" \
+					    "${devel_mode}" "${ci_mode}" \
+					    "${deployment_model}" "${export_metrics}"
     else
         local pids
 
@@ -1130,9 +1136,12 @@ function main {
         for i in $(seq "${cluster_count}"); do
             local tmp_suffix="-${suffix}${i}"
             local output_file="${e2e_dir}${tmp_suffix}/output.log"
+
             rm -f "${output_file}"
             create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
-                  "${bin_dir}/e2e.test" "${tmp_suffix}" "${devel_mode}" "${ci_mode}"  \
+						"${bin_dir}/e2e.test" "${bin_dir}/ginkgo" "${tmp_suffix}" \
+						"${devel_mode}" "${ci_mode}" \
+						"${deployment_model}" "${export_metrics}"          \
                   &> "${e2e_dir}${tmp_suffix}/output.log" &
             pids[${i}]=$!
         done
@@ -1236,7 +1245,7 @@ fi
 if [[ -n "${ip_family}" && -n "${backend}" ]]; then
     main "${ip_family}" "${backend}" "${ci_mode}" "${e2e_dir}" "${bin_dir}" "${dockerfile}" \
          "${suffix}" "${cluster_count}" "${erase_clusters}" "${print_report}" "${devel_mode}" \
-         "${deployment_model}" "${run_tests_on_existing_cluster}" "${export_metrics}"
+         "${deployment_model}" "${run_tests_on_existing_cluster}" "${export_metrics}"         
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help
