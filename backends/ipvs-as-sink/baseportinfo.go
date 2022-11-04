@@ -18,7 +18,7 @@ package ipvssink
 
 import (
 	v1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/serviceevents"
 )
 
@@ -29,7 +29,7 @@ type BaseServicePortInfo struct {
 	targetPort            int32
 	targetPortName        string
 	nodePort              int32
-	protocol              localnetv1.Protocol
+	protocol              localv1.Protocol
 	schedulingMethod      string
 	weight                int32
 	sessionAffinity       serviceevents.SessionAffinity
@@ -41,7 +41,7 @@ type BaseServicePortInfo struct {
 	hintsAnnotation       string
 }
 
-func NewBaseServicePortInfo(svc *localnetv1.Service, port *localnetv1.PortMapping,
+func NewBaseServicePortInfo(svc *localv1.Service, port *localv1.PortMapping,
 	serviceIP, serviceType,
 	schedulingMethod string,
 	weight int32) *BaseServicePortInfo {
@@ -75,7 +75,7 @@ func (b *BaseServicePortInfo) TargetPortName() string {
 	return b.targetPortName
 }
 
-func (b *BaseServicePortInfo) Protocol() localnetv1.Protocol {
+func (b *BaseServicePortInfo) Protocol() localv1.Protocol {
 	return b.protocol
 }
 

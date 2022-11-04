@@ -20,7 +20,7 @@ import (
 	"math/rand"
 	"time"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 )
 
 func init() {
@@ -50,7 +50,7 @@ func (svc *service) RandomEndpoint() string {
 	return eps[rand.Intn(len(eps))].targetIP
 }
 
-func (svc *service) AddEndpoint(key string, ep *localnetv1.Endpoint) {
+func (svc *service) AddEndpoint(key string, ep *localv1.Endpoint) {
 	if ep.IPs.IsEmpty() {
 		return
 	}

@@ -19,12 +19,12 @@ package serde
 import (
 	"testing"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 )
 
 func TestHashIsStable(t *testing.T) {
-	ep := &localnetv1.Endpoint{}
-	ep.PortOverrides = []*localnetv1.PortName{
+	ep := &localv1.Endpoint{}
+	ep.PortOverrides = []*localv1.PortName{
 		{Name: "a", Port: 1},
 		{Name: "b", Port: 2},
 		{Name: "c", Port: 3},

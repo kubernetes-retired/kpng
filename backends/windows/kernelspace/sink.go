@@ -28,7 +28,7 @@ import (
 	"k8s.io/client-go/tools/events"
 	klog "k8s.io/klog/v2"
 	netutils "k8s.io/utils/net"
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/backendcmd"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
@@ -126,7 +126,7 @@ func (s *Backend) DeleteEndpoint(namespace, serviceName, key string) {
 
 }
 
-func (s *Backend) SetService(svc *localnetv1.Service) {
+func (s *Backend) SetService(svc *localv1.Service) {
 	klog.V(0).InfoS("SetService -> %v", svc)
 	proxier.serviceChanges.Update(svc)
 
@@ -140,7 +140,7 @@ func (s *Backend) SetEndpoint(
 	namespace,
 	serviceName,
 	key string,
-	endpoint *localnetv1.Endpoint) {
+	endpoint *localv1.Endpoint) {
 
 	proxier.endpointsChanges.EndpointUpdate(namespace, serviceName, key, endpoint)
 }

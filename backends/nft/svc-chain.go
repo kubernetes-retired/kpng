@@ -19,14 +19,14 @@ package nft
 import (
 	"strconv"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	localv1 "sigs.k8s.io/kpng/api/localv1"
 )
 
-func (ctx *renderContext) svcNftName(svc *localnetv1.Service) string {
+func (ctx *renderContext) svcNftName(svc *localv1.Service) string {
 	return "svc_" + svc.Namespace + "_" + svc.Name
 }
 
-func (ctx *renderContext) addSvcVmap(vmapName string, svc *localnetv1.Service, epIPs []EpIP) {
+func (ctx *renderContext) addSvcVmap(vmapName string, svc *localv1.Service, epIPs []EpIP) {
 	vmap := ctx.table.Chains.Get(vmapName)
 
 	if len(epIPs) == 0 {
@@ -38,7 +38,7 @@ func (ctx *renderContext) addSvcVmap(vmapName string, svc *localnetv1.Service, e
 	ctx.writeEndpointsVmap(vmap, svc, epIPs)
 }
 
-func (ctx *renderContext) addSvcChain(svc *localnetv1.Service, epIPs []EpIP) {
+func (ctx *renderContext) addSvcChain(svc *localv1.Service, epIPs []EpIP) {
 	chainPrefix, dnatChainName, filterChainName := ctx.svcChainNames(svc)
 
 	dnatChain := ctx.table.Chains.Get(dnatChainName)
@@ -101,7 +101,7 @@ func (ctx *renderContext) addSvcChain(svc *localnetv1.Service, epIPs []EpIP) {
 	}
 }
 
-func (ctx *renderContext) writeEndpointsVmap(w writer, svc *localnetv1.Service, epIPs []EpIP) {
+func (ctx *renderContext) writeEndpointsVmap(w writer, svc *localv1.Service, epIPs []EpIP) {
 	w.WriteString("numgen random mod ")
 	w.WriteString(strconv.Itoa(len(epIPs)))
 	w.WriteString(" vmap {")

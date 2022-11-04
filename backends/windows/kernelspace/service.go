@@ -31,15 +31,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	localv1 "sigs.k8s.io/kpng/api/localv1"
 )
 
 // returns a new ServicePort which abstracts a serviceInfo
-func newServiceInfo(port *localnetv1.PortMapping, service *localnetv1.Service, baseInfo *BaseServiceInfo) ServicePort {
+func newServiceInfo(port *localv1.PortMapping, service *localv1.Service, baseInfo *BaseServiceInfo) ServicePort {
 	info := &serviceInfo{BaseServiceInfo: baseInfo}
 
 	//protoc := v1.ProtocolTCP
-	//if port.Protocol == localnetv1.Protocol_UDP {
+	//if port.Protocol == kpng.Protocol_UDP {
 	//	protoc = v1.ProtocolUDP
 	//}
 
@@ -93,7 +93,7 @@ func (svcInfo *serviceInfo) deleteAllHnsLoadBalancerPolicy() {
 	}
 }
 
-func (svcInfo *serviceInfo) cleanupAllPolicies(e *localnetv1.Endpoint) {
+func (svcInfo *serviceInfo) cleanupAllPolicies(e *localv1.Endpoint) {
 	klog.V(3).InfoS("Service cleanup", "serviceInfo", svcInfo)
 	// Skip the svcInfo.policyApplied check to remove all the policies
 	svcInfo.deleteAllHnsLoadBalancerPolicy()
@@ -135,7 +135,7 @@ type BaseServiceInfo struct {
 
 // SessionAffinity contains data about assinged session affinity
 type SessionAffinity struct {
-	ClientIP *localnetv1.Service_ClientIP
+	ClientIP *localv1.Service_ClientIP
 }
 
 var _ ServicePort = &BaseServiceInfo{}
@@ -230,7 +230,7 @@ func (info *BaseServiceInfo) HintsAnnotation() string {
 	return info.hintsAnnotation
 }
 
-func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localnetv1.PortMapping, service *localnetv1.Service) *BaseServiceInfo {
+func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localv1.PortMapping, service *localv1.Service) *BaseServiceInfo {
 	nodeLocalExternal := false
 	if RequestsOnlyLocalTraffic(service) {
 		nodeLocalExternal = true
@@ -242,7 +242,7 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localnetv1.PortMapping
 	// }
 
 	v1Proto := v1.ProtocolTCP
-	if port.Protocol == localnetv1.Protocol_UDP {
+	if port.Protocol == localv1.Protocol_UDP {
 		v1Proto = v1.ProtocolUDP
 	}
 
@@ -291,13 +291,13 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localnetv1.PortMapping
 func getSessionAffinity(affinity interface{}) SessionAffinity {
 	var sessionAffinity SessionAffinity
 	switch affinity.(type) {
-	case *localnetv1.Service_ClientIP:
-		sessionAffinity.ClientIP = affinity.(*localnetv1.Service_ClientIP)
+	case *localv1.Service_ClientIP:
+		sessionAffinity.ClientIP = affinity.(*localv1.Service_ClientIP)
 	}
 	return sessionAffinity
 }
 
-func getLoadBalancerIPs(ips *localnetv1.IPSet, ipFamily v1.IPFamily) []string {
+func getLoadBalancerIPs(ips *localv1.IPSet, ipFamily v1.IPFamily) []string {
 	if ips == nil {
 		return nil
 	}
@@ -308,9 +308,9 @@ func getLoadBalancerIPs(ips *localnetv1.IPSet, ipFamily v1.IPFamily) []string {
 
 }
 
-//TODO: Would be better to have SourceRanges also as IPSet instead?
-//Change the code to return based on ipfamily once that is done.
-func getLoadbalancerSourceRanges(filters []*localnetv1.IPFilter) []string {
+// TODO: Would be better to have SourceRanges also as IPSet instead?
+// Change the code to return based on ipfamily once that is done.
+func getLoadbalancerSourceRanges(filters []*localv1.IPFilter) []string {
 	var sourceRanges []string
 	for _, filter := range filters {
 		if len(filter.SourceRanges) <= 0 {
@@ -321,7 +321,7 @@ func getLoadbalancerSourceRanges(filters []*localnetv1.IPFilter) []string {
 	return sourceRanges
 }
 
-type makeServicePortFunc func(*localnetv1.PortMapping, *localnetv1.Service, *BaseServiceInfo) ServicePort
+type makeServicePortFunc func(*localv1.PortMapping, *localv1.Service, *BaseServiceInfo) ServicePort
 
 // ServiceChangeTracker carries state about uncommitted changes to an arbitrary number of
 // Services, keyed by their namespace and name.
@@ -352,11 +352,13 @@ func NewServiceChangeTracker(makeServiceInfo makeServicePortFunc, ipFamily v1.IP
 // otherwise return false.  Update can be used to add/update/delete items of ServiceChangeMap.  For example,
 // Add item
 //   - pass <nil, service> as the <previous, current> pair.
+//
 // Update item
 //   - pass <oldService, service> as the <previous, current> pair.
+//
 // Delete item
 //   - pass <service, nil> as the <previous, current> pair.
-func (sct *ServiceChangeTracker) Update(current *localnetv1.Service) bool {
+func (sct *ServiceChangeTracker) Update(current *localv1.Service) bool {
 	svc := current
 	if svc == nil {
 		return false
@@ -459,7 +461,7 @@ func (svcSnap *ServicesSnapshot) merge(svcName types.NamespacedName, other *serv
 // serviceToServiceMap translates a single Service object to a ServiceMap.
 //
 // NOTE: service object should NOT be modified.
-func (sct *ServiceChangeTracker) serviceToServiceMap(service *localnetv1.Service) serviceChange {
+func (sct *ServiceChangeTracker) serviceToServiceMap(service *localv1.Service) serviceChange {
 	if service == nil {
 		return nil
 	}
@@ -482,6 +484,6 @@ func (sct *ServiceChangeTracker) serviceToServiceMap(service *localnetv1.Service
 	return serviceMap
 }
 
-func IsServiceIPSet(service *localnetv1.Service) bool {
+func IsServiceIPSet(service *localv1.Service) bool {
 	return len(service.IPs.ClusterIPs.V4) > 0 || len(service.IPs.ClusterIPs.V6) > 0
 }

@@ -18,10 +18,10 @@ package ipvssink
 
 import (
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 )
 
-func (p *proxier) handleNewExternalIP(serviceKey, externalIP, svcType string, svc *localnetv1.Service, port *localnetv1.PortMapping) {
+func (p *proxier) handleNewExternalIP(serviceKey, externalIP, svcType string, svc *localv1.Service, port *localv1.PortMapping) {
 	spKey := getServicePortKey(serviceKey, externalIP, port)
 	portInfo := NewBaseServicePortInfo(svc, port, externalIP, svcType, p.schedulingMethod, p.weight)
 	p.servicePorts.Set([]byte(spKey), 0, *portInfo)
@@ -32,7 +32,7 @@ func (p *proxier) handleNewExternalIP(serviceKey, externalIP, svcType string, sv
 	p.AddOrDelExternalIPInIPSet(externalIP, portInfo, AddService)
 }
 
-func (p *proxier) handleUpdatedExternalIP(serviceKey, externalIP, svcType string, svc *localnetv1.Service, port *localnetv1.PortMapping) {
+func (p *proxier) handleUpdatedExternalIP(serviceKey, externalIP, svcType string, svc *localv1.Service, port *localv1.PortMapping) {
 	spKey := getServicePortKey(serviceKey, externalIP, port)
 	portInfo := NewBaseServicePortInfo(svc, port, externalIP, svcType, p.schedulingMethod, p.weight)
 	p.servicePorts.Set([]byte(spKey), 0, *portInfo)

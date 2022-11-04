@@ -22,7 +22,7 @@ import (
 	"github.com/vishvananda/netlink"
 	v1 "k8s.io/api/core/v1"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	iptablesutil "sigs.k8s.io/kpng/backends/iptables/util"
 	"sigs.k8s.io/kpng/backends/ipvs-as-sink/exec"
 	util "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
@@ -58,7 +58,7 @@ type proxier struct {
 
 	ipsetList map[string]*IPSet
 	//servicePortMap map[string]map[string]*BaseServicePortInfo
-	portMap map[string]map[string]localnetv1.PortMapping
+	portMap map[string]map[string]localv1.PortMapping
 	// The following buffers are used to reuse memory and avoid allocations
 	// that are significantly impacting performance.
 	iptablesData     *bytes.Buffer
@@ -88,7 +88,7 @@ func NewProxier(ipFamily v1.IPFamily,
 		masqueradeMark:   masqueradeMark,
 		masqueradeAll:    masqueradeAll,
 		ipsetList:        make(map[string]*IPSet),
-		portMap:          make(map[string]map[string]localnetv1.PortMapping),
+		portMap:          make(map[string]map[string]localv1.PortMapping),
 		endpoints:        lightdiffstore.New(),
 		servicePorts:     lightdiffstore.New(),
 		iptablesData:     bytes.NewBuffer(nil),

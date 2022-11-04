@@ -39,7 +39,7 @@ func api2storeCmd() *cobra.Command {
 	// API to * command
 	cmd := &cobra.Command{
 		Use:   "api",
-		Short: "watch kpng API to the global state",
+		Short: "watch kpng API to the globalv1 state",
 	}
 
 	flags := cmd.PersistentFlags()

@@ -1,4 +1,4 @@
-package localnetv1
+package localv1
 
 // Any returns true iff there's any scope at true
 func (s *EndpointScopes) Any() bool {

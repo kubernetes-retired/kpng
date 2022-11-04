@@ -26,12 +26,12 @@ import (
 	netutils "k8s.io/utils/net"
 
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 )
 
 // OnEndpointsAdd is called whenever creation of new windowsEndpoint object
 // is observed.
-//func (proxier *Proxier) OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
+//func (proxier *Proxier) OnEndpointsAdd(ep *kpng.Endpoint, svc *kpng.Service) {
 //	baseInfo := &BaseEndpointInfo{
 //		Endpoint:    "TODO what is this supposed to be?",
 //		IsLocal:     ep.Local,
@@ -48,7 +48,7 @@ import (
 
 // OnEndpointsUpdate is called whenever modification of an existing
 // windowsEndpoint object is observed.
-//func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *localnetv1.Endpoint) {
+//func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *kpng.Endpoint) {
 //	proxier.kpngEndpointCache.removeEndpoint(oldEndpoints)
 //
 //	baseInfo := &BaseEndpointInfo{
@@ -67,7 +67,7 @@ import (
 
 // OnEndpointsDelete is called whenever deletion of an existing windowsEndpoint
 // object is observed. Service object
-//func (proxier *Proxier) OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
+//func (proxier *Proxier) OnEndpointsDelete(ep *kpng.Endpoint, svc *kpng.Service) {
 //	proxier.kpngEndpointCache.removeEndpoint(ep)
 //}
 
@@ -116,19 +116,19 @@ func (proxier *Proxier) OnEndpointSlicesSynced() {
 
 // OnServiceAdd is called whenever creation of new service object
 // is observed.
-func (proxier *Proxier) OnServiceAdd(service *localnetv1.Service) {
+func (proxier *Proxier) OnServiceAdd(service *localv1.Service) {
 	proxier.OnServiceUpdate(nil, service)
 }
 
 // OnServiceUpdate is called whenever modification of an existing
 // service object is observed.
-func (proxier *Proxier) OnServiceUpdate(oldService, service *localnetv1.Service) {
+func (proxier *Proxier) OnServiceUpdate(oldService, service *localv1.Service) {
 	proxier.Sync()
 }
 
 // OnServiceDelete is called whenever deletion of an existing service
 // object is observed.
-func (proxier *Proxier) OnServiceDelete(service *localnetv1.Service) {
+func (proxier *Proxier) OnServiceDelete(service *localv1.Service) {
 	proxier.OnServiceUpdate(service, nil)
 }
 
@@ -169,7 +169,7 @@ func (proxier *Proxier) newEndpointInfo(baseInfo *BaseEndpointInfo, _ *ServicePo
 	return info
 }
 
-func (proxier *Proxier) newServiceInfo(port *localnetv1.PortMapping, service *localnetv1.Service, baseInfo *BaseServiceInfo) ServicePort {
+func (proxier *Proxier) newServiceInfo(port *localv1.PortMapping, service *localv1.Service, baseInfo *BaseServiceInfo) ServicePort {
 	info := &serviceInfo{BaseServiceInfo: baseInfo}
 	preserveDIP := service.Annotations["preserve-destination"] == "true"
 	//localTrafficDSR := service.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal

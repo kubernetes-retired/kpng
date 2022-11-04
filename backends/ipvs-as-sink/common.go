@@ -29,7 +29,7 @@ import (
 	"k8s.io/klog/v2"
 	netutils "k8s.io/utils/net"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	ipsetutil "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
 )
 
@@ -78,19 +78,19 @@ func asDummyIPs(ip string, ipFamily v1.IPFamily) string {
 	return ip + "/32"
 }
 
-func epPortSuffix(port *localnetv1.PortMapping) string {
+func epPortSuffix(port *localv1.PortMapping) string {
 	return port.Protocol.String() + ":" + strconv.Itoa(int(port.Port))
 }
 
-func getServiceKey(svc *localnetv1.Service) string {
+func getServiceKey(svc *localv1.Service) string {
 	return svc.Namespace + "/" + svc.Name
 }
 
-func getServicePortKey(serviceKey, serviceIP string, port *localnetv1.PortMapping) string {
+func getServicePortKey(serviceKey, serviceIP string, port *localv1.PortMapping) string {
 	return serviceKey + "/" + serviceIP + "/" + epPortSuffix(port)
 }
 
-func getPortKey(serviceKey string, port *localnetv1.PortMapping) string {
+func getPortKey(serviceKey string, port *localv1.PortMapping) string {
 	return serviceKey + "/" + epPortSuffix(port)
 }
 
@@ -242,7 +242,7 @@ func getIPSetEntry(srcAddr string, port *BaseServicePortInfo) *ipsetutil.Entry {
 	}
 }
 
-func getIPFamiliesOfService(svc *localnetv1.Service) []v1.IPFamily {
+func getIPFamiliesOfService(svc *localv1.Service) []v1.IPFamily {
 	var ipFamilies []v1.IPFamily
 	if len(svc.IPs.ClusterIPs.V4) != 0 {
 		ipFamilies = append(ipFamilies, v1.IPv4Protocol)
@@ -253,7 +253,7 @@ func getIPFamiliesOfService(svc *localnetv1.Service) []v1.IPFamily {
 	return ipFamilies
 }
 
-func (p *proxier) getLbIPForIPFamily(svc *localnetv1.Service) (error, string) {
+func (p *proxier) getLbIPForIPFamily(svc *localv1.Service) (error, string) {
 	var svcIP string
 	if svc.IPs.LoadBalancerIPs == nil {
 		return errors.New("LB IPs are not configured"), svcIP
@@ -288,7 +288,7 @@ func (p *proxier) deleteVirtualServer(portInfo *BaseServicePortInfo) {
 	}
 }
 
-func (p *proxier) AddOrDelNodePortInIPSet(port *localnetv1.PortMapping, op Operation) {
+func (p *proxier) AddOrDelNodePortInIPSet(port *localv1.PortMapping, op Operation) {
 	var entries []*ipsetutil.Entry
 	protocol := strings.ToLower(port.Protocol.String())
 	ipSetName := protocolIPSetMap[protocol]
@@ -360,7 +360,7 @@ func (p *proxier) updateRefCountForIPSet(setName string, op Operation) {
 	}
 }
 
-func (s *Backend) enableSessionAffinityForServiceIPs(svc *localnetv1.Service, sessionAffinity serviceevents.SessionAffinity) {
+func (s *Backend) enableSessionAffinityForServiceIPs(svc *localv1.Service, sessionAffinity serviceevents.SessionAffinity) {
 	serviceKey := getServiceKey(svc)
 	ipFamilies := getIPFamiliesOfService(svc)
 	for _, ipFamily := range ipFamilies {
@@ -368,7 +368,7 @@ func (s *Backend) enableSessionAffinityForServiceIPs(svc *localnetv1.Service, se
 	}
 }
 
-func (s *Backend) disableSessionAffinityForServiceIPs(svc *localnetv1.Service) {
+func (s *Backend) disableSessionAffinityForServiceIPs(svc *localv1.Service) {
 	serviceKey := getServiceKey(svc)
 	ipFamilies := getIPFamiliesOfService(svc)
 	for _, ipFamily := range ipFamilies {
@@ -411,7 +411,7 @@ func (p *proxier) disableSessionAffinityForServiceIP(serviceKey string) {
 	}
 }
 
-func (p *proxier) addRealServer(serviceKey, prefix, endPointIP string, endpoint *localnetv1.Endpoint) {
+func (p *proxier) addRealServer(serviceKey, prefix, endPointIP string, endpoint *localv1.Endpoint) {
 	epInfo := endPointInfo{
 		endPointIP:      endPointIP,
 		isLocalEndPoint: endpoint.Local,

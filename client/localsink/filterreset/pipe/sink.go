@@ -17,7 +17,7 @@ limitations under the License.
 package pipe
 
 import (
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client"
 	"sigs.k8s.io/kpng/client/localsink"
 )
@@ -46,7 +46,7 @@ func (ps *Sink) Setup() {
 	}
 }
 
-func (ps *Sink) Send(op *localnetv1.OpItem) error {
+func (ps *Sink) Send(op *localv1.OpItem) error {
 	for _, sink := range ps.targetSinks {
 		if err := sink.Send(op); err != nil {
 			return err

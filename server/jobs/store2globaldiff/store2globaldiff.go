@@ -20,7 +20,7 @@ import (
 	"context"
 	"runtime/trace"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/lightdiffstore"
 	"sigs.k8s.io/kpng/server/jobs/store2diff"
 	"sigs.k8s.io/kpng/server/pkg/server/watchstate"
@@ -29,7 +29,7 @@ import (
 
 type Sink interface {
 	Wait() error
-	localnetv1.OpSink
+	localv1.OpSink
 }
 
 type Job struct {
@@ -37,10 +37,10 @@ type Job struct {
 	Sink  Sink
 }
 
-var sets = []localnetv1.Set{
-	localnetv1.Set_GlobalNodeInfos,
-	localnetv1.Set_GlobalServiceInfos,
-	localnetv1.Set_GlobalEndpointInfos,
+var sets = []localv1.Set{
+	localv1.Set_GlobalNodeInfos,
+	localv1.Set_GlobalServiceInfos,
+	localv1.Set_GlobalEndpointInfos,
 }
 
 func (j *Job) Run(ctx context.Context) error {
@@ -69,6 +69,10 @@ func (j *Job) Update(tx *proxystore.Tx, w *watchstate.WatchState) {
 	for _, set := range sets {
 		diff := w.StoreFor(set)
 		tx.Each(set, func(kv *proxystore.KV) bool {
+			// Hashes are gauranteed to be in any
+			// kv b/c either they are read from a pre-existing
+			// KPNG, or else calculated (i.e. in kube2store) on
+			// first write.
 			h := kv.Value.GetHash()
 			diff.Set([]byte(kv.Path()), h, kv.Value)
 			return true
@@ -81,18 +85,18 @@ func (_ *Job) SendDiff(w *watchstate.WatchState) (updated bool) {
 	defer task.End()
 
 	count := 0
-	count += w.SendUpdates(localnetv1.Set_GlobalNodeInfos)
-	count += w.SendUpdates(localnetv1.Set_GlobalServiceInfos)
-	count += w.SendUpdates(localnetv1.Set_GlobalEndpointInfos)
-	count += w.SendDeletes(localnetv1.Set_GlobalEndpointInfos)
-	count += w.SendDeletes(localnetv1.Set_GlobalServiceInfos)
-	count += w.SendDeletes(localnetv1.Set_GlobalNodeInfos)
+	count += w.SendUpdates(localv1.Set_GlobalNodeInfos)
+	count += w.SendUpdates(localv1.Set_GlobalServiceInfos)
+	count += w.SendUpdates(localv1.Set_GlobalEndpointInfos)
+	count += w.SendDeletes(localv1.Set_GlobalEndpointInfos)
+	count += w.SendDeletes(localv1.Set_GlobalServiceInfos)
+	count += w.SendDeletes(localv1.Set_GlobalNodeInfos)
 
 	w.Reset(lightdiffstore.ItemDeleted)
 
 	return count != 0
 }
 
-func (j *Job) Send(op *localnetv1.OpItem) error {
+func (j *Job) Send(op *localv1.OpItem) error {
 	return j.Sink.Send(op)
 }

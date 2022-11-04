@@ -25,7 +25,7 @@ import (
 	"sync"
 	"time"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -46,7 +46,7 @@ type proxySocket interface {
 	ListenPort() int
 }
 
-func newProxySocket(protocol localnetv1.Protocol, ip net.IP, port int) (proxySocket, error) {
+func newProxySocket(protocol localv1.Protocol, ip net.IP, port int) (proxySocket, error) {
 	host := ""
 	if ip != nil {
 		host = ip.String()

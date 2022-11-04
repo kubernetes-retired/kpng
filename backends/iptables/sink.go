@@ -23,7 +23,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/utils/exec"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	localv1 "sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/backends/iptables/util"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
@@ -74,7 +74,7 @@ func (s *Backend) Sync() {
 	wg.Wait()
 }
 
-func (s *Backend) SetService(svc *localnetv1.Service) {
+func (s *Backend) SetService(svc *localv1.Service) {
 	for _, impl := range IptablesImpl {
 		impl.serviceChanges.Update(svc)
 	}
@@ -86,7 +86,7 @@ func (s *Backend) DeleteService(namespace, name string) {
 	}
 }
 
-func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint) {
+func (s *Backend) SetEndpoint(namespace, serviceName, key string, endpoint *localv1.Endpoint) {
 	for _, impl := range IptablesImpl {
 		impl.endpointsChanges.EndpointUpdate(namespace, serviceName, key, endpoint)
 	}

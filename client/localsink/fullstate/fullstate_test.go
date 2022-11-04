@@ -21,10 +21,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	localv1 "sigs.k8s.io/kpng/api/localv1"
 )
 
-var syncOp = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{Sync: &localnetv1.EmptyOp{}}}
+var syncOp = &localv1.OpItem{Op: &localv1.OpItem_Sync{Sync: &localv1.EmptyOp{}}}
 
 func TestAddRemoveService(t *testing.T) {
 	var latestSeps []*ServiceEndpoints
@@ -38,18 +38,18 @@ func TestAddRemoveService(t *testing.T) {
 		latestSeps = seps
 	})
 
-	svcRef := &localnetv1.Ref{
-		Set:  localnetv1.Set_ServicesSet,
+	svcRef := &localv1.Ref{
+		Set:  localv1.Set_ServicesSet,
 		Path: "test/nginx",
 	}
-	svcBytes, _ := proto.Marshal(&localnetv1.Service{
+	svcBytes, _ := proto.Marshal(&localv1.Service{
 		Namespace: "test",
 		Name:      "nginx",
 	})
 
-	sink.Send(&localnetv1.OpItem{
-		Op: &localnetv1.OpItem_Set{
-			Set: &localnetv1.Value{
+	sink.Send(&localv1.OpItem{
+		Op: &localv1.OpItem_Set{
+			Set: &localv1.Value{
 				Ref:   svcRef,
 				Bytes: svcBytes,
 			},
@@ -61,8 +61,8 @@ func TestAddRemoveService(t *testing.T) {
 		t.Fail()
 	}
 
-	sink.Send(&localnetv1.OpItem{
-		Op: &localnetv1.OpItem_Delete{
+	sink.Send(&localv1.OpItem{
+		Op: &localv1.OpItem_Delete{
 			Delete: svcRef,
 		},
 	})

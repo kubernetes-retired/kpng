@@ -22,7 +22,7 @@ import (
 	"net"
 	"os"
 
-	v1 "sigs.k8s.io/kpng/api/localnetv1"
+	v1 "sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/localsink/fullstate"
 )
 

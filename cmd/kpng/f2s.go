@@ -34,11 +34,11 @@ func file2storeCmd() *cobra.Command {
 	// file to * command
 	k2sCmd := &cobra.Command{
 		Use:   "file",
-		Short: "poll a file to the global state",
+		Short: "poll a file to the globalv1 state",
 	}
 
 	flags := k2sCmd.PersistentFlags()
-	flags.StringVarP(&f2sInput, "input", "i", "global-state.yaml", "Input file for the global-state")
+	flags.StringVarP(&f2sInput, "input", "i", "globalv1-state.yaml", "Input file for the globalv1-state")
 
 	k2sCfg.BindFlags(k2sCmd.PersistentFlags())
 	k2sCmd.AddCommand(storecmds.Commands(setupFile2store)...)

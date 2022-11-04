@@ -28,12 +28,12 @@ import (
 	"k8s.io/client-go/util/flowcontrol"
 	klog "k8s.io/klog/v2"
 	utilnet "k8s.io/utils/net"
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/backends/iptables"
 )
 
 // ShouldSkipService checks if a given service should skip proxying
-func ShouldSkipService(service *localnetv1.Service) bool {
+func ShouldSkipService(service *localv1.Service) bool {
 	// if ClusterIP is "None" or empty, skip proxying
 	if !iptables.IsServiceIPSet(service) {
 		klog.V(3).Infof("Skipping service %s in namespace %s due to empty ClusterIPs", service.Name, service.Namespace)
@@ -64,7 +64,7 @@ func ToCIDR(ip net.IP) string {
 
 // BuildPortsToEndpointsMap builds a map of portname -> all ip:ports for that
 // portname. Explode Endpoints.Subsets[*] into this structure.
-// func BuildPortsToEndpointsMap(service []*iptables.ServicePortName, endpoints *localnetv1.Endpoint) map[string][]string {
+// func BuildPortsToEndpointsMap(service []*iptables.ServicePortName, endpoints *kpng.Endpoint) map[string][]string {
 // 	portsToEndpoints := map[string][]string{}
 // 	ipSet := endpoints.GetIPs()
 // 	for _, i := range ipSet.V4 {
@@ -116,7 +116,7 @@ func GetLocalAddrSet() utilnet.IPSet {
 
 // BuildPortsToEndpointsMap builds a map of portname -> all ip:ports for that
 // portname.
-func buildPortsToEndpointsMap(ep *localnetv1.Endpoint, svc *localnetv1.Service) map[string][]string {
+func buildPortsToEndpointsMap(ep *localv1.Endpoint, svc *localv1.Service) map[string][]string {
 	portsToEndpoints := map[string][]string{}
 
 	for _, ip := range ep.IPs.GetV4() {

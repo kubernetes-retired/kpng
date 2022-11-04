@@ -19,7 +19,7 @@ package kube2store
 import (
 	v1 "k8s.io/api/core/v1"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	globalv1 "sigs.k8s.io/kpng/api/globalv1"
 	proxystore "sigs.k8s.io/kpng/server/proxystore"
 )
 
@@ -33,9 +33,9 @@ func (h *nodeEventHandler) OnAdd(obj interface{}) {
 	node := obj.(*v1.Node)
 
 	// keep only what we want
-	n := &localnetv1.Node{
+	n := &globalv1.Node{
 		Name: node.Name,
-		Topology: &localnetv1.TopologyInfo{
+		Topology: &globalv1.TopologyInfo{
 			Node: node.Name,
 			Zone: node.Labels[nodeZoneLabel],
 		},

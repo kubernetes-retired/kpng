@@ -24,7 +24,8 @@ import (
 	"github.com/google/btree"
 	"k8s.io/klog/v2"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/globalv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/server/pkg/metrics"
 	"sigs.k8s.io/kpng/server/serde"
 )
@@ -40,12 +41,12 @@ type Store struct {
 	sync map[Set]bool
 }
 
-type Set = localnetv1.Set
+type Set = localv1.Set
 
 const (
-	Services  = localnetv1.Set_GlobalServiceInfos
-	Endpoints = localnetv1.Set_GlobalEndpointInfos
-	Nodes     = localnetv1.Set_GlobalNodeInfos
+	Services  = localv1.Set_GlobalServiceInfos
+	Endpoints = localv1.Set_GlobalEndpointInfos
+	Nodes     = localv1.Set_GlobalNodeInfos
 )
 
 var AllSets = []Set{Services, Endpoints, Nodes}
@@ -189,15 +190,15 @@ func (tx *Tx) SetRaw(set Set, path string, value Hashed) {
 	kv.Value = value
 
 	switch v := value.(type) {
-	case *localnetv1.NodeInfo:
+	case *globalv1.NodeInfo:
 		kv.Node = v
 		tx.set(kv)
 
-	case *localnetv1.ServiceInfo:
+	case *globalv1.ServiceInfo:
 		kv.Service = v
 		tx.set(kv)
 
-	case *localnetv1.EndpointInfo:
+	case *globalv1.EndpointInfo:
 		kv.Endpoint = v
 		tx.set(kv)
 
@@ -237,10 +238,10 @@ func (tx *Tx) SetSync(set Set) {
 
 // Services funcs
 
-func (tx *Tx) SetService(s *localnetv1.Service) {
-	si := &localnetv1.ServiceInfo{
+func (tx *Tx) SetService(s *localv1.Service) {
+	si := &globalv1.ServiceInfo{
 		Service: s,
-		Hash: serde.Hash(&localnetv1.ServiceInfo{
+		Hash: serde.Hash(&globalv1.ServiceInfo{
 			Service: s,
 		}),
 	}
@@ -264,7 +265,7 @@ func (tx *Tx) DelService(namespace, name string) {
 
 // Endpoints funcs
 
-func (tx *Tx) EachEndpointOfService(namespace, serviceName string, callback func(*localnetv1.EndpointInfo)) {
+func (tx *Tx) EachEndpointOfService(namespace, serviceName string, callback func(*globalv1.EndpointInfo)) {
 	tx.s.tree.AscendGreaterOrEqual(&KV{
 		Set:       Endpoints,
 		Namespace: namespace,
@@ -283,7 +284,7 @@ func (tx *Tx) EachEndpointOfService(namespace, serviceName string, callback func
 }
 
 // SetEndpointsOfSource replaces ALL endpoints of a single source (add new, update existing, delete removed)
-func (tx *Tx) SetEndpointsOfSource(namespace, sourceName string, eis []*localnetv1.EndpointInfo) {
+func (tx *Tx) SetEndpointsOfSource(namespace, sourceName string, eis []*globalv1.EndpointInfo) {
 	tx.roPanic()
 
 	seen := map[uint64]bool{}
@@ -296,7 +297,7 @@ func (tx *Tx) SetEndpointsOfSource(namespace, sourceName string, eis []*localnet
 			panic("inconsistent source: " + sourceName + " != " + ei.SourceName)
 		}
 
-		ei.Hash = serde.Hash(&localnetv1.EndpointInfo{
+		ei.Hash = serde.Hash(&globalv1.EndpointInfo{
 			Endpoint:   ei.Endpoint,
 			Conditions: ei.Conditions,
 			Topology:   ei.Topology,
@@ -402,10 +403,10 @@ func (tx *Tx) DelEndpointsOfSource(namespace, sourceName string) {
 	}
 }
 
-func (tx *Tx) SetEndpoint(ei *localnetv1.EndpointInfo) {
+func (tx *Tx) SetEndpoint(ei *globalv1.EndpointInfo) {
 	tx.roPanic()
 
-	newHash := serde.Hash(&localnetv1.EndpointInfo{
+	newHash := serde.Hash(&globalv1.EndpointInfo{
 		Endpoint:   ei.Endpoint,
 		Conditions: ei.Conditions,
 		Topology:   ei.Topology,
@@ -461,7 +462,7 @@ func (tx *Tx) SetEndpoint(ei *localnetv1.EndpointInfo) {
 
 // Nodes funcs
 
-func (tx *Tx) GetNode(name string) *localnetv1.Node {
+func (tx *Tx) GetNode(name string) *globalv1.Node {
 	i := tx.s.tree.Get(&KV{Set: Nodes, Name: name})
 
 	if i == nil {
@@ -471,8 +472,8 @@ func (tx *Tx) GetNode(name string) *localnetv1.Node {
 	return i.(*KV).Node.Node
 }
 
-func (tx *Tx) SetNode(n *localnetv1.Node) {
-	ni := &localnetv1.NodeInfo{
+func (tx *Tx) SetNode(n *globalv1.Node) {
+	ni := &globalv1.NodeInfo{
 		Node: n,
 		Hash: serde.Hash(n),
 	}

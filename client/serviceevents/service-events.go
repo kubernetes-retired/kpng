@@ -17,32 +17,32 @@ limitations under the License.
 package serviceevents
 
 import (
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 )
 
 type PortsListener interface {
-	AddPort(svc *localnetv1.Service, port *localnetv1.PortMapping)
-	DeletePort(svc *localnetv1.Service, port *localnetv1.PortMapping)
+	AddPort(svc *localv1.Service, port *localv1.PortMapping)
+	DeletePort(svc *localv1.Service, port *localv1.PortMapping)
 }
 
 type IPsListener interface {
-	AddIP(svc *localnetv1.Service, ip string, ipKind IPKind)
-	DeleteIP(svc *localnetv1.Service, ip string, ipKind IPKind)
+	AddIP(svc *localv1.Service, ip string, ipKind IPKind)
+	DeleteIP(svc *localv1.Service, ip string, ipKind IPKind)
 }
 
 type IPPortsListener interface {
-	AddIPPort(svc *localnetv1.Service, ip string, ipKind IPKind, port *localnetv1.PortMapping)
-	DeleteIPPort(svc *localnetv1.Service, ip string, ipKind IPKind, port *localnetv1.PortMapping)
+	AddIPPort(svc *localv1.Service, ip string, ipKind IPKind, port *localv1.PortMapping)
+	DeleteIPPort(svc *localv1.Service, ip string, ipKind IPKind, port *localv1.PortMapping)
 }
 
 type TrafficPolicyListener interface {
-	EnableTrafficPolicy(svc *localnetv1.Service, policyKind TrafficPolicyKind)
-	DisableTrafficPolicy(svc *localnetv1.Service, policyKind TrafficPolicyKind)
+	EnableTrafficPolicy(svc *localv1.Service, policyKind TrafficPolicyKind)
+	DisableTrafficPolicy(svc *localv1.Service, policyKind TrafficPolicyKind)
 }
 
 type SessionAffinityListener interface {
-	EnableSessionAffinity(svc *localnetv1.Service, sessionAffinity SessionAffinity)
-	DisableSessionAffinity(svc *localnetv1.Service)
+	EnableSessionAffinity(svc *localv1.Service, sessionAffinity SessionAffinity)
+	DisableSessionAffinity(svc *localv1.Service)
 }
 
 // ServicesListener analyzes updates to the Service set and produced detailed
@@ -65,7 +65,7 @@ type ServicesListener struct {
 	TrafficPolicyListener   TrafficPolicyListener
 	SessionAffinityListener SessionAffinityListener
 
-	services map[string]*localnetv1.Service
+	services map[string]*localv1.Service
 }
 
 // New creates a new ServicesListener.
@@ -73,12 +73,12 @@ type ServicesListener struct {
 // Reminder: you need to associate listeners for this listener to be useful.
 func New() *ServicesListener {
 	return &ServicesListener{
-		services: map[string]*localnetv1.Service{},
+		services: map[string]*localv1.Service{},
 	}
 }
 
 // SetService is called when a service is added or updated
-func (sl *ServicesListener) SetService(svc *localnetv1.Service) {
+func (sl *ServicesListener) SetService(svc *localv1.Service) {
 	svcKey := svc.Namespace + "/" + svc.Name
 
 	prevSvc := sl.services[svcKey]
@@ -101,8 +101,8 @@ func (sl *ServicesListener) DeleteService(namespace, name string) {
 	sl.diff(svc, nil)
 }
 
-func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
-	var prevPorts, currPorts []*localnetv1.PortMapping
+func (sl *ServicesListener) diff(prevSvc, currSvc *localv1.Service) {
+	var prevPorts, currPorts []*localv1.PortMapping
 
 	if prevSvc != nil {
 		prevPorts = prevSvc.Ports
@@ -124,21 +124,21 @@ func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
 
 	ipsExtractors := []struct {
 		ipKind IPKind
-		getIPs func(svc *localnetv1.Service) *localnetv1.IPSet
+		getIPs func(svc *localv1.Service) *localv1.IPSet
 	}{
-		{ClusterIP, func(svc *localnetv1.Service) *localnetv1.IPSet {
+		{ClusterIP, func(svc *localv1.Service) *localv1.IPSet {
 			if svc.IPs == nil {
 				return nil
 			}
 			return svc.IPs.ClusterIPs
 		}},
-		{ExternalIP, func(svc *localnetv1.Service) *localnetv1.IPSet {
+		{ExternalIP, func(svc *localv1.Service) *localv1.IPSet {
 			if svc.IPs == nil {
 				return nil
 			}
 			return svc.IPs.ExternalIPs
 		}},
-		{LoadBalancerIP, func(svc *localnetv1.Service) *localnetv1.IPSet {
+		{LoadBalancerIP, func(svc *localv1.Service) *localv1.IPSet {
 			if svc.IPs == nil {
 				return nil
 			}
@@ -182,10 +182,10 @@ func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
 
 			type ipPort struct {
 				ip   string
-				port *localnetv1.PortMapping
+				port *localv1.PortMapping
 			}
 
-			combine := func(svc *localnetv1.Service) []ipPort {
+			combine := func(svc *localv1.Service) []ipPort {
 				if svc == nil {
 					return nil
 				}
@@ -248,7 +248,7 @@ func (sl *ServicesListener) diff(prevSvc, currSvc *localnetv1.Service) {
 	}
 }
 
-func samePort(p1, p2 *localnetv1.PortMapping) bool {
+func samePort(p1, p2 *localv1.PortMapping) bool {
 	return p1.Name == p2.Name &&
 		p1.Protocol == p2.Protocol &&
 		p1.Port == p2.Port &&
@@ -259,19 +259,19 @@ func samePort(p1, p2 *localnetv1.PortMapping) bool {
 
 // SessionAffinity contains data about assinged session affinity
 type SessionAffinity struct {
-	ClientIP *localnetv1.Service_ClientIP
+	ClientIP *localv1.Service_ClientIP
 }
 
 func GetSessionAffinity(affinity interface{}) SessionAffinity {
 	var sessionAffinity SessionAffinity
 	switch affinity.(type) {
-	case *localnetv1.Service_ClientIP:
-		sessionAffinity.ClientIP = affinity.(*localnetv1.Service_ClientIP)
+	case *localv1.Service_ClientIP:
+		sessionAffinity.ClientIP = affinity.(*localv1.Service_ClientIP)
 	}
 	return sessionAffinity
 }
 
-func (sl *ServicesListener) checkTrafficPolicy(prev, curr *localnetv1.Service, polKind TrafficPolicyKind) {
+func (sl *ServicesListener) checkTrafficPolicy(prev, curr *localv1.Service, polKind TrafficPolicyKind) {
 	var previousPolicy, currentPolicy bool = false, false
 	switch polKind {
 	case TrafficPolicyInternal:

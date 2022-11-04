@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package localnetv1
+package localv1
 
 func (s *Service) NamespacedName() string {
 	return s.Namespace + "/" + s.Name

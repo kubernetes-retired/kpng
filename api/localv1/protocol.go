@@ -14,4 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package localnetv1
+package localv1
+
+func ParseProtocol(s string) Protocol {
+	return Protocol(Protocol_value[s]) // default is Unknown
+}
