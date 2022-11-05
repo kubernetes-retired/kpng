@@ -1,0 +1,13 @@
+# Version
+version_settings(constraint='>=0.22.2')
+
+load('ext://dotenv', 'dotenv')
+dotenv('../../tilt.env')
+
+# Increasing timeout for apply_cmd of k8s_custom_deploy. The default timeout is 30s.
+update_settings (k8s_upsert_timeout_secs = 480) 
+
+# https://blog.tilt.dev/2021/12/03/k8s-custom-deploy.html
+# We cannot use docker_build as we use k8s_custom_deploy. If we use k8s_yaml
+# We won't be able to generate YAML everytime we need re-deployment.
+k8s_custom_deploy('kpng-deployment', apply_cmd='./deploy.sh 1>&2', delete_cmd='echo "[tilt] deployment completed"', deps=['../../tilt.env'])

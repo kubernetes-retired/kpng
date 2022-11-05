@@ -75,6 +75,42 @@ You can reach the maintainers of this project at:
 - [Slack](http://slack.k8s.io/) , Join the #sig-net-kpng channel !
 - [Mailing List](https://groups.google.com/forum/#!forum/kubernetes-dev)
 
+### Developer Setup with Tilt
+
+To quickly get a developer setup and do some experiments, Tilt setup can be used. You need to install
+
+- [Tilt](https://docs.tilt.dev/install.html)
+- Docker
+
+If Tilt and Docker are already available, you can create a Kind cluster for Tilt using `make tilt-setup`. It requires arguments, IPfamily and backend. It’s possible to change the backend and re-deploy the changes without creating a new kind cluster.
+
+Eg:
+
+```console
+make tilt-setup b=ebpf i=ipv4 
+```
+
+Once the Kind cluster is ready, You can start the Tilt server by executing `make tilt-up`.
+
+The `make tilt-setup` command will create a file with name `tilt.env`, this file will contain environment variables required to generate kpng DaemonSet yaml. You can change the backend from the `tilt.env` file and it’ll trigger a redeployment. The below is a sample `tilt.env` file. However, some changes (eg: `ip_family`) won't trigger re-deployment(`ip_family` change requires to create a new cluster).
+
+Example `tilt.env` file can be found in `hack/tilt/tilt.env.example`.
+
+```console
+kpng_image=kpng 
+image_pull_policy=IfNotPresent 
+backend=iptables
+config_map_name=kpng
+service_account_name=kpng
+namespace=kube-system 
+e2e_backend_args=['local', '--api=unix:///k8s/proxy.sock', '--exportMetrics=0.0.0.0:9098', 'to-iptables', '--v=4']
+e2e_server_args=['kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', '--exportMetrics=0.0.0.0:9099', 'to-api', '--listen=unix:///k8s/proxy.sock']
+deployment_model=single-process-per-node
+ip_family=ipv4
+```
+
+A video demo to use Tilt can be seen [here](https://drive.google.com/file/d/1UgNPanmmXplY_rKyH0jz21PuzdJmUg7R/view?usp=share_link)
+
 ### Code of conduct
 
 Participation in the Kubernetes community is governed by the [Kubernetes Code of Conduct](code-of-conduct.md).
