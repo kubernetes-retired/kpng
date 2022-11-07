@@ -33,7 +33,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	localv1 "sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
 	"sigs.k8s.io/kpng/client/localsink/filterreset"
@@ -92,7 +92,7 @@ func (s *Backend) Sync() {
 	proxier.syncProxyRules()
 }
 
-func (s *Backend) SetService(svc *localnetv1.Service) {
+func (s *Backend) SetService(svc *localv1.Service) {
 	key := svc.NamespacedName()
 	if s.services == nil {
 		s.services = make(map[string]*service)
@@ -114,7 +114,7 @@ func (s *Backend) DeleteService(namespace, name string) {
 }
 
 // name of the endpoint is the same as the service name
-func (s *Backend) SetEndpoint(namespace, serviceName, epKey string, endpoint *localnetv1.Endpoint) {
+func (s *Backend) SetEndpoint(namespace, serviceName, epKey string, endpoint *localv1.Endpoint) {
 	svc := s.services[namespace+"/"+serviceName]
 	svc.AddEndpoint(epKey, endpoint)
 	proxier.OnEndpointsAdd(endpoint, svc.internalSvc)

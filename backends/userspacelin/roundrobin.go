@@ -27,7 +27,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 
 	"sigs.k8s.io/kpng/backends/iptables"
 
@@ -71,7 +71,7 @@ type balancerState struct {
 	affinity  affinityPolicy
 }
 
-func newAffinityPolicy(affinityClientIP *localnetv1.ClientIPAffinity, ttlSeconds int) *affinityPolicy {
+func newAffinityPolicy(affinityClientIP *localv1.ClientIPAffinity, ttlSeconds int) *affinityPolicy {
 	return &affinityPolicy{
 		affinityClientIP: affinityClientIP != nil,
 		affinityMap:      make(map[string]*affinityState),
@@ -86,7 +86,7 @@ func NewLoadBalancerRR() *LoadBalancerRR {
 	}
 }
 
-func (lb *LoadBalancerRR) NewService(svcPort iptables.ServicePortName, affinityType *localnetv1.ClientIPAffinity, ttlSeconds int) error {
+func (lb *LoadBalancerRR) NewService(svcPort iptables.ServicePortName, affinityType *localv1.ClientIPAffinity, ttlSeconds int) error {
 	klog.V(4).Infof("LoadBalancerRR NewService %q", svcPort)
 	lb.lock.Lock()
 	lb.lock.Unlock()
@@ -95,7 +95,7 @@ func (lb *LoadBalancerRR) NewService(svcPort iptables.ServicePortName, affinityT
 }
 
 // This assumes that lb.lock is already held.
-func (lb *LoadBalancerRR) newServiceInternal(svcPort iptables.ServicePortName, affinityClientIP *localnetv1.ClientIPAffinity, ttlSeconds int) *balancerState {
+func (lb *LoadBalancerRR) newServiceInternal(svcPort iptables.ServicePortName, affinityClientIP *localv1.ClientIPAffinity, ttlSeconds int) *balancerState {
 	if ttlSeconds == 0 {
 		ttlSeconds = int(v1.DefaultClientIPServiceAffinitySeconds) //default to 3 hours if not specified.  Should 0 be unlimited instead????
 	}
@@ -224,7 +224,7 @@ func (lb *LoadBalancerRR) removeStaleAffinity(svcPort iptables.ServicePortName, 
 	}
 }
 
-func (lb *LoadBalancerRR) OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
+func (lb *LoadBalancerRR) OnEndpointsAdd(ep *localv1.Endpoint, svc *localv1.Service) {
 	portsToEndpoints := buildPortsToEndpointsMap(ep, svc)
 	namespace := svc.Namespace
 	name := svc.Name
@@ -319,7 +319,7 @@ func (lb *LoadBalancerRR) resetService(svcPort iptables.ServicePortName) {
 	}
 }
 
-func (lb *LoadBalancerRR) OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
+func (lb *LoadBalancerRR) OnEndpointsDelete(ep *localv1.Endpoint, svc *localv1.Service) {
 	portsToEndpoints := buildPortsToEndpointsMap(ep, svc)
 
 	lb.lock.Lock()

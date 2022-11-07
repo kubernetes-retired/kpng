@@ -22,7 +22,7 @@ import (
 	"net"
 	"os/exec"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/serviceevents"
 )
 
@@ -88,7 +88,7 @@ func (b *userspaceBackend) Setup() {
 
 var _ serviceevents.IPsListener = &userspaceBackend{}
 
-func (b *userspaceBackend) AddIP(svc *localnetv1.Service, ip string, _ serviceevents.IPKind) {
+func (b *userspaceBackend) AddIP(svc *localv1.Service, ip string, _ serviceevents.IPKind) {
 	if dummyIface == "" {
 		return
 	}
@@ -113,7 +113,7 @@ func (b *userspaceBackend) AddIP(svc *localnetv1.Service, ip string, _ serviceev
 	b.ips[ip] = true
 }
 
-func (b *userspaceBackend) DeleteIP(svc *localnetv1.Service, ip string, _ serviceevents.IPKind) {
+func (b *userspaceBackend) DeleteIP(svc *localv1.Service, ip string, _ serviceevents.IPKind) {
 	if dummyIface == "" {
 		return
 	}

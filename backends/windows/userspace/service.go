@@ -16,23 +16,23 @@ limitations under the License.
 
 package userspace
 
-import "sigs.k8s.io/kpng/api/localnetv1"
+import "sigs.k8s.io/kpng/api/localv1"
 
 // service is the operational view of a service for userspace-proxing
 type service struct {
 	Name        string
 	eps         []endpoint
-	internalSvc *localnetv1.Service
+	internalSvc *localv1.Service
 }
 
 // endpoint is the operational view of a service endpoint
 type endpoint struct {
 	key        string
 	targetIP   string
-	internalEp *localnetv1.Endpoint
+	internalEp *localv1.Endpoint
 }
 
-func (svc *service) AddEndpoint(key string, ep *localnetv1.Endpoint) {
+func (svc *service) AddEndpoint(key string, ep *localv1.Endpoint) {
 	if ep.IPs.IsEmpty() { // no IPs on endpoint
 		return
 	}

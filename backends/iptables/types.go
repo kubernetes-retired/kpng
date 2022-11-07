@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"net"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	localv1 "sigs.k8s.io/kpng/api/localv1"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -32,7 +32,7 @@ import (
 type ServicePortName struct {
 	types.NamespacedName
 	Port     string
-	Protocol localnetv1.Protocol
+	Protocol localv1.Protocol
 }
 
 func (spn ServicePortName) String() string {
@@ -61,7 +61,7 @@ type ServicePort interface {
 	// LoadBalancerIPStrings returns service LoadBalancerIPs as a string array.
 	LoadBalancerIPStrings() []string
 	// GetProtocol returns service protocol.
-	Protocol() localnetv1.Protocol
+	Protocol() localv1.Protocol
 	// LoadBalancerSourceRanges returns service LoadBalancerSourceRanges if present empty array if not
 	LoadBalancerSourceRanges() []string
 	// GetHealthCheckNodePort returns service health check node port if present.  If return 0, it means not present.

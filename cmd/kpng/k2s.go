@@ -44,7 +44,7 @@ func kube2storeCmd() *cobra.Command {
 	// kube to * command
 	k2sCmd := &cobra.Command{
 		Use:   "kube",
-		Short: "watch Kubernetes API to the global state",
+		Short: "watch Kubernetes API to the globalv1 state",
 	}
 
 	flags := k2sCmd.PersistentFlags()

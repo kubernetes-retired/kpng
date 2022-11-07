@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"strconv"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	localv1 "sigs.k8s.io/kpng/api/localv1"
 
 	"k8s.io/klog/v2"
 )
@@ -28,8 +28,8 @@ import (
 type dnatRule struct {
 	Namespace   string
 	Name        string
-	Protocol    localnetv1.Protocol
-	Ports       []*localnetv1.PortMapping
+	Protocol    localv1.Protocol
+	Ports       []*localv1.PortMapping
 	EndpointIPs []EpIP
 }
 
@@ -50,7 +50,7 @@ func (d dnatRule) WriteTo(rule *bytes.Buffer, nodePorts bool, endpointsMap strin
 		return
 	}
 
-	ports := make([]*localnetv1.PortMapping, 0, len(d.Ports))
+	ports := make([]*localv1.PortMapping, 0, len(d.Ports))
 	for _, port := range d.Ports {
 		if port.Protocol != d.Protocol {
 			continue
@@ -116,13 +116,13 @@ func (d dnatRule) WriteTo(rule *bytes.Buffer, nodePorts bool, endpointsMap strin
 	return
 }
 
-func protoMatch(protocol localnetv1.Protocol) string {
+func protoMatch(protocol localv1.Protocol) string {
 	switch protocol {
-	case localnetv1.Protocol_TCP:
+	case localv1.Protocol_TCP:
 		return "tcp dport"
-	case localnetv1.Protocol_UDP:
+	case localv1.Protocol_UDP:
 		return "udp dport"
-	case localnetv1.Protocol_SCTP:
+	case localv1.Protocol_SCTP:
 		return "sctp dport"
 	default:
 		klog.Errorf("unknown protocol: %v", protocol)

@@ -18,11 +18,11 @@ package ipvssink
 
 import (
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/serviceevents"
 )
 
-func (s *Backend) handleClusterIPService(svc *localnetv1.Service, serviceIP string, IPKind serviceevents.IPKind, port *localnetv1.PortMapping) {
+func (s *Backend) handleClusterIPService(svc *localv1.Service, serviceIP string, IPKind serviceevents.IPKind, port *localv1.PortMapping) {
 	serviceKey := getServiceKey(svc)
 	ipFamily := getIPFamily(serviceIP)
 
@@ -47,7 +47,7 @@ func (s *Backend) handleClusterIPService(svc *localnetv1.Service, serviceIP stri
 	}
 }
 
-func (s *Backend) deleteClusterIPService(svc *localnetv1.Service, serviceIP string, IPKind serviceevents.IPKind, port *localnetv1.PortMapping) {
+func (s *Backend) deleteClusterIPService(svc *localv1.Service, serviceIP string, IPKind serviceevents.IPKind, port *localv1.PortMapping) {
 	serviceKey := getServiceKey(svc)
 	s.svcs[serviceKey] = svc
 	ipFamily := getIPFamily(serviceIP)
@@ -80,9 +80,9 @@ func (s *Backend) deleteClusterIPService(svc *localnetv1.Service, serviceIP stri
 	p.deletePortFromPortMap(serviceKey, portMapKey)
 }
 
-func (p *proxier) handleNewClusterIPService(serviceKey, clusterIP string, svc *localnetv1.Service, port *localnetv1.PortMapping) {
+func (p *proxier) handleNewClusterIPService(serviceKey, clusterIP string, svc *localv1.Service, port *localv1.PortMapping) {
 	if _, ok := p.portMap[serviceKey]; !ok {
-		p.portMap[serviceKey] = make(map[string]localnetv1.PortMapping)
+		p.portMap[serviceKey] = make(map[string]localv1.PortMapping)
 	}
 
 	spKey := getServicePortKey(serviceKey, clusterIP, port)
@@ -98,7 +98,7 @@ func (p *proxier) handleNewClusterIPService(serviceKey, clusterIP string, svc *l
 	p.AddOrDelClusterIPInIPSet(portInfo, AddService)
 }
 
-func (p *proxier) handleUpdatedClusterIPService(serviceKey, clusterIP string, svc *localnetv1.Service, port *localnetv1.PortMapping) {
+func (p *proxier) handleUpdatedClusterIPService(serviceKey, clusterIP string, svc *localv1.Service, port *localv1.PortMapping) {
 	if _, ok := p.portMap[serviceKey]; !ok {
 		klog.Errorf("can't update port into non-existent service")
 		return
@@ -123,7 +123,7 @@ func (p *proxier) handleUpdatedClusterIPService(serviceKey, clusterIP string, sv
 	}
 }
 
-func (s *Backend) handleEndPointForClusterIP(svcKey, key string, endpoint *localnetv1.Endpoint, op Operation) {
+func (s *Backend) handleEndPointForClusterIP(svcKey, key string, endpoint *localv1.Endpoint, op Operation) {
 	prefix := svcKey + "/" + key + "/"
 
 	if op == AddEndPoint {

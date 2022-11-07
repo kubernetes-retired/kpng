@@ -21,7 +21,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 )
 
 type Sink interface {
@@ -34,7 +34,7 @@ type Sink interface {
 	// Reset the state of the Sink (ie: when the client is disconnected and reconnects)
 	Reset()
 
-	localnetv1.OpSink
+	localv1.OpSink
 }
 
 type Config struct {

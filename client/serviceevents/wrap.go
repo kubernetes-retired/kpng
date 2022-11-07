@@ -17,7 +17,7 @@ limitations under the License.
 package serviceevents
 
 import (
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
 )
 
@@ -68,7 +68,7 @@ func Wrap(backend decoder.Interface) decoder.Interface {
 	return wrap
 }
 
-func (w wrapper) SetService(service *localnetv1.Service) {
+func (w wrapper) SetService(service *localv1.Service) {
 	w.Interface.SetService(service)
 	w.l.SetService(service)
 }

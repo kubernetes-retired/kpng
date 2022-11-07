@@ -25,8 +25,9 @@ import (
 
 	"k8s.io/klog/v2"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore "sigs.k8s.io/kpng/server/proxystore"
+	"sigs.k8s.io/kpng/api/localv1"
+	"sigs.k8s.io/kpng/api/globalv1"
+	"sigs.k8s.io/kpng/server/proxystore"
 )
 
 type Config struct {
@@ -67,7 +68,7 @@ func (j *Job) Run(ctx context.Context) (err error) {
 					Service: kv.Service.Service,
 				}
 
-				tx.EachEndpointOfService(kv.Namespace, kv.Name, func(ep *localnetv1.EndpointInfo) {
+				tx.EachEndpointOfService(kv.Namespace, kv.Name, func(ep *globalv1.EndpointInfo) {
 					sae.Endpoints = append(sae.Endpoints, ep)
 				})
 
@@ -103,11 +104,11 @@ func (j *Job) Run(ctx context.Context) (err error) {
 }
 
 type GlobalState struct {
-	Nodes    []*localnetv1.Node
+	Nodes    []*globalv1.Node
 	Services []ServiceAndEndpoints
 }
 
 type ServiceAndEndpoints struct {
-	Service   *localnetv1.Service
-	Endpoints []*localnetv1.EndpointInfo
+	Service   *localv1.Service
+	Endpoints []*globalv1.EndpointInfo
 }

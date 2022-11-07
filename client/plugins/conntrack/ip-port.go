@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	api "sigs.k8s.io/kpng/api/localnetv1"
+	api "sigs.k8s.io/kpng/api/localv1"
 )
 
 type IPPort struct {

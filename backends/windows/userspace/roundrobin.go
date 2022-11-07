@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -66,7 +66,7 @@ type balancerState struct {
 	affinity  *affinityPolicy
 }
 
-func newAffinityPolicy(affinityClientIP *localnetv1.ClientIPAffinity, ttlSeconds int) *affinityPolicy {
+func newAffinityPolicy(affinityClientIP *localv1.ClientIPAffinity, ttlSeconds int) *affinityPolicy {
 	return &affinityPolicy{
 		affinityClientIP: affinityClientIP != nil,
 		affinityMap:      make(map[string]*affinityState),
@@ -81,7 +81,7 @@ func NewLoadBalancerRR() *LoadBalancerRR {
 	}
 }
 
-func (lb *LoadBalancerRR) NewService(svcPort ServicePortName, affinityClientIP *localnetv1.ClientIPAffinity, ttlSeconds int) error {
+func (lb *LoadBalancerRR) NewService(svcPort ServicePortName, affinityClientIP *localv1.ClientIPAffinity, ttlSeconds int) error {
 	klog.V(4).InfoS("LoadBalancerRR NewService", "servicePortName", svcPort)
 	lb.lock.Lock()
 	defer lb.lock.Unlock()
@@ -90,7 +90,7 @@ func (lb *LoadBalancerRR) NewService(svcPort ServicePortName, affinityClientIP *
 }
 
 // This assumes that lb.lock is already held.
-func (lb *LoadBalancerRR) newServiceInternal(svcPort ServicePortName, affinityClientIP *localnetv1.ClientIPAffinity, ttlSeconds int) *balancerState {
+func (lb *LoadBalancerRR) newServiceInternal(svcPort ServicePortName, affinityClientIP *localv1.ClientIPAffinity, ttlSeconds int) *balancerState {
 	if ttlSeconds == 0 {
 		ttlSeconds = int(v1.DefaultClientIPServiceAffinitySeconds) //default to 3 hours if not specified.  Should 0 be unlimited instead????
 	}
@@ -200,7 +200,7 @@ func (lb *LoadBalancerRR) updateAffinityMap(svcPort ServicePortName, newEndpoint
 	}
 }
 
-func (lb *LoadBalancerRR) OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
+func (lb *LoadBalancerRR) OnEndpointsAdd(ep *localv1.Endpoint, svc *localv1.Service) {
 	portsToEndpoints := buildPortsToEndpointsMap(ep, svc)
 
 	lb.lock.Lock()
@@ -230,7 +230,7 @@ func (lb *LoadBalancerRR) OnEndpointsAdd(ep *localnetv1.Endpoint, svc *localnetv
 
 }
 
-func (lb *LoadBalancerRR) OnEndpointsDelete(ep *localnetv1.Endpoint, svc *localnetv1.Service) {
+func (lb *LoadBalancerRR) OnEndpointsDelete(ep *localv1.Endpoint, svc *localv1.Service) {
 	portsToEndpoints := buildPortsToEndpointsMap(ep, svc)
 
 	lb.lock.Lock()

@@ -18,12 +18,12 @@ package ipvssink
 
 import (
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	ipsetutil "sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
 	"sigs.k8s.io/kpng/client/serviceevents"
 )
 
-func (s *Backend) handleLbService(svc *localnetv1.Service, serviceIP string, IPKind serviceevents.IPKind, port *localnetv1.PortMapping) {
+func (s *Backend) handleLbService(svc *localv1.Service, serviceIP string, IPKind serviceevents.IPKind, port *localv1.PortMapping) {
 	serviceKey := getServiceKey(svc)
 	s.svcs[serviceKey] = svc
 	ipFamily := getIPFamily(serviceIP)
@@ -36,7 +36,7 @@ func (s *Backend) handleLbService(svc *localnetv1.Service, serviceIP string, IPK
 	}
 }
 
-func (s *Backend) deleteLbService(svc *localnetv1.Service, serviceIP string, IPKind serviceevents.IPKind, port *localnetv1.PortMapping) {
+func (s *Backend) deleteLbService(svc *localv1.Service, serviceIP string, IPKind serviceevents.IPKind, port *localv1.PortMapping) {
 	serviceKey := getServiceKey(svc)
 	s.svcs[serviceKey] = svc
 	ipFamily := getIPFamily(serviceIP)
@@ -96,11 +96,11 @@ func (s *Backend) deleteLbService(svc *localnetv1.Service, serviceIP string, IPK
 
 func (p *proxier) handleNewLBService(serviceKey, serviceIP string,
 	IPKind serviceevents.IPKind,
-	svc *localnetv1.Service,
-	port *localnetv1.PortMapping,
+	svc *localv1.Service,
+	port *localv1.PortMapping,
 ) {
 	if _, ok := p.portMap[serviceKey]; !ok {
-		p.portMap[serviceKey] = make(map[string]localnetv1.PortMapping)
+		p.portMap[serviceKey] = make(map[string]localv1.PortMapping)
 	}
 
 	portMapKey := getPortKey(serviceKey, port)
@@ -145,8 +145,8 @@ func (p *proxier) handleNewLBService(serviceKey, serviceIP string,
 
 func (p *proxier) handleUpdatedLBService(serviceKey, serviceIP string,
 	IPKind serviceevents.IPKind,
-	svc *localnetv1.Service,
-	port *localnetv1.PortMapping,
+	svc *localv1.Service,
+	port *localv1.PortMapping,
 ) {
 	err, lbIP := p.getLbIPForIPFamily(svc)
 	if err != nil {
@@ -202,7 +202,7 @@ func (p *proxier) handleUpdatedLBService(serviceKey, serviceIP string,
 	}
 }
 
-func (s *Backend) handleEndPointForLBService(svcKey, key string, endpoint *localnetv1.Endpoint, op Operation) {
+func (s *Backend) handleEndPointForLBService(svcKey, key string, endpoint *localv1.Endpoint, op Operation) {
 	prefix := svcKey + "/" + key + "/"
 
 	if op == AddEndPoint {
@@ -221,7 +221,7 @@ func (s *Backend) handleEndPointForLBService(svcKey, key string, endpoint *local
 	}
 }
 
-func (p *proxier) AddOrDelLbIPInIPSet(svc *localnetv1.Service, port *BaseServicePortInfo, op Operation) {
+func (p *proxier) AddOrDelLbIPInIPSet(svc *localv1.Service, port *BaseServicePortInfo, op Operation) {
 	var entry *ipsetutil.Entry
 	entry = getIPSetEntry("", port)
 	// add service load balancer ingressIP:Port to kubeServiceAccess ip set for the purpose of solving hairpin.

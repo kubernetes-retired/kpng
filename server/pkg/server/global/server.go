@@ -17,20 +17,21 @@ limitations under the License.
 package global
 
 import (
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
+	"sigs.k8s.io/kpng/api/globalv1"
 	"sigs.k8s.io/kpng/server/jobs/store2globaldiff"
 	"sigs.k8s.io/kpng/server/proxystore"
 )
 
 type Server struct {
-	localnetv1.UnimplementedGlobalServer
+	globalv1.UnimplementedSetsServer
 
 	Store *proxystore.Store
 }
 
-var syncItem = &localnetv1.OpItem{Op: &localnetv1.OpItem_Sync{}}
+var syncItem = &localv1.OpItem{Op: &localv1.OpItem_Sync{}}
 
-func (s *Server) Watch(res localnetv1.Global_WatchServer) error {
+func (s *Server) Watch(res globalv1.Sets_WatchServer) error {
 	w := resWrap{res}
 
 	job := &store2globaldiff.Job{
@@ -42,7 +43,7 @@ func (s *Server) Watch(res localnetv1.Global_WatchServer) error {
 }
 
 type resWrap struct {
-	localnetv1.Global_WatchServer
+	globalv1.Sets_WatchServer
 }
 
 func (w resWrap) Wait() error {

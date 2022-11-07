@@ -14,30 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package localnetv1
+package localv1
 
-import "fmt"
-
-func ExampleEndpointPortMapping() {
-	ports := []*PortMapping{
-		{Name: "http", TargetPortName: "t-http", TargetPort: 8080},
-		{Name: "http2", TargetPortName: "t-http2", TargetPort: 800},
-		{Name: "metrics", TargetPortName: "t-metrics"},
+func (p *PortMapping) SrcPorts() []int32 {
+	switch {
+	case p.Port == 0 && p.NodePort == 0:
+		return []int32{}
+	case p.Port != 0 && p.NodePort == 0:
+		return []int32{p.Port}
+	case p.Port == 0 && p.NodePort != 0:
+		return []int32{p.NodePort}
+	case p.Port != 0 && p.NodePort != 0:
+		return []int32{p.Port, p.NodePort}
 	}
-
-	ep := &Endpoint{
-		PortOverrides: []*PortName{
-			{Name: "metrics", Port: 1011},
-			{Name: "http2", Port: 888},
-		},
-	}
-
-	for _, port := range ports {
-		fmt.Println(port.Name, ep.PortMapping(port))
-	}
-
-	// Output:
-	// http 8080
-	// http2 888
-	// metrics 1011
+	panic("unreachable")
 }

@@ -21,20 +21,20 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/localsink"
 )
 
 type ServicesListener interface {
 	// SetService is called when a service is added or updated
-	SetService(service *localnetv1.Service)
+	SetService(service *localv1.Service)
 	// DeleteService is called when a service is deleted
 	DeleteService(namespace, name string)
 }
 
 type EndpointsListener interface {
 	// SetEndpoint is called when an endpoint is added or updated
-	SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint)
+	SetEndpoint(namespace, serviceName, key string, endpoint *localv1.Endpoint)
 	// DeleteEndpoint is called when an endpoint is deleted
 	DeleteEndpoint(namespace, serviceName, key string)
 }
@@ -71,14 +71,14 @@ func New(iface Interface) *Sink {
 	return &Sink{iface}
 }
 
-func (s *Sink) Send(op *localnetv1.OpItem) (err error) {
+func (s *Sink) Send(op *localv1.OpItem) (err error) {
 	switch v := op.Op; v.(type) {
-	case *localnetv1.OpItem_Set:
+	case *localv1.OpItem_Set:
 		set := op.GetSet()
 
 		switch set.Ref.Set {
-		case localnetv1.Set_ServicesSet:
-			v := &localnetv1.Service{}
+		case localv1.Set_ServicesSet:
+			v := &localv1.Service{}
 
 			err = proto.Unmarshal(set.Bytes, v)
 			if err != nil {
@@ -87,8 +87,8 @@ func (s *Sink) Send(op *localnetv1.OpItem) (err error) {
 
 			s.SetService(v)
 
-		case localnetv1.Set_EndpointsSet:
-			v := &localnetv1.Endpoint{}
+		case localv1.Set_EndpointsSet:
+			v := &localv1.Endpoint{}
 
 			err = proto.Unmarshal(set.Bytes, v)
 			if err != nil {
@@ -102,22 +102,22 @@ func (s *Sink) Send(op *localnetv1.OpItem) (err error) {
 			return
 		}
 
-	case *localnetv1.OpItem_Delete:
+	case *localv1.OpItem_Delete:
 		del := op.GetDelete()
 		parts := strings.Split(del.Path, "/")
 
 		switch del.Set {
-		case localnetv1.Set_ServicesSet: // Service: namespace/name
+		case localv1.Set_ServicesSet: // Service: namespace/name
 			s.DeleteService(parts[0], parts[1])
 
-		case localnetv1.Set_EndpointsSet: // Endpoint: namespace/name/key
+		case localv1.Set_EndpointsSet: // Endpoint: namespace/name/key
 			s.DeleteEndpoint(parts[0], parts[1], parts[2])
 
 		default:
 			// unknown set, ignore
 		}
 
-	case *localnetv1.OpItem_Sync:
+	case *localv1.OpItem_Sync:
 		s.Sync()
 	}
 

@@ -93,7 +93,7 @@ func ebpfSetup() ebpfController {
 }
 
 // detectCgroupPath returns the first-found mount point of type cgroup2
-// and stores it in the cgroupPath global variable.
+// and stores it in the cgroupPath globalv1 variable.
 func detectRootCgroupPath() (string, error) {
 	// This corresponds to the host's mount's location in the pod deploying this backend.
 	f, err := os.Open("/host-mount/mounts")

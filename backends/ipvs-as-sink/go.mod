@@ -4,9 +4,9 @@ go 1.19
 
 require (
 	github.com/google/seesaw v0.0.0-20220321203705-0e93b4c33bc6
-  github.com/lithammer/dedent v1.1.0
+	github.com/lithammer/dedent v1.1.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.8.0
 	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	golang.org/x/sys v0.0.0-20221010170243-090e33056c14
 	k8s.io/api v0.25.2
@@ -14,7 +14,6 @@ require (
 	k8s.io/apiserver v0.25.2
 	k8s.io/klog/v2 v2.80.1
 	k8s.io/utils v0.0.0-20221011040102-427025108f67
-	sigs.k8s.io/kpng/api v0.0.0-20220824013548-88b8a1d9bc62
 	sigs.k8s.io/kpng/backends/iptables v0.0.0-20220824013548-88b8a1d9bc62
 	sigs.k8s.io/kpng/client v0.0.0-20221011133104-469299451522
 )
@@ -33,7 +32,6 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/stretchr/testify v1.8.0 // indirect
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
 	golang.org/x/net v0.0.0-20221004154528-8021a29435af // indirect
 	golang.org/x/text v0.3.7 // indirect
@@ -43,9 +41,9 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	k8s.io/klog/v2 v2.60.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
+	sigs.k8s.io/kpng/api v0.0.0-20220824013548-88b8a1d9bc62 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )

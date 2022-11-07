@@ -68,7 +68,7 @@ func (c SetupFunc) ToAPICmd() *cobra.Command {
 func (c SetupFunc) ToFileCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "to-file",
-		Short: "dump global state to a yaml db file",
+		Short: "dump globalv1 state to a yaml db file",
 	}
 
 	cfg := &store2file.Config{}

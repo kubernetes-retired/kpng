@@ -13,7 +13,6 @@ require (
 	google.golang.org/protobuf v1.28.1
 	k8s.io/klog/v2 v2.80.1
 	k8s.io/utils v0.0.0-20221011040102-427025108f67
-	sigs.k8s.io/kpng/api v0.0.0-20220824013548-88b8a1d9bc62
 )
 
 require (

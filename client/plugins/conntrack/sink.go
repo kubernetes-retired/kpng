@@ -17,22 +17,22 @@ limitations under the License.
 package conntrack
 
 import (
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/localsink"
 )
 
 type Sink struct {
 	localsink.Config
-	services     map[string]*localnetv1.Service
-	endpoints    map[string]map[string]*localnetv1.Endpoint
+	services     map[string]*localv1.Service
+	endpoints    map[string]map[string]*localv1.Endpoint
 	staleFlows   []Flow
 	staleIPPorts []IPPort
 }
 
 func NewSink() *Sink {
 	return &Sink{
-		services:  make(map[string]*localnetv1.Service),
-		endpoints: make(map[string]map[string]*localnetv1.Endpoint),
+		services:  make(map[string]*localv1.Service),
+		endpoints: make(map[string]map[string]*localv1.Endpoint),
 	}
 }
 
@@ -42,7 +42,7 @@ func (ps *Sink) Reset() {
 func (ps *Sink) Setup() {
 }
 
-func (ps *Sink) SetService(svc *localnetv1.Service) {
+func (ps *Sink) SetService(svc *localv1.Service) {
 	ps.services[svc.Namespace+"/"+svc.Name] = svc
 }
 
@@ -50,7 +50,7 @@ func (ps *Sink) DeleteService(namespace, name string) {
 	delete(ps.services, namespace+"/"+name)
 }
 
-func (ps *Sink) SetEndpoint(namespace, serviceName, key string, endpoint *localnetv1.Endpoint) {
+func (ps *Sink) SetEndpoint(namespace, serviceName, key string, endpoint *localv1.Endpoint) {
 	service, _ := ps.services[namespace+"/"+serviceName]
 	eps := len(ps.endpoints[namespace+"/"+serviceName])
 	allIPs := service.IPs.All().All()
@@ -75,7 +75,7 @@ func (ps *Sink) SetEndpoint(namespace, serviceName, key string, endpoint *localn
 		}
 	}
 	if ps.endpoints[namespace+"/"+serviceName] == nil {
-		ps.endpoints[namespace+"/"+serviceName] = make(map[string]*localnetv1.Endpoint)
+		ps.endpoints[namespace+"/"+serviceName] = make(map[string]*localv1.Endpoint)
 	}
 	ps.endpoints[namespace+"/"+serviceName][key] = endpoint
 }

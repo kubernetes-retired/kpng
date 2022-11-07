@@ -32,7 +32,7 @@ import (
 	"k8s.io/component-base/metrics"
 	"k8s.io/klog/v2"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	localv1 "sigs.k8s.io/kpng/api/localv1"
 )
 
 // internal struct for endpoints information
@@ -193,7 +193,7 @@ func NewEndpointChangeTracker(hostname string, ipFamily v1.IPFamily, recorder ev
 }
 
 // how to convert windowsEndpoint from a incoming ??? localvnet1 Endpoint ?
-func (ect *EndpointChangeTracker) EndpointUpdate(namespace, serviceName, key string, we *localnetv1.Endpoint) {
+func (ect *EndpointChangeTracker) EndpointUpdate(namespace, serviceName, key string, we *localv1.Endpoint) {
 	// func (ect *EndpointChangeTracker) EndpointUpdate(namespace, serviceName, key string,  we *windowsEndpoint) {
 	namespacedName := types.NamespacedName{Name: serviceName, Namespace: namespace}
 	EndpointChangesTotal.Inc()
@@ -362,7 +362,7 @@ type EndpointsCache struct {
 // endpointsInfoByName groups endpointInfo by the names of the
 // corresponding Endpoint.
 // xxxxxxxxxxxxxxxxxxxxxxxx 4 compile error -----> windowsEndpoint
-type endpointsInfoByName map[string]*localnetv1.Endpoint
+type endpointsInfoByName map[string]*localv1.Endpoint
 
 // NewEndpointsCache initializes an EndpointCache.
 func NewEndpointsCache(hostname string, ipFamily v1.IPFamily, recorder events.EventRecorder) *EndpointsCache {
@@ -376,7 +376,7 @@ func NewEndpointsCache(hostname string, ipFamily v1.IPFamily, recorder events.Ev
 
 // xxxx 3 ---> now updatePending, write the localvnet1 endpoint
 // updatePending updates a pending slice in the cache.
-func (cache *EndpointsCache) updatePending(svcKey types.NamespacedName, key string, we *localnetv1.Endpoint) bool {
+func (cache *EndpointsCache) updatePending(svcKey types.NamespacedName, key string, we *localv1.Endpoint) bool {
 	var esInfoMap *endpointsInfoByName
 	var ok bool
 	if esInfoMap, ok = cache.trackerByServiceMap[svcKey]; !ok {

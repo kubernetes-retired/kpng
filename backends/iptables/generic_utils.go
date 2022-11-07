@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
+	localv1 "sigs.k8s.io/kpng/api/localv1"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -220,7 +220,7 @@ func GetNodeAddresses(cidrs []string, nw NetworkInterfacer) (sets.String, error)
 }
 
 // GetClusterIPByFamily returns a service clusterip by family
-func GetClusterIPByFamily(ipFamily v1.IPFamily, service *localnetv1.Service) string {
+func GetClusterIPByFamily(ipFamily v1.IPFamily, service *localv1.Service) string {
 	if ipFamily == v1.IPv4Protocol {
 		if len(service.IPs.ClusterIPs.V4) > 0 {
 			return service.IPs.ClusterIPs.V4[0]
@@ -235,7 +235,7 @@ func GetClusterIPByFamily(ipFamily v1.IPFamily, service *localnetv1.Service) str
 }
 
 // RequestsOnlyLocalTraffic checks if service requests OnlyLocal traffic.
-func RequestsOnlyLocalTraffic(service *localnetv1.Service) bool {
+func RequestsOnlyLocalTraffic(service *localv1.Service) bool {
 	if service.Type != string(v1.ServiceTypeLoadBalancer) &&
 		service.Type != string(v1.ServiceTypeNodePort) {
 		return false
@@ -244,7 +244,7 @@ func RequestsOnlyLocalTraffic(service *localnetv1.Service) bool {
 }
 
 // MapIPsByIPFamily maps a slice of IPs to their respective IP families (v4 or v6)
-func MapIPsByIPFamily(ips *localnetv1.IPSet) map[v1.IPFamily][]string {
+func MapIPsByIPFamily(ips *localv1.IPSet) map[v1.IPFamily][]string {
 	ipFamilyMap := map[v1.IPFamily][]string{}
 	ipFamilyMap[v1.IPv4Protocol] = append(ipFamilyMap[v1.IPv4Protocol], ips.V4...)
 	ipFamilyMap[v1.IPv6Protocol] = append(ipFamilyMap[v1.IPv6Protocol], ips.V6...)

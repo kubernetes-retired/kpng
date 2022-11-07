@@ -26,7 +26,7 @@ import (
 
 	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/tlsflags"
 
@@ -42,7 +42,7 @@ import (
 //	    api2local.Config
 //	}
 type Config struct {
-	NodeName      string
+	NodeName string
 }
 
 func (c *Config) BindFlags(flags *pflag.FlagSet) {
@@ -70,7 +70,7 @@ func (j *Job) Run(ctx context.Context) {
 		err := j.run(ctx)
 
 		if err == context.Canceled || grpc.Code(err) == codes.Canceled {
-			klog.Info("context canceled, closing global watch")
+			klog.Info("context canceled, closing watch")
 			return
 		}
 
@@ -88,7 +88,7 @@ func (j *Job) run(ctx context.Context) (err error) {
 	defer conn.Close()
 
 	// watch local state
-	local := localnetv1.NewEndpointsClient(conn)
+	local := localv1.NewSetsClient(conn)
 
 	watch, err := local.Watch(ctx)
 	if err != nil {
@@ -103,7 +103,7 @@ func (j *Job) run(ctx context.Context) (err error) {
 	}
 }
 
-func (j *Job) runLoop(watch localnetv1.Endpoints_WatchClient) (err error) {
+func (j *Job) runLoop(watch localv1.Sets_WatchClient) (err error) {
 	ctx := watch.Context()
 
 	if err = ctx.Err(); err != nil {
@@ -115,7 +115,7 @@ func (j *Job) runLoop(watch localnetv1.Endpoints_WatchClient) (err error) {
 		klog.Warningf("Failed to wait for next diff request")
 	}
 
-	err = watch.Send(&localnetv1.WatchReq{
+	err = watch.Send(&localv1.WatchReq{
 		NodeName: nodeName,
 	})
 	if err != nil {
@@ -123,7 +123,7 @@ func (j *Job) runLoop(watch localnetv1.Endpoints_WatchClient) (err error) {
 	}
 
 	for {
-		var op *localnetv1.OpItem
+		var op *localv1.OpItem
 		op, err = watch.Recv()
 
 		if err != nil {
@@ -131,7 +131,7 @@ func (j *Job) runLoop(watch localnetv1.Endpoints_WatchClient) (err error) {
 		}
 
 		switch op.Op.(type) {
-		case *localnetv1.OpItem_Reset_:
+		case *localv1.OpItem_Reset_:
 			j.Sink.Reset()
 
 		default:
@@ -142,7 +142,7 @@ func (j *Job) runLoop(watch localnetv1.Endpoints_WatchClient) (err error) {
 			}
 		}
 
-		if _, isSync := op.Op.(*localnetv1.OpItem_Sync); isSync {
+		if _, isSync := op.Op.(*localv1.OpItem_Sync); isSync {
 			return
 		}
 	}

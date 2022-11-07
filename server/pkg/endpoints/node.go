@@ -19,20 +19,21 @@ package endpoints
 import (
 	"google.golang.org/protobuf/proto"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore "sigs.k8s.io/kpng/server/proxystore"
+	"sigs.k8s.io/kpng/api/localv1"
+	"sigs.k8s.io/kpng/api/globalv1"
+	"sigs.k8s.io/kpng/server/proxystore"
 )
 
 const hostnameLabel = "kubernetes.io/hostname"
 
-func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (endpoints []*localnetv1.EndpointInfo) {
+func ForNode(tx *proxystore.Tx, si *globalv1.ServiceInfo, nodeName string) (endpoints []*globalv1.EndpointInfo) {
 	node := tx.GetNode(nodeName)
 
 	if node == nil {
 		// node is unknown, simulate a basic node
-		node = &localnetv1.Node{
+		node = &globalv1.Node{
 			Name: nodeName,
-			Topology: &localnetv1.TopologyInfo{
+			Topology: &globalv1.TopologyInfo{
 				Node: nodeName,
 			},
 		}
@@ -40,9 +41,9 @@ func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (en
 
 	svc := si.Service
 
-	infos := make([]*localnetv1.EndpointInfo, 0)
-	tx.EachEndpointOfService(svc.Namespace, svc.Name, func(info *localnetv1.EndpointInfo) {
-		info = proto.Clone(info).(*localnetv1.EndpointInfo)
+	infos := make([]*globalv1.EndpointInfo, 0)
+	tx.EachEndpointOfService(svc.Namespace, svc.Name, func(info *globalv1.EndpointInfo) {
+		info = proto.Clone(info).(*globalv1.EndpointInfo)
 
 		info.Endpoint.Local = info.Topology.Node == nodeName
 
@@ -70,12 +71,12 @@ func ForNode(tx *proxystore.Tx, si *localnetv1.ServiceInfo, nodeName string) (en
 		infos = append(infos, info)
 	})
 
-	endpoints = make([]*localnetv1.EndpointInfo, 0, len(infos))
+	endpoints = make([]*globalv1.EndpointInfo, 0, len(infos))
 
 	// select endpoints for this service
 
 	for _, info := range infos {
-		info.Endpoint.Scopes = &localnetv1.EndpointScopes{
+		info.Endpoint.Scopes = &localv1.EndpointScopes{
 			Internal: info.Endpoint.Local || !si.Service.InternalTrafficToLocal,
 			External: info.Endpoint.Local || !si.Service.ExternalTrafficToLocal,
 		}

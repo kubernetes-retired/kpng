@@ -39,8 +39,8 @@ type Config struct {
 }
 
 func (c *Config) BindFlags(flags *pflag.FlagSet) {
-	flags.StringVar(&c.BindSpec, "listen", "tcp://:12090", "serve global API")
-	flags.BoolVar(&c.GlobalAPI, "global-api", true, "serve global API")
+	flags.StringVar(&c.BindSpec, "listen", "tcp://:12090", "serve globalv1 API")
+	flags.BoolVar(&c.GlobalAPI, "globalv1-api", true, "serve globalv1 API")
 	flags.BoolVar(&c.LocalAPI, "local-api", true, "serve local API")
 
 	if c.TLS == nil {

@@ -25,7 +25,7 @@ import (
 	"k8s.io/utils/exec"
 	utilnet "k8s.io/utils/net"
 
-	v1 "sigs.k8s.io/kpng/api/localnetv1"
+	v1 "sigs.k8s.io/kpng/api/localv1"
 )
 
 var execer = exec.New()

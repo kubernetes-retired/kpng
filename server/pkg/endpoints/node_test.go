@@ -19,20 +19,21 @@ package endpoints
 import (
 	"fmt"
 
-	localnetv1 "sigs.k8s.io/kpng/api/localnetv1"
-	proxystore "sigs.k8s.io/kpng/server/proxystore"
+	"sigs.k8s.io/kpng/api/localv1"
+	"sigs.k8s.io/kpng/api/globalv1"
+	"sigs.k8s.io/kpng/server/proxystore"
 )
 
 func ExampleForNodeWithTopology() {
 	store := proxystore.New()
 
 	store.Update(func(tx *proxystore.Tx) {
-		tx.SetService(&localnetv1.Service{
+		tx.SetService(&localv1.Service{
 			Namespace: "test",
 			Name:      "test",
 			Type:      "ClusterIP",
-			IPs:       &localnetv1.ServiceIPs{ClusterIPs: localnetv1.NewIPSet("10.1.2.3")},
-			Ports: []*localnetv1.PortMapping{
+			IPs:       &localv1.ServiceIPs{ClusterIPs: localv1.NewIPSet("10.1.2.3")},
+			Ports: []*localv1.PortMapping{
 				{Port: 1234},
 			},
 
@@ -40,22 +41,22 @@ func ExampleForNodeWithTopology() {
 			ExternalTrafficToLocal: true,
 		})
 
-		tx.SetEndpointsOfSource("test", "test-abcde", []*localnetv1.EndpointInfo{
+		tx.SetEndpointsOfSource("test", "test-abcde", []*globalv1.EndpointInfo{
 			{
 				Namespace:   "test",
 				SourceName:  "test-abcde",
 				ServiceName: "test",
-				Endpoint:    &localnetv1.Endpoint{IPs: localnetv1.NewIPSet("10.2.0.1")},
-				Topology:    &localnetv1.TopologyInfo{Node: "host-a"},
-				Conditions:  &localnetv1.EndpointConditions{Ready: true},
+				Endpoint:    &localv1.Endpoint{IPs: localv1.NewIPSet("10.2.0.1")},
+				Topology:    &globalv1.TopologyInfo{Node: "host-a"},
+				Conditions:  &globalv1.EndpointConditions{Ready: true},
 			},
 			{
 				Namespace:   "test",
 				SourceName:  "test-abcde",
 				ServiceName: "test",
-				Endpoint:    &localnetv1.Endpoint{IPs: localnetv1.NewIPSet("10.2.1.1")},
-				Topology:    &localnetv1.TopologyInfo{Node: "host-b"},
-				Conditions:  &localnetv1.EndpointConditions{Ready: true},
+				Endpoint:    &localv1.Endpoint{IPs: localv1.NewIPSet("10.2.1.1")},
+				Topology:    &globalv1.TopologyInfo{Node: "host-b"},
+				Conditions:  &globalv1.EndpointConditions{Ready: true},
 			},
 		})
 	})
@@ -63,7 +64,7 @@ func ExampleForNodeWithTopology() {
 	store.View(0, func(tx *proxystore.Tx) {
 		tx.Each(proxystore.Services, func(kv *proxystore.KV) (cont bool) {
 			fmt.Print("service ", kv.Name, ":\n")
-			tx.EachEndpointOfService("test", "test", func(epi *localnetv1.EndpointInfo) {
+			tx.EachEndpointOfService("test", "test", func(epi *globalv1.EndpointInfo) {
 				fmt.Print("  - ep ", epi.Endpoint, " (", epi.Topology, ")\n")
 			})
 			return true

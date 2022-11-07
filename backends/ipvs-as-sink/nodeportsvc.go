@@ -18,10 +18,10 @@ package ipvssink
 
 import (
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 )
 
-func (s *Backend) handleNodePortService(svc *localnetv1.Service, serviceIP string, port *localnetv1.PortMapping) {
+func (s *Backend) handleNodePortService(svc *localv1.Service, serviceIP string, port *localv1.PortMapping) {
 	serviceKey := getServiceKey(svc)
 	s.svcs[serviceKey] = svc
 	ipFamily := getIPFamily(serviceIP)
@@ -34,7 +34,7 @@ func (s *Backend) handleNodePortService(svc *localnetv1.Service, serviceIP strin
 	}
 }
 
-func (s *Backend) deleteNodePortService(svc *localnetv1.Service, serviceIP string, port *localnetv1.PortMapping) {
+func (s *Backend) deleteNodePortService(svc *localv1.Service, serviceIP string, port *localv1.PortMapping) {
 	serviceKey := getServiceKey(svc)
 	s.svcs[serviceKey] = svc
 	ipFamily := getIPFamily(serviceIP)
@@ -73,9 +73,9 @@ func (s *Backend) deleteNodePortService(svc *localnetv1.Service, serviceIP strin
 	p.deletePortFromPortMap(serviceKey, portMapKey)
 }
 
-func (p *proxier) handleNewNodePortService(serviceKey, clusterIP string, svc *localnetv1.Service, port *localnetv1.PortMapping) {
+func (p *proxier) handleNewNodePortService(serviceKey, clusterIP string, svc *localv1.Service, port *localv1.PortMapping) {
 	if _, ok := p.portMap[serviceKey]; !ok {
-		p.portMap[serviceKey] = make(map[string]localnetv1.PortMapping)
+		p.portMap[serviceKey] = make(map[string]localv1.PortMapping)
 	}
 
 	portMapKey := getPortKey(serviceKey, port)
@@ -102,7 +102,7 @@ func (p *proxier) handleNewNodePortService(serviceKey, clusterIP string, svc *lo
 	p.AddOrDelClusterIPInIPSet(portInfo, AddService)
 }
 
-func (p *proxier) handleUpdatedNodePortService(serviceKey, clusterIP string, svc *localnetv1.Service, port *localnetv1.PortMapping) {
+func (p *proxier) handleUpdatedNodePortService(serviceKey, clusterIP string, svc *localv1.Service, port *localv1.PortMapping) {
 	if _, ok := p.portMap[serviceKey]; !ok {
 		klog.Errorf("can't update port into non-existent service")
 		return
@@ -144,7 +144,7 @@ func (p *proxier) handleUpdatedNodePortService(serviceKey, clusterIP string, svc
 	}
 }
 
-func (s *Backend) handleEndPointForNodePortService(svcKey, key string, endpoint *localnetv1.Endpoint, op Operation) {
+func (s *Backend) handleEndPointForNodePortService(svcKey, key string, endpoint *localv1.Endpoint, op Operation) {
 	prefix := svcKey + "/" + key + "/"
 	if op == AddEndPoint {
 		// endpoint will have only one family IP, either v4/6.

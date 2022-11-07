@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/kpng/api/localnetv1"
+	"sigs.k8s.io/kpng/api/localv1"
 )
 
 func stringsInSlice(haystack []string, needles ...string) bool {
@@ -103,12 +103,12 @@ func TestLoadBalanceWorksWithSingleEndpoint(t *testing.T) {
 			if err == nil || len(endpoint) != 0 {
 				t.Errorf("Didn't fail with non-existent service %d %s", len(endpoint), err)
 			}
-			service := &localnetv1.Service{Namespace: tt.namespace, Name: tt.serviceName, Ports: []*localnetv1.PortMapping{
-				{Name: tt.portName, Protocol: localnetv1.Protocol_TCP, Port: tt.port},
+			service := &localv1.Service{Namespace: tt.namespace, Name: tt.serviceName, Ports: []*localv1.PortMapping{
+				{Name: tt.portName, Protocol: localv1.Protocol_TCP, Port: tt.port},
 			}}
 
 			for _, epAddr := range tt.endpoints {
-				ep := &localnetv1.Endpoint{IPs: &localnetv1.IPSet{V4: []string{epAddr}}}
+				ep := &localv1.Endpoint{IPs: &localv1.IPSet{V4: []string{epAddr}}}
 				loadBalancer.OnEndpointsAdd(ep, service)
 			}
 
@@ -142,18 +142,18 @@ func TestLoadBalanceWorksWithMultipleEndpointsAndUpdates(t *testing.T) {
 		t.Errorf("Didn't fail with non-existent service %d %s", len(endpoint), err)
 	}
 
-	service1 := &localnetv1.Service{Namespace: "testnamespace", Name: "foo", Ports: []*localnetv1.PortMapping{
-		{Name: "p", Protocol: localnetv1.Protocol_TCP, Port: 1},
-		{Name: "q", Protocol: localnetv1.Protocol_TCP, Port: 10},
+	service1 := &localv1.Service{Namespace: "testnamespace", Name: "foo", Ports: []*localv1.PortMapping{
+		{Name: "p", Protocol: localv1.Protocol_TCP, Port: 1},
+		{Name: "q", Protocol: localv1.Protocol_TCP, Port: 10},
 	}}
 
-	endpoint1 := &localnetv1.Endpoint{IPs: &localnetv1.IPSet{V4: []string{"endpoint1"}}}
-	endpoint2 := &localnetv1.Endpoint{IPs: &localnetv1.IPSet{V4: []string{"endpoint2"}}}
-	endpoint3 := &localnetv1.Endpoint{IPs: &localnetv1.IPSet{V4: []string{"endpoint3"}}}
+	endpoint1 := &localv1.Endpoint{IPs: &localv1.IPSet{V4: []string{"endpoint1"}}}
+	endpoint2 := &localv1.Endpoint{IPs: &localv1.IPSet{V4: []string{"endpoint2"}}}
+	endpoint3 := &localv1.Endpoint{IPs: &localv1.IPSet{V4: []string{"endpoint3"}}}
 
-	service2 := &localnetv1.Service{Namespace: "testnamespace", Name: "foo", Ports: []*localnetv1.PortMapping{
-		{Name: "q", Protocol: localnetv1.Protocol_TCP, Port: 456},
-		{Name: "q", Protocol: localnetv1.Protocol_TCP, Port: 678},
+	service2 := &localv1.Service{Namespace: "testnamespace", Name: "foo", Ports: []*localv1.PortMapping{
+		{Name: "q", Protocol: localv1.Protocol_TCP, Port: 456},
+		{Name: "q", Protocol: localv1.Protocol_TCP, Port: 678},
 	}}
 
 	loadBalancer.OnEndpointsAdd(endpoint1, service1)
@@ -216,7 +216,7 @@ func TestLoadBalanceWorksWithServiceRemoval(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.description, func(t *testing.T) {
-			var lastEp *localnetv1.Endpoint
+			var lastEp *localv1.Endpoint
 			svcPortName := ServicePortName{
 				NamespacedName: types.NamespacedName{Namespace: tt.namespace, Name: tt.serviceName}, Port: tt.portName,
 			}
@@ -225,12 +225,12 @@ func TestLoadBalanceWorksWithServiceRemoval(t *testing.T) {
 			if err == nil || len(endpoint) != 0 {
 				t.Errorf("Didn't fail with non-existent service %d %s", len(endpoint), err)
 			}
-			service := &localnetv1.Service{Namespace: tt.namespace, Name: tt.serviceName, Ports: []*localnetv1.PortMapping{
-				{Name: tt.portName, Protocol: localnetv1.Protocol_TCP, Port: tt.port},
+			service := &localv1.Service{Namespace: tt.namespace, Name: tt.serviceName, Ports: []*localv1.PortMapping{
+				{Name: tt.portName, Protocol: localv1.Protocol_TCP, Port: tt.port},
 			}}
 
 			for _, epAddr := range tt.endpoints {
-				ep := &localnetv1.Endpoint{IPs: &localnetv1.IPSet{V4: []string{epAddr}}}
+				ep := &localv1.Endpoint{IPs: &localv1.IPSet{V4: []string{epAddr}}}
 				loadBalancer.OnEndpointsAdd(ep, service)
 				lastEp = ep
 			}
