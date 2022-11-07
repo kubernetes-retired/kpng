@@ -223,12 +223,12 @@ function setup_ginkgo {
     [ $# -eq 3 ]
     if_error_exit "ginkgo e2e.test $# Wrong number of arguments to ${FUNCNAME[0]}"
 
-    local bin_directory=${1}
+    local bin_dir=${1}
     local k8s_version=${2}
     local os=${3}
     local temp_directory=$(mktemp -qd)
 
-    if ! [ -f "${bin_directory}"/ginkgo ] || ! [ -f "${bin_directory}"/e2e.test ] ; then
+    if ! [ -f "${bin_dir}"/ginkgo ] || ! [ -f "${bin_dir}"/e2e.test ] ; then
         info_message -e "\nDownloading ginkgo and e2e.test ..."
         curl -L https://dl.k8s.io/"${k8s_version}"/kubernetes-test-"${os}"-amd64.tar.gz \
             -o "${temp_directory}"/kubernetes-test-"${os}"-amd64.tar.gz
@@ -293,14 +293,22 @@ function delete_kind_cluster {
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: cluster name                                                    #
+    #   arg2: bin_dir, path to binary directory                               #
     ###########################################################################
-    [ $# -eq 1 ]
+    [ $# -eq 2 ]
     if_error_exit "delete kind $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local cluster_name="${1}"
+    local bin_dir="${2}"
 
-    if kind get clusters | grep -q "${cluster_name}" &> /dev/null; then
-        kind delete cluster --name "${cluster_name}" &> /dev/null
+    [ -d "${bin_dir}" ]
+    if_error_exit "Directory \"${bin_dir}\" does not exist"
+    
+    [ -f "${bin_dir}/kind" ]
+    if_error_exit "File \"${bin_dir}/kind\" does not exist"
+    
+    if "${bin_dir}/kind" get clusters | grep -q "${cluster_name}" &> /dev/null; then
+        "${bin_dir}/kind" delete cluster --name "${cluster_name}" &> /dev/null
         if_error_warning "cannot delete cluster ${cluster_name}"
 
         pass_message "Cluster ${cluster_name} deleted."
@@ -314,21 +322,32 @@ function create_cluster {
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: cluster name                                                    #
-    #   arg2: IP family                                                       #
-    #   arg3: artifacts directory                                             #
-    #   arg4: ci_mode                                                         #
+    #   arg2: bin_dir, path to binary directory                               #
+    #   arg3: IP family                                                       #
+    #   arg4: artifacts directory                                             #
+    #   arg5: ci_mode                                                         #
     ###########################################################################
-    [ $# -eq 4 ]
+    [ $# -eq 5 ]
     if_error_exit "create kind $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local cluster_name=${1}
-    local ip_family=${2}
-    local artifacts_directory=${3}
-    local ci_mode=${4}
+    local bin_dir="${2}"
+    local ip_family=${3}
+    local artifacts_directory=${4}
+    local ci_mode=${5}
+
+    [ -d "${bin_dir}" ]
+    if_error_exit "Directory \"${bin_dir}\" does not exist"
+    
+    [ -f "${bin_dir}/kind" ]
+    if_error_exit "File \"${bin_dir}/kind\" does not exist"
+
+    [ -f "${bin_dir}/kubectl" ]
+    if_error_exit "File \"${bin_dir}/kubectl\" does not exist"
 
     # Get rid of any old cluster with the same name.
-    if kind get clusters | grep -q "${cluster_name}" &> /dev/null; then
-        kind delete cluster --name "${cluster_name}" &> /dev/null
+    if "${bin_dir}/kind" get clusters | grep -q "${cluster_name}" &> /dev/null; then
+        "${bin_dir}/kind" delete cluster --name "${cluster_name}" &> /dev/null
         if_error_exit "cannot delete cluster ${cluster_name}"
 
         pass_message "Previous cluster ${cluster_name} deleted."
@@ -388,7 +407,7 @@ function create_cluster {
       - role: worker
       - role: worker
 EOF
-    kind create cluster \
+    "${bin_dir}/kind" create cluster \
       --name "${cluster_name}"                     \
       --image "${KINDEST_NODE_IMAGE}":"${E2E_K8S_VERSION}"    \
       --retain \
@@ -398,11 +417,11 @@ EOF
     if_error_exit "cannot create kind cluster ${cluster_name}"
 
     # Patch kube-proxy to set the verbosity level
-    kubectl patch -n kube-system daemonset/kube-proxy \
+    "${bin_dir}/kubectl" patch -n kube-system daemonset/kube-proxy \
        --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/command/-", "value": "--v='"${kind_cluster_log_level}"'" }]'
 
-    kind get kubeconfig --internal --name "${cluster_name}" > "${artifacts_directory}/kubeconfig.conf"
-    kind get kubeconfig --name "${cluster_name}" > "${artifacts_directory}/${KUBECONFIG_TESTS}"
+    "${bin_dir}/kind" get kubeconfig --internal --name "${cluster_name}" > "${artifacts_directory}/kubeconfig.conf"
+    "${bin_dir}/kind" get kubeconfig --name "${cluster_name}" > "${artifacts_directory}/${KUBECONFIG_TESTS}"
 
     # IPv6 clusters need some CoreDNS changes in order to work in k8s CI:
     # 1. k8s CI doesn´t offer IPv6 connectivity, so CoreDNS should be configured
@@ -416,7 +435,7 @@ EOF
     if [ "${ip_family}" = "ipv6" ]; then
         local k8s_context="kind-${cluster_name}"
        # Get the current config
-        local original_coredns=$(kubectl --context "${k8s_context}" get -oyaml -n=kube-system configmap/coredns)
+        local original_coredns=$("${bin_dir}/kubectl" --context "${k8s_context}" get -oyaml -n=kube-system configmap/coredns)
         info_message "Original CoreDNS config:"
         info_message "${original_coredns}"
         # Patch it
@@ -430,7 +449,7 @@ EOF
         )
         info_message "Patched CoreDNS config:"
         info_message "${fixed_coredns}"
-        printf '%s' "${fixed_coredns}" | kubectl --context "${k8s_context}" apply -f -
+        printf '%s' "${fixed_coredns}" | "${bin_dir}/kubectl" --context "${k8s_context}" apply -f -
   fi
 
     pass_message "Cluster ${cluster_name} is created."
@@ -443,27 +462,35 @@ function wait_until_cluster_is_ready {
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: cluster name                                                    #
+    #   arg2: bin_dir, path to binary directory                               #
     #   arg2: ci_mode                                                         #
     ###########################################################################
 
-    [ $# -eq 2 ]
+    [ $# -eq 3 ]
     if_error_exit "wait until cluster $# Wrong number of arguments to ${FUNCNAME[0]}"
 
-    local cluster_name=${1}
-    local ci_mode=${2}
+    local cluster_name="${1}"
+    local bin_dir="${2}"
+    local ci_mode=${3}
     local k8s_context="kind-${cluster_name}"
 
-    kubectl --context "${k8s_context}" wait \
+    [ -d "${bin_dir}" ]
+    if_error_exit "Directory \"${bin_dir}\" does not exist"
+    
+    [ -f "${bin_dir}/kubectl" ]
+    if_error_exit "File \"${bin_dir}/kubectl\" does not exist"
+
+    "${bin_dir}/kubectl" --context "${k8s_context}" wait \
         --for=condition=ready \
         pods \
         --namespace="${NAMESPACE}" \
         --selector k8s-app=kube-dns 1> /dev/null
 
     if [ "${ci_mode}" = true ] ; then
-        kubectl --context "${k8s_context}" get nodes -o wide
+        "${bin_dir}/kubectl" --context "${k8s_context}" get nodes -o wide
         if_error_exit "unable to show nodes"
 
-        kubectl --context "${k8s_context}" get pods --all-namespaces
+        "${bin_dir}/kubectl" --context "${k8s_context}" get pods --all-namespaces
         if_error_exit "error getting pods from all namespaces"
     fi
 
@@ -481,15 +508,24 @@ function install_kpng {
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: cluster name                                                    #
+    #   arg2: bin_dir, path to binary directory                               #
     ###########################################################################
-    [ $# -eq 1 ]
+    [ $# -eq 2 ]
     if_error_exit "install kpng Wrong number of arguments to ${FUNCNAME[0]}"
 
-    local cluster_name=$1
+    local cluster_name="${1}"
+    local bin_dir="${2}"
     local k8s_context="kind-${cluster_name}"
 
+    [ -d "${bin_dir}" ]
+    if_error_exit "Directory \"${bin_dir}\" does not exist"
+
+    
+    [ -f "${bin_dir}/kubectl" ]
+    if_error_exit "File \"${bin_dir}/kubectl\" does not exist"
+
     # remove kube-proxy
-    kubectl --context "${k8s_context}" delete \
+    "${bin_dir}/kubectl" --context "${k8s_context}" delete \
         --namespace "${NAMESPACE}" \
         daemonset.apps/kube-proxy 1> /dev/null
     if_error_exit "cannot delete delete daemonset.apps kube-proxy"
@@ -504,20 +540,20 @@ function install_kpng {
     pass_message "Loaded ${KPNG_IMAGE_TAG_NAME} container image."
 
     # TODO this should be part of the template
-    kubectl --context "${k8s_context}" create serviceaccount \
+    "${bin_dir}/kubectl" --context "${k8s_context}" create serviceaccount \
         --namespace "${NAMESPACE}" \
         "${SERVICE_ACCOUNT_NAME}" 1> /dev/null
     if_error_exit "error creating serviceaccount ${SERVICE_ACCOUNT_NAME}"
     pass_message "Created service account ${SERVICE_ACCOUNT_NAME}."
 
-    kubectl --context "${k8s_context}" create clusterrolebinding \
+    "${bin_dir}/kubectl" --context "${k8s_context}" create clusterrolebinding \
         "${CLUSTER_ROLE_BINDING_NAME}" \
         --clusterrole="${CLUSTER_ROLE_NAME}" \
         --serviceaccount="${NAMESPACE}":"${SERVICE_ACCOUNT_NAME}" 1> /dev/null
     if_error_exit "error creating clusterrolebinding ${CLUSTER_ROLE_BINDING_NAME}"
     pass_message "Created clusterrolebinding ${CLUSTER_ROLE_BINDING_NAME}."
 
-    kubectl --context "${k8s_context}" create configmap \
+    "${bin_dir}/kubectl" --context "${k8s_context}" create configmap \
         "${CONFIG_MAP_NAME}" \
         --namespace "${NAMESPACE}" \
         --from-file "${artifacts_directory}/kubeconfig.conf" 1> /dev/null
@@ -566,10 +602,10 @@ function install_kpng {
     go run "${SCRIPT_DIR}"/kpng-ds-yaml-gen.go "${SCRIPT_DIR}"/kpng-deployment-ds-template.txt  "${artifacts_directory}"/kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 
-    kubectl --context "${k8s_context}" create -f "${artifacts_directory}"/kpng-deployment-ds.yaml 1> /dev/null
+    "${bin_dir}/kubectl" --context "${k8s_context}" create -f "${artifacts_directory}"/kpng-deployment-ds.yaml 1> /dev/null
     if_error_exit "error creating kpng deployment"
 
-    kubectl --context "${k8s_context}" --namespace="${NAMESPACE}" rollout status daemonset kpng -w --request-timeout=3m 1> /dev/null
+    "${bin_dir}/kubectl" --context "${k8s_context}" --namespace="${NAMESPACE}" rollout status daemonset kpng -w --request-timeout=3m 1> /dev/null
     if_error_exit "timeout waiting kpng rollout"
 
     pass_message "Installation of kpng is done.\n"
@@ -582,26 +618,31 @@ function run_tests {
      #                                                                         #
      # Arguments:                                                              #
      #   arg1: e2e directory                                                   #
-     #   arg2: e2e_test, path to test binary                                   #
-     #   arg3: ginkgo path to ginko binary                                     #
-     #   arg4: parallel ginkgo tests boolean                                   #
+     #   arg2: bin_dir, path to binary directory                                 #
+     #   arg3: parallel ginkgo tests boolean                                   #
      ###########################################################################
 
-    [ $# -eq 4 ]
+    [ $# -eq 3 ]
     if_error_exit "exec tests $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
-    local e2e_test="${2}"
-    local ginkgo="${3}"
-    local parallel="${4}"
+    local bin_dir="${2}"
+    local parallel="${3}"
 
     local artifacts_directory="${e2e_dir}/artifacts"
 
     [ -f "${artifacts_directory}/${KUBECONFIG_TESTS}" ]
     if_error_exit "Directory \"${artifacts_directory}/${KUBECONFIG_TESTS}\" does not exist"
 
-    [ -f "${e2e_test}" ]
-    if_error_exit "File \"${e2e_test}\" does not exist"
+    [ -d "${bin_dir}" ]
+    if_error_exit "Directory \"${bin_dir}\" does not exist"
+    
+    [ -f "${bin_dir}/e2e.test" ]
+    if_error_exit "File \"${bin_dir}/e2e.test\" does not exist"
+
+    [ -f "${bin_dir}/ginkgo" ]
+    if_error_exit "File \"${bin_dir}/ginkgo\" does not exist"
+
 
    # ginkgo regexes
    local ginkgo_skip="${GINKGO_SKIP_TESTS:-}"
@@ -623,10 +664,10 @@ function run_tests {
    export KUBE_CONTAINER_RUNTIME_ENDPOINT=unix:///run/containerd/containerd.sock
    export KUBE_CONTAINER_RUNTIME_NAME=containerd
 
-   ${ginkgo} --nodes="${GINKGO_NUMBER_OF_NODES}" \
+   "${bin_dir}/ginkgo" --nodes="${GINKGO_NUMBER_OF_NODES}" \
            --focus="${ginkgo_focus}" \
            --skip="${ginkgo_skip}" \
-           "${e2e_test}" \
+           "${bin_dir}/e2e.test" \
            -- \
            --kubeconfig="${artifacts_directory}/${KUBECONFIG_TESTS}" \
            --provider="${GINKGO_PROVIDER}" \
@@ -642,15 +683,23 @@ function clean_artifacts {
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: Path for E2E installation directory                             #
+    #   arg2: bin_dir, path to binary directory                               #
     ###########################################################################
 
-    [ $# -eq 1 ]
+    [ $# -eq 2 ]
     if_error_exit "clean artifacts $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
+    local bin_dir="${2}"
     local log_dir="${E2E_LOGS:-${e2e_dir}/artifacts/logs}"
 
-    kind export \
+    [ -d "${bin_dir}" ]
+    if_error_exit "Directory \"${bin_dir}\" does not exist"
+    
+    [ -f "${bin_dir}/kind" ]
+    if_error_exit "File \"${bin_dir}/kind\" does not exist"
+
+    "${bin_dir}/kind" export \
        logs \
           --name="$(cat "${e2e_dir}/clustername")" \
           "${log_dir}"
@@ -873,27 +922,25 @@ function create_infrastructure_and_run_tests {
     #   arg1: Path for E2E installation directory                             #
     #   arg2: ip_family                                                       #
     #   arg3: backend                                                         #
-    #   arg4: e2e_test                                                        #
-    #   arg5: ginkgo                                                          #
-    #   arg6: suffix                                                          #
-    #   arg7: developer_mode                                                  #
-    #   arg8: <ci_mode>                                                       #
-    #   arg9: deployment_model                                                #
-    #   arg10: export_metrics                                                 #
+    #   arg4: bin_dir                                                         #
+    #   arg5: suffix                                                          #
+    #   arg6: developer_mode                                                  #
+    #   arg7: <ci_mode>                                                       #
+    #   arg8: deployment_model                                                #
+    #   arg9: export_metrics                                                  #
     ###########################################################################
-    [ $# -eq 10 ]
+    [ $# -eq 9 ]
     if_error_exit "create and run $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
     local ip_family="${2}"
     local backend="${3}"
-    local e2e_test="${4}"
-    local ginkgo="${5}"
-    local suffix="${6}"
-    local devel_mode="${7}"
-    local ci_mode="${8}"
-    local deployment_model="${9}"
-    local export_metrics="${10}"
+    local bin_dir="${4}"
+    local suffix="${5}"
+    local devel_mode="${6}"
+    local ci_mode="${7}"
+    local deployment_model="${8}"
+    local export_metrics="${9}"
 
     local artifacts_directory="${e2e_dir}/artifacts"
     local cluster_name="kpng-e2e-${ip_family}-${backend}${suffix}"
@@ -903,32 +950,31 @@ function create_infrastructure_and_run_tests {
     export E2E_CLUSTER_NAME="${cluster_name}"
     export E2E_IP_FAMILY="${ip_family}"
     export E2E_BACKEND="${backend}"
-    export E2E_DIR="${e2e_dir}"
     export E2E_DEPLOYMENT_MODEL="${deployment_model}"
     export E2E_EXPORT_METRICS="${export_metrics}"
 
     [ -d "${artifacts_directory}" ]
     if_error_exit "Directory \"${artifacts_directory}\" does not exist"
 
-    [ -f "${e2e_test}" ]
-    if_error_exit "File \"${e2e_test}\" does not exist"
+    [ -d "${bin_dir}" ]
+    if_error_exit "Directory \"${bin_dir}\" does not exist"
 
     info_message "${cluster_name}"
 
-    create_cluster "${cluster_name}" "${ip_family}" "${artifacts_directory}" "${ci_mode}"
-    wait_until_cluster_is_ready "${cluster_name}" "${ci_mode}"
+    create_cluster "${cluster_name}" "${bin_dir}" "${ip_family}" "${artifacts_directory}" "${ci_mode}"
+    wait_until_cluster_is_ready "${cluster_name}" "${bin_dir}" "${ci_mode}"
 
     info_message "${cluster_name}" > "${e2e_dir}"/clustername
 
     if [ "${backend}" != "not-kpng" ] ; then
-        install_kpng "${cluster_name}"
+        install_kpng "${cluster_name}" "${bin_dir}"
     fi
 
     if ! ${devel_mode} ; then
-        run_tests "${e2e_dir}" "${e2e_test}" "${ginkgo}" "false"
+        run_tests "${e2e_dir}" "${bin_dir}" "false"
         #need to clean this up
        if [ "${ci_mode}" = false ] ; then
-          clean_artifacts "${e2e_dir}"
+          clean_artifacts "${e2e_dir}" "${bin_dir}" 
        fi
     fi
 }
@@ -939,7 +985,7 @@ function delete_kind_clusters {
     # delete_kind_clusters                                                    #
     #                                                                         #
     # Arguments:                                                              #
-    #   arg1: bin_directory                                                   #
+    #   arg1: bin_dir                                                   #
     #   arg2: ip_family                                                       #
     #   arg3: backend                                                         #
     #   arg4: suffix                                                          #
@@ -953,13 +999,13 @@ function delete_kind_clusters {
     if_error_exit "Erase kind $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
-    local bin_directory="${1}"
+    local bin_dir="${1}"
     local ip_family="${2}"
     local backend="${3}"
     local suffix="${4}"
     local cluster_count="${5}"
 
-    add_to_path "${bin_directory}"
+    add_to_path "${bin_dir}"
 
     [ "${cluster_count}" -ge "1" ]
     if_error_exit "cluster_count must be larger or equal to one"
@@ -968,11 +1014,11 @@ function delete_kind_clusters {
 
     if [ "${cluster_count}" -eq "1" ] ; then
         local tmp_suffix=${suffix:+"-${suffix}"}
-        delete_kind_cluster "${cluster_name_base}${tmp_suffix}"
+        delete_kind_cluster "${cluster_name_base}${tmp_suffix}" "${bin_dir}"
     else
         for i in $(seq "${cluster_count}"); do
             local tmp_suffix="-${suffix}${i}"
-            delete_kind_cluster "${cluster_name_base}${tmp_suffix}"
+            delete_kind_cluster "${cluster_name_base}${tmp_suffix}" "${bin_dir}"
         done
     fi
 }
@@ -1022,7 +1068,7 @@ function print_reports {
        sed -nE '/Ran[[:space:]]+[[:digit:]]+[[:space:]]+of[[:space:]]+[[:digit:]]/{N;p}' "${output_file}"
     done
 
-    echo -e "\nOccurence\tFailure"
+    echo -e "\nOccurrence\tFailure"
     grep \"msg\":\"FAILED "${combined_output_file}" |
     sed 's/^.*\"FAILED/\t/' | sed 's/\,\"completed\".*//' | sed 's/[ \"]$//' |
     sort | uniq -c | sort -nr  | sed 's/\,/\n\t\t/g'
@@ -1079,7 +1125,7 @@ function main {
     echo -e "\t\tStarting KPNG E2E testing"
     echo "+==================================================================+"
     if [ "${run_tests_on_existing_cluster}" = true ] ; then
-        run_tests "${e2e_dir}${tmp_suffix}" "${bin_dir}/e2e.test" "${bin_dir}/ginkgo" "false"
+        run_tests "${e2e_dir}${tmp_suffix}" "${bin_dir}" "false"
         #need to clean this up
        if [ "${ci_mode}" = false ] ; then
           clean_artifacts "${e2e_dir}${tmp_suffix}"
@@ -1123,8 +1169,7 @@ function main {
     if [ "${cluster_count}" -eq "1" ] ; then
         local tmp_suffix=${suffix:+"-${suffix}"}
         create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
-					    "${bin_dir}/e2e.test" "${bin_dir}/ginkgo" "${tmp_suffix}" \
-					    "${devel_mode}" "${ci_mode}" \
+					    "${bin_dir}" "${tmp_suffix}" "${devel_mode}" "${ci_mode}" \
 					    "${deployment_model}" "${export_metrics}"
     else
         local pids
@@ -1139,8 +1184,7 @@ function main {
 
             rm -f "${output_file}"
             create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
-						"${bin_dir}/e2e.test" "${bin_dir}/ginkgo" "${tmp_suffix}" \
-						"${devel_mode}" "${ci_mode}" \
+						"${bin_dir}" "${tmp_suffix}" "${devel_mode}" "${ci_mode}" \
 						"${deployment_model}" "${export_metrics}" \
                   &> "${e2e_dir}${tmp_suffix}/output.log" &
             pids[${i}]=$!
