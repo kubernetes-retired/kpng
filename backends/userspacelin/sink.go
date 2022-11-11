@@ -79,7 +79,7 @@ func (s *Backend) Setup() {
 		utilnet.PortRange{Base: 30000, Size: 2768},
 		time.Duration(15),
 		time.Duration(15),
-		time.Millisecond,
+		time.Second,
 	)
 	if err != nil {
 		log.Fatal("unable to create proxier: ", err)

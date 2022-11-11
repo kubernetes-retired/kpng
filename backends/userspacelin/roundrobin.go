@@ -307,18 +307,6 @@ func (lb *LoadBalancerRR) OnEndpointsAdd(ep *localv1.Endpoint, svc *localv1.Serv
 // 	}
 // }
 
-func (lb *LoadBalancerRR) resetService(svcPort iptables.ServicePortName) {
-	// If the service is still around, reset but don't delete.
-	if state, ok := lb.services[svcPort]; ok {
-		if len(state.endpoints) > 0 {
-			klog.V(2).Infof("LoadBalancerRR: Removing endpoints for %s", svcPort)
-			state.endpoints = []string{}
-		}
-		state.index = 0
-		state.affinity.affinityMap = map[string]*affinityState{}
-	}
-}
-
 func (lb *LoadBalancerRR) OnEndpointsDelete(ep *localv1.Endpoint, svc *localv1.Service) {
 	portsToEndpoints := buildPortsToEndpointsMap(ep, svc)
 
@@ -327,7 +315,22 @@ func (lb *LoadBalancerRR) OnEndpointsDelete(ep *localv1.Endpoint, svc *localv1.S
 
 	for portname := range portsToEndpoints {
 		svcPort := iptables.ServicePortName{NamespacedName: types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}, Port: portname}
-		lb.resetService(svcPort)
+		if state, ok := lb.services[svcPort]; ok {
+			if len(ep.IPs.V4) > 0 && len(ep.PortOverrides) > 0 {
+				deletedIP := fmt.Sprintf("%s:%d", ep.IPs.V4[0], ep.PortOverrides[0].Port)
+				klog.V(2).Infof("LoadBalancerRR: Removing endpoints for %s; ip: %s", svcPort, deletedIP)
+				for i, stateEP := range state.endpoints {
+					if deletedIP == stateEP {
+						state.endpoints[i] = state.endpoints[len(state.endpoints)-1]
+						state.endpoints = state.endpoints[:len(state.endpoints)-1]
+						state.index = 0
+					}
+				}
+			}
+			if len(state.endpoints) == 0 {
+				state.affinity.affinityMap = map[string]*affinityState{}
+			}
+		}
 	}
 }
 
