@@ -17,6 +17,7 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 source "${SCRIPT_DIR}/utils.sh"
+source "${SCRIPT_DIR}/common.sh"
 
 # build the kpng image...
 : ${KIND:="kindest/node:v1.22.13@sha256:4904eda4d6e64b402169797805b8ec01f50133960ad6c19af45173a27eadf959"}
@@ -45,19 +46,6 @@ function build_kpng {
     cd hack/
 }
 
-function install_calico {
-    ### Cache cni images to avoid rate-limiting
-    docker pull docker.io/calico/kube-controllers:v3.19.1
-    docker pull docker.io/calico/cni:v3.19.1
-    docker pull docker.io/calico/pod2daemon-flexvol:v3.19.1
-    kind load docker-image docker.io/calico/cni:v3.19.1 --name kpng-proxy
-    kind load docker-image docker.io/calico/kube-controllers:v3.19.1 --name kpng-proxy
-    kind load docker-image docker.io/calico/pod2daemon-flexvol:v3.19.1 --name kpng-proxy
-
-    kubectl apply -f https://raw.githubusercontent.com/jayunit100/k8sprototypes/master/kind/calico.yaml
-    kubectl -n kube-system set env daemonset/calico-node FELIX_IGNORELOOSERPF=true
-    kubectl -n kube-system set env daemonset/calico-node FELIX_XDPENABLED=false
-}
 
 function install_k8s {
     kind version
