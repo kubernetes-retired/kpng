@@ -31,6 +31,8 @@ import (
 	"sigs.k8s.io/kpng/server/jobs/store2file"
 	"sigs.k8s.io/kpng/server/jobs/store2localdiff"
 	"sigs.k8s.io/kpng/server/proxystore"
+
+	_ "sigs.k8s.io/kpng/backends/healthchecks"
 )
 
 // consumerJobCmd returns a *cobra.Command which sets up the store producer job, starts it
