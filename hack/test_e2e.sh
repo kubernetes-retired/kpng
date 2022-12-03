@@ -638,7 +638,7 @@ function create_infrastructure_and_run_tests {
     create_cluster "${cluster_name}" "${bin_dir}" "${ip_family}" "${artifacts_directory}" "${ci_mode}"
     wait_until_cluster_is_ready "${cluster_name}" "${bin_dir}" "${ci_mode}"
 
-    info_message "${cluster_name}" > "${e2e_dir}"/clustername
+    echo "${cluster_name}" > "${e2e_dir}"/clustername
 
     if [ "${backend}" != "not-kpng" ] ; then
         install_kpng "${cluster_name}" "${bin_dir}"
