@@ -874,7 +874,7 @@ function main {
        echo -e "\n+=====================================================================================+"
        echo -e "\t\tDeveloper mode no test run!"
        echo -e "+=====================================================================================+"
-    elif ! ${ci_mode} ; then
+    elif ! ${ci_mode} && ${erase_clusters} ; then
         delete_kind_clusters "${bin_dir}" "${ip_family}" "${backend}" "${suffix}" "${cluster_count}"
     fi
 }
