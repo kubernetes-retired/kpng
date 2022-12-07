@@ -323,11 +323,10 @@ func (t *iptables) writePostRoutingMasqRules() {
 		"-m", "comment", "--comment", `"kubernetes service traffic requiring SNAT"`,
 		"-j", "MASQUERADE",
 	}
-	// TODO add logic for random-fully and iptables version logic eventually
-	// assume we are on a newer iptables...
-	// if HasRandomFully() {
-	// 	masqRule = append(masqRule, "--random-fully")
-	// }
+
+	if t.iptInterface != nil && t.iptInterface.HasRandomFully() {
+		masqRule = append(masqRule, "--random-fully")
+	}
 	t.natRules.Write(masqRule)
 
 	// Install the kubernetes-specific masquerade mark rule. We use a whole chain for
