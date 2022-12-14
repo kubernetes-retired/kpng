@@ -57,7 +57,7 @@ function build_kpng_and_load_image {
 }
 
 
-if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|ebpf|userspacelin|not-kpng)$ ]]; then
+if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|ipvsfullstate|ebpf|userspacelin|not-kpng)$ ]]; then
   echo "skipping re-deployment due to unsupported backend"
   exit 0 
 fi

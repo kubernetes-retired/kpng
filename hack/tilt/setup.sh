@@ -206,7 +206,7 @@ do
     esac
 done
 
-if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|ebpf|userspacelin|not-kpng)$ ]]; then
+if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|ipvsfullstate|ebpf|userspacelin|not-kpng)$ ]]; then
     echo "user must specify the supported backend"
     help
 fi
@@ -221,7 +221,7 @@ if [ ! "$deployment_model" ];then
 fi
 
 if [[ -n "${ip_family}" && -n "${backend}" ]];   then
-    if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|ebpf|userspacelin|not-kpng)$ ]]; then
+    if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|ipvsfullstate|ebpf|userspacelin|not-kpng)$ ]]; then
       echo "user must specify the supported backend"
       help  
       exit 1 

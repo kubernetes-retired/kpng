@@ -5,6 +5,7 @@ use (
 	./backends/ebpf
 	./backends/iptables
 	./backends/ipvs-as-sink
+	./backends/ipvsfullstate
 	./backends/nft
 	./backends/userspacelin
 	./backends/windows/kernelspace
