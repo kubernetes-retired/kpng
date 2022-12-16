@@ -1,5 +1,4 @@
 from golang:1.19.2-alpine3.16
-asdf
 # system dependencies
 run apk add --update --no-cache \
     gcc musl-dev git curl sudo \
