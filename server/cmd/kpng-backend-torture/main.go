@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
 	"strconv"
@@ -68,10 +69,12 @@ func (s watchSrv) Watch(res localv1.Sets_WatchServer) error {
 	var i uint64
 	for {
 		// wait for client request
-		_, err := res.Recv()
+		req, err := res.Recv()
 		if err != nil {
 			return grpc.Errorf(codes.Aborted, "recv error: %v", err)
 		}
+
+		log.Print("got watch request: ", req)
 
 		injectState(i, w)
 		i++
