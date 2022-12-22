@@ -19,6 +19,7 @@ package storecmds
 import (
 	"context"
 	"errors"
+	"k8s.io/klog/v2"
 
 	"github.com/spf13/cobra"
 
@@ -31,17 +32,8 @@ import (
 	"sigs.k8s.io/kpng/server/proxystore"
 )
 
-type SetupFunc func() (ctx context.Context, store *proxystore.Store, err error)
-
-func Commands(setup SetupFunc) []*cobra.Command {
-	return []*cobra.Command{
-		setup.ToAPICmd(),
-		setup.ToFileCmd(),
-		setup.ToLocalCmd(),
-	}
-}
-
-func (c SetupFunc) ToAPICmd() *cobra.Command {
+// ToAPICmd builds a command that reads from the APIServer and sends data down to the store.
+func ToAPICmd(ctx context.Context, store *proxystore.Store, err error) *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "to-api",
 	}
@@ -50,7 +42,6 @@ func (c SetupFunc) ToAPICmd() *cobra.Command {
 	cfg.BindFlags(cmd.Flags())
 
 	cmd.RunE = func(_ *cobra.Command, _ []string) (err error) {
-		ctx, store, err := c()
 		if err != nil {
 			return
 		}
@@ -65,7 +56,8 @@ func (c SetupFunc) ToAPICmd() *cobra.Command {
 	return cmd
 }
 
-func (c SetupFunc) ToFileCmd() *cobra.Command {
+// ToFileCmd builds a command that reads from the APIServer and sends data down to a file.
+func ToFileCmd(ctx context.Context, store *proxystore.Store, err error) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "to-file",
 		Short: "dump globalv1 state to a yaml db file",
@@ -75,7 +67,6 @@ func (c SetupFunc) ToFileCmd() *cobra.Command {
 	cfg.BindFlags(cmd.Flags())
 
 	cmd.RunE = func(_ *cobra.Command, _ []string) (err error) {
-		ctx, store, err := c()
 		if err != nil {
 			return
 		}
@@ -90,18 +81,18 @@ func (c SetupFunc) ToFileCmd() *cobra.Command {
 	return cmd
 }
 
-// ToLocalCmd sends the incoming events to a local backend, such as IPVS or IPTABLES or NFT.
-// This gives users an out of the box KPNG implementation.
-func (c SetupFunc) ToLocalCmd() (cmd *cobra.Command) {
+// ToLocalCmd reads from the store, and sends these down to a local backend, which we refer to as a Sink.
+// See the LocalCmds implementation to understand how we use reflection to load up the individual backends
+// such that their command line options are dynamically accepted here.
+func ToLocalCmd(ctx context.Context, store *proxystore.Store, err error) (cmd *cobra.Command) {
 	cmd = &cobra.Command{
 		Use: "to-local",
 	}
 
-	var ctx context.Context
 	job := &store2localdiff.Job{}
 
 	cmd.PersistentPreRunE = func(_ *cobra.Command, _ []string) (err error) {
-		ctx, job.Store, err = c()
+		job.Store = store
 		return
 	}
 
@@ -113,6 +104,8 @@ func (c SetupFunc) ToLocalCmd() (cmd *cobra.Command) {
 	return
 }
 
+// LocalCmds uses "reflection", i.e. it depends on the hot-loading of backends when
+// the imports are called.  the "Registered" function then adds the backends one at a time.
 func LocalCmds(run func(sink localsink.Sink) error) (cmds []*cobra.Command) {
 	// sink backends
 	for _, useCmd := range backendcmd.Registered() {
@@ -126,7 +119,7 @@ func LocalCmds(run func(sink localsink.Sink) error) (cmds []*cobra.Command) {
 		}
 
 		backend.BindFlags(cmd.Flags())
-
+		klog.Infof("Appending discovered command %v", cmd.Name())
 		cmds = append(cmds, cmd)
 	}
 

@@ -16,6 +16,8 @@ limitations under the License.
 
 package storecmds
 
+// this magically loads the Register functions...
+
 import (
 	_ "sigs.k8s.io/kpng/backends/ebpf"
 	_ "sigs.k8s.io/kpng/backends/iptables"

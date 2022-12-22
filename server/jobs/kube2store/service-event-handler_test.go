@@ -16,7 +16,7 @@ func TestServiceEventHandlerTrafficPolicy(t *testing.T) {
 		eventHandler: eventHandler{
 			s:       store,
 			syncSet: true,
-			config:  &Config{
+			k8sConfig:  &K8sConfig{
 				// defaults
 			},
 		},

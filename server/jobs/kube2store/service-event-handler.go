@@ -39,8 +39,8 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 		Namespace:   svc.Namespace,
 		Name:        svc.Name,
 		Type:        string(svc.Spec.Type),
-		Labels:      globsFilter(svc.Labels, h.config.ServiceLabelGlobs),
-		Annotations: globsFilter(svc.Annotations, h.config.ServiceAnnonationGlobs),
+		Labels:      globsFilter(svc.Labels, h.k8sConfig.ServiceLabelGlobs),
+		Annotations: globsFilter(svc.Annotations, h.k8sConfig.ServiceAnnonationGlobs),
 		IPs: &localv1.ServiceIPs{
 			ClusterIPs:  &localv1.IPSet{},
 			ExternalIPs: localv1.NewIPSet(svc.Spec.ExternalIPs...),

@@ -33,12 +33,21 @@ import (
 	proxystore "sigs.k8s.io/kpng/server/proxystore"
 )
 
-type Config struct {
+// K8sConfig is the data structure that users edit to influence
+// the way that KPNG watches the K8s APIServer.
+type K8sConfig struct {
+	// UseSlices turns on endpoint slices.  This can go away eventually.
 	UseSlices     bool
 
+	// ServiceProxyName identifies a "different" service proxy, i.e. tells
+	// KPNG we're not handling this service.
 	ServiceProxyName string
 
+	// Usually these are not specifically set by users...
+
+	// ServiceLabelGlobs tells the proxy to filter certain services by label.
 	ServiceLabelGlobs      []string
+	// ServiceAnnotationGlobs tells the proxy to filter certain services by label.
 	ServiceAnnonationGlobs []string
 
 	NodeLabelGlobs      []string
@@ -52,7 +61,7 @@ const (
 	LabelServiceProxyName = "service.kubernetes.io/service-proxy-name"
 )
 
-func (c *Config) BindFlags(flags *pflag.FlagSet) {
+func (c *K8sConfig) BindFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&c.ServiceProxyName, "service-proxy-name", "", "the "+LabelServiceProxyName+" match to use (handle normal services if not set)")
 
 	flags.StringSliceVar(&c.ServiceLabelGlobs, "with-service-labels", nil, "service labels to include")
@@ -67,7 +76,7 @@ func (c *Config) BindFlags(flags *pflag.FlagSet) {
 type Job struct {
 	Kube   *kubernetes.Clientset
 	Store  *proxystore.Store
-	Config *Config
+	Config *K8sConfig
 }
 
 func (j Job) Run(ctx context.Context) {
@@ -104,9 +113,9 @@ func (j Job) Run(ctx context.Context) {
 
 func (j Job) eventHandler(informer cache.SharedIndexInformer) eventHandler {
 	return eventHandler{
-		config:   j.Config,
-		s:        j.Store,
-		informer: informer,
+		k8sConfig: j.Config,
+		s:         j.Store,
+		informer:  informer,
 	}
 }
 

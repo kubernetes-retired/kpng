@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"sigs.k8s.io/kpng/server/jobs/kube2store"
 
 	"github.com/spf13/cobra"
 
@@ -30,6 +31,10 @@ import (
 // FIXME separate package
 var f2sInput string
 
+// file2storeCmd is a command that will read data from file, allowing you to locally simulate
+// a networking model easily and send it to a store (i.e. a backend) of your choosing.  Its commonly
+// used for local development against a known kubernetes networking statespace (see the example in the doc/)
+// folder of an input YAML that works with this command.
 func file2storeCmd() *cobra.Command {
 	// file to * command
 	k2sCmd := &cobra.Command{
@@ -40,13 +45,22 @@ func file2storeCmd() *cobra.Command {
 	flags := k2sCmd.PersistentFlags()
 	flags.StringVarP(&f2sInput, "input", "i", "globalv1-state.yaml", "Input file for the globalv1-state")
 
+	// k2sCfg is the configuration of how we interact w/ and watch the K8s APIServer
+	k2sCfg := &kube2store.K8sConfig{}
 	k2sCfg.BindFlags(k2sCmd.PersistentFlags())
-	k2sCmd.AddCommand(storecmds.Commands(setupFile2store)...)
+
+	context, backend, error := file2storeCmdSetup(k2sCfg)
+
+	k2sCmd.AddCommand(storecmds.ToAPICmd(context, backend, error))
+	k2sCmd.AddCommand(storecmds.ToFileCmd(context, backend, error))
+	k2sCmd.AddCommand(storecmds.ToLocalCmd(context, backend, error))
 
 	return k2sCmd
 }
 
-func setupFile2store() (ctx context.Context, store *proxystore.Store, err error) {
+// file2storeCmdSetup generates a context , builds the in-memory storage for k8s proxy data.
+// It also kicks off the job responsible for watching the YAML File w/ K8s networking info.
+func file2storeCmdSetup(k2sCfg *kube2store.K8sConfig) (ctx context.Context, store *proxystore.Store, err error) {
 	ctx = setupGlobal()
 
 	// create the store
