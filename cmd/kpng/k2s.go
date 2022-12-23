@@ -61,18 +61,21 @@ func kube2storeCmd() *cobra.Command {
 	k2sCfg := &kube2store.K8sConfig{}
 	k2sCfg.BindFlags(k2sCmd.PersistentFlags())
 
-	context, backend, error := kube2storeCmdSetup(k2sCfg)
+	context, backend, error, kubeClient := kube2storeCmdSetup(k2sCfg)
 
-	k2sCmd.AddCommand(storecmds.ToAPICmd(context, backend, error))
-	k2sCmd.AddCommand(storecmds.ToFileCmd(context, backend, error))
-	k2sCmd.AddCommand(storecmds.ToLocalCmd(context, backend, error))
+	run := func() {
+		kube2storeCmdRun(kubeClient, backend, k2sCfg, context)
+	}
+	k2sCmd.AddCommand(storecmds.ToAPICmd(context, backend, error, run))
+	k2sCmd.AddCommand(storecmds.ToFileCmd(context, backend, error, run))
+	k2sCmd.AddCommand(storecmds.ToLocalCmd(context, backend, error, run))
 
 	return k2sCmd
 }
 
 // kube2storeCmdSetup generates a context , builds the in-memory storage for k8s proxy data.
 // It also kicks off the job responsible for watching the K8s APIServer.
-func kube2storeCmdSetup(k2sCfg *kube2store.K8sConfig) (ctx context.Context, store *proxystore.Store, err error) {
+func kube2storeCmdSetup(k2sCfg *kube2store.K8sConfig) (ctx context.Context, store *proxystore.Store, err error, kubeClient *kubernetes.Clientset) {
 	ctx = setupGlobal()
 
 	// setup k8s client
@@ -86,7 +89,8 @@ func kube2storeCmdSetup(k2sCfg *kube2store.K8sConfig) (ctx context.Context, stor
 		return
 	}
 
-	kubeClient, err := kubernetes.NewForConfig(cfg)
+	kCli, err := kubernetes.NewForConfig(cfg)
+	kubeClient = kCli
 	if err != nil {
 		err = fmt.Errorf("Error building kubernetes clientset: %w", err)
 		return
@@ -95,12 +99,14 @@ func kube2storeCmdSetup(k2sCfg *kube2store.K8sConfig) (ctx context.Context, stor
 	// create the store
 	store = proxystore.New()
 
+	return
+}
+
+func kube2storeCmdRun(kubeClient *kubernetes.Clientset, backend *proxystore.Store, k2sCfg *kube2store.K8sConfig, ctx context.Context ) {
 	// start kube2store
 	go kube2store.Job{
 		Kube:   kubeClient,
-		Store:  store,
+		Store:  backend,
 		Config: k2sCfg,
 	}.Run(ctx)
-
-	return
 }

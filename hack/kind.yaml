@@ -4,7 +4,7 @@ name: kpng-proxy
 networking:
   kubeProxyMode: "none"
   apiServerAddress: "0.0.0.0"
-  disableDefaultCNI: true
+  disableDefaultCNI: false
   podSubnet: 192.168.0.0/16
 nodes:
   - role: control-plane

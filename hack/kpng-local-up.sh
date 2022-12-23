@@ -53,7 +53,6 @@ function install_k8s {
     echo "****************************************************"
     kind delete cluster --name kpng-proxy
     kind create cluster --config kind.yaml --image $KIND
-    install_calico
     echo "****************************************************"
 }
 
@@ -69,6 +68,8 @@ function install_kpng {
     export service_account_name="${SERVICE_ACCOUNT_NAME}" 
     export namespace="${NAMESPACE}" 
     export e2e_backend_args="${BACKEND_ARGS}"
+    export e2e_server_args="['kube','--kubeconfig=/var/lib/kpng/kubeconfig.conf', '--exportMetrics=0.0.0.0:9099', 'to-api']"
+
     go run kpng-ds-yaml-gen.go ./kpng-deployment-ds-template.txt ./kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 

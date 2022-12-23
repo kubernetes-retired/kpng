@@ -50,9 +50,12 @@ func api2storeCmd() *cobra.Command {
 
 	context, backend, error := api2storeCmdSetup()
 
-	api2sCmd.AddCommand(storecmds.ToAPICmd(context, backend, error))
-	api2sCmd.AddCommand(storecmds.ToFileCmd(context, backend, error))
-	api2sCmd.AddCommand(storecmds.ToLocalCmd(context, backend, error))
+	run := func () {
+		go api2storeJob.Run(context)
+	}
+	api2sCmd.AddCommand(storecmds.ToAPICmd(context, backend, error, run))
+	api2sCmd.AddCommand(storecmds.ToFileCmd(context, backend, error, run ))
+	api2sCmd.AddCommand(storecmds.ToLocalCmd(context, backend, error, run ))
 
 	return api2sCmd
 }
@@ -65,7 +68,6 @@ func api2storeCmdSetup() (ctx context.Context, store *proxystore.Store, err erro
 	store = proxystore.New()
 
 	api2storeJob.Store = store
-	go api2storeJob.Run(ctx)
 
 	return
 }

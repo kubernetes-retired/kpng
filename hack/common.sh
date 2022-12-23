@@ -329,42 +329,6 @@ function set_host_network_settings {
      fi
 }
 
-function install_calico {
-    ###########################################################################
-    # Description:                                                            #
-    # Copy binaries from the net to binaries directory                        #
-    #                                                                         #
-    # Arguments:                                                              #
-    #   arg1: binary directory, path to where ginko will be installed         #
-    ###########################################################################
-
-    local bin_directory="${1}"
-
-    ### Cache cni images to avoid rate-limiting
-    docker pull docker.io/calico/kube-controllers:v3.19.1
-    docker pull docker.io/calico/cni:v3.19.1
-    docker pull docker.io/calico/pod2daemon-flexvol:v3.19.1
-
-    if [ "$bin_directory" = "" ];
-    then
-        kind load docker-image docker.io/calico/cni:v3.19.1 --name ${CLUSTER_NAME}
-        kind load docker-image docker.io/calico/kube-controllers:v3.19.1 --name ${CLUSTER_NAME}
-        kind load docker-image docker.io/calico/pod2daemon-flexvol:v3.19.1 --name ${CLUSTER_NAME}
-
-        kubectl apply -f https://raw.githubusercontent.com/jayunit100/k8sprototypes/master/kind/calico.yaml
-        kubectl -n kube-system set env daemonset/calico-node FELIX_IGNORELOOSERPF=true
-        kubectl -n kube-system set env daemonset/calico-node FELIX_XDPENABLED=false
-    else
-        ${bin_directory}/kind load docker-image docker.io/calico/cni:v3.19.1 --name kpng-proxy
-        ${bin_directory}/kind load docker-image docker.io/calico/kube-controllers:v3.19.1 --name kpng-proxy
-        ${bin_directory}/kind load docker-image docker.io/calico/pod2daemon-flexvol:v3.19.1 --name kpng-proxy
-
-        ${bin_directory}/kubectl apply -f https://raw.githubusercontent.com/jayunit100/k8sprototypes/master/kind/calico.yaml
-        ${bin_directory}/kubectl -n kube-system set env daemonset/calico-node FELIX_IGNORELOOSERPF=true
-        ${bin_directory}/kubectl -n kube-system set env daemonset/calico-node FELIX_XDPENABLED=false
-    fi   
-}
-
 function compile_bpf {
     ###########################################################################
     # Description:                                                            #
