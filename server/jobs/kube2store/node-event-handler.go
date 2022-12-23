@@ -39,8 +39,8 @@ func (h *nodeEventHandler) OnAdd(obj interface{}) {
 			Node: node.Name,
 			Zone: node.Labels[nodeZoneLabel],
 		},
-		Labels:      globsFilter(node.Labels, h.config.NodeLabelGlobs),
-		Annotations: globsFilter(node.Annotations, h.config.NodeAnnotationGlobs),
+		Labels:      globsFilter(node.Labels, h.k8sConfig.NodeLabelGlobs),
+		Annotations: globsFilter(node.Annotations, h.k8sConfig.NodeAnnotationGlobs),
 	}
 
 	h.s.Update(func(tx *proxystore.Tx) {

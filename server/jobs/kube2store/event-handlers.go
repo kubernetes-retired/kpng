@@ -22,10 +22,10 @@ import (
 )
 
 type eventHandler struct {
-	config   *Config
-	s        *proxystore.Store
-	informer cache.SharedIndexInformer
-	syncSet  bool
+	k8sConfig *K8sConfig
+	s         *proxystore.Store
+	informer  cache.SharedIndexInformer
+	syncSet   bool
 }
 
 func (h *eventHandler) updateSync(set proxystore.Set, tx *proxystore.Tx) {

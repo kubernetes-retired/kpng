@@ -35,11 +35,17 @@ import (
 
 // FIXME separate package
 var (
+
+	// kubeConfig is the kubeConfig file for the apiserver
 	kubeConfig string
+
+	// kubeServer is the location of the external k8s apiserver.  If this is empty, we resort
+	// to in-cluster configuration using internal pod service accounts.
 	kubeServer string
-	k2sCfg     = &kube2store.Config{}
 )
 
+// kube2storeCmd generates the kube-to-store command, which is the "normal" way to run KPNG,
+// wherein you read data in from kubernetes, and push it into a store (file, API, or local backend such as NFT).
 func kube2storeCmd() *cobra.Command {
 	// kube to * command
 	k2sCmd := &cobra.Command{
@@ -51,13 +57,22 @@ func kube2storeCmd() *cobra.Command {
 	flags.StringVar(&kubeConfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster. Defaults to envvar KUBECONFIG.")
 	flags.StringVar(&kubeServer, "server", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 
+	// k2sCfg is the configuration of how we interact w/ and watch the K8s APIServer
+	k2sCfg := &kube2store.K8sConfig{}
 	k2sCfg.BindFlags(k2sCmd.PersistentFlags())
-	k2sCmd.AddCommand(storecmds.Commands(setupKube2store)...)
+
+	context, backend, error := kube2storeCmdSetup(k2sCfg)
+
+	k2sCmd.AddCommand(storecmds.ToAPICmd(context, backend, error))
+	k2sCmd.AddCommand(storecmds.ToFileCmd(context, backend, error))
+	k2sCmd.AddCommand(storecmds.ToLocalCmd(context, backend, error))
 
 	return k2sCmd
 }
 
-func setupKube2store() (ctx context.Context, store *proxystore.Store, err error) {
+// kube2storeCmdSetup generates a context , builds the in-memory storage for k8s proxy data.
+// It also kicks off the job responsible for watching the K8s APIServer.
+func kube2storeCmdSetup(k2sCfg *kube2store.K8sConfig) (ctx context.Context, store *proxystore.Store, err error) {
 	ctx = setupGlobal()
 
 	// setup k8s client

@@ -39,6 +39,7 @@ var (
 	version = "(unknown)"
 )
 
+// main starts the kpng program by running the command sent by the user.  This is the entry point to kpng!
 func main() {
 	klog.InitFlags(flag.CommandLine)
 
@@ -60,6 +61,9 @@ func main() {
 		klog.Fatal(err)
 	}
 }
+
+// setupGlobal sets up global processes that need to run regardless of what mode you are running KPNG in.
+// this is a grab bag where you put stuff that, one way or other, has to happen.
 
 func setupGlobal() (ctx context.Context) {
 	ctx, cancel := context.WithCancel(context.Background())

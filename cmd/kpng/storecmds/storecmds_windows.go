@@ -14,9 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+
+// this magically loads the Register functions...
+
 package storecmds
 
 import (
-        _ "sigs.k8s.io/kpng/backends/windows/userspace"
         _ "sigs.k8s.io/kpng/backends/windows/kernelspace"
+        _ "sigs.k8s.io/kpng/backends/windows/userspace"
 )

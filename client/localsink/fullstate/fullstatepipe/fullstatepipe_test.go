@@ -55,8 +55,8 @@ func ExampleParallel() {
 	go failAfter1Sec()
 
 	pipe := New(Parallel,
-		delayCallback("s1", 8*time.Millisecond),
-		delayCallback("s2", 3*time.Millisecond),
+		delayCallback("s1", 80*time.Millisecond),
+		delayCallback("s2", 30*time.Millisecond),
 		delayCallback("s3", 1*time.Millisecond),
 	)
 
@@ -77,8 +77,8 @@ func ExampleParallelSendSequenceClose() {
 	go failAfter1Sec()
 
 	pipe := New(ParallelSendSequenceClose,
-		delayCallback("s1", 8*time.Millisecond),
-		delayCallback("s2", 3*time.Millisecond),
+		delayCallback("s1", 80*time.Millisecond),
+		delayCallback("s2", 30*time.Millisecond),
 		delayCallback("s3", 1*time.Millisecond),
 	)
 
