@@ -36,7 +36,7 @@ GINKGO_FOCUS="\[Conformance\]|\[sig-network\]"
 GINKGO_SKIP_TESTS="machinery|Feature|Federation|PerformanceDNS|Disruptive|Serial|LoadBalancer|KubeProxy|GCE|Netpol|NetworkPolicy"
 
 
-GINKGO_SKIP_TESTS_TMP="should be updated after adding or deleting ports\|should serve multiport endpoints from pods"
+GINKGO_SKIP_TESTS_TMP="should be updated after adding or deleting ports|should serve multiport endpoints from pods"
 
 ################################
 
@@ -490,14 +490,11 @@ function run_tests {
    local ginkgo_focus=${GINKGO_FOCUS:-"\\[Conformance\\]"}
    # if we set PARALLEL=true, skip serial tests set --ginkgo-parallel
    if [ "${parallel}" = "true" ]; then
-     export GINKGO_PARALLEL=y
-     if [ -z "${skip}" ]; then
-       ginkgo_skip="\\[Serial\\]"
-     else
-       ginkgo_skip="\\[Serial\\]|${ginkgo_skip}"
-     fi
+     	export GINKGO_PARALLEL=y
+     	ginkgo_skip="Serial|${ginkgo_skip}"
    fi
-
+   
+   ginkgo_skip="${ginkgo_skip}"
    # setting this env prevents ginkgo e2e from trying to run provider setup
    export KUBERNETES_CONFORMANCE_TEST='y'
    # setting these is required to make RuntimeClass tests work ... :/
