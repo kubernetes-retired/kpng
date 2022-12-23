@@ -51,9 +51,16 @@ func file2storeCmd() *cobra.Command {
 
 	context, backend, error := file2storeCmdSetup(k2sCfg)
 
-	k2sCmd.AddCommand(storecmds.ToAPICmd(context, backend, error))
-	k2sCmd.AddCommand(storecmds.ToFileCmd(context, backend, error))
-	k2sCmd.AddCommand(storecmds.ToLocalCmd(context, backend, error))
+	run := func(){
+		go (&file2store.Job{
+			FilePath: f2sInput,
+			Store:    backend,
+		}).Run(context)
+
+	}
+	k2sCmd.AddCommand(storecmds.ToAPICmd(context, backend, error, run ))
+	k2sCmd.AddCommand(storecmds.ToFileCmd(context, backend, error, run ))
+	k2sCmd.AddCommand(storecmds.ToLocalCmd(context, backend, error, run ))
 
 	return k2sCmd
 }
@@ -65,11 +72,6 @@ func file2storeCmdSetup(k2sCfg *kube2store.K8sConfig) (ctx context.Context, stor
 
 	// create the store
 	store = proxystore.New()
-
-	go (&file2store.Job{
-		FilePath: f2sInput,
-		Store:    store,
-	}).Run(ctx)
 
 	return ctx, store, nil
 }

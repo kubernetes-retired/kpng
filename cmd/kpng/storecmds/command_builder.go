@@ -33,7 +33,7 @@ import (
 )
 
 // ToAPICmd builds a command that reads from the APIServer and sends data down to the store.
-func ToAPICmd(ctx context.Context, store *proxystore.Store, err error) *cobra.Command {
+func ToAPICmd(ctx context.Context, store *proxystore.Store, err error, run func()) *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "to-api",
 	}
@@ -50,6 +50,7 @@ func ToAPICmd(ctx context.Context, store *proxystore.Store, err error) *cobra.Co
 			Store:  store,
 			Config: cfg,
 		}
+		go run()
 		return j.Run(ctx)
 	}
 
@@ -57,7 +58,7 @@ func ToAPICmd(ctx context.Context, store *proxystore.Store, err error) *cobra.Co
 }
 
 // ToFileCmd builds a command that reads from the APIServer and sends data down to a file.
-func ToFileCmd(ctx context.Context, store *proxystore.Store, err error) *cobra.Command {
+func ToFileCmd(ctx context.Context, store *proxystore.Store, err error, run func()) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "to-file",
 		Short: "dump globalv1 state to a yaml db file",
@@ -75,6 +76,8 @@ func ToFileCmd(ctx context.Context, store *proxystore.Store, err error) *cobra.C
 			Store:  store,
 			Config: cfg,
 		}
+
+		go run()
 		return j.Run(ctx)
 	}
 
@@ -84,7 +87,7 @@ func ToFileCmd(ctx context.Context, store *proxystore.Store, err error) *cobra.C
 // ToLocalCmd reads from the store, and sends these down to a local backend, which we refer to as a Sink.
 // See the LocalCmds implementation to understand how we use reflection to load up the individual backends
 // such that their command line options are dynamically accepted here.
-func ToLocalCmd(ctx context.Context, store *proxystore.Store, err error) (cmd *cobra.Command) {
+func ToLocalCmd(ctx context.Context, store *proxystore.Store, err error, run func()) (cmd *cobra.Command) {
 	cmd = &cobra.Command{
 		Use: "to-local",
 	}
@@ -98,6 +101,7 @@ func ToLocalCmd(ctx context.Context, store *proxystore.Store, err error) (cmd *c
 
 	cmd.AddCommand(LocalCmds(func(sink localsink.Sink) error {
 		job.Sink = sink
+		go run()
 		return job.Run(ctx)
 	})...)
 
