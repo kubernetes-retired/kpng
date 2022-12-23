@@ -1,4 +1,9 @@
 from golang:1.19.2-alpine3.16
+
+# TODO: We need to specify what the skope of this file is , i.e. can you run unit tests in it?
+# or is it just for building protobufs ?
+# what about proxies/backends ?
+
 # system dependencies
 run apk add --update --no-cache \
     gcc musl-dev git curl sudo \
