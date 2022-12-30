@@ -54,6 +54,9 @@ help:
 go_mod_tests_requirement:
 	go install golang.org/x/lint/golint@latest
 
+modd_requirements:
+	go install github.com/cortesi/modd/cmd/modd@latest
+
 # Development mode - SKIP E2E
 # Most of users use IPV4 and iptables as backend
 # let's use it as default values
