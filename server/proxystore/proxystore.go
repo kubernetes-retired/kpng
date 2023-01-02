@@ -17,19 +17,21 @@ limitations under the License.
 package proxystore
 
 import (
-	"fmt"
-	"strconv"
 	"sync"
 
 	"github.com/google/btree"
 	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/kpng/api/globalv1"
 	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/server/pkg/metrics"
-	"sigs.k8s.io/kpng/server/serde"
 )
 
+// proxystore stores information in KPNG'proxyStore data model for kubernetes Services, Endpoints, and Nodes, which
+// are the core objects associated with the "kube proxy".
+
+// Store has the entire state space of the KPNG data model managed as a Btree.  See the BtreeItem for details
+// on how the services, endpoints, and nodes are sorted into the underlying tree.  When new networking info comes
+// in, use the Store's Update() function to safely update the underlying datamodel.
 type Store struct {
 	sync.RWMutex
 	c      *sync.Cond
@@ -70,30 +72,35 @@ func (s *Store) Close() {
 	s.c.L.Unlock()
 }
 
+// Update is the function we use to lock and unlock the store
+// before we add/delete a new object from it.
 func (s *Store) Update(update func(tx *Tx)) {
 	s.Lock()
 	defer s.Unlock()
 
 	metrics.Kpng_k8s_api_events.Inc()
 
-	tx := &Tx{s: s}
+	tx := &Tx{proxyStore: s}
 	update(tx)
 
-	if tx.changes == 0 {
+	if tx.isChanged == 0 {
 		return // nothing changed
 	}
 
 	// TODO check if the update really updated something
 	s.c.L.Lock()
 	s.rev++
+
+	// TODO explain why we call Broadcast?
 	s.c.Broadcast()
 	s.c.L.Unlock()
 
 	if log := klog.V(3); log.Enabled() {
-		log.Info("store updated to rev ", s.rev, " with ", s.tree.Len(), " entries")
+		klog.Info("store updated to rev ", s.rev, " with ", s.tree.Len(), " entries")
 		if log := klog.V(4); log.Enabled() {
+			// Iterate the btree
 			s.tree.Ascend(func(i btree.Item) bool {
-				kv := i.(*KV)
+				kv := i.(*BTreeItem)
 				log.Info("- entry: ", kv.Sync, "/", kv.Set, ": ", kv.Namespace, "/", kv.Name, "/", kv.Source, "/", kv.Key)
 				return true
 			})
@@ -101,8 +108,11 @@ func (s *Store) Update(update func(tx *Tx)) {
 	}
 }
 
+// View visits all nodes of the underlying stores tree and allows you to see all the transactions
+// that have happened.
 func (s *Store) View(afterRev uint64, view func(tx *Tx)) (rev uint64, closed bool) {
 	s.c.L.Lock()
+	// try to unlock
 	for s.rev <= afterRev && !s.closed {
 		s.c.Wait()
 	}
@@ -115,380 +125,7 @@ func (s *Store) View(afterRev uint64, view func(tx *Tx)) (rev uint64, closed boo
 		return 0, s.closed
 	}
 
-	view(&Tx{s: s, ro: true})
+	view(&Tx{proxyStore: s, ro: true})
 
 	return s.rev, s.closed
-}
-
-type Tx struct {
-	s       *Store
-	ro      bool
-	changes uint
-}
-
-func (tx *Tx) roPanic() {
-	if tx.ro {
-		panic("read-only!")
-	}
-}
-
-// Each iterate over each item in the given set, stopping if the callback returns false
-func (tx *Tx) Each(set Set, callback func(*KV) bool) {
-	tx.s.tree.AscendGreaterOrEqual(&KV{Set: set}, func(i btree.Item) bool {
-		kv := i.(*KV)
-
-		if kv.Set != set {
-			return false
-		}
-
-		return callback(kv)
-	})
-}
-
-// Reset clears the store data
-func (tx *Tx) Reset() {
-	tx.roPanic()
-
-	if tx.s.tree.Len() != 0 {
-		tx.s.tree.Clear(false)
-		tx.changes++
-	}
-
-	for set, isSync := range tx.s.sync {
-		if isSync {
-			tx.s.sync[set] = false
-			tx.changes++
-		}
-	}
-}
-
-func (tx *Tx) set(kv *KV) {
-	tx.roPanic()
-	prev := tx.s.tree.Get(kv)
-
-	if prev != nil && prev.(*KV).Value.GetHash() == kv.Value.GetHash() {
-		return // not changed
-	}
-
-	tx.s.tree.ReplaceOrInsert(kv)
-	tx.changes++
-}
-
-func (tx *Tx) del(kv *KV) {
-	tx.roPanic()
-	i := tx.s.tree.Delete(kv)
-	if i != nil {
-		tx.changes++
-	}
-}
-
-func (tx *Tx) SetRaw(set Set, path string, value Hashed) {
-	kv := &KV{}
-	kv.Set = set
-	kv.SetPath(path)
-
-	kv.Value = value
-
-	switch v := value.(type) {
-	case *globalv1.NodeInfo:
-		kv.Node = v
-		tx.set(kv)
-
-	case *globalv1.ServiceInfo:
-		kv.Service = v
-		tx.set(kv)
-
-	case *globalv1.EndpointInfo:
-		kv.Endpoint = v
-		tx.set(kv)
-
-	default:
-		panic(fmt.Errorf("unknown value type: %t", v))
-	}
-}
-
-func (tx *Tx) DelRaw(set Set, path string) {
-	kv := &KV{}
-	kv.Set = set
-	kv.SetPath(path)
-
-	tx.del(kv)
-}
-
-// sync funcs
-func (tx *Tx) AllSynced() bool {
-	for _, set := range []Set{Services, Endpoints, Nodes} {
-		if !tx.IsSynced(set) {
-			return false
-		}
-	}
-	return true
-}
-func (tx *Tx) IsSynced(set Set) bool {
-	return tx.s.sync[set]
-}
-func (tx *Tx) SetSync(set Set) {
-	tx.roPanic()
-
-	if !tx.s.sync[set] {
-		tx.s.sync[set] = true
-		tx.changes++
-	}
-}
-
-// Services funcs
-
-func (tx *Tx) SetService(s *localv1.Service) {
-	si := &globalv1.ServiceInfo{
-		Service: s,
-		Hash: serde.Hash(&globalv1.ServiceInfo{
-			Service: s,
-		}),
-	}
-
-	tx.set(&KV{
-		Set:       Services,
-		Namespace: s.Namespace,
-		Name:      s.Name,
-		Value:     si,
-		Service:   si,
-	})
-}
-
-func (tx *Tx) DelService(namespace, name string) {
-	tx.del(&KV{
-		Set:       Services,
-		Namespace: namespace,
-		Name:      name,
-	})
-}
-
-// Endpoints funcs
-
-func (tx *Tx) EachEndpointOfService(namespace, serviceName string, callback func(*globalv1.EndpointInfo)) {
-	tx.s.tree.AscendGreaterOrEqual(&KV{
-		Set:       Endpoints,
-		Namespace: namespace,
-		Name:      serviceName,
-	}, func(i btree.Item) bool {
-		kv := i.(*KV)
-
-		if kv.Set != Endpoints || kv.Namespace != namespace || kv.Name != serviceName {
-			return false
-		}
-
-		callback(kv.Endpoint)
-
-		return true
-	})
-}
-
-// SetEndpointsOfSource replaces ALL endpoints of a single source (add new, update existing, delete removed)
-func (tx *Tx) SetEndpointsOfSource(namespace, sourceName string, eis []*globalv1.EndpointInfo) {
-	tx.roPanic()
-
-	seen := map[uint64]bool{}
-
-	for _, ei := range eis {
-		if ei.Namespace != namespace {
-			panic("inconsistent namespace: " + namespace + " != " + ei.Namespace)
-		}
-		if ei.SourceName != sourceName {
-			panic("inconsistent source: " + sourceName + " != " + ei.SourceName)
-		}
-
-		ei.Hash = serde.Hash(&globalv1.EndpointInfo{
-			Endpoint:   ei.Endpoint,
-			Conditions: ei.Conditions,
-			Topology:   ei.Topology,
-		})
-		seen[ei.Hash] = true
-	}
-
-	// to delete unseen endpoints
-	toDel := make([]*KV, 0)
-
-	tx.s.tree.AscendGreaterOrEqual(&KV{
-		Set:       Endpoints,
-		Namespace: namespace,
-		Source:    sourceName,
-	}, func(i btree.Item) bool {
-		kv := i.(*KV)
-		if kv.Set != Endpoints || kv.Namespace != namespace || kv.Source != sourceName {
-			return false
-		}
-
-		if !seen[kv.Endpoint.Hash] {
-			ei := kv.Endpoint
-			toDel = append(toDel,
-				kv,
-				&KV{ // also remove the reference in the service
-					Set:       Endpoints,
-					Namespace: ei.Namespace,
-					Name:      ei.ServiceName,
-					Source:    ei.SourceName,
-					Key:       kv.Key,
-				})
-		}
-
-		return true
-	})
-
-	for _, toDel := range toDel {
-		tx.del(toDel)
-	}
-
-	// add/update known endpoints
-	for _, ei := range eis {
-		key := strconv.FormatUint(ei.Hash, 16)
-
-		kv := &KV{
-			Set:       Endpoints,
-			Namespace: ei.Namespace,
-			Name:      ei.ServiceName,
-			Source:    ei.SourceName,
-			Key:       key,
-			Value:     ei,
-			Endpoint:  ei,
-		}
-
-		if tx.s.tree.Has(kv) {
-			continue
-		}
-
-		tx.set(kv)
-
-		// also index by source only
-		tx.set(&KV{
-			Set:       Endpoints,
-			Namespace: ei.Namespace,
-			Source:    ei.SourceName,
-			Key:       key,
-			Value:     ei,
-			Endpoint:  ei,
-		})
-	}
-}
-
-func (tx *Tx) DelEndpointsOfSource(namespace, sourceName string) {
-	tx.roPanic()
-
-	toDel := make([]*KV, 0)
-
-	tx.s.tree.AscendGreaterOrEqual(&KV{
-		Set:       Endpoints,
-		Namespace: namespace,
-		Source:    sourceName,
-	}, func(i btree.Item) bool {
-		kv := i.(*KV)
-		if kv.Set != Endpoints || kv.Namespace != namespace || kv.Name != "" || kv.Source != sourceName {
-			return false
-		}
-
-		ei := kv.Endpoint
-
-		toDel = append(toDel, kv, &KV{
-			Set:       Endpoints,
-			Namespace: namespace,
-			Name:      ei.ServiceName,
-			Source:    sourceName,
-			Key:       kv.Key,
-		})
-
-		return true
-	})
-
-	for _, toDel := range toDel {
-		tx.del(toDel)
-	}
-}
-
-func (tx *Tx) SetEndpoint(ei *globalv1.EndpointInfo) {
-	tx.roPanic()
-
-	newHash := serde.Hash(&globalv1.EndpointInfo{
-		Endpoint:   ei.Endpoint,
-		Conditions: ei.Conditions,
-		Topology:   ei.Topology,
-	})
-
-	if ei.Hash == newHash {
-		return // not changed
-	}
-
-	prevKey := strconv.FormatUint(ei.Hash, 16)
-
-	tx.del(&KV{
-		Set:       Endpoints,
-		Namespace: ei.Namespace,
-		Name:      ei.ServiceName,
-		Source:    ei.SourceName,
-		Key:       prevKey,
-	})
-
-	// also delete by source only
-	tx.del(&KV{
-		Set:       Endpoints,
-		Namespace: ei.Namespace,
-		Source:    ei.SourceName,
-		Key:       prevKey,
-	})
-
-	// update key
-	ei.Hash = newHash
-	key := strconv.FormatUint(ei.Hash, 16)
-
-	tx.set(&KV{
-		Set:       Endpoints,
-		Namespace: ei.Namespace,
-		Name:      ei.ServiceName,
-		Source:    ei.SourceName,
-		Key:       key,
-		Value:     ei,
-		Endpoint:  ei,
-	})
-
-	// also index by source only
-	tx.set(&KV{
-		Set:       Endpoints,
-		Namespace: ei.Namespace,
-		Source:    ei.SourceName,
-		Key:       key,
-		Value:     ei,
-		Endpoint:  ei,
-	})
-
-}
-
-// Nodes funcs
-
-func (tx *Tx) GetNode(name string) *globalv1.Node {
-	i := tx.s.tree.Get(&KV{Set: Nodes, Name: name})
-
-	if i == nil {
-		return nil
-	}
-
-	return i.(*KV).Node.Node
-}
-
-func (tx *Tx) SetNode(n *globalv1.Node) {
-	ni := &globalv1.NodeInfo{
-		Node: n,
-		Hash: serde.Hash(n),
-	}
-
-	tx.set(&KV{
-		Set:   Nodes,
-		Name:  n.Name,
-		Node:  ni,
-		Value: ni,
-	})
-}
-
-func (tx *Tx) DelNode(name string) {
-	tx.del(&KV{
-		Set:  Nodes,
-		Name: name,
-	})
 }

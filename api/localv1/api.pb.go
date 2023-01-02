@@ -352,7 +352,7 @@ type Ref struct {
 	unknownFields protoimpl.UnknownFields
 
 	Set  Set    `protobuf:"varint,1,opt,name=Set,proto3,enum=localv1.Set" json:"Set,omitempty"`
-	Path string `protobuf:"bytes,2,opt,name=Path,proto3" json:"Path,omitempty"`
+	Path string `protobuf:"bytes,2,opt,name=GetPath,proto3" json:"GetPath,omitempty"`
 }
 
 func (x *Ref) Reset() {

@@ -19,8 +19,8 @@ package endpoints
 import (
 	"fmt"
 
-	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/api/globalv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/server/proxystore"
 )
 
@@ -62,8 +62,8 @@ func ExampleForNodeWithTopology() {
 	})
 
 	store.View(0, func(tx *proxystore.Tx) {
-		tx.Each(proxystore.Services, func(kv *proxystore.KV) (cont bool) {
-			fmt.Print("service ", kv.Name, ":\n")
+		tx.Each(proxystore.Services, func(item *proxystore.BTreeItem) (cont bool) {
+			fmt.Print("service ", item.Name, ":\n")
 			tx.EachEndpointOfService("test", "test", func(epi *globalv1.EndpointInfo) {
 				fmt.Print("  - ep ", epi.Endpoint, " (", epi.Topology, ")\n")
 			})
@@ -72,10 +72,10 @@ func ExampleForNodeWithTopology() {
 
 		for _, host := range []string{"host-a", "host-b"} {
 			fmt.Print("host ", host, ":\n")
-			tx.Each(proxystore.Services, func(kv *proxystore.KV) (cont bool) {
-				fmt.Print("  - service ", kv.Name, ":\n")
+			tx.Each(proxystore.Services, func(item *proxystore.BTreeItem) (cont bool) {
+				fmt.Print("  - service ", item.Name, ":\n")
 
-				endpoints := ForNode(tx, kv.Service, host)
+				endpoints := ForNode(tx, item.Service, host)
 				for _, epi := range endpoints {
 					fmt.Print("    - ep ", epi.Endpoint.IPs, "\n")
 				}

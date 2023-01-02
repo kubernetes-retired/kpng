@@ -86,7 +86,7 @@ func (s *jobRun) Update(tx *proxystore.Tx, w *watchstate.WatchState) {
 	sepsAnonymous := w.StoreForN(localv1.Set_EndpointsSet, 1)
 
 	// set all new values
-	tx.Each(proxystore.Services, func(kv *proxystore.KV) bool {
+	tx.Each(proxystore.Services, func(kv *proxystore.BTreeItem) bool {
 		key := []byte(kv.Namespace + "/" + kv.Name)
 
 		if trace.IsEnabled() {

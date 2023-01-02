@@ -25,8 +25,8 @@ import (
 
 	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/api/globalv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/server/proxystore"
 )
 
@@ -58,12 +58,12 @@ func (j *Job) Run(ctx context.Context) (err error) {
 				return
 			}
 
-			tx.Each(proxystore.Nodes, func(kv *proxystore.KV) bool {
+			tx.Each(proxystore.Nodes, func(kv *proxystore.BTreeItem) bool {
 				state.Nodes = append(state.Nodes, kv.Node.Node)
 				return true
 			})
 
-			tx.Each(proxystore.Services, func(kv *proxystore.KV) bool {
+			tx.Each(proxystore.Services, func(kv *proxystore.BTreeItem) bool {
 				sae := ServiceAndEndpoints{
 					Service: kv.Service.Service,
 				}

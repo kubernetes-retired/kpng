@@ -53,7 +53,7 @@ func InitFlags(flagSet *flag.FlagSet) {
 
 	tlsFlags = tlsflags.Bind(flagSet)
 
-	flagSet.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster. Defaults to envvar KUBECONFIG.")
+	flagSet.StringVar(&kubeconfig, "kubeconfig", "", "GetPath to a kubeconfig. Only required if out-of-cluster. Defaults to envvar KUBECONFIG.")
 	flagSet.StringVar(&serverURL, "server", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flagSet.BoolVar(&ManageEndpointSlices, "with-endpoint-slices", ManageEndpointSlices, "Enable EndpointSlice")
 

@@ -27,17 +27,20 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 
 	proxystore "sigs.k8s.io/kpng/server/proxystore"
 )
 
+// watchResyncTime defines the resynchronization period for the informers which watch services, endpoints, and so on.
+// likely you do not need to change this, so it is a constant.
+const watchResyncTime = time.Second * 30
+
 // K8sConfig is the data structure that users edit to influence
 // the way that KPNG watches the K8s APIServer.
 type K8sConfig struct {
 	// UseSlices turns on endpoint slices.  This can go away eventually.
-	UseSlices     bool
+	UseSlices bool
 
 	// ServiceProxyName identifies a "different" service proxy, i.e. tells
 	// KPNG we're not handling this service.
@@ -46,7 +49,7 @@ type K8sConfig struct {
 	// Usually these are not specifically set by users...
 
 	// ServiceLabelGlobs tells the proxy to filter certain services by label.
-	ServiceLabelGlobs      []string
+	ServiceLabelGlobs []string
 	// ServiceAnnotationGlobs tells the proxy to filter certain services by label.
 	ServiceAnnonationGlobs []string
 
@@ -83,12 +86,12 @@ func (j Job) Run(ctx context.Context) {
 	stopCh := ctx.Done()
 
 	// start informers
-	factory := informers.NewSharedInformerFactoryWithOptions(j.Kube, time.Second*30)
+	factory := informers.NewSharedInformerFactoryWithOptions(j.Kube, watchDuration)
 	factory.Start(stopCh)
 
 	labelSelector := j.getLabelSelector().String()
 	klog.Info("service label selector: ", labelSelector)
-	svcFactory := informers.NewSharedInformerFactoryWithOptions(j.Kube, time.Second*30,
+	svcFactory := informers.NewSharedInformerFactoryWithOptions(j.Kube, watchDuration,
 		informers.WithTweakListOptions(func(options *metav1.ListOptions) { options.LabelSelector = labelSelector }))
 	svcFactory.Start(stopCh)
 
@@ -96,27 +99,20 @@ func (j Job) Run(ctx context.Context) {
 	coreFactory := factory.Core().V1()
 
 	servicesInformer := svcFactory.Core().V1().Services().Informer()
-	servicesInformer.AddEventHandler(&serviceEventHandler{j.eventHandler(servicesInformer)})
+	servicesInformer.AddEventHandler(&serviceEventHandler{NewEventHandler(servicesInformer, j.Config, j.Store)})
 	go servicesInformer.Run(stopCh)
 
 	nodesInformer := coreFactory.Nodes().Informer()
-	nodesInformer.AddEventHandler(&nodeEventHandler{j.eventHandler(nodesInformer)})
+	nodesInformer.AddEventHandler(&nodeEventHandler{NewEventHandler(nodesInformer, j.Config, j.Store)})
+
 	go nodesInformer.Run(stopCh)
 
 	slicesInformer := factory.Discovery().V1().EndpointSlices().Informer()
-	slicesInformer.AddEventHandler(&sliceEventHandler{j.eventHandler(slicesInformer)})
+	slicesInformer.AddEventHandler(&sliceEventHandler{NewEventHandler(slicesInformer, j.Config, j.Store)})
 	go slicesInformer.Run(stopCh)
 
 	<-stopCh
 	j.Store.Close()
-}
-
-func (j Job) eventHandler(informer cache.SharedIndexInformer) eventHandler {
-	return eventHandler{
-		k8sConfig: j.Config,
-		s:         j.Store,
-		informer:  informer,
-	}
 }
 
 func (j Job) getLabelSelector() labels.Selector {

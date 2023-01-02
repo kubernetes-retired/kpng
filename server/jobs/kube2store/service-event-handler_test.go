@@ -14,8 +14,8 @@ func TestServiceEventHandlerTrafficPolicy(t *testing.T) {
 
 	handler := serviceEventHandler{
 		eventHandler: eventHandler{
-			s:       store,
-			syncSet: true,
+			proxyStore: store,
+			syncSet:    true,
 			k8sConfig:  &K8sConfig{
 				// defaults
 			},
@@ -49,7 +49,7 @@ func TestServiceEventHandlerTrafficPolicy(t *testing.T) {
 		handler.onChange(svc)
 
 		store.View(0, func(tx *proxystore.Tx) {
-			tx.Each(proxystore.Services, func(kv *proxystore.KV) bool {
+			tx.Each(proxystore.Services, func(kv *proxystore.BTreeItem) bool {
 				if kv.Service.Service.InternalTrafficToLocal != test.ExpectedInternal {
 					t.Errorf("test[%d]: internal: expected %v, got %v", testIdx, test.ExpectedInternal, kv.Service.Service.InternalTrafficToLocal)
 				}

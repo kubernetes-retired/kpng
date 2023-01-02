@@ -19,11 +19,11 @@ package kube2store
 import (
 	"sort"
 
-	"k8s.io/klog/v2"
 	discovery "k8s.io/api/discovery/v1"
+	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/api/globalv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/server/proxystore"
 )
 
@@ -102,7 +102,7 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 		infos = append(infos, info)
 	}
 
-	h.s.Update(func(tx *proxystore.Tx) {
+	h.proxyStore.Update(func(tx *proxystore.Tx) {
 		tx.SetEndpointsOfSource(eps.Namespace, eps.Name, infos)
 		h.updateSync(proxystore.Endpoints, tx)
 
@@ -123,7 +123,7 @@ func (h sliceEventHandler) OnUpdate(oldObj, newObj interface{}) {
 func (h sliceEventHandler) OnDelete(oldObj interface{}) {
 	eps := oldObj.(*discovery.EndpointSlice)
 
-	h.s.Update(func(tx *proxystore.Tx) {
+	h.proxyStore.Update(func(tx *proxystore.Tx) {
 		tx.DelEndpointsOfSource(eps.Namespace, eps.Name)
 		h.updateSync(proxystore.Endpoints, tx)
 	})

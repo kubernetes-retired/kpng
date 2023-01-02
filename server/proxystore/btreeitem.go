@@ -24,32 +24,41 @@ import (
 	"sigs.k8s.io/kpng/api/globalv1"
 )
 
-type KV struct {
-	Sync      *bool
+// BTreeItem is the item that KPNG stores in the underlying BTree representation is used to sort, iterate, and lookup
+// objects from the overall global data model.
+type BTreeItem struct {
+	// TODO: What is this for?
+	Sync *bool
+
+	// The Metadata about the Btree item that we use to sort and/or lookup...
 	Set       Set
 	Namespace string
 	Name      string
 	Source    string
 	Key       string
+	Value     Hashed
 
-	Value Hashed
-
+	// The BTreeItem'proxyStore underlying information content...
 	Service  *globalv1.ServiceInfo
 	Endpoint *globalv1.EndpointInfo
 	Node     *globalv1.NodeInfo
 }
 
-func (a *KV) Path() string {
+// GetPath returns the fully qualified
+func (a *BTreeItem) GetPath() string {
 	return strings.Join([]string{a.Namespace, a.Name, a.Source, a.Key}, "|")
 }
 
-func (a *KV) SetPath(path string) {
+func (a *BTreeItem) SetFromPath(path string) {
 	p := strings.Split(path, "|")
 	a.Namespace, a.Name, a.Source, a.Key = p[0], p[1], p[2], p[3]
 }
 
-func (a *KV) Less(i btree.Item) bool {
-	b := i.(*KV)
+// Less implements the btree'proxyStore specification of the Btree Item interface (https://pkg.go.dev/github.com/google/btree#Item).
+// The items are n-sorted via set, namespace, name, and source.  Thus, the items type (i.e. Endpoint , Service, ...) is
+// the first category for sorting, and the  least significant category of sorting is the Source of the item.
+func (a *BTreeItem) Less(i btree.Item) bool {
+	b := i.(*BTreeItem)
 
 	if a.Set != b.Set {
 		return a.Set < b.Set
@@ -60,6 +69,9 @@ func (a *KV) Less(i btree.Item) bool {
 	if a.Name != b.Name {
 		return a.Name < b.Name
 	}
+
+	// TODO we should add a comment about when this field, actually matters ?  I dont think we use it for any KPNG logic,
+	// but i do see it read/copied around alot.
 	if a.Source != b.Source {
 		return a.Source < b.Source
 	}

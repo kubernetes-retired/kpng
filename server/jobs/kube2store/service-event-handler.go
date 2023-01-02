@@ -116,7 +116,7 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 		service.Ports = append(service.Ports, p)
 	}
 
-	h.s.Update(func(tx *proxystore.Tx) {
+	h.proxyStore.Update(func(tx *proxystore.Tx) {
 		klog.V(3).Info("service ", service.Namespace, "/", service.Name)
 		tx.SetService(service)
 		h.updateSync(proxystore.Services, tx)
@@ -134,7 +134,7 @@ func (h *serviceEventHandler) OnUpdate(oldObj, newObj interface{}) {
 func (h *serviceEventHandler) OnDelete(oldObj interface{}) {
 	svc := oldObj.(*v1.Service)
 
-	h.s.Update(func(tx *proxystore.Tx) {
+	h.proxyStore.Update(func(tx *proxystore.Tx) {
 		tx.DelService(svc.Namespace, svc.Name)
 		h.updateSync(proxystore.Services, tx)
 	})

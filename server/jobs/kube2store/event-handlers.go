@@ -21,11 +21,22 @@ import (
 	proxystore "sigs.k8s.io/kpng/server/proxystore"
 )
 
+// NewEventHandler creates an eventHandler which will
+func NewEventHandler(informer cache.SharedIndexInformer, config *K8sConfig, store *proxystore.Store) eventHandler {
+	return eventHandler{
+		k8sConfig:  config,
+		proxyStore: store,
+		informer:   informer,
+	}
+}
+
 type eventHandler struct {
-	k8sConfig *K8sConfig
-	s         *proxystore.Store
-	informer  cache.SharedIndexInformer
-	syncSet   bool
+	k8sConfig  *K8sConfig
+	proxyStore *proxystore.Store
+	informer   cache.SharedIndexInformer
+
+	// syncSet is the flag we use for indicating wether the eventHandler has processed all events.
+	syncSet bool
 }
 
 func (h *eventHandler) updateSync(set proxystore.Set, tx *proxystore.Tx) {
@@ -33,6 +44,8 @@ func (h *eventHandler) updateSync(set proxystore.Set, tx *proxystore.Tx) {
 		return
 	}
 
+	// We may not be in sync w/ the K8s API, so we'll check here.
+	// We know that we are synchronized with the kubernetes API iff the underlying informer "HasSynced"...
 	if h.informer.HasSynced() {
 		tx.SetSync(set)
 		h.syncSet = true

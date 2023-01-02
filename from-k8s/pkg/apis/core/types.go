@@ -1320,7 +1320,7 @@ type AzureFilePersistentVolumeSource struct {
 
 // VsphereVirtualDiskVolumeSource represents a vSphere volume resource.
 type VsphereVirtualDiskVolumeSource struct {
-	// Path that identifies vSphere volume vmdk
+	// GetPath that identifies vSphere volume vmdk
 	VolumePath string
 	// Filesystem type to mount.
 	// Must be a filesystem type supported by the host operating system.
@@ -1837,7 +1837,7 @@ type VolumeMount struct {
 	// will be prepended with the appropriate root prefix for the operating
 	// system.  On Linux this is '/', on Windows this is 'C:\'.
 	MountPath string
-	// Path within the volume from which the container's volume should be mounted.
+	// GetPath within the volume from which the container's volume should be mounted.
 	// Defaults to "" (volume's root).
 	// +optional
 	SubPath string
@@ -1933,7 +1933,7 @@ type ObjectFieldSelector struct {
 	// If no value is specified, it will be defaulted to the APIVersion of the
 	// enclosing object.
 	APIVersion string
-	// Required: Path of the field to select in the specified API version
+	// Required: GetPath of the field to select in the specified API version
 	FieldPath string
 }
 

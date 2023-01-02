@@ -54,7 +54,7 @@ func kube2storeCmd() *cobra.Command {
 	}
 
 	flags := k2sCmd.PersistentFlags()
-	flags.StringVar(&kubeConfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster. Defaults to envvar KUBECONFIG.")
+	flags.StringVar(&kubeConfig, "kubeconfig", "", "GetPath to a kubeconfig. Only required if out-of-cluster. Defaults to envvar KUBECONFIG.")
 	flags.StringVar(&kubeServer, "server", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 
 	// k2sCfg is the configuration of how we interact w/ and watch the K8s APIServer
@@ -102,7 +102,7 @@ func kube2storeCmdSetup(k2sCfg *kube2store.K8sConfig) (ctx context.Context, stor
 	return
 }
 
-func kube2storeCmdRun(kubeClient *kubernetes.Clientset, backend *proxystore.Store, k2sCfg *kube2store.K8sConfig, ctx context.Context ) {
+func kube2storeCmdRun(kubeClient *kubernetes.Clientset, backend *proxystore.Store, k2sCfg *kube2store.K8sConfig, ctx context.Context) {
 	// start kube2store
 	go kube2store.Job{
 		Kube:   kubeClient,

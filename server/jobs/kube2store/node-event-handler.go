@@ -29,6 +29,7 @@ const (
 
 type nodeEventHandler struct{ eventHandler }
 
+// OnAdd implements the K8s watch interface.
 func (h *nodeEventHandler) OnAdd(obj interface{}) {
 	node := obj.(*v1.Node)
 
@@ -43,22 +44,24 @@ func (h *nodeEventHandler) OnAdd(obj interface{}) {
 		Annotations: globsFilter(node.Annotations, h.k8sConfig.NodeAnnotationGlobs),
 	}
 
-	h.s.Update(func(tx *proxystore.Tx) {
+	//
+	h.proxyStore.Update(func(tx *proxystore.Tx) {
 		tx.SetNode(n)
-
 		h.updateSync(proxystore.Nodes, tx)
 	})
 }
 
+// OnUpdate implements the K8s watch interface.
 func (h *nodeEventHandler) OnUpdate(oldObj, newObj interface{}) {
 	// same as adding
 	h.OnAdd(newObj)
 }
 
+// OnDelete implements the K8s watch interface.
 func (h *nodeEventHandler) OnDelete(oldObj interface{}) {
 	node := oldObj.(*v1.Node)
 
-	h.s.Update(func(tx *proxystore.Tx) {
+	h.proxyStore.Update(func(tx *proxystore.Tx) {
 		tx.DelNode(node.Name)
 		h.updateSync(proxystore.Nodes, tx)
 	})
