@@ -54,7 +54,7 @@ func (a *BTreeItem) SetFromPath(path string) {
 	a.Namespace, a.Name, a.Source, a.Key = p[0], p[1], p[2], p[3]
 }
 
-// Less implements the btree'proxyStore specification of the Btree Item interface (https://pkg.go.dev/github.com/google/btree#Item).
+// Less implements the Btree Item interface, such that the Btree can hold all (service, endpoint, whatever) objects that the proxystore needs to find, insert, update, or delete efficiently (https://pkg.go.dev/github.com/google/btree#Item).
 // The items are n-sorted via set, namespace, name, and source.  Thus, the items type (i.e. Endpoint , Service, ...) is
 // the first category for sorting, and the  least significant category of sorting is the Source of the item.
 func (a *BTreeItem) Less(i btree.Item) bool {
