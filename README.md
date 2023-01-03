@@ -65,7 +65,9 @@ TODO add some lines about what to find ./hack
 ### Code walkthrough
 
 #### The KPNG kube ... command path
+We start by looking at the typical KPNG invocation, where we watch the Kubernetes API Server and forward it's events down to an NFT proxy backend on all nodes. 
 
+The below command would run, generally, in a daemonset:
 ```go
 kube --kubeconfig=/var/lib/kpng/kubeconfig.conf to-local to-nft
 ```
