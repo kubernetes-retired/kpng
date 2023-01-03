@@ -75,7 +75,7 @@ func ebpfSetup() ebpfController {
 		log.Fatal(err)
 	}
 
-	klog.Infof("Cgroup GetPath is %s", cgroupPath)
+	klog.Infof("Cgroup Path is %s", cgroupPath)
 
 	// Link the proxy program to the default cgroup.
 	l, err := link.AttachCgroup(link.CgroupOptions{
