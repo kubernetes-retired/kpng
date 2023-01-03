@@ -82,7 +82,7 @@ The way that the *to-nft* subcommand is built up at runtime, when KPNG introspec
 
 - On startup, before parsing arguments, KPNG imports several *backend* packages
 - these imports result in `init()` functions being called,
-- the `init()` functions in those backends then go on to call the `Register()` function in the `backendcmd` pacakge.
+- the `init()` functions in those backends then calls out to the `Register()` function in the `backendcmd` pacakge.
 ```go
     // scorecmds_linux.go calls the `init()` functions in all the following packages... 
     import (
