@@ -54,7 +54,7 @@ func kube2storeCmd() *cobra.Command {
 	}
 
 	flags := k2sCmd.PersistentFlags()
-	flags.StringVar(&kubeConfig, "kubeconfig", "", "GetPath to a kubeconfig. Only required if out-of-cluster. Defaults to envvar KUBECONFIG.")
+	flags.StringVar(&kubeConfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster. Defaults to envvar KUBECONFIG.")
 	flags.StringVar(&kubeServer, "server", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 
 	// k2sCfg is the configuration of how we interact w/ and watch the K8s APIServer
