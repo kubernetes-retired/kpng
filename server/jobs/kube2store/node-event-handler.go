@@ -44,7 +44,6 @@ func (h *nodeEventHandler) OnAdd(obj interface{}) {
 		Annotations: globsFilter(node.Annotations, h.k8sConfig.NodeAnnotationGlobs),
 	}
 
-	//
 	h.proxyStore.Update(func(tx *proxystore.Tx) {
 		tx.SetNode(n)
 		h.updateSync(proxystore.Nodes, tx)
