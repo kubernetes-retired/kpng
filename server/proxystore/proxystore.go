@@ -108,7 +108,7 @@ func (s *Store) Update(update func(tx *Tx)) {
 	}
 }
 
-// View visits all nodes of the underlying stores tree and allows you to see all the transactions
+// View visits all nodes of the underlying store and runs the lambda you send it against the store.
 // that have happened.
 func (s *Store) View(afterRev uint64, view func(tx *Tx)) (rev uint64, closed bool) {
 	s.c.L.Lock()
