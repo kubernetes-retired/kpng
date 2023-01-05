@@ -54,15 +54,23 @@ help:
 go_mod_tests_requirement:
 	go install golang.org/x/lint/golint@latest
 
-modd_requirements:
+modd_tool:
 	go install github.com/cortesi/modd/cmd/modd@latest
+
+#modd_dependecies installs protoc and some necessary libraries(libnl-3-dev and libnl-genl-3-dev)
+modd_dependecies:
+	./makefile_modd_dependecies.sh
+
+protocol_buffers_plugin:
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
 # Development mode - SKIP E2E
 # Most of users use IPV4 and iptables as backend
 # let's use it as default values
 
 ## Starts modd with the template available in-tree
-modd:
+modd: modd_tool modd_dependecies protocol_buffers_plugin
 	modd -f modd.conf.template
 
 ## Creates k8s cluster with IPV4 and IPTABLES (No E2E involved)
