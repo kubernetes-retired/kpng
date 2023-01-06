@@ -18,20 +18,18 @@ TILT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 SCRIPT_DIR=$(dirname $TILT_DIR)
 BIN_DIR=$(dirname $SCRIPT_DIR)/temp/tilt/bin 
 
-KIND="kindest/node:v1.22.13@sha256:4904eda4d6e64b402169797805b8ec01f50133960ad6c19af45173a27eadf959"
-
 source ${SCRIPT_DIR}/utils.sh 
 source ${SCRIPT_DIR}/common.sh 
 
 # overwrrite the default name-space(kube-system)
 NAMESPACE="tilt-dev"
 
-echo $NAMESPACE
+echo "installing kpng in $NAMESPACE namespace"
 
 function create_cluster {
     ###########################################################################
     # Description:                                                            #
-    # create cluster                                          #
+    # create cluster                                                          #
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: ip_family                                                       #
@@ -39,6 +37,7 @@ function create_cluster {
     [ $# -eq 1 ]
     if_error_exit "set_host $# Wrong number of arguments to ${FUNCNAME[0]}"
     local ip_family="${1}"
+    local deployment_model=${2}
     
     ${BIN_DIR}/kind version
 
@@ -65,9 +64,8 @@ cat <<EOF >hack/tilt/kind.yaml
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 networking:
-    kubeProxyMode: "none"
+    kubeProxyMode: none
     apiServerAddress: "0.0.0.0"
-    disableDefaultCNI: true
     ipFamily: "${ip_family}"
     podSubnet: "${CLUSTER_CIDR}"
     serviceSubnet: "${SERVICE_CLUSTER_IP_RANGE}"
@@ -78,19 +76,20 @@ nodes:
 EOF
 
     $BIN_DIR/kind create cluster \
-      --name "${CLUSTER_NAME}"                     \
-      --image "${KINDEST_NODE_IMAGE}":"${K8S_VERSION}"    \
+      --name "${CLUSTER_NAME}" \
+      --image "${KINDEST_NODE_IMAGE}":"${K8S_VERSION}" \
       --retain \
       --wait=1m \
       --config=hack/tilt/kind.yaml 
     if_error_exit "cannot create kind cluster ${CLUSTER_NAME}"
+
+    rm hack/tilt/kind.yaml
 
     $BIN_DIR/kubectl create namespace $NAMESPACE
     $BIN_DIR/kubectl -n $NAMESPACE create sa $SERVICE_ACCOUNT_NAME
     $BIN_DIR/kubectl create clusterrolebinding $CLUSTER_ROLE_BINDING_NAME --clusterrole=$CLUSTER_ROLE_NAME --serviceaccount="${NAMESPACE}:${SERVICE_ACCOUNT_NAME}"
     $BIN_DIR/kubectl -n $NAMESPACE create cm $CONFIG_MAP_NAME --from-file ${SCRIPT_DIR}/kubeconfig.conf
     
-    install_calico $BIN_DIR
     echo "****************************************************"
 }
 
@@ -111,8 +110,11 @@ function configure_env_vars {
     local backend="${2}"
     local deployment_model="${3}"
 
-    SERVER_ARGS="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', '--exportMetrics=0.0.0.0:9099', 'to-api', '--listen=unix:///k8s/proxy.sock'"
-    BACKEND_ARGS="'local', '--api=${KPNG_SERVER_ADDRESS}', '--exportMetrics=0.0.0.0:9098', 'to-${backend}', '--v=${KPNG_DEBUG_LEVEL}'"
+    SERVER_ARGS="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', '--exportMetrics=0.0.0.0:9099', 'to-api'"
+    BACKEND_ARGS="'local', '--exportMetrics=0.0.0.0:9098', 'to-${backend}', '--v=${KPNG_DEBUG_LEVEL}'"
+    if [[ "$deployment_model" = "single-process-per-node" ]]; then
+        BACKEND_ARGS="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', '--exportMetrics=0.0.0.0:9099', 'to-local', 'to-${backend}', '--v=${KPNG_DEBUG_LEVEL}'"
+    fi
     
     if [[ "${backend}" == "nft" ]]; then
         case $ip_family in
@@ -124,7 +126,7 @@ function configure_env_vars {
     BACKEND_ARGS="[$BACKEND_ARGS]"
     SERVER_ARGS="[$SERVER_ARGS]"
 
-cat <<EOF >tilt.env
+cat <<EOF >hack/tilt/tilt.env
 kpng_image=kpng 
 image_pull_policy=IfNotPresent 
 backend=${backend}
@@ -174,12 +176,14 @@ function main {
     local backend="${2}"
     local deployment_model="${3}"
     
-    
     mkdir -p ${BIN_DIR}/
     # TODO: change os variable
     install_binaries "${BIN_DIR}" "${K8S_VERSION}" "${OS}"
 
-    set_host_network_settings "${ip_family}"
+    if [[ "${OS}" = "linux" ]]; then
+        set_host_network_settings "${ip_family}"
+        verify_host_network_settings "${ip_family}"
+    fi
 
     # ip family verification for ebpf
     if [ "${backend}" == "ebpf" ] ; then
@@ -189,14 +193,11 @@ function main {
         fi
     fi
 
-    verify_host_network_settings "${ip_family}"
-
     create_cluster "${ip_family}"
-
     configure_env_vars "${ip_family}" "${backend}" "${deployment_model}"
 }
 
-while getopts "i:b:m" flag
+while getopts ":i:b:m:" flag
 do
     case "${flag}" in
         i ) ip_family="${OPTARG}" ;;

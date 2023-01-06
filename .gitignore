@@ -9,3 +9,4 @@ modd.conf
 temp/
 .vscode/
 kpng-bin/
+tilt.env
