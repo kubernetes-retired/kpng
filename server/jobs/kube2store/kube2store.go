@@ -37,7 +37,7 @@ import (
 // the way that KPNG watches the K8s APIServer.
 type K8sConfig struct {
 	// UseSlices turns on endpoint slices.  This can go away eventually.
-	UseSlices     bool
+	UseSlices bool
 
 	// ServiceProxyName identifies a "different" service proxy, i.e. tells
 	// KPNG we're not handling this service.
@@ -46,7 +46,7 @@ type K8sConfig struct {
 	// Usually these are not specifically set by users...
 
 	// ServiceLabelGlobs tells the proxy to filter certain services by label.
-	ServiceLabelGlobs      []string
+	ServiceLabelGlobs []string
 	// ServiceAnnotationGlobs tells the proxy to filter certain services by label.
 	ServiceAnnonationGlobs []string
 
