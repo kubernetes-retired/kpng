@@ -26,7 +26,7 @@ import (
 	"sigs.k8s.io/kpng/server/pkg/apiwatch"
 	"sigs.k8s.io/kpng/server/proxystore"
 
-	"sigs.k8s.io/kpng/cmd/kpng/storecmds"
+	"sigs.k8s.io/kpng/cmd/kpng/builder"
 )
 
 var (
@@ -54,9 +54,9 @@ func api2storeCmd() *cobra.Command {
 	run := func() {
 		api2storeCmdRun(ctx, store)
 	}
-	api2sCmd.AddCommand(storecmds.ToAPICmd(ctx, store, nil, run))
-	api2sCmd.AddCommand(storecmds.ToFileCmd(ctx, store, nil, run))
-	api2sCmd.AddCommand(storecmds.ToLocalCmd(ctx, store, nil, run))
+	api2sCmd.AddCommand(builder.ToAPICmd(ctx, store, nil, run))
+	api2sCmd.AddCommand(builder.ToFileCmd(ctx, store, nil, run))
+	api2sCmd.AddCommand(builder.ToLocalCmd(ctx, store, nil, run))
 
 	return api2sCmd
 }

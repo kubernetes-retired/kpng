@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os"
 
-	"sigs.k8s.io/kpng/cmd/kpng/storecmds"
+	"sigs.k8s.io/kpng/cmd/kpng/builder"
 
 	"github.com/spf13/cobra"
 
@@ -68,9 +68,9 @@ func kube2storeCmd() *cobra.Command {
 	run := func() {
 		kube2storeCmdRun(ctx, store)
 	}
-	k2sCmd.AddCommand(storecmds.ToAPICmd(ctx, store, kube2storeCmdSetup, run))
-	k2sCmd.AddCommand(storecmds.ToFileCmd(ctx, store, kube2storeCmdSetup, run))
-	k2sCmd.AddCommand(storecmds.ToLocalCmd(ctx, store, kube2storeCmdSetup, run))
+	k2sCmd.AddCommand(builder.ToAPICmd(ctx, store, kube2storeCmdSetup, run))
+	k2sCmd.AddCommand(builder.ToFileCmd(ctx, store, kube2storeCmdSetup, run))
+	k2sCmd.AddCommand(builder.ToLocalCmd(ctx, store, kube2storeCmdSetup, run))
 
 	return k2sCmd
 }

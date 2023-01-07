@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/kpng/server/jobs/file2store"
 	"sigs.k8s.io/kpng/server/proxystore"
 
-	"sigs.k8s.io/kpng/cmd/kpng/storecmds"
+	"sigs.k8s.io/kpng/cmd/kpng/builder"
 )
 
 // FIXME separate package
@@ -49,9 +49,9 @@ func file2storeCmd() *cobra.Command {
 	run := func() {
 		file2storeCmdRun(ctx, store)
 	}
-	f2sCmd.AddCommand(storecmds.ToAPICmd(ctx, store, nil, run))
-	f2sCmd.AddCommand(storecmds.ToFileCmd(ctx, store, nil, run))
-	f2sCmd.AddCommand(storecmds.ToLocalCmd(ctx, store, nil, run))
+	f2sCmd.AddCommand(builder.ToAPICmd(ctx, store, nil, run))
+	f2sCmd.AddCommand(builder.ToFileCmd(ctx, store, nil, run))
+	f2sCmd.AddCommand(builder.ToLocalCmd(ctx, store, nil, run))
 
 	return f2sCmd
 }
