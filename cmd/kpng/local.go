@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"sigs.k8s.io/kpng/client/localsink"
-	"sigs.k8s.io/kpng/cmd/kpng/storecmds"
+	"sigs.k8s.io/kpng/cmd/kpng/builder"
 	"sigs.k8s.io/kpng/server/jobs/api2local"
 )
 
@@ -36,7 +36,7 @@ func local2sinkCmd() *cobra.Command {
 	job := api2local.New(nil)
 	job.BindFlags(flags)
 
-	cmd.AddCommand(storecmds.LocalCmds(func(sink localsink.Sink) (err error) {
+	cmd.AddCommand(builder.LocalCmds(func(sink localsink.Sink) (err error) {
 		ctx := setupGlobal()
 		job.Sink = sink
 		job.Run(ctx)
