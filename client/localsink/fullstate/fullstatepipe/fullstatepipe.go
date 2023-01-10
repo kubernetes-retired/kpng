@@ -66,7 +66,7 @@ func (pipe *Pipe) Callback(ch <-chan *client.ServiceEndpoints) {
 		}
 
 		for _, stage := range pipe.stages {
-			myCh := make(chan *client.ServiceEndpoints, 1)
+			myCh := make(chan *client.ServiceEndpoints)
 			go func() {
 				for _, item := range buf {
 					myCh <- item
