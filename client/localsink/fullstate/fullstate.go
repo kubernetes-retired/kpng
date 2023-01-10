@@ -108,7 +108,7 @@ func (s *Sink) Send(op *localv1.OpItem) (err error) {
 		s.data.Delete(kv{Path: op.GetDelete().Path})
 
 	case *localv1.OpItem_Sync:
-		results := make(chan *ServiceEndpoints, 1)
+		results := make(chan *ServiceEndpoints)
 
 		go func() {
 			defer close(results)

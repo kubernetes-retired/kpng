@@ -78,7 +78,7 @@ func NewServer() (srv *Server, err error) {
 	}
 
 	srv = &Server{
-		QuitCh: make(chan struct{}, 1),
+		QuitCh: make(chan struct{}),
 		Store:  proxystore.New(),
 	}
 

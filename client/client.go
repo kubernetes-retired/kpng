@@ -147,7 +147,7 @@ func (epc *EndpointsClient) CancelOnSignals() {
 // CancelOn make the given signals to cancel this client.
 func (epc *EndpointsClient) CancelOn(signals ...os.Signal) {
 	go func() {
-		c := make(chan os.Signal, 1)
+		c := make(chan os.Signal)
 		signal.Notify(c, signals...)
 
 		sig := <-c
