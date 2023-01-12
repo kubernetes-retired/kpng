@@ -778,7 +778,7 @@ function main {
     local run_tests_on_existing_cluster="${13}"
     local export_metrics="${14}"
 
-    [ "${cluster_count}" -ge "1" ]
+[ "${cluster_count}" -ge "1" ]
     if_error_exit "cluster_count must be larger or equal to one"
 
 
@@ -870,11 +870,12 @@ function main {
            print_reports "${ip_family}" "${backend}" "${e2e_dir}" "-${suffix}" "${cluster_count}"
         fi
     fi
+
     if ${devel_mode} ; then
        echo -e "\n+=====================================================================================+"
        echo -e "\t\tDeveloper mode no test run!"
        echo -e "+=====================================================================================+"
-    elif ! ${ci_mode} && ${erase_clusters} ; then
+    elif ! ${ci_mode}; then
         delete_kind_clusters "${bin_dir}" "${ip_family}" "${backend}" "${suffix}" "${cluster_count}"
     fi
 }
