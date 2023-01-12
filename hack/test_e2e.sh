@@ -778,7 +778,7 @@ function main {
     local run_tests_on_existing_cluster="${13}"
     local export_metrics="${14}"
 
-[ "${cluster_count}" -ge "1" ]
+    [ "${cluster_count}" -ge "1" ]
     if_error_exit "cluster_count must be larger or equal to one"
 
 
