@@ -5,7 +5,7 @@ permissions:
   contents: read
 
 jobs:
-  dependency review:
+  review:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
