@@ -1,11 +1,12 @@
-name: 'Dependency Review'
+name: Dependency Review
 on: [pull_request]
 
 permissions:
   contents: read
 
 jobs:
-  review:
+  scan:
+    name: Dependency Review
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
