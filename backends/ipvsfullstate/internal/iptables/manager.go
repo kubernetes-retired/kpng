@@ -1,8 +1,8 @@
 package iptables
 
 import (
-	"fmt"
 	"io"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/exec"
 	"text/template"
 )
@@ -36,22 +36,22 @@ func NewManager() *Manager {
 	}
 
 	iptTemplate, err := template.New("Template").Funcs(funcMap).Parse(Template)
-	fmt.Println(err)
+	klog.V(2).ErrorS(err, "error parsing iptables template")
 
 	iptTemplate, err = iptTemplate.New("TableTemplate").Parse(TableTemplate)
-	fmt.Println(err)
+	klog.V(2).ErrorS(err, "error parsing iptables template")
 
 	iptTemplate, err = iptTemplate.New("ChainTemplate").Parse(ChainTemplate)
-	fmt.Println(err)
+	klog.V(2).ErrorS(err, "error parsing iptables template")
 
 	iptTemplate, err = iptTemplate.New("RuleTemplate").Parse(RuleTemplate)
-	fmt.Println(err)
+	klog.V(2).ErrorS(err, "error parsing iptables template")
 
 	iptTemplate, err = iptTemplate.New("MatchTemplate").Parse(MatchTemplate)
-	fmt.Println(err)
+	klog.V(2).ErrorS(err, "error parsing iptables template")
 
 	iptTemplate, err = iptTemplate.New("ProtocolTemplate").Parse(ProtocolTemplate)
-	fmt.Println(err)
+	klog.V(2).ErrorS(err, "error parsing iptables template")
 
 	return &Manager{
 		data:     data,
@@ -91,11 +91,9 @@ func (m *Manager) Apply() {
 	cmd := runner.Command(iptablesRestoreCmd)
 	cmd.SetStdin(reader)
 
-	result, _ := cmd.CombinedOutput()
-	fmt.Println(string(result))
-
+	output, err := cmd.CombinedOutput()
+	klog.V(2).ErrorS(err, "unable to write iptable rules", "output", string(output))
 	_ = reader.Close()
-
 }
 
 func NeedQuotes(option MatchModuleOption) bool {
