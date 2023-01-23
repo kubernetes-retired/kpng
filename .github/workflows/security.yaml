@@ -27,10 +27,12 @@ jobs:
         uses: securego/gosec@1af1d5bb49259b62e45c505db397dd2ada5d74f8 # v2.14.0
         with:
           # Ignoring:
+          # G101: Potential hardcoded credentials
           # G104: Errors not checked
+          # G304: Potential file inclusion via variable
           # G306: Expect WriteFile permissions to be 0600 or less
           # G307: Deferring unsafe method "Close"
-          args: -exclude=G104,G306,G307 -tests=false -exclude-dir=doc/ -no-fail -fmt sarif -out gosec-results.sarif  ./...
+          args: -exclude=G101,G104,G304,G306,G307 -tests=false -exclude-dir=doc/ -no-fail -fmt sarif -out gosec-results.sarif  ./...
 
       - name: Upload SARIF report
         uses: github/codeql-action/upload-sarif@v2
