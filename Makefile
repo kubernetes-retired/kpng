@@ -139,10 +139,14 @@ build:
 tilt-setup:
 	./hack/tilt/setup.sh  -i $(i) -b $(b) -m $(m) 
 
+## Verify if Tilt is installed and set up.
+tilt-verify:
+	./hack/tilt/verify.sh
+
 ## Start Tilt server. 
-tilt-up: 
+tilt-up: tilt-verify
 	@tilt up -f ./hack/tilt/Tiltfile  --host=0.0.0.0 
 
 ## Stop TiltServer.
-tilt-down:
+tilt-down: tilt-verify
 	@tilt down -f ./hack/tilt/Tiltfile
