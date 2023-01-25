@@ -22,7 +22,7 @@ fi
 shopt -s expand_aliases
 
 : "${E2E_GO_VERSION:="1.18.4"}"
-: "${E2E_K8S_VERSION:="v1.25.3"}"
+: "${E2E_K8S_VERSION:="v1.26.0"}"
 : "${E2E_TIMEOUT_MINUTES:=100}"
 
 CONTAINER_ENGINE="docker"
@@ -39,6 +39,133 @@ GINKGO_DUMP_LOGS_ON_FAILURE=false
 GINKGO_DISABLE_LOG_DUMP=true
 GINKGO_PROVIDER="local"
 
+# iptables specific skipped ginkgo tests
+GINKGO_SKIP_ipv4_iptables_TEST="should be updated after adding or deleting ports"
+GINKGO_SKIP_ipv4_iptables_TEST+="|should serve multiport endpoints from pods"
+
+GINKGO_SKIP_ipv6_iptables_TEST="should be updated after adding or deleting ports"
+GINKGO_SKIP_ipv6_iptables_TEST+="|should serve multiport endpoints from pods"
+GINKGO_SKIP_ipv6_iptables_TEST+="|should check kube-proxy urls"
+
+GINKGO_SKIP_dual_iptables_TEST="should be updated after adding or deleting ports"
+GINKGO_SKIP_dual_iptables_TEST+="|should serve multiport endpoints from pods"
+
+
+#GINKGO_SKIP_ipv4_ipvs_TEST=""
+
+GINKGO_SKIP_ipv6_ipvs_TEST="should have session affinity work for NodePort service"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should have session affinity timeout work for NodePort service"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should be able to update service type to NodePort listening on same port number but different protocols"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should be able to switch session affinity for NodePort service"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should be able to create a functioning NodePort service"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is true"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should be able to change the type from ExternalName to NodePort"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should be able to preserve UDP traffic when server pod cycles for a NodePort service"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should function for endpoint-Service: udp"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should function for service endpoints using hostNetwork"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should support basic nodePort: udp functionality"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should function for node-Service: http"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should update nodePort: http"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should function for pod-Service: udp"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should function for node-Service: udp"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should function for multiple endpoint-Services with same selector"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should check kube-proxy urls"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should work after the service has been recreated"
+GINKGO_SKIP_ipv6_ipvs_TEST+="|should update nodePort: udp"
+
+GINKGO_SKIP_dual_ipvs_TEST="should work after the service has been recreated"
+
+#GINKGO_SKIP_ipv4_nft_TEST=""
+
+GINKGO_SKIP_ipv6_nft_TEST="should work after the service has been recreated"
+GINKGO_SKIP_ipv6_nft_TEST+="|should serve multiport endpoints from pods"
+GINKGO_SKIP_ipv6_nft_TEST+="|should implement service.kubernetes.io/service-proxy-name"
+GINKGO_SKIP_ipv6_nft_TEST+="|should implement service.kubernetes.io/headless"
+GINKGO_SKIP_ipv6_nft_TEST+="|should have session affinity work for service with type clusterIP"
+GINKGO_SKIP_ipv6_nft_TEST+="|should have session affinity work for NodePort service"
+GINKGO_SKIP_ipv6_nft_TEST+="|should have session affinity timeout work for service with type clusterIP"
+GINKGO_SKIP_ipv6_nft_TEST+="|should have session affinity timeout work for NodePort service"
+GINKGO_SKIP_ipv6_nft_TEST+="|should be updated after adding or deleting port"
+GINKGO_SKIP_ipv6_nft_TEST+="|should be possible to connect to a service via ExternalIP when the external IP is not assigned to a node"
+GINKGO_SKIP_ipv6_nft_TEST+="|should be able to update service type to NodePort listening on same port number but different protocols"
+GINKGO_SKIP_ipv6_nft_TEST+="|should be able to up and down services"
+GINKGO_SKIP_ipv6_nft_TEST+="|should be able to switch session affinity for service with type clusterIP"
+GINKGO_SKIP_ipv6_nft_TEST+="|should be able to switch session affinity for NodePort service"
+GINKGO_SKIP_ipv6_nft_TEST+="|should be able to create a functioning NodePort service"
+GINKGO_SKIP_ipv6_nft_TEST+="|should be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is true"
+GINKGO_SKIP_ipv6_nft_TEST+="|should be able to change the type from ExternalName to NodePort"
+GINKGO_SKIP_ipv6_nft_TEST+="|should be able to change the type from ExternalName to ClusterIP"
+GINKGO_SKIP_ipv6_nft_TEST+="|should be able to preserve UDP traffic when server pod cycles for a NodePort service"
+GINKGO_SKIP_ipv6_nft_TEST+="|should function for client IP based session affinity: http"
+GINKGO_SKIP_ipv6_nft_TEST+="|should support basic nodePort: udp functionality"
+GINKGO_SKIP_ipv6_nft_TEST+="|should function for service endpoints using hostNetwork"
+GINKGO_SKIP_ipv6_nft_TEST+="|should update nodePort: udp"
+GINKGO_SKIP_ipv6_nft_TEST+="|should function for node-Service: http"
+GINKGO_SKIP_ipv6_nft_TEST+="|ServiceAccountIssuerDiscovery should support OIDC discovery of service account issuer"
+GINKGO_SKIP_ipv6_nft_TEST+="|should update endpoints: http"
+GINKGO_SKIP_ipv6_nft_TEST+="|should function for client IP based session affinity: udp"
+GINKGO_SKIP_ipv6_nft_TEST+="|should be able to handle large requests: udp"
+
+#GINKGO_SKIP_dual_nft_TEST=""
+
+GINKGO_SKIP_ipv4_ebpf_TEST="should serve multiport endpoints from pods|should have session affinity work for service with type clusterIP"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should have session affinity work for NodePort service"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should have session affinity timeout work for service with type clusterIP"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should have session affinity timeout work for NodePort service"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be updated after adding or deleting ports"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be rejected when no endpoints exist"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be rejected for evicted pods"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be possible to connect to a service via ExternalIP when the external IP is not assigned to a node"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to update service type to NodePort listening on same port number but different protocols"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to switch session affinity for service with type clusterIP"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to switch session affinity for NodePort service"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to create a functioning NodePort service"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is true"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to change the type from ExternalName to NodePort"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to change the type from ExternalName to ClusterIP"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should allow pods to hairpin back to themselves through services"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should drop INVALID conntrack entries"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to preserve UDP traffic when server pod cycles for a NodePort service"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to preserve UDP traffic when initial unready endpoints get ready"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should work after the service has been recreated"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should serve a basic endpoint from pods"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should preserve source pod IP for traffic thru service cluster IP"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should implement service.kubernetes.io/service-proxy-name"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should implement service.kubernetes.io/headless"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should create endpoints for unready pods"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to up and down services"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to preserve UDP traffic when server pod cycles for a ClusterIP service"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should update endpoints: http"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should support basic nodePort: udp functionality"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should update nodePort: udp"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for node-Service: udp"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should create and stop a working application"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to change the type from NodePort to ExternalName"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to change the type from ClusterIP to ExternalName "
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should resolve DNS of partial qualified names for services"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should provide DNS for services"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should provide DNS for pods for Subdomain"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should provide DNS for ExternalName services"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|ServiceAccountIssuerDiscovery should support OIDC discovery of service account issuer"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|Networking Granular Checks: Services [It] should function for node-Service: http"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should check kube-proxy urls"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should resolve DNS of partial qualified names for services on hostNetwork pods with dnsPolicy: ClusterFirstWithHostNet"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should work with the pod containing more than 6 DNS search paths and longer than 256 search list characters"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should resolve DNS of partial qualified names for the cluster"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should provide DNS for the cluster"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for service endpoints using hostNetwork"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to handle large requests: udp"
+
+GINKGO_SKIP_ipv4_userspacelin_TEST="should preserve source pod IP for traffic thru service cluster IP"
+GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be rejected when no endpoints exist"
+GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be rejected for evicted pods"
+GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be able to switch session affinity for service with type clusterIP"
+GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be able to switch session affinity for NodePort service"
+GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be able to preserve UDP traffic when initial unready endpoints get ready"
+GINKGO_SKIP_ipv4_userspacelin_TEST+="|should have session affinity timeout work for service with type clusterIP"
+GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be able to preserve UDP traffic when server pod cycles for a ClusterIP service"
+GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be able to preserve UDP traffic when server pod cycles for a NodePort service"
+
 source "${SCRIPT_DIR}"/utils.sh
 source "${SCRIPT_DIR}"/common.sh
 
@@ -48,7 +175,7 @@ function if_error_warning {
     # Validate if previous command failed and show an error msg (if provided) #
     #                                                                         #
     # Arguments:                                                              #
-    #   $1 - error message if not provided, it will just exit                 #
+    #   arg1 - error message if not provided, it will just exit               #
     ###########################################################################
     if [ "$?" != "0" ]; then
         if [ -n "$1" ]; then
@@ -57,6 +184,36 @@ function if_error_warning {
             echo -e "[ ${RED}FAILED${ENDCOLOR} ] ${1}"
         fi
     fi
+}
+
+function result_message {
+    ###########################################################################
+    # Description:                                                            #
+    # show [FAILED] in red and a message.                                     #
+    #                                                                         #
+    # Arguments:                                                              #
+    #   arg1 - result                                                         #
+    #   arg2 - message to output                                              #
+    ###########################################################################
+    [ $# -eq 2 ]
+    if_error_exit "result_message: $# Wrong number of arguments to ${FUNCNAME[0]}... args: $#"
+
+    local result=${1}
+    local message="${2}"
+
+    if [ -z "${result}" ]; then
+        echo "result_message() requires a message"
+        exit 1
+    fi
+    RED="\e[31m"
+    GREEN="\e[32m"    
+    ENDCOLOR="\e[0m"
+
+    if [ "${result}" == "0" ] ; then
+	echo -e "${GREEN}[SUCCES!] ${message} succeded!!! ${ENDCOLOR}"
+    else
+	echo -e "${RED}[FAIL!] ${message} failed!!! ${ENDCOLOR}"
+    fi 
 }
 
 function detect_container_engine {
@@ -448,17 +605,23 @@ function run_tests {
      #                                                                         #
      # Arguments:                                                              #
      #   arg1: e2e directory                                                   #
-     #   arg2: bin_dir, path to binary directory                                 #
+     #   arg2: bin_dir, path to binary directory                               #
      #   arg3: parallel ginkgo tests boolean                                   #
+     #   arg4: ip_family                                                       #
+     #   arg5: backend                                                         #
+     #   arg6: include specific failed tests                                                        #
      ###########################################################################
 
-    [ $# -eq 3 ]
+    [ $# -eq 6 ]
     if_error_exit "exec tests $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
     local bin_dir="${2}"
     local parallel="${3}"
-
+    local ip_family="${4}"
+    local backend="${5}"
+    local include_specific_failed_tests="${6}"
+    
     local artifacts_directory="${e2e_dir}/artifacts"
 
     [ -f "${artifacts_directory}/${KUBECONFIG_TESTS}" ]
@@ -473,7 +636,6 @@ function run_tests {
     [ -f "${bin_dir}/ginkgo" ]
     if_error_exit "File \"${bin_dir}/ginkgo\" does not exist"
 
-
    # ginkgo regexes
    local ginkgo_skip="${GINKGO_SKIP_TESTS:-}"
    local ginkgo_focus=${GINKGO_FOCUS:-"\\[Conformance\\]"}
@@ -487,13 +649,23 @@ function run_tests {
      fi
    fi
 
+   if [ "${include_specific_failed_tests}" == "false" ] ; then
+       # find ip_type and backend specific skip sets
+       skip_set_name="GINKGO_SKIP_${ip_family}_${backend}_TEST"
+       declare -n skip_set_ref=${skip_set_name}
+       
+       if ! [ -z "${skip_set_ref}" ] ; then
+	   ginkgo_skip="${ginkgo_skip}|${skip_set_ref}"
+       fi
+   fi
+
    # setting this env prevents ginkgo e2e from trying to run provider setup
    export KUBERNETES_CONFORMANCE_TEST='y'
    # setting these is required to make RuntimeClass tests work ... :/
    export KUBE_CONTAINER_RUNTIME=remote
    export KUBE_CONTAINER_RUNTIME_ENDPOINT=unix:///run/containerd/containerd.sock
    export KUBE_CONTAINER_RUNTIME_NAME=containerd
-
+   
    "${bin_dir}/ginkgo" --nodes="${GINKGO_NUMBER_OF_NODES}" \
            --focus="${ginkgo_focus}" \
            --skip="${ginkgo_skip}" \
@@ -504,6 +676,7 @@ function run_tests {
            --dump-logs-on-failure="${GINKGO_DUMP_LOGS_ON_FAILURE}" \
            --report-dir="${GINKGO_REPORT_DIR}" \
            --disable-log-dump="${GINKGO_DISABLE_LOG_DUMP}"
+   return $?
 }
 
 function clean_artifacts {
@@ -602,8 +775,9 @@ function create_infrastructure_and_run_tests {
     #   arg7: <ci_mode>                                                       #
     #   arg8: deployment_model                                                #
     #   arg9: export_metrics                                                  #
+    #   arg10: include_specific_failed_tests                                  #
     ###########################################################################
-    [ $# -eq 9 ]
+    [ $# -eq 10 ]
     if_error_exit "create and run $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
@@ -615,6 +789,8 @@ function create_infrastructure_and_run_tests {
     local ci_mode="${7}"
     local deployment_model="${8}"
     local export_metrics="${9}"
+    local include_specific_failed_tests="${10}"
+    
 
     local artifacts_directory="${e2e_dir}/artifacts"
     local cluster_name="kpng-e2e-${ip_family}-${backend}${suffix}"
@@ -643,14 +819,16 @@ function create_infrastructure_and_run_tests {
     if [ "${backend}" != "not-kpng" ] ; then
         install_kpng "${cluster_name}" "${bin_dir}"
     fi
-
+    local result=0
     if ! ${devel_mode} ; then
-        run_tests "${e2e_dir}" "${bin_dir}" "false"
-        #need to clean this up
-       if [ "${ci_mode}" = false ] ; then
-          clean_artifacts "${e2e_dir}" "${bin_dir}" 
-       fi
+	run_tests "${e2e_dir}" "${bin_dir}" "false" "${ip_family}" "${backend}" "${include_specific_failed_tests}"
+	result=$?
+	#need to clean this up
+	if [ "${ci_mode}" = false ] ; then
+            clean_artifacts "${e2e_dir}" "${bin_dir}" 
+	fi
     fi
+    return ${result}
 }
 
 function delete_kind_clusters {
@@ -659,7 +837,7 @@ function delete_kind_clusters {
     # delete_kind_clusters                                                    #
     #                                                                         #
     # Arguments:                                                              #
-    #   arg1: bin_dir                                                   #
+    #   arg1: bin_dir                                                         #
     #   arg2: ip_family                                                       #
     #   arg3: backend                                                         #
     #   arg4: suffix                                                          #
@@ -743,8 +921,7 @@ function print_reports {
     done
 
     echo -e "\nOccurrence\tFailure"
-    grep \"msg\":\"FAILED "${combined_output_file}" |
-    sed 's/^.*\"FAILED/\t/' | sed 's/\,\"completed\".*//' | sed 's/[ \"]$//' |
+    grep "\[FAIL\]" "${combined_output_file}" |
     sort | uniq -c | sort -nr  | sed 's/\,/\n\t\t/g'
 
     rm -f "${combined_output_file}"
@@ -759,7 +936,7 @@ function main {
     #   None                                                                  #
     ###########################################################################
 
-    [ $# -eq 14 ]
+    [ $# -eq 15 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
@@ -777,6 +954,7 @@ function main {
     local deployment_model="${12}"
     local run_tests_on_existing_cluster="${13}"
     local export_metrics="${14}"
+    local include_specific_failed_tests="${15}"
 
     [ "${cluster_count}" -ge "1" ]
     if_error_exit "cluster_count must be larger or equal to one"
@@ -787,25 +965,27 @@ function main {
 
     if ${erase_clusters} ; then
         delete_kind_clusters "${bin_dir}" "${ip_family}" "${backend}" "${suffix}" "${cluster_count}"
-        exit 1
+        return 0
     fi
 
     if ${print_report} ; then
         print_reports "${ip_family}" "${backend}" "${e2e_dir}" "-${suffix}" "${cluster_count}"
-        exit 1
+        return 0
     fi
 
     echo "+==================================================================+"
     echo -e "\t\tStarting KPNG E2E testing"
     echo "+==================================================================+"
-    if [ "${run_tests_on_existing_cluster}" = true ] ; then
-        run_tests "${e2e_dir}${tmp_suffix}" "${bin_dir}" "false"
-        #need to clean this up
-       if [ "${ci_mode}" = false ] ; then
-          clean_artifacts "${e2e_dir}${tmp_suffix}"
-       fi
 
-       exit 1
+    
+    if [ "${run_tests_on_existing_cluster}" = true ] ; then
+        run_tests "${e2e_dir}${tmp_suffix}" "${bin_dir}" "false" "${ip_family}" "${backend}" "${include_specific_failed_tests}"
+	local result=$?
+        #need to clean this up
+	if [ "${ci_mode}" = false ] ; then
+            clean_artifacts "${e2e_dir}${tmp_suffix}"
+	fi
+	return ${result}
     fi
 
     # in ci this should fail
@@ -839,12 +1019,14 @@ function main {
         done
     fi
 
+    local result=0
     # preparation completed, time to setup infrastructure and run tests
     if [ "${cluster_count}" -eq "1" ] ; then
         local tmp_suffix=${suffix:+"-${suffix}"}
-        create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
+	create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
 					    "${bin_dir}" "${tmp_suffix}" "${devel_mode}" "${ci_mode}" \
-					    "${deployment_model}" "${export_metrics}"
+					    "${deployment_model}" "${export_metrics}" "${include_specific_failed_tests}"
+	result=$?
     else
         local pids
 
@@ -859,24 +1041,36 @@ function main {
             rm -f "${output_file}"
             create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
 						"${bin_dir}" "${tmp_suffix}" "${devel_mode}" "${ci_mode}" \
-						"${deployment_model}" "${export_metrics}" \
+						"${deployment_model}" "${export_metrics}" "${include_specific_failed_tests}" \
                   &> "${e2e_dir}${tmp_suffix}/output.log" &
             pids[${i}]=$!
         done
         for pid in ${pids[*]}; do # not possible to use quotes here
-          wait ${pid}
+            wait "${pid}"
+	    local tmp=$?
+	    if ! [ ${tmp} -eq 0 ] ; then
+		result=${tmp}
+	    fi
         done
         if ! ${devel_mode} ; then
            print_reports "${ip_family}" "${backend}" "${e2e_dir}" "-${suffix}" "${cluster_count}"
         fi
     fi
+
     if ${devel_mode} ; then
        echo -e "\n+=====================================================================================+"
        echo -e "\t\tDeveloper mode no test run!"
        echo -e "+=====================================================================================+"
-    elif ! ${ci_mode} && ${erase_clusters} ; then
+    elif ! ${ci_mode}; then
         delete_kind_clusters "${bin_dir}" "${ip_family}" "${backend}" "${suffix}" "${cluster_count}"
     fi
+    
+    echo -e "\n+=====================================================================================+"
+    echo -e "\t\tResult"
+    echo -e "+=====================================================================================+"
+
+    result_message  ${result} "test_e2e test suite for \"-i ${ip_family} -b ${backend}\""
+    return ${result}
 }
 
 
@@ -897,16 +1091,17 @@ function help {
     printf "\t-c flag allows for ci_mode. Please don't run on local systems.\n"
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
     printf "\t-e erase kind clusters.\n"
-    printf "\t-n number of parallel test clusters.\n"
-    printf "\t-p flag, only print reports.\n"
-    printf "\t-s suffix, will be appended to the E2@ directory and kind cluster name (makes it possible to run parallel tests.\n"
-    printf "\t-B binary directory, specifies the path for the directory where binaries will be installed\n"
-    printf "\t-D Dockerfile, specifies the path of the Dockerfile to use\n"
-    printf "\t-E set E2E directory, specifies the path for the E2E directory\n"
     printf "\t-m set the KPNG deployment model, can either be: \n\
             * split-process-per-node [legacy/debug] -> (To run KPNG server + client in separate containers/processes per node)
             * single-process-per-node [default] -> (To run KPNG server + client in a single container/process per node)"
+    printf "\t-n number of parallel test clusters.\n"
+    printf "\t-p flag, only print reports.\n"
+    printf "\t-s suffix, will be appended to the E2@ directory and kind cluster name (makes it possible to run parallel tests.\n"
     printf "\t-t Run tests on existing deployment\n"
+    printf "\t-B binary directory, specifies the path for the directory where binaries will be installed\n"
+    printf "\t-D Dockerfile, specifies the path of the Dockerfile to use\n"
+    printf "\t-E set E2E directory, specifies the path for the E2E directory\n"
+    printf "\t-I Include failing \"ip_family and backend\" specific test cases\n"
     printf "\t-M Configure kpng to export prometheus metrics\n"
     printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}"
     exit 1 # Exit script after printing help
@@ -924,8 +1119,9 @@ erase_clusters=false
 print_report=false
 deployment_model="single-process-per-node"
 export_metrics=false
+include_specific_failed_tests=false
 
-while getopts "i:b:B:cdD:eE:n:ps:mt:M" flag
+while getopts "b:cdei:n:mps:t:B:D:E:IM" flag
 do
     case "${flag}" in
         i ) ip_family="${OPTARG}" ;;
@@ -935,12 +1131,13 @@ do
         e ) erase_clusters=true ;;
         n ) cluster_count="${OPTARG}" ;;
         p ) print_report=true ;;
-        s ) suffix="${OPTARG}" ;;
+        m ) deployment_model="${OPTARG}" ;;
+        s ) suffix="${OPTARG}" ;; 
+        t ) run_tests_on_existing_cluster=true ;;
         B ) bin_dir="${OPTARG}" ;;
         D ) dockerfile="${OPTARG}" ;;
         E ) e2e_dir="${OPTARG}" ;;
-        m ) deployment_model="${OPTARG}" ;;
-        t ) run_tests_on_existing_cluster=true ;;
+        I ) include_specific_failed_tests=true ;; 
         M ) export_metrics=true ;; 
         ? ) help ;; #Print help
     esac
@@ -963,7 +1160,7 @@ fi
 if [[ -n "${ip_family}" && -n "${backend}" ]]; then
     main "${ip_family}" "${backend}" "${ci_mode}" "${e2e_dir}" "${bin_dir}" "${dockerfile}" \
          "${suffix}" "${cluster_count}" "${erase_clusters}" "${print_report}" "${devel_mode}" \
-         "${deployment_model}" "${run_tests_on_existing_cluster}" "${export_metrics}"
+         "${deployment_model}" "${run_tests_on_existing_cluster}" "${export_metrics}" "${include_specific_failed_tests}"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help
