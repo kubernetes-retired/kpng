@@ -172,8 +172,8 @@ GINKGO_SKIP_ipv4_ebpf_TEST+="|should provide DNS for the cluster"
 GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for service endpoints using hostNetwork"
 GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to handle large requests: udp"
 GINKGO_SKIP_ipv4_ebpf_TEST+="|should update endpoints: udp"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for pod-Service: udp"
 
-GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for pod-Service: udp
 GINKGO_SKIP_ipv4_userspacelin_TEST="should preserve source pod IP for traffic thru service cluster IP"
 GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be rejected when no endpoints exist"
 GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be rejected for evicted pods"
