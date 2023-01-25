@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os"
 
-	"sigs.k8s.io/kpng/cmd/kpng/storecmds"
+	"sigs.k8s.io/kpng/cmd/kpng/builder"
 
 	"github.com/spf13/cobra"
 
@@ -42,6 +42,9 @@ var (
 	// kubeServer is the location of the external k8s apiserver.  If this is empty, we resort
 	// to in-cluster configuration using internal pod service accounts.
 	kubeServer string
+
+	kubeClient = &kubernetes.Clientset{}
+	k8sCfg     = &kube2store.K8sConfig{}
 )
 
 // kube2storeCmd generates the kube-to-store command, which is the "normal" way to run KPNG,
@@ -57,56 +60,44 @@ func kube2storeCmd() *cobra.Command {
 	flags.StringVar(&kubeConfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster. Defaults to envvar KUBECONFIG.")
 	flags.StringVar(&kubeServer, "server", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 
-	// k2sCfg is the configuration of how we interact w/ and watch the K8s APIServer
-	k2sCfg := &kube2store.K8sConfig{}
-	k2sCfg.BindFlags(k2sCmd.PersistentFlags())
+	// k8sCfg is the configuration of how we interact w/ and watch the K8s APIServer
+	k8sCfg.BindFlags(k2sCmd.PersistentFlags())
 
-	context, backend, error, kubeClient := kube2storeCmdSetup(k2sCfg)
-
+	ctx := setupGlobal()
+	store := proxystore.New()
 	run := func() {
-		kube2storeCmdRun(kubeClient, backend, k2sCfg, context)
+		kube2storeCmdRun(ctx, store)
 	}
-	k2sCmd.AddCommand(storecmds.ToAPICmd(context, backend, error, run))
-	k2sCmd.AddCommand(storecmds.ToFileCmd(context, backend, error, run))
-	k2sCmd.AddCommand(storecmds.ToLocalCmd(context, backend, error, run))
+	k2sCmd.AddCommand(builder.ToAPICmd(ctx, store, kube2storeCmdSetup, run))
+	k2sCmd.AddCommand(builder.ToFileCmd(ctx, store, kube2storeCmdSetup, run))
+	k2sCmd.AddCommand(builder.ToLocalCmd(ctx, store, kube2storeCmdSetup, run))
 
 	return k2sCmd
 }
 
-// kube2storeCmdSetup generates a context , builds the in-memory storage for k8s proxy data.
-// It also kicks off the job responsible for watching the K8s APIServer.
-func kube2storeCmdSetup(k2sCfg *kube2store.K8sConfig) (ctx context.Context, store *proxystore.Store, err error, kubeClient *kubernetes.Clientset) {
-	ctx = setupGlobal()
-
-	// setup k8s client
+// kube2storeCmdSetup performs any neccessary setup steps that need to happen
+// before the kube2store job starts.
+func kube2storeCmdSetup() error {
 	if kubeConfig == "" {
 		kubeConfig = os.Getenv("KUBECONFIG")
 	}
-
 	cfg, err := clientcmd.BuildConfigFromFlags(kubeServer, kubeConfig)
 	if err != nil {
-		err = fmt.Errorf("Error building kubeconfig: %w", err)
-		return
+		return fmt.Errorf("Error building kubeconfig: %w", err)
 	}
 
-	kCli, err := kubernetes.NewForConfig(cfg)
-	kubeClient = kCli
+	kubeClient, err = kubernetes.NewForConfig(cfg)
 	if err != nil {
-		err = fmt.Errorf("Error building kubernetes clientset: %w", err)
-		return
+		return fmt.Errorf("Error building kubernetes clientset: %w", err)
 	}
-
-	// create the store
-	store = proxystore.New()
-
-	return
+	return nil
 }
 
-func kube2storeCmdRun(kubeClient *kubernetes.Clientset, backend *proxystore.Store, k2sCfg *kube2store.K8sConfig, ctx context.Context ) {
-	// start kube2store
-	go kube2store.Job{
+// kube2storeCmdRun kicks off the kube2store job.
+func kube2storeCmdRun(ctx context.Context, store *proxystore.Store) {
+	kube2store.Job{
 		Kube:   kubeClient,
-		Store:  backend,
-		Config: k2sCfg,
+		Store:  store,
+		Config: k8sCfg,
 	}.Run(ctx)
 }

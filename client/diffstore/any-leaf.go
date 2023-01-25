@@ -51,7 +51,8 @@ func (l *AnyLeaf[T]) Get() T {
 }
 
 func (l *AnyLeaf[T]) Set(v T) {
-	if !l.equal(l.value, v) {
+	// if the leaf is new (hash==1), don't call equal as we already know nothing is not equal to something
+	if l.hash == 1 || !l.equal(l.value, v) {
 		l.hash++
 	}
 

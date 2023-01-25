@@ -27,6 +27,9 @@ import (
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/kpng/server/pkg/metrics"
 
+	// import existent backends quietly
+	_ "sigs.k8s.io/kpng/cmd/kpng/storecmds"
+
 	"k8s.io/klog/v2"
 
 	"sigs.k8s.io/kpng/server/pkg/proxy"

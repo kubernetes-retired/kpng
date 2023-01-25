@@ -255,7 +255,7 @@ function verify_sysctl_setting {
     local result=$(sysctl -n  "${attribute}")
     if_error_exit "\"sysctl -n ${attribute}\" failed}"
 
-    if [ ! "${value}" -eq "${result}" ] ; then
+    if [[ ! "${value}" -eq "${result}" ]] ; then
        echo "Failure: \"sysctl -n ${attribute}\" returned \"${result}\", not \"${value}\" as expected."
        exit
     fi
@@ -279,7 +279,7 @@ function set_sysctl {
     if_error_exit "\"sysctl -n ${attribute}\" failed"
 
     info_message "checking sysctls $value vs $result"
-    if [ ! "${value}" -eq "${result}" ] ; then
+    if [[ ! "${value}" -eq "${result}" ]] ; then
        info_message "Setting: \"sysctl -w ${attribute}=${value}\""
        sudo sysctl -w  "${attribute}"="${value}"
        if_error_exit "\"sudo sysctl -w  ${attribute} = ${value}\" failed"

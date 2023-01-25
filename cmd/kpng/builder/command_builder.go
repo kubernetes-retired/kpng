@@ -14,11 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package storecmds
+package builder
 
 import (
 	"context"
 	"errors"
+
 	"k8s.io/klog/v2"
 
 	"github.com/spf13/cobra"
@@ -32,8 +33,12 @@ import (
 	"sigs.k8s.io/kpng/server/proxystore"
 )
 
+// consumerJobCmd returns a *cobra.Command which sets up the store producer job, starts it
+// and then kicks off the store consumer job.
+type consumerJobCmd func(ctx context.Context, store *proxystore.Store, storeProducerJobSetup func() (err error), storeProducerJobRun func()) *cobra.Command
+
 // ToAPICmd builds a command that reads from the APIServer and sends data down to the store.
-func ToAPICmd(ctx context.Context, store *proxystore.Store, err error, run func()) *cobra.Command {
+func ToAPICmd(ctx context.Context, store *proxystore.Store, storeProducerJobSetup func() (err error), storeProducerJobRun func()) *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "to-api",
 	}
@@ -42,15 +47,16 @@ func ToAPICmd(ctx context.Context, store *proxystore.Store, err error, run func(
 	cfg.BindFlags(cmd.Flags())
 
 	cmd.RunE = func(_ *cobra.Command, _ []string) (err error) {
-		if err != nil {
-			return
+		if storeProducerJobSetup != nil {
+			if err := storeProducerJobSetup(); err != nil {
+				return err
+			}
 		}
-
+		go storeProducerJobRun()
 		j := &store2api.Job{
 			Store:  store,
 			Config: cfg,
 		}
-		go run()
 		return j.Run(ctx)
 	}
 
@@ -58,7 +64,7 @@ func ToAPICmd(ctx context.Context, store *proxystore.Store, err error, run func(
 }
 
 // ToFileCmd builds a command that reads from the APIServer and sends data down to a file.
-func ToFileCmd(ctx context.Context, store *proxystore.Store, err error, run func()) *cobra.Command {
+func ToFileCmd(ctx context.Context, store *proxystore.Store, storeProducerJobSetup func() (err error), storeProducerJobRun func()) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "to-file",
 		Short: "dump globalv1 state to a yaml db file",
@@ -68,16 +74,17 @@ func ToFileCmd(ctx context.Context, store *proxystore.Store, err error, run func
 	cfg.BindFlags(cmd.Flags())
 
 	cmd.RunE = func(_ *cobra.Command, _ []string) (err error) {
-		if err != nil {
-			return
+		if storeProducerJobSetup != nil {
+			if err := storeProducerJobSetup(); err != nil {
+				return err
+			}
 		}
+		go storeProducerJobRun()
 
 		j := &store2file.Job{
 			Store:  store,
 			Config: cfg,
 		}
-
-		go run()
 		return j.Run(ctx)
 	}
 
@@ -87,7 +94,7 @@ func ToFileCmd(ctx context.Context, store *proxystore.Store, err error, run func
 // ToLocalCmd reads from the store, and sends these down to a local backend, which we refer to as a Sink.
 // See the LocalCmds implementation to understand how we use reflection to load up the individual backends
 // such that their command line options are dynamically accepted here.
-func ToLocalCmd(ctx context.Context, store *proxystore.Store, err error, run func()) (cmd *cobra.Command) {
+func ToLocalCmd(ctx context.Context, store *proxystore.Store, storeProducerJobSetup func() (err error), storeProducerJobRun func()) (cmd *cobra.Command) {
 	cmd = &cobra.Command{
 		Use: "to-local",
 	}
@@ -100,8 +107,14 @@ func ToLocalCmd(ctx context.Context, store *proxystore.Store, err error, run fun
 	}
 
 	cmd.AddCommand(LocalCmds(func(sink localsink.Sink) error {
+		if storeProducerJobSetup != nil {
+			if err := storeProducerJobSetup(); err != nil {
+				return err
+			}
+		}
+		go storeProducerJobRun()
+
 		job.Sink = sink
-		go run()
 		return job.Run(ctx)
 	})...)
 

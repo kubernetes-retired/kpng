@@ -18,14 +18,13 @@ package main
 
 import (
 	"context"
-	"sigs.k8s.io/kpng/server/jobs/kube2store"
 
 	"github.com/spf13/cobra"
 
 	"sigs.k8s.io/kpng/server/jobs/file2store"
 	"sigs.k8s.io/kpng/server/proxystore"
 
-	"sigs.k8s.io/kpng/cmd/kpng/storecmds"
+	"sigs.k8s.io/kpng/cmd/kpng/builder"
 )
 
 // FIXME separate package
@@ -37,41 +36,31 @@ var f2sInput string
 // folder of an input YAML that works with this command.
 func file2storeCmd() *cobra.Command {
 	// file to * command
-	k2sCmd := &cobra.Command{
+	f2sCmd := &cobra.Command{
 		Use:   "file",
 		Short: "poll a file to the globalv1 state",
 	}
 
-	flags := k2sCmd.PersistentFlags()
+	flags := f2sCmd.PersistentFlags()
 	flags.StringVarP(&f2sInput, "input", "i", "globalv1-state.yaml", "Input file for the globalv1-state")
 
-	// k2sCfg is the configuration of how we interact w/ and watch the K8s APIServer
-	k2sCfg := &kube2store.K8sConfig{}
-	k2sCfg.BindFlags(k2sCmd.PersistentFlags())
-
-	context, backend, error := file2storeCmdSetup(k2sCfg)
-
-	run := func(){
-		go (&file2store.Job{
-			FilePath: f2sInput,
-			Store:    backend,
-		}).Run(context)
-
+	ctx := setupGlobal()
+	store := proxystore.New()
+	run := func() {
+		file2storeCmdRun(ctx, store)
 	}
-	k2sCmd.AddCommand(storecmds.ToAPICmd(context, backend, error, run ))
-	k2sCmd.AddCommand(storecmds.ToFileCmd(context, backend, error, run ))
-	k2sCmd.AddCommand(storecmds.ToLocalCmd(context, backend, error, run ))
+	f2sCmd.AddCommand(builder.ToAPICmd(ctx, store, nil, run))
+	f2sCmd.AddCommand(builder.ToFileCmd(ctx, store, nil, run))
+	f2sCmd.AddCommand(builder.ToLocalCmd(ctx, store, nil, run))
 
-	return k2sCmd
+	return f2sCmd
 }
 
-// file2storeCmdSetup generates a context , builds the in-memory storage for k8s proxy data.
-// It also kicks off the job responsible for watching the YAML File w/ K8s networking info.
-func file2storeCmdSetup(k2sCfg *kube2store.K8sConfig) (ctx context.Context, store *proxystore.Store, err error) {
-	ctx = setupGlobal()
-
-	// create the store
-	store = proxystore.New()
-
-	return ctx, store, nil
+// file2storeCmdRun kicks off the file2store job.
+func file2storeCmdRun(ctx context.Context, store *proxystore.Store) {
+	f2s := &file2store.Job{
+		FilePath: f2sInput,
+		Store:    store,
+	}
+	f2s.Run(ctx)
 }

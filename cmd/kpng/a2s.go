@@ -26,7 +26,7 @@ import (
 	"sigs.k8s.io/kpng/server/pkg/apiwatch"
 	"sigs.k8s.io/kpng/server/proxystore"
 
-	"sigs.k8s.io/kpng/cmd/kpng/storecmds"
+	"sigs.k8s.io/kpng/cmd/kpng/builder"
 )
 
 var (
@@ -48,26 +48,22 @@ func api2storeCmd() *cobra.Command {
 	flags := api2sCmd.PersistentFlags()
 	api2storeJob.BindFlags(flags)
 
-	context, backend, error := api2storeCmdSetup()
+	store := proxystore.New()
+	ctx := setupGlobal()
 
-	run := func () {
-		go api2storeJob.Run(context)
+	run := func() {
+		api2storeCmdRun(ctx, store)
 	}
-	api2sCmd.AddCommand(storecmds.ToAPICmd(context, backend, error, run))
-	api2sCmd.AddCommand(storecmds.ToFileCmd(context, backend, error, run ))
-	api2sCmd.AddCommand(storecmds.ToLocalCmd(context, backend, error, run ))
+	api2sCmd.AddCommand(builder.ToAPICmd(ctx, store, nil, run))
+	api2sCmd.AddCommand(builder.ToFileCmd(ctx, store, nil, run))
+	api2sCmd.AddCommand(builder.ToLocalCmd(ctx, store, nil, run))
 
 	return api2sCmd
 }
 
-// api2storeCmdSetup generates a context , builds the in-memory storage for k8s proxy data.
-// It also kicks off the job responsible for watching the KPNG internal API.
-func api2storeCmdSetup() (ctx context.Context, store *proxystore.Store, err error) {
+// api2storeCmdRun kicks off the api2store job.
+func api2storeCmdRun(ctx context.Context, store *proxystore.Store) {
 	ctx = setupGlobal()
-
-	store = proxystore.New()
-
 	api2storeJob.Store = store
-
-	return
+	api2storeJob.Run(ctx)
 }
