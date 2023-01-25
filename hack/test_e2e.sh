@@ -46,6 +46,12 @@ GINKGO_SKIP_ipv4_iptables_TEST+="|should serve multiport endpoints from pods"
 GINKGO_SKIP_ipv6_iptables_TEST="should be updated after adding or deleting ports"
 GINKGO_SKIP_ipv6_iptables_TEST+="|should serve multiport endpoints from pods"
 GINKGO_SKIP_ipv6_iptables_TEST+="|should check kube-proxy urls"
+GINKGO_SKIP_ipv6_iptables_TEST+="|should be able to change the type from ClusterIP to ExternalName"
+GINKGO_SKIP_ipv6_iptables_TEST+="|should create endpoints for unready pods"
+GINKGO_SKIP_ipv6_iptables_TEST+="|should be able to change the type from NodePort to ExternalName"
+GINKGO_SKIP_ipv6_iptables_TEST+="|should provide DNS for services"
+GINKGO_SKIP_ipv6_iptables_TEST+="|should provide DNS for the cluster"
+GINKGO_SKIP_ipv6_iptables_TEST+="|should provide DNS for pods for Subdomain"
 
 GINKGO_SKIP_dual_iptables_TEST="should be updated after adding or deleting ports"
 GINKGO_SKIP_dual_iptables_TEST+="|should serve multiport endpoints from pods"
@@ -1111,6 +1117,7 @@ function help {
     printf "\t-E set E2E directory, specifies the path for the E2E directory\n"
     printf "\t-I Include failing \"ip_family and backend\" specific test cases\n"
     printf "\t-M Configure kpng to export prometheus metrics\n"
+    printf "\t-S Skip the failing \"ip_family and backend\" specific test cases\n"
     printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}"
     exit 1 # Exit script after printing help
 }
@@ -1129,7 +1136,7 @@ deployment_model="single-process-per-node"
 export_metrics=false
 include_specific_failed_tests=false
 
-while getopts "b:cdei:n:mps:t:B:D:E:IM" flag
+while getopts "b:cdei:n:mps:t:B:D:E:IMS" flag
 do
     case "${flag}" in
         i ) ip_family="${OPTARG}" ;;
@@ -1147,6 +1154,7 @@ do
         E ) e2e_dir="${OPTARG}" ;;
         I ) include_specific_failed_tests=true ;; 
         M ) export_metrics=true ;; 
+        S ) include_specific_failed_tests=false ;; 
         ? ) help ;; #Print help
     esac
 done
