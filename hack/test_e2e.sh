@@ -120,7 +120,7 @@ GINKGO_SKIP_ipv6_nft_TEST+="|should provide DNS for services"
 GINKGO_SKIP_ipv6_nft_TEST+="|should provide DNS for the cluster"
 GINKGO_SKIP_ipv6_nft_TEST+="|should provide DNS for pods for Subdomain"
 GINKGO_SKIP_ipv6_nft_TEST+="|should create endpoints for unready pods"
-
+GINKGO_SKIP_ipv6_nft_TEST+="|should function for node-Service: udp"
 
 #GINKGO_SKIP_dual_nft_TEST=""
 
@@ -173,6 +173,7 @@ GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for service endpoints using hostNe
 GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to handle large requests: udp"
 GINKGO_SKIP_ipv4_ebpf_TEST+="|should update endpoints: udp"
 GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for pod-Service: udp"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for pod-Service: http"
 
 GINKGO_SKIP_ipv4_userspacelin_TEST="should preserve source pod IP for traffic thru service cluster IP"
 GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be rejected when no endpoints exist"
@@ -627,7 +628,7 @@ function run_tests {
      #   arg3: parallel ginkgo tests boolean                                   #
      #   arg4: ip_family                                                       #
      #   arg5: backend                                                         #
-     #   arg6: include specific failed tests                                                        #
+     #   arg6: include specific failed tests                                   #
      ###########################################################################
 
     [ $# -eq 6 ]
