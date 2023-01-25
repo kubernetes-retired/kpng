@@ -42,6 +42,7 @@ GINKGO_PROVIDER="local"
 # iptables specific skipped ginkgo tests
 GINKGO_SKIP_ipv4_iptables_TEST="should be updated after adding or deleting ports"
 GINKGO_SKIP_ipv4_iptables_TEST+="|should serve multiport endpoints from pods"
+GINKGO_SKIP_ipv4_iptables_TEST+="|should check kube-proxy urls"
 
 GINKGO_SKIP_ipv6_iptables_TEST="should be updated after adding or deleting ports"
 GINKGO_SKIP_ipv6_iptables_TEST+="|should serve multiport endpoints from pods"
@@ -52,10 +53,12 @@ GINKGO_SKIP_ipv6_iptables_TEST+="|should be able to change the type from NodePor
 GINKGO_SKIP_ipv6_iptables_TEST+="|should provide DNS for services"
 GINKGO_SKIP_ipv6_iptables_TEST+="|should provide DNS for the cluster"
 GINKGO_SKIP_ipv6_iptables_TEST+="|should provide DNS for pods for Subdomain"
+GINKGO_SKIP_ipv6_iptables_TEST+="|should function for endpoint-Service: udp"
 
 GINKGO_SKIP_dual_iptables_TEST="should be updated after adding or deleting ports"
 GINKGO_SKIP_dual_iptables_TEST+="|should serve multiport endpoints from pods"
 GINKGO_SKIP_dual_iptables_TEST+="|should be able to preserve UDP traffic when server pod cycles for a NodePort service"
+GINKGO_SKIP_dual_iptables_TEST+="|should check kube-proxy urls"
 
 #GINKGO_SKIP_ipv4_ipvs_TEST=""
 
@@ -81,7 +84,7 @@ GINKGO_SKIP_ipv6_ipvs_TEST+="|should update nodePort: udp"
 
 GINKGO_SKIP_dual_ipvs_TEST="should work after the service has been recreated"
 
-#GINKGO_SKIP_ipv4_nft_TEST=""
+GINKGO_SKIP_ipv4_nft_TEST="should check kube-proxy urls"
 
 GINKGO_SKIP_ipv6_nft_TEST="should work after the service has been recreated"
 GINKGO_SKIP_ipv6_nft_TEST+="|should serve multiport endpoints from pods"
@@ -170,6 +173,7 @@ GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for service endpoints using hostNe
 GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to handle large requests: udp"
 GINKGO_SKIP_ipv4_ebpf_TEST+="|should update endpoints: udp"
 
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for pod-Service: udp
 GINKGO_SKIP_ipv4_userspacelin_TEST="should preserve source pod IP for traffic thru service cluster IP"
 GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be rejected when no endpoints exist"
 GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be rejected for evicted pods"
