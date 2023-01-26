@@ -45,7 +45,7 @@ function pass_message {
         echo "pass_message() requires a message"
         exit 1
     fi
-    GREEN="\e[32m"
+    GREEN="\e[92m"
     ENDCOLOR="\e[0m"
     echo -e "[ ${GREEN}PASSED${ENDCOLOR} ] ${1}"
 }
@@ -62,7 +62,7 @@ function info_message {
         echo "info_message() requires a message"
         exit 1
     fi
-    BLUE="\e[34m"
+    BLUE="\e[94m"
     ENDCOLOR="\e[0m"
     echo -e "[ ${BLUE}INFO${ENDCOLOR} ] ${1}"
 }

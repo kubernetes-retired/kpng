@@ -43,6 +43,8 @@ GINKGO_PROVIDER="local"
 GINKGO_SKIP_ipv4_iptables_TEST="should be updated after adding or deleting ports"
 GINKGO_SKIP_ipv4_iptables_TEST+="|should serve multiport endpoints from pods"
 GINKGO_SKIP_ipv4_iptables_TEST+="|should check kube-proxy urls"
+GINKGO_SKIP_ipv4_iptables_TEST+="|should be rejected when no endpoints exist"
+
 
 GINKGO_SKIP_ipv6_iptables_TEST="should be updated after adding or deleting ports"
 GINKGO_SKIP_ipv6_iptables_TEST+="|should serve multiport endpoints from pods"
@@ -232,7 +234,7 @@ function result_message {
         exit 1
     fi
     RED="\e[91m"
-    GREEN="\e[32m"    
+    GREEN="\e[92m"    
     ENDCOLOR="\e[0m"
 
     if [ "${result}" == "0" ] ; then
