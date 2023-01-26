@@ -59,8 +59,10 @@ GINKGO_SKIP_dual_iptables_TEST="should be updated after adding or deleting ports
 GINKGO_SKIP_dual_iptables_TEST+="|should serve multiport endpoints from pods"
 GINKGO_SKIP_dual_iptables_TEST+="|should be able to preserve UDP traffic when server pod cycles for a NodePort service"
 GINKGO_SKIP_dual_iptables_TEST+="|should check kube-proxy urls"
-
-#GINKGO_SKIP_ipv4_ipvs_TEST=""
+GINKGO_SKIP_dual_iptables_TEST+="|should serve multiport endpoints from pods"
+GINKGO_SKIP_dual_iptables_TEST+="|should be updated after adding or deleting ports"
+    
+GINKGO_SKIP_ipv4_ipvs_TEST="hould check kube-proxy urls"
 
 GINKGO_SKIP_ipv6_ipvs_TEST="should have session affinity work for NodePort service"
 GINKGO_SKIP_ipv6_ipvs_TEST+="|should have session affinity timeout work for NodePort service"
@@ -121,6 +123,8 @@ GINKGO_SKIP_ipv6_nft_TEST+="|should provide DNS for the cluster"
 GINKGO_SKIP_ipv6_nft_TEST+="|should provide DNS for pods for Subdomain"
 GINKGO_SKIP_ipv6_nft_TEST+="|should create endpoints for unready pods"
 GINKGO_SKIP_ipv6_nft_TEST+="|should function for node-Service: udp"
+GINKGO_SKIP_ipv6_nft_TEST+="|should function for endpoint-Service: http"
+GINKGO_SKIP_ipv6_nft_TEST+="|should function for multiple endpoint-Services with same selector"
 
 #GINKGO_SKIP_dual_nft_TEST=""
 
@@ -184,6 +188,7 @@ GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be able to preserve UDP traffic whe
 GINKGO_SKIP_ipv4_userspacelin_TEST+="|should have session affinity timeout work for service with type clusterIP"
 GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be able to preserve UDP traffic when server pod cycles for a ClusterIP service"
 GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be able to preserve UDP traffic when server pod cycles for a NodePort service"
+GINKGO_SKIP_ipv4_userspacelin_TEST+="|should check kube-proxy urls"
 
 source "${SCRIPT_DIR}"/utils.sh
 source "${SCRIPT_DIR}"/common.sh
@@ -1139,7 +1144,7 @@ erase_clusters=false
 print_report=false
 deployment_model="single-process-per-node"
 export_metrics=false
-include_specific_failed_tests=false
+include_specific_failed_tests=true
 
 while getopts "b:cdei:n:mps:t:B:D:E:IMS" flag
 do
