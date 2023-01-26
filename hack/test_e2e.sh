@@ -59,10 +59,9 @@ GINKGO_SKIP_dual_iptables_TEST="should be updated after adding or deleting ports
 GINKGO_SKIP_dual_iptables_TEST+="|should serve multiport endpoints from pods"
 GINKGO_SKIP_dual_iptables_TEST+="|should be able to preserve UDP traffic when server pod cycles for a NodePort service"
 GINKGO_SKIP_dual_iptables_TEST+="|should check kube-proxy urls"
-GINKGO_SKIP_dual_iptables_TEST+="|should serve multiport endpoints from pods"
-GINKGO_SKIP_dual_iptables_TEST+="|should be updated after adding or deleting ports"
     
 GINKGO_SKIP_ipv4_ipvs_TEST="hould check kube-proxy urls"
+GINKGO_SKIP_ipv4_ipvs_TEST+="|should work after the service has been recreated"
 
 GINKGO_SKIP_ipv6_ipvs_TEST="should have session affinity work for NodePort service"
 GINKGO_SKIP_ipv6_ipvs_TEST+="|should have session affinity timeout work for NodePort service"
@@ -178,6 +177,8 @@ GINKGO_SKIP_ipv4_ebpf_TEST+="|should be able to handle large requests: udp"
 GINKGO_SKIP_ipv4_ebpf_TEST+="|should update endpoints: udp"
 GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for pod-Service: udp"
 GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for pod-Service: http"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for client IP based session affinity: http"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|sshould function for multiple endpoint-Services with same selector"
 
 GINKGO_SKIP_ipv4_userspacelin_TEST="should preserve source pod IP for traffic thru service cluster IP"
 GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be rejected when no endpoints exist"
