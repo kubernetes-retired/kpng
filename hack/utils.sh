@@ -25,7 +25,7 @@ function if_error_exit {
     ###########################################################################
     if [ "$?" != "0" ]; then
         if [ -n "$1" ]; then
-            RED="\e[31m"
+            RED="\e[91m"
             ENDCOLOR="\e[0m"
             echo -e "[ ${RED}FAILED${ENDCOLOR} ] ${1}"
         fi
@@ -53,7 +53,7 @@ function pass_message {
 function info_message {
     ###########################################################################
     # Description:                                                            #
-    # show [INFO] in blue and a message as the validation passed.          #
+    # show [INFO] in blue and a message as the validation passed.             #
     #                                                                         #
     # Arguments:                                                              #
     #   $1 - message to output                                                #

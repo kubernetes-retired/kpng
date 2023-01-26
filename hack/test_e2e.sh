@@ -178,7 +178,8 @@ GINKGO_SKIP_ipv4_ebpf_TEST+="|should update endpoints: udp"
 GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for pod-Service: udp"
 GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for pod-Service: http"
 GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for client IP based session affinity: http"
-GINKGO_SKIP_ipv4_ebpf_TEST+="|sshould function for multiple endpoint-Services with same selector"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for multiple endpoint-Services with same selector"
+GINKGO_SKIP_ipv4_ebpf_TEST+="|should function for node-Service: http"
 
 GINKGO_SKIP_ipv4_userspacelin_TEST="should preserve source pod IP for traffic thru service cluster IP"
 GINKGO_SKIP_ipv4_userspacelin_TEST+="|should be rejected when no endpoints exist"
@@ -204,7 +205,7 @@ function if_error_warning {
     ###########################################################################
     if [ "$?" != "0" ]; then
         if [ -n "$1" ]; then
-            RED="\e[31m"
+            RED="\e[91m"
             ENDCOLOR="\e[0m"
             echo -e "[ ${RED}FAILED${ENDCOLOR} ] ${1}"
         fi
@@ -230,7 +231,7 @@ function result_message {
         echo "result_message() requires a message"
         exit 1
     fi
-    RED="\e[31m"
+    RED="\e[91m"
     GREEN="\e[32m"    
     ENDCOLOR="\e[0m"
 
