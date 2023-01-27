@@ -22,7 +22,7 @@ fi
 shopt -s expand_aliases
 
 : "${E2E_GO_VERSION:="1.18.4"}"
-: "${E2E_K8S_VERSION:="v1.26.0"}"
+: "${E2E_K8S_VERSION:="v1.25.3"}"
 : "${E2E_TIMEOUT_MINUTES:=100}"
 
 CONTAINER_ENGINE="docker"
@@ -41,7 +41,6 @@ GINKGO_PROVIDER="local"
 
 source "${SCRIPT_DIR}"/utils.sh
 source "${SCRIPT_DIR}"/common.sh
-source "${SCRIPT_DIR}"/test_skip_list.sh
 
 function if_error_warning {
     ###########################################################################
@@ -49,45 +48,15 @@ function if_error_warning {
     # Validate if previous command failed and show an error msg (if provided) #
     #                                                                         #
     # Arguments:                                                              #
-    #   arg1 - error message if not provided, it will just exit               #
+    #   $1 - error message if not provided, it will just exit                 #
     ###########################################################################
     if [ "$?" != "0" ]; then
         if [ -n "$1" ]; then
-            RED="\e[91m"
+            RED="\e[31m"
             ENDCOLOR="\e[0m"
             echo -e "[ ${RED}FAILED${ENDCOLOR} ] ${1}"
         fi
     fi
-}
-
-function result_message {
-    ###########################################################################
-    # Description:                                                            #
-    # show [FAILED] in red and a message.                                     #
-    #                                                                         #
-    # Arguments:                                                              #
-    #   arg1 - result                                                         #
-    #   arg2 - message to output                                              #
-    ###########################################################################
-    [ $# -eq 2 ]
-    if_error_exit "result_message: $# Wrong number of arguments to ${FUNCNAME[0]}... args: $#"
-
-    local result=${1}
-    local message="${2}"
-
-    if [ -z "${result}" ]; then
-        echo "result_message() requires a message"
-        exit 1
-    fi
-    RED="\e[91m"
-    GREEN="\e[92m"    
-    ENDCOLOR="\e[0m"
-
-    if [ "${result}" == "0" ] ; then
-	echo -e "${GREEN}[SUCCESS!] ${message} succeded!!! ${ENDCOLOR}"
-    else
-	echo -e "${RED}[FAIL!] ${message} failed!!! ${ENDCOLOR}"
-    fi 
 }
 
 function detect_container_engine {
@@ -253,7 +222,7 @@ function create_cluster {
             ;;
     esac
 
-    info_message  "Preparing to setup ${cluster_name} cluster ..."
+    info_message -e "\nPreparing to setup ${cluster_name} cluster ..."
     # create cluster
     # create the config file
      cat <<EOF > "${artifacts_directory}/kind-config.yaml"
@@ -479,23 +448,17 @@ function run_tests {
      #                                                                         #
      # Arguments:                                                              #
      #   arg1: e2e directory                                                   #
-     #   arg2: bin_dir, path to binary directory                               #
+     #   arg2: bin_dir, path to binary directory                                 #
      #   arg3: parallel ginkgo tests boolean                                   #
-     #   arg4: ip_family                                                       #
-     #   arg5: backend                                                         #
-     #   arg6: include specific failed tests                                   #
      ###########################################################################
 
-    [ $# -eq 6 ]
+    [ $# -eq 3 ]
     if_error_exit "exec tests $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
     local bin_dir="${2}"
     local parallel="${3}"
-    local ip_family="${4}"
-    local backend="${5}"
-    local include_specific_failed_tests="${6}"
-    
+
     local artifacts_directory="${e2e_dir}/artifacts"
 
     [ -f "${artifacts_directory}/${KUBECONFIG_TESTS}" ]
@@ -510,6 +473,7 @@ function run_tests {
     [ -f "${bin_dir}/ginkgo" ]
     if_error_exit "File \"${bin_dir}/ginkgo\" does not exist"
 
+
    # ginkgo regexes
    local ginkgo_skip="${GINKGO_SKIP_TESTS:-}"
    local ginkgo_focus=${GINKGO_FOCUS:-"\\[Conformance\\]"}
@@ -523,22 +487,13 @@ function run_tests {
      fi
    fi
 
-   if [ "${include_specific_failed_tests}" == "false" ] ; then
-       # find ip_type and backend specific skip sets
-       skip_set_name="GINKGO_SKIP_${ip_family}_${backend}_TEST"
-       declare -n skip_set_ref=${skip_set_name}
-       if ! [ -z "${skip_set_ref}" ] ; then
-	   ginkgo_skip="${ginkgo_skip}|${skip_set_ref}"
-       fi
-   fi
-
    # setting this env prevents ginkgo e2e from trying to run provider setup
    export KUBERNETES_CONFORMANCE_TEST='y'
    # setting these is required to make RuntimeClass tests work ... :/
    export KUBE_CONTAINER_RUNTIME=remote
    export KUBE_CONTAINER_RUNTIME_ENDPOINT=unix:///run/containerd/containerd.sock
    export KUBE_CONTAINER_RUNTIME_NAME=containerd
-   
+
    "${bin_dir}/ginkgo" --nodes="${GINKGO_NUMBER_OF_NODES}" \
            --focus="${ginkgo_focus}" \
            --skip="${ginkgo_skip}" \
@@ -549,7 +504,6 @@ function run_tests {
            --dump-logs-on-failure="${GINKGO_DUMP_LOGS_ON_FAILURE}" \
            --report-dir="${GINKGO_REPORT_DIR}" \
            --disable-log-dump="${GINKGO_DISABLE_LOG_DUMP}"
-   return $?
 }
 
 function clean_artifacts {
@@ -648,9 +602,8 @@ function create_infrastructure_and_run_tests {
     #   arg7: <ci_mode>                                                       #
     #   arg8: deployment_model                                                #
     #   arg9: export_metrics                                                  #
-    #   arg10: include_specific_failed_tests                                  #
     ###########################################################################
-    [ $# -eq 10 ]
+    [ $# -eq 9 ]
     if_error_exit "create and run $# Wrong number of arguments to ${FUNCNAME[0]}"
 
     local e2e_dir="${1}"
@@ -662,8 +615,6 @@ function create_infrastructure_and_run_tests {
     local ci_mode="${7}"
     local deployment_model="${8}"
     local export_metrics="${9}"
-    local include_specific_failed_tests="${10}"
-    
 
     local artifacts_directory="${e2e_dir}/artifacts"
     local cluster_name="kpng-e2e-${ip_family}-${backend}${suffix}"
@@ -692,16 +643,14 @@ function create_infrastructure_and_run_tests {
     if [ "${backend}" != "not-kpng" ] ; then
         install_kpng "${cluster_name}" "${bin_dir}"
     fi
-    local result=0
+
     if ! ${devel_mode} ; then
-	run_tests "${e2e_dir}" "${bin_dir}" "false" "${ip_family}" "${backend}" "${include_specific_failed_tests}"
-	result=$?
-	#need to clean this up
-	if [ "${ci_mode}" = false ] ; then
-            clean_artifacts "${e2e_dir}" "${bin_dir}" 
-	fi
+        run_tests "${e2e_dir}" "${bin_dir}" "false"
+        #need to clean this up
+       if [ "${ci_mode}" = false ] ; then
+          clean_artifacts "${e2e_dir}" "${bin_dir}" 
+       fi
     fi
-    return ${result}
 }
 
 function delete_kind_clusters {
@@ -710,7 +659,7 @@ function delete_kind_clusters {
     # delete_kind_clusters                                                    #
     #                                                                         #
     # Arguments:                                                              #
-    #   arg1: bin_dir                                                         #
+    #   arg1: bin_dir                                                   #
     #   arg2: ip_family                                                       #
     #   arg3: backend                                                         #
     #   arg4: suffix                                                          #
@@ -786,7 +735,7 @@ function print_reports {
           continue
        fi
 
-       info_message "Summary report from cluster \"${i}\" in directory: \"${test_directory}\""
+       info_message -e "Summary report from cluster \"${i}\" in directory: \"${test_directory}\""
        local output_file="${test_directory}/output.log"
        cat "${output_file}" >> "${combined_output_file}"
 
@@ -794,7 +743,8 @@ function print_reports {
     done
 
     echo -e "\nOccurrence\tFailure"
-    grep "\[FAIL\]" "${combined_output_file}" |
+    grep \"msg\":\"FAILED "${combined_output_file}" |
+    sed 's/^.*\"FAILED/\t/' | sed 's/\,\"completed\".*//' | sed 's/[ \"]$//' |
     sort | uniq -c | sort -nr  | sed 's/\,/\n\t\t/g'
 
     rm -f "${combined_output_file}"
@@ -809,7 +759,7 @@ function main {
     #   None                                                                  #
     ###########################################################################
 
-    [ $# -eq 15 ]
+    [ $# -eq 14 ]
     if_error_exit "Wrong number of arguments to ${FUNCNAME[0]}"
 
     # setting up variables
@@ -827,7 +777,6 @@ function main {
     local deployment_model="${12}"
     local run_tests_on_existing_cluster="${13}"
     local export_metrics="${14}"
-    local include_specific_failed_tests="${15}"
 
     [ "${cluster_count}" -ge "1" ]
     if_error_exit "cluster_count must be larger or equal to one"
@@ -838,27 +787,25 @@ function main {
 
     if ${erase_clusters} ; then
         delete_kind_clusters "${bin_dir}" "${ip_family}" "${backend}" "${suffix}" "${cluster_count}"
-        return 0
+        exit 1
     fi
 
     if ${print_report} ; then
         print_reports "${ip_family}" "${backend}" "${e2e_dir}" "-${suffix}" "${cluster_count}"
-        return 0
+        exit 1
     fi
 
     echo "+==================================================================+"
     echo -e "\t\tStarting KPNG E2E testing"
     echo "+==================================================================+"
-
-    
     if [ "${run_tests_on_existing_cluster}" = true ] ; then
-        run_tests "${e2e_dir}${tmp_suffix}" "${bin_dir}" "false" "${ip_family}" "${backend}" "${include_specific_failed_tests}"
-	local result=$?
+        run_tests "${e2e_dir}${tmp_suffix}" "${bin_dir}" "false"
         #need to clean this up
-	if [ "${ci_mode}" = false ] ; then
-            clean_artifacts "${e2e_dir}${tmp_suffix}"
-	fi
-	return ${result}
+       if [ "${ci_mode}" = false ] ; then
+          clean_artifacts "${e2e_dir}${tmp_suffix}"
+       fi
+
+       exit 1
     fi
 
     # in ci this should fail
@@ -892,14 +839,12 @@ function main {
         done
     fi
 
-    local result=0
     # preparation completed, time to setup infrastructure and run tests
     if [ "${cluster_count}" -eq "1" ] ; then
         local tmp_suffix=${suffix:+"-${suffix}"}
-	create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
+        create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
 					    "${bin_dir}" "${tmp_suffix}" "${devel_mode}" "${ci_mode}" \
-					    "${deployment_model}" "${export_metrics}" "${include_specific_failed_tests}"
-	result=$?
+					    "${deployment_model}" "${export_metrics}"
     else
         local pids
 
@@ -914,36 +859,24 @@ function main {
             rm -f "${output_file}"
             create_infrastructure_and_run_tests "${e2e_dir}${tmp_suffix}" "${ip_family}" "${backend}" \
 						"${bin_dir}" "${tmp_suffix}" "${devel_mode}" "${ci_mode}" \
-						"${deployment_model}" "${export_metrics}" "${include_specific_failed_tests}" \
+						"${deployment_model}" "${export_metrics}" \
                   &> "${e2e_dir}${tmp_suffix}/output.log" &
             pids[${i}]=$!
         done
         for pid in ${pids[*]}; do # not possible to use quotes here
-            wait "${pid}"
-	    local tmp=$?
-	    if ! [ ${tmp} -eq 0 ] ; then
-		result=${tmp}
-	    fi
+          wait ${pid}
         done
         if ! ${devel_mode} ; then
            print_reports "${ip_family}" "${backend}" "${e2e_dir}" "-${suffix}" "${cluster_count}"
         fi
     fi
-
     if ${devel_mode} ; then
        echo -e "\n+=====================================================================================+"
        echo -e "\t\tDeveloper mode no test run!"
        echo -e "+=====================================================================================+"
-    elif ! ${ci_mode}; then
+    elif ! ${ci_mode} && ${erase_clusters} ; then
         delete_kind_clusters "${bin_dir}" "${ip_family}" "${backend}" "${suffix}" "${cluster_count}"
     fi
-    
-    echo -e "\n+=====================================================================================+"
-    echo -e "\t\tResult"
-    echo -e "+=====================================================================================+"
-
-    result_message  ${result} "test_e2e test suite for \"-i ${ip_family} -b ${backend}\""
-    return ${result}
 }
 
 
@@ -959,25 +892,23 @@ function help {
     printf "\n"
     printf "Usage: %s [-i ip_family] [-b backend]\n" "$0"
     printf "\t-i set ip_family(ipv4/ipv6/dual) name in the e2e test runs.\n"
-    printf "\t-b set backend (iptables/nft/ipvs/ebpf/userspacelin/not-kpng/) name in the e2e test runs. \
+    printf "\t-b set backend (iptables/nft/ipvs/ebpf/not-kpng) name in the e2e test runs. \
     \"not-kpng\" is used to be able to validate and compare results\n"
     printf "\t-c flag allows for ci_mode. Please don't run on local systems.\n"
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
     printf "\t-e erase kind clusters.\n"
-    printf "\t-m set the KPNG deployment model, can either be: \n\
-            * split-process-per-node [legacy/debug] -> (To run KPNG server + client in separate containers/processes per node)
-            * single-process-per-node [default] -> (To run KPNG server + client in a single container/process per node)\n"
     printf "\t-n number of parallel test clusters.\n"
     printf "\t-p flag, only print reports.\n"
     printf "\t-s suffix, will be appended to the E2@ directory and kind cluster name (makes it possible to run parallel tests.\n"
-    printf "\t-t Run tests on existing deployment\n"
     printf "\t-B binary directory, specifies the path for the directory where binaries will be installed\n"
     printf "\t-D Dockerfile, specifies the path of the Dockerfile to use\n"
     printf "\t-E set E2E directory, specifies the path for the E2E directory\n"
-    printf "\t-I Include failing \"ip_family and backend\" specific test cases\n"
+    printf "\t-m set the KPNG deployment model, can either be: \n\
+            * split-process-per-node [legacy/debug] -> (To run KPNG server + client in separate containers/processes per node)
+            * single-process-per-node [default] -> (To run KPNG server + client in a single container/process per node)"
+    printf "\t-t Run tests on existing deployment\n"
     printf "\t-M Configure kpng to export prometheus metrics\n"
-    printf "\t-S Skip the failing \"ip_family and backend\" specific test cases\n"
-    printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}\n"
+    printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}"
     exit 1 # Exit script after printing help
 }
 tmp_dir=$(dirname "$0")
@@ -993,9 +924,8 @@ erase_clusters=false
 print_report=false
 deployment_model="single-process-per-node"
 export_metrics=false
-include_specific_failed_tests=true
 
-while getopts "b:cdei:n:mps:t:B:D:E:IMS" flag
+while getopts "i:b:B:cdD:eE:n:ps:mt:M" flag
 do
     case "${flag}" in
         i ) ip_family="${OPTARG}" ;;
@@ -1005,15 +935,13 @@ do
         e ) erase_clusters=true ;;
         n ) cluster_count="${OPTARG}" ;;
         p ) print_report=true ;;
-        m ) deployment_model="${OPTARG}" ;;
-        s ) suffix="${OPTARG}" ;; 
-        t ) run_tests_on_existing_cluster=true ;;
+        s ) suffix="${OPTARG}" ;;
         B ) bin_dir="${OPTARG}" ;;
         D ) dockerfile="${OPTARG}" ;;
         E ) e2e_dir="${OPTARG}" ;;
-        I ) include_specific_failed_tests=true ;; 
+        m ) deployment_model="${OPTARG}" ;;
+        t ) run_tests_on_existing_cluster=true ;;
         M ) export_metrics=true ;; 
-        S ) include_specific_failed_tests=false ;; 
         ? ) help ;; #Print help
     esac
 done
@@ -1035,7 +963,7 @@ fi
 if [[ -n "${ip_family}" && -n "${backend}" ]]; then
     main "${ip_family}" "${backend}" "${ci_mode}" "${e2e_dir}" "${bin_dir}" "${dockerfile}" \
          "${suffix}" "${cluster_count}" "${erase_clusters}" "${print_report}" "${devel_mode}" \
-         "${deployment_model}" "${run_tests_on_existing_cluster}" "${export_metrics}" "${include_specific_failed_tests}"
+         "${deployment_model}" "${run_tests_on_existing_cluster}" "${export_metrics}"
 else
     printf "Both of '-i' and '-b' must be specified.\n"
     help
