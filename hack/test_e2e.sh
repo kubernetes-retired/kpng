@@ -22,7 +22,7 @@ fi
 shopt -s expand_aliases
 
 : "${E2E_GO_VERSION:="1.18.4"}"
-: "${E2E_K8S_VERSION:="v1.26.0"}"
+: "${E2E_K8S_VERSION:="v1.25.3"}"
 : "${E2E_TIMEOUT_MINUTES:=100}"
 
 CONTAINER_ENGINE="docker"
