@@ -34,7 +34,7 @@ KIND_VERSION="v0.17.0"
 KINDEST_NODE_IMAGE="docker.io/kindest/node"
 
 CLUSTER_NAME="kpng-proxy"
-K8S_VERSION="v1.26.0"
+K8S_VERSION="v1.25.3"
 OS=$(uname| tr '[:upper:]' '[:lower:]')
 
 function add_to_path {
