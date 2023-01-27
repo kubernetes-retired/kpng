@@ -527,7 +527,6 @@ function run_tests {
        # find ip_type and backend specific skip sets
        skip_set_name="GINKGO_SKIP_${ip_family}_${backend}_TEST"
        declare -n skip_set_ref=${skip_set_name}
-       
        if ! [ -z "${skip_set_ref}" ] ; then
 	   ginkgo_skip="${ginkgo_skip}|${skip_set_ref}"
        fi
@@ -960,14 +959,14 @@ function help {
     printf "\n"
     printf "Usage: %s [-i ip_family] [-b backend]\n" "$0"
     printf "\t-i set ip_family(ipv4/ipv6/dual) name in the e2e test runs.\n"
-    printf "\t-b set backend (iptables/nft/ipvs/ebpf/not-kpng) name in the e2e test runs. \
+    printf "\t-b set backend (iptables/nft/ipvs/ebpf/userspacelin/not-kpng/) name in the e2e test runs. \
     \"not-kpng\" is used to be able to validate and compare results\n"
     printf "\t-c flag allows for ci_mode. Please don't run on local systems.\n"
     printf "\t-d devel mode, creates the test env but skip e2e tests. Useful for debugging.\n"
     printf "\t-e erase kind clusters.\n"
     printf "\t-m set the KPNG deployment model, can either be: \n\
             * split-process-per-node [legacy/debug] -> (To run KPNG server + client in separate containers/processes per node)
-            * single-process-per-node [default] -> (To run KPNG server + client in a single container/process per node)"
+            * single-process-per-node [default] -> (To run KPNG server + client in a single container/process per node)\n"
     printf "\t-n number of parallel test clusters.\n"
     printf "\t-p flag, only print reports.\n"
     printf "\t-s suffix, will be appended to the E2@ directory and kind cluster name (makes it possible to run parallel tests.\n"
@@ -978,7 +977,7 @@ function help {
     printf "\t-I Include failing \"ip_family and backend\" specific test cases\n"
     printf "\t-M Configure kpng to export prometheus metrics\n"
     printf "\t-S Skip the failing \"ip_family and backend\" specific test cases\n"
-    printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}"
+    printf "\nExample:\n\t %s -i ipv4 -b iptables\n" "${0}\n"
     exit 1 # Exit script after printing help
 }
 tmp_dir=$(dirname "$0")
