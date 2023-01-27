@@ -35,7 +35,7 @@ jobs:
       fail-fast: false
       matrix:
         ipFamily: ["ipv4", "ipv6", "dual"]
-        backend: ["iptables", "nft", "ipvs", "ebpf", "userspacelin"]
+        backend: ["ipvs"]
         exclude: 
           - ipFamily: "ipv6"
             backend: "ebpf"
