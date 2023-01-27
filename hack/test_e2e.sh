@@ -43,8 +43,6 @@ source "${SCRIPT_DIR}"/utils.sh
 source "${SCRIPT_DIR}"/common.sh
 source "${SCRIPT_DIR}"/test_skip_list.sh
 
-echo AAAAAA ${GINKGO_SKIP_ipv4_ebpf_TEST}
-
 function if_error_warning {
     ###########################################################################
     # Description:                                                            #
@@ -86,7 +84,7 @@ function result_message {
     ENDCOLOR="\e[0m"
 
     if [ "${result}" == "0" ] ; then
-	echo -e "${GREEN}[SUCCES!] ${message} succeded!!! ${ENDCOLOR}"
+	echo -e "${GREEN}[SUCCESS!] ${message} succeded!!! ${ENDCOLOR}"
     else
 	echo -e "${RED}[FAIL!] ${message} failed!!! ${ENDCOLOR}"
     fi 
