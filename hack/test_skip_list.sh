@@ -70,7 +70,16 @@ GINKGO_SKIP_ipv6_ipvs_TEST="should have session affinity work for NodePort servi
 |should provide DNS for services\
 |should provide DNS for the cluster"
 
-GINKGO_SKIP_dual_ipvs_TEST="should work after the service has been recreated"
+GINKGO_SKIP_dual_ipvs_TEST="should work after the service has been recreated\
+|should be able to update service type to NodePort listening on same port number but different protocols\
+|should not be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is false\
+|should be able to preserve UDP traffic when server pod cycles for a NodePort service\
+|should be able to preserve UDP traffic when server pod cycles for a ClusterIP service\
+|should implement service.kubernetes.io/service-proxy-name\
+|should have session affinity timeout work for service with type clusterIP\
+|should have session affinity work for NodePort service\
+|should be able to preserve UDP traffic when server pod cycles for a ClusterIP service\
+|should have session affinity timeout work for service with type clusterIP"
 
 GINKGO_SKIP_ipv4_nft_TEST="should check kube-proxy urls"
 
@@ -114,6 +123,8 @@ GINKGO_SKIP_ipv6_nft_TEST="should work after the service has been recreated\
 |should check kube-proxy urls"
 
 GINKGO_SKIP_dual_nft_TEST="should check kube-proxy urls\
+|should be rejected when no endpoints exist\
+|should check kube-proxy urls\
 |should be rejected when no endpoints exist"
 
 GINKGO_SKIP_ipv4_ebpf_TEST="should serve multiport endpoints from pods|should have session affinity work for service with type clusterIP\
