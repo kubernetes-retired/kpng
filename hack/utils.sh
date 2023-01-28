@@ -1,14 +1,13 @@
 #!/bin/bash
-# shellcheck disable=SC2181,SC2155,SC2128
-#
-# Copyright 2022 The Kubernetes Authors.
-#
+
+# Copyright 2021 The Kubernetes Authors.
+# 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,7 +24,7 @@ function if_error_exit {
     ###########################################################################
     if [ "$?" != "0" ]; then
         if [ -n "$1" ]; then
-            RED="\e[31m"
+            RED="\e[91m"
             ENDCOLOR="\e[0m"
             echo -e "[ ${RED}FAILED${ENDCOLOR} ] ${1}"
         fi
@@ -45,7 +44,7 @@ function pass_message {
         echo "pass_message() requires a message"
         exit 1
     fi
-    GREEN="\e[32m"
+    GREEN="\e[92m"
     ENDCOLOR="\e[0m"
     echo -e "[ ${GREEN}PASSED${ENDCOLOR} ] ${1}"
 }
@@ -53,7 +52,7 @@ function pass_message {
 function info_message {
     ###########################################################################
     # Description:                                                            #
-    # show [INFO] in blue and a message as the validation passed.          #
+    # show [INFO] in blue and a message as the validation passed.             #
     #                                                                         #
     # Arguments:                                                              #
     #   $1 - message to output                                                #
@@ -62,7 +61,7 @@ function info_message {
         echo "info_message() requires a message"
         exit 1
     fi
-    BLUE="\e[34m"
+    BLUE="\e[94m"
     ENDCOLOR="\e[0m"
     echo -e "[ ${BLUE}INFO${ENDCOLOR} ] ${1}"
 }

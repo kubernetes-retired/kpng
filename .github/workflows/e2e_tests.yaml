@@ -64,7 +64,7 @@ jobs:
         fi 
 
     - name: run e2e tests
-      run: ./hack/test_e2e.sh -i ${{ env.IP_FAMILY }} -b ${{ env.BACKEND }} -c -n 1
+      run: ./hack/test_e2e.sh -i ${{ env.IP_FAMILY }} -b ${{ env.BACKEND }} -c -n 1 -S
 
     - name: Export logs
       if: always()
