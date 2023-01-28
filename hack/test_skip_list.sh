@@ -42,7 +42,9 @@ GINKGO_SKIP_dual_iptables_TEST="should be updated after adding or deleting ports
     
 GINKGO_SKIP_ipv4_ipvs_TEST="hould check kube-proxy urls\
 |should work after the service has been recreated\
-|should be able to preserve UDP traffic when server pod cycles for a NodePort service"
+|should be able to preserve UDP traffic when server pod cycles for a NodePort service\
+|should not be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is false\
+|should implement service.kubernetes.io/service-proxy-name"
 
 GINKGO_SKIP_ipv6_ipvs_TEST="should have session affinity work for NodePort service\
 |should have session affinity timeout work for NodePort service\
@@ -179,7 +181,8 @@ GINKGO_SKIP_ipv4_ebpf_TEST="should serve multiport endpoints from pods|should ha
 |should function for pod-Service: http\
 |should function for client IP based session affinity: http\
 |should function for multiple endpoint-Services with same selector\
-|should function for node-Service: http"
+|should function for node-Service: http\
+|should function for endpoint-Service: http"
 
 GINKGO_SKIP_ipv4_userspacelin_TEST="should preserve source pod IP for traffic thru service cluster IP\
 |should be rejected when no endpoints exist\
