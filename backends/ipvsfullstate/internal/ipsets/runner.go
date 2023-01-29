@@ -39,7 +39,7 @@ func (runner *runner) createSet(set *IPSet, ignoreExistErr bool) error {
 	args := []string{"create", set.Name, string(set.SetType)}
 	if set.SetType == HashIPPortIP || set.SetType == HashIPPort || set.SetType == HashIPPortNet {
 		args = append(args,
-			"family", set.HashFamily,
+			"family", set.HashFamily.String(),
 			"hashsize", strconv.Itoa(set.HashSize),
 			"maxelem", strconv.Itoa(set.MaxElem),
 		)

@@ -17,6 +17,7 @@ limitations under the License.
 package ipvsfullsate
 
 import (
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/ipsets"
 	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/iptables"
@@ -25,7 +26,6 @@ import (
 // Setup is used for setting up the backend, initialize ipvs, ipsets and iptales.
 func (b *backend) Setup() {
 	var err error
-	ipsetList := make(map[string]*ipsets.Set)
 	controller = newController()
 
 	// setup ipvs manager
@@ -43,34 +43,48 @@ func (b *backend) Setup() {
 		klog.Fatal("unable to initialize ipvs manager", "error", err)
 	}
 
-	// initialize ipsets
+	// initialize ip sets
 	for _, is := range ipsetInfo {
-		set, err := controller.ipsetsManager.CreateSet(is.name, is.setType, is.comment)
-		ipsetList[set.GetName()] = set
+		// IPv4 sets
+		_, err = controller.ipsetsManager.CreateSet(is.name[v1.IPv4Protocol], is.setType, ipsets.ProtocolFamilyIPv4, is.comment)
+		if err != nil {
+			klog.Fatal("unable to create ipset", "set", is.name, "error", err)
+		}
+
+		// IPv6 sets
+		_, err = controller.ipsetsManager.CreateSet(is.name[v1.IPv6Protocol], is.setType, ipsets.ProtocolFamilyIPv6, is.comment)
 		if err != nil {
 			klog.Fatal("unable to create ipset", "set", is.name, "error", err)
 		}
 	}
 
-	// add custom chains to NAT table
+	// add custom chains to NAT IPv4 and IPv6 table
 	for _, chain := range []iptables.Chain{kubeServicesChain, KubeFireWallChain, kubePostroutingChain, KubeMarkMasqChain,
 		KubeNodePortChain, KubeMarkDropChain, KubeForwardChain, KubeLoadBalancerChain} {
-		controller.iptManager.AddChain(chain, iptables.TableNat)
+		controller.iptManager.AddChain(chain, iptables.TableNat, iptables.ProtocolFamilyIPv4)
+		controller.iptManager.AddChain(chain, iptables.TableNat, iptables.ProtocolFamilyIPv6)
 	}
 
-	// add custom chains to FILTER table
+	// add custom chains to FILTER IPv4 and IPv6 table
 	for _, chain := range []iptables.Chain{KubeForwardChain, KubeNodePortChain} {
-		controller.iptManager.AddChain(chain, iptables.TableFilter)
+		controller.iptManager.AddChain(chain, iptables.TableFilter, iptables.ProtocolFamilyIPv4)
+		controller.iptManager.AddChain(chain, iptables.TableFilter, iptables.ProtocolFamilyIPv6)
 	}
 
-	// add rules for NAT table
-	for _, rule := range GetNatRules(true) {
-		controller.iptManager.AddRule(rule, iptables.TableNat)
+	// add rules for NAT IPv4 and IPv6 table
+	for _, rule := range GetNatRules(true, v1.IPv4Protocol) {
+		controller.iptManager.AddRule(rule, iptables.TableNat, iptables.ProtocolFamilyIPv4)
+	}
+	for _, rule := range GetNatRules(true, v1.IPv6Protocol) {
+		controller.iptManager.AddRule(rule, iptables.TableNat, iptables.ProtocolFamilyIPv6)
 	}
 
-	// add rules for FILTER table
-	for _, rule := range GetFilterRules(true) {
-		controller.iptManager.AddRule(rule, iptables.TableFilter)
+	// add rules for FILTER IPv4 and IPv6 table
+	for _, rule := range GetFilterRules(true, v1.IPv4Protocol) {
+		controller.iptManager.AddRule(rule, iptables.TableFilter, iptables.ProtocolFamilyIPv4)
+	}
+	for _, rule := range GetFilterRules(true, v1.IPv6Protocol) {
+		controller.iptManager.AddRule(rule, iptables.TableFilter, iptables.ProtocolFamilyIPv6)
 	}
 
 	// Apply will write the rules to IPTables.

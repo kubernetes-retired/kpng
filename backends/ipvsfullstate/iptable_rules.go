@@ -2,6 +2,7 @@ package ipvsfullsate
 
 import (
 	"fmt"
+	v1 "k8s.io/api/core/v1"
 	ipt "sigs.k8s.io/kpng/backends/ipvsfullstate/internal/iptables"
 )
 
@@ -35,7 +36,7 @@ const KubeForwardChain = ipt.Chain("KUBE-FORWARD")
 // KubeLoadBalancerChain is the kubernetes chain for loadbalancer type service.
 const KubeLoadBalancerChain = ipt.Chain("KUBE-LOAD-BALANCER")
 
-func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
+func GetNatRules(supportsFullyRandomized bool, ipFamily v1.IPFamily) []ipt.Rule {
 
 	// link default IPTables chains to custom chains where we will program the iptable rules.
 	rules := []ipt.Rule{
@@ -88,7 +89,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeLoopBackIPSet + " dst,dst,src",
+					Value:        kubeLoopBackIPSet[ipFamily] + " dst,dst,src",
 				},
 			},
 		},
@@ -105,7 +106,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeLoadBalancerSet + " dst,dst",
+					Value:        kubeLoadBalancerIPSet[ipFamily] + " dst,dst",
 				},
 			},
 		},
@@ -121,7 +122,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeLoadbalancerFWSet + " dst,dst",
+					Value:        kubeLoadbalancerFWIPSet[ipFamily] + " dst,dst",
 				},
 			},
 		},
@@ -137,7 +138,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeLoadBalancerSourceCIDRSet + " dst,dst,src",
+					Value:        kubeLoadBalancerSourceCIDRIPSet[ipFamily] + " dst,dst,src",
 				},
 			},
 		},
@@ -153,7 +154,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeLoadBalancerSourceIPSet + " dst,dst,src",
+					Value:        kubeLoadBalancerSourceIPSet[ipFamily] + " dst,dst,src",
 				},
 			},
 		},
@@ -169,7 +170,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeLoadBalancerLocalSet + " dst,dst",
+					Value:        kubeLoadBalancerLocalIPSet[ipFamily] + " dst,dst",
 				},
 			},
 		},
@@ -186,7 +187,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeNodePortSetTCP + " dst",
+					Value:        kubeNodePortTCPIPSet[ipFamily] + " dst",
 				},
 			},
 		},
@@ -203,7 +204,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeNodePortLocalSetTCP + " dst",
+					Value:        kubeNodePortLocalTCPIPSet[ipFamily] + " dst",
 				},
 			},
 		},
@@ -220,7 +221,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeNodePortSetUDP + " dst",
+					Value:        kubeNodePortUDPIPSet[ipFamily] + " dst",
 				},
 			},
 		},
@@ -237,7 +238,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeNodePortLocalSetUDP + " dst",
+					Value:        kubeNodePortLocalUDPIPSet[ipFamily] + " dst",
 				},
 			},
 		},
@@ -254,7 +255,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeNodePortSetSCTP + " dst,dst",
+					Value:        kubeNodePortSCTPIPSet[ipFamily] + " dst,dst",
 				},
 			},
 		},
@@ -271,7 +272,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeNodePortLocalSetSCTP + " dst,dst",
+					Value:        kubeNodePortLocalSCTPIPSet[ipFamily] + " dst,dst",
 				},
 			},
 		})
@@ -289,7 +290,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeClusterIPSet + " dst,dst",
+					Value:        kubeClusterIPSet[ipFamily] + " dst,dst",
 				},
 			},
 		})
@@ -313,7 +314,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeClusterIPSet + " src,dst",
+					Value:        kubeClusterIPSet[ipFamily] + " src,dst",
 				},
 			},
 		})
@@ -333,7 +334,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeExternalIPSet + " dst,dst",
+					Value:        kubeExternalIPSet[ipFamily] + " dst,dst",
 				},
 			},
 		},
@@ -349,7 +350,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeExternalIPSet + " dst,dst",
+					Value:        kubeExternalIPSet[ipFamily] + " dst,dst",
 				},
 				{
 					Module:       ipt.MatchModulePhysDev,
@@ -376,7 +377,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeExternalIPSet + " dst,dst",
+					Value:        kubeExternalIPSet[ipFamily] + " dst,dst",
 				},
 				{
 					Module:       ipt.MatchModuleAddrType,
@@ -401,7 +402,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeExternalIPLocalSet + " dst,dst",
+					Value:        kubeExternalIPLocalIPSet[ipFamily] + " dst,dst",
 				},
 				{
 					Module:       ipt.MatchModulePhysDev,
@@ -428,7 +429,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeExternalIPLocalSet + " dst,dst",
+					Value:        kubeExternalIPLocalIPSet[ipFamily] + " dst,dst",
 				},
 				{
 					Module:       ipt.MatchModuleAddrType,
@@ -477,7 +478,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeClusterIPSet + " dst,dst",
+					Value:        kubeClusterIPSet[ipFamily] + " dst,dst",
 				},
 			},
 		},
@@ -488,7 +489,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeLoadBalancerSet + " dst,dst",
+					Value:        kubeLoadBalancerIPSet[ipFamily] + " dst,dst",
 				},
 			},
 		},
@@ -562,7 +563,7 @@ func GetNatRules(supportsFullyRandomized bool) []ipt.Rule {
 	return rules
 }
 
-func GetFilterRules(supportsFullyRandomized bool) []ipt.Rule {
+func GetFilterRules(supportsFullyRandomized bool, ipFamily v1.IPFamily) []ipt.Rule {
 	// link default IPTables chains to custom chains where we will program the iptable rules.
 	rules := []ipt.Rule{
 		{
@@ -640,7 +641,7 @@ func GetFilterRules(supportsFullyRandomized bool) []ipt.Rule {
 				{
 					Module:       ipt.MatchModuleSet,
 					ModuleOption: ipt.MatchModuleSetOptionSet,
-					Value:        kubeHealthCheckNodePortSet + " dst",
+					Value:        kubeHealthCheckNodePortIPSet[ipFamily] + " dst",
 				},
 			},
 		})

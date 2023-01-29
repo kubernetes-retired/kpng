@@ -149,11 +149,11 @@ func validatePortRange(portRange string) bool {
 }
 
 // checks if given hash family is supported in ipset
-func validateHashFamily(family string) bool {
-	if family == ProtocolFamilyIPV4 || family == ProtocolFamilyIPV6 {
+func validateHashFamily(family ProtocolFamily) bool {
+	if family == ProtocolFamilyIPv4 || family == ProtocolFamilyIPv6 {
 		return true
 	}
-	klog.Errorf("Currently supported ip set hash families are: [%s, %s], %s is not supported", ProtocolFamilyIPV4, ProtocolFamilyIPV6, family)
+	klog.Errorf("Currently supported ip set hash families are: [%s, %s], %s is not supported", ProtocolFamilyIPv4, ProtocolFamilyIPv6, family)
 	return false
 }
 

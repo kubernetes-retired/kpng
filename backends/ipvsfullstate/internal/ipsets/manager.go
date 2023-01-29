@@ -37,8 +37,8 @@ func (m *Manager) Reset() {
 }
 
 // CreateSet doesn't use diffstore, straightaway creates the set and add it to ipsetMap.
-func (m *Manager) CreateSet(name string, setType SetType, comment string) (*Set, error) {
-	set := newIPSet(New(exec.New()), name, setType, ProtocolFamilyIPV4, comment)
+func (m *Manager) CreateSet(name string, setType SetType, protocolFamily ProtocolFamily, comment string) (*Set, error) {
+	set := newIPSet(New(exec.New()), name, setType, protocolFamily, comment)
 	m.ipsetMap[name] = set
 	return set, ensureIPSet(set)
 }

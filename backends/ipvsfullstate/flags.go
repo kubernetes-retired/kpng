@@ -10,6 +10,8 @@ var (
 	// IPVS ipvs sink flags
 	BackendFlags = &pflag.FlagSet{}
 
+	//TODO: implement dry run
+
 	DryRun                = BackendFlags.Bool("dry-run", false, "dry run (print instead of applying)")
 	NodeAddresses         = BackendFlags.StringArray("node-address", interfaceAddresses(), "A comma-separated list of IPs to associate when using NodePort type. Defaults to all the Node addresses")
 	IPVSSchedulingMethod  = BackendFlags.String("scheduling-method", "rr", "Algorithm for allocating TCP conn & UDP datagrams to real servers. Values: rr,wrr,lc,wlc,lblc,lblcr,dh,sh,seq,nq")
@@ -35,11 +37,6 @@ func interfaceAddresses() []string {
 		ip, _, err := net.ParseCIDR(addr.String())
 		if err != nil {
 			panic(err)
-		}
-
-		// only IPv4 for now
-		if ipv4 := ip.To4(); ipv4 == nil {
-			continue
 		}
 
 		addresses = append(addresses, ip.String())

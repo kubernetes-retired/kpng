@@ -8,25 +8,19 @@ const (
 )
 
 type TableData struct {
-	Table  Table
-	Chains []Chain
-	Rules  []Rule
+	Table          Table
+	Chains         []Chain
+	Rules          []Rule
+	ProtocolFamily ProtocolFamily
 }
 type Chain string
 
 const (
-	ChainPreRouting       Chain = "PREROUTING"
-	ChainInput                  = "INPUT"
-	ChainForward                = "FORWARD"
-	ChainOutput                 = "OUTPUT"
-	ChainPostRouting            = "POSTROUTING"
-	ChainKubeFirewall           = "KUBE-FIREWALL"
-	ChainKubeLoadBalancer       = "KUBE-LOAD-BALANCER"
-	ChainKubeMarkDrop           = "KUBE-MARK-DROP"
-	ChainKubeMarkMasq           = "KUBE-MARK-MASQ"
-	ChainKubeNodePort           = "KUBE-NODE-PORT"
-	ChainKubePostRouting        = "KUBE-POSTROUTING"
-	ChainKubeServices           = "KUBE-SERVICES"
+	ChainPreRouting  Chain = "PREROUTING"
+	ChainInput             = "INPUT"
+	ChainForward           = "FORWARD"
+	ChainOutput            = "OUTPUT"
+	ChainPostRouting       = "POSTROUTING"
 )
 
 type TargetOption string
@@ -98,4 +92,11 @@ const (
 	ProtocolTCP  Protocol = "tcp"
 	ProtocolUDP           = "udp"
 	ProtocolSCTP          = "sctp"
+)
+
+type ProtocolFamily string
+
+const (
+	ProtocolFamilyIPv4 ProtocolFamily = "inet"
+	ProtocolFamilyIPv6                = "inet6"
 )
