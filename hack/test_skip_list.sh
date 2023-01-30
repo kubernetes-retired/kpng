@@ -251,7 +251,7 @@ GINKGO_SKIP_ipv4_ebpf_TEST="should serve multiport endpoints from pods|should ha
 |should function for service endpoints using hostNetwork\
 |should be able to handle large requests: udp\
 |should update endpoints: udp\
-|should function for pod-Service: udp\dff
+|should function for pod-Service: udp\
 |should function for pod-Service: http\
 |should function for client IP based session affinity: http\
 |should function for multiple endpoint-Services with same selector\
@@ -259,7 +259,10 @@ GINKGO_SKIP_ipv4_ebpf_TEST="should serve multiport endpoints from pods|should ha
 |should function for endpoint-Service: http\
 |should function for pod-Service: udp\
 |should function for client IP based session affinity: udp\
-|should function for endpoint-Service: udp"
+|should function for endpoint-Service: udp\
+|should run through the lifecycle of Pods and PodStatus\
+|should update nodePort: http"
+
 
 GINKGO_SKIP_ipv4_userspacelin_TEST="should preserve source pod IP for traffic thru service cluster IP\
 |should be rejected when no endpoints exist\
@@ -273,4 +276,5 @@ GINKGO_SKIP_ipv4_userspacelin_TEST="should preserve source pod IP for traffic th
 |should check kube-proxy urls\
 |should preserve source pod IP for traffic thru service cluster IP\
 |should have session affinity timeout work for NodePort service"
+
 
