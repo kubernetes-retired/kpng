@@ -42,7 +42,7 @@ GINKGO_SKIP_dual_iptables_TEST="should be updated after adding or deleting ports
 |should be able to preserve UDP traffic when server pod cycles for a NodePort service\
 |should check kube-proxy urls" 
     
-GINKGO_SKIP_ipv4_ipvs_TEST="hould check kube-proxy urls\
+GINKGO_SKIP_ipv4_ipvs_TEST="should check kube-proxy urls\
 |should work after the service has been recreated\
 |should be able to preserve UDP traffic when server pod cycles for a NodePort service\
 |should not be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is false\
@@ -108,7 +108,9 @@ GINKGO_SKIP_dual_ipvs_TEST="should work after the service has been recreated\
 |should drop INVALID conntrack entries\
 |should implement service.kubernetes.io/headless\
 |should check kube-proxy urls\
-|should be able to switch session affinity for NodePort service"
+|should be able to switch session affinity for NodePort service\
+|should function for multiple endpoint-Services with same selector\
+|should be able to create a functioning NodePort service"
 
 GINKGO_SKIP_ipv4_nft_TEST="should check kube-proxy urls\
 |should work with the pod containing more than 6 DNS search paths and longer than 256 search list characters"
@@ -194,7 +196,93 @@ GINKGO_SKIP_ipv6_nft_TEST="should work after the service has been recreated\
 |should check kube-proxy urls\
 |should function for pod-Service: http\
 |should be able to handle large requests: http\
-|should function for endpoint-Service: udp"
+|should function for endpoint-Service: udp\
+|should function for pod-Service: udp\
+|work after the service has been recreated\
+|should serve multiport endpoints from pods\
+|should implement service.kubernetes.io/service-proxy-name\
+|should implement service.kubernetes.io/headless\
+|should have session affinity work for service with type clusterIP\
+|should have session affinity work for NodePort service\
+|should have session affinity timeout work for service with type clusterIP\
+|should have session affinity timeout work for NodePort service\
+|should be updated after adding or deleting port\
+|should be possible to connect to a service via ExternalIP when the external IP is not assigned to a node\
+|should be able to update service type to NodePort listening on same port number but different protocols\
+|should be able to up and down services\
+|should be able to switch session affinity for service with type clusterIP\
+|should be able to switch session affinity for NodePort service\
+|should be able to create a functioning NodePort service\
+|should be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is true\
+|should be able to change the type from ExternalName to NodePort\
+|should be able to change the type from ExternalName to ClusterIP\
+|should be able to preserve UDP traffic when server pod cycles for a NodePort service\
+|should function for client IP based session affinity: http\
+|should support basic nodePort: udp functionality\
+|should function for service endpoints using hostNetwork\
+|should update nodePort: udp\
+|should function for node-Service: http\
+|ServiceAccountIssuerDiscovery should support OIDC discovery of service account issuer\
+|should update endpoints: http\
+|should function for client IP based session affinity: udp\
+|should be able to handle large requests: udp\
+|should be able to change the type from ClusterIP to ExternalName\
+|should be able to change the type from NodePort to ExternalName\
+|should provide DNS for services\
+|should provide DNS for the cluster\
+|should provide DNS for pods for Subdomain\
+|should create endpoints for unready pods\
+|should function for node-Service: udp\
+|should function for endpoint-Service: http\
+|should function for multiple endpoint-Services with same selector\
+|should check kube-proxy urls\
+|should function for pod-Service: http\
+|should be able to handle large requests: http\
+|should function for endpoint-Service: udp\
+|should work after the service has been recreated\
+|should serve multiport endpoints from pods\
+|should implement service.kubernetes.io/service-proxy-name\
+|should implement service.kubernetes.io/headless\
+|should have session affinity work for service with type clusterIP\
+|should have session affinity work for NodePort service\
+|should have session affinity timeout work for service with type clusterIP\
+|should have session affinity timeout work for NodePort service\
+|should be updated after adding or deleting port\
+|should be possible to connect to a service via ExternalIP when the external IP is not assigned to a node\
+|should be able to update service type to NodePort listening on same port number but different protocols\
+|should be able to up and down services\
+|should be able to switch session affinity for service with type clusterIP\
+|should be able to switch session affinity for NodePort service\
+|should be able to create a functioning NodePort service\
+|should be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is true\
+|should be able to change the type from ExternalName to NodePort\
+|should be able to change the type from ExternalName to ClusterIP\
+|should be able to preserve UDP traffic when server pod cycles for a NodePort service\
+|should function for client IP based session affinity: http\
+|should support basic nodePort: udp functionality\
+|should function for service endpoints using hostNetwork\
+|should update nodePort: udp\
+|should function for node-Service: http\
+|ServiceAccountIssuerDiscovery should support OIDC discovery of service account issuer\
+|should update endpoints: http\
+|should function for client IP based session affinity: udp\
+|should be able to handle large requests: udp\
+|should be able to change the type from ClusterIP to ExternalName\
+|should be able to change the type from NodePort to ExternalName\
+|should provide DNS for services\
+|should provide DNS for the cluster\
+|should provide DNS for pods for Subdomain\
+|should create endpoints for unready pods\
+|should function for node-Service: udp\
+|should function for endpoint-Service: http\
+|should function for multiple endpoint-Services with same selector\
+|should check kube-proxy urls\
+|should function for pod-Service: http\
+|should be able to handle large requests: http\
+|should function for endpoint-Service: udp\
+|should function for pod-Service: udp\
+|should update endpoints: udp"
+			 
 
 GINKGO_SKIP_dual_nft_TEST="should check kube-proxy urls\
 |should be rejected when no endpoints exist\
