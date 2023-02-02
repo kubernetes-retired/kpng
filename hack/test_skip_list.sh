@@ -59,7 +59,8 @@ GINKGO_SKIP_ipv4_ipvs_TEST="should check kube-proxy urls\
 |should implement service.kubernetes.io/headless\
 |should be able to create a functioning NodePort service\
 |should create endpoints for unready pods\
-|should be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is true"
+|should be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is true\
+|should function for multiple endpoint-Services with same selecto"
 
 GINKGO_SKIP_ipv6_ipvs_TEST="should have session affinity work for NodePort service\
 |should have session affinity timeout work for NodePort service\
@@ -110,7 +111,8 @@ GINKGO_SKIP_dual_ipvs_TEST="should work after the service has been recreated\
 |should check kube-proxy urls\
 |should be able to switch session affinity for NodePort service\
 |should function for multiple endpoint-Services with same selector\
-|should be able to create a functioning NodePort service"
+|should be able to create a functioning NodePort service\
+|should be able to change the type from ExternalName to NodePort"
 
 GINKGO_SKIP_ipv4_nft_TEST="should check kube-proxy urls\
 |should work with the pod containing more than 6 DNS search paths and longer than 256 search list characters"
@@ -159,7 +161,8 @@ GINKGO_SKIP_ipv6_nft_TEST="should work after the service has been recreated\
 |should update nodePort: udp\
 |should work after the service has been recreated\
 |work after the service has been recreated\
-|should update endpoints: udp"
+|should update endpoints: udp\
+|should update nodePort: http"
 
 GINKGO_SKIP_dual_nft_TEST="should check kube-proxy urls\
 |should be rejected when no endpoints exist\
@@ -240,6 +243,7 @@ GINKGO_SKIP_ipv4_userspacelin_TEST="should preserve source pod IP for traffic th
 |should be able to preserve UDP traffic when server pod cycles for a NodePort service\
 |should check kube-proxy urls\
 |should preserve source pod IP for traffic thru service cluster IP\
-|should have session affinity timeout work for NodePort service"
+|should have session affinity timeout work for NodePort service\
+|should run through the lifecycle of Pods and PodStatus"
 
 
