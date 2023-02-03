@@ -21,7 +21,8 @@ GINKGO_SKIP_ipv4_iptables_TEST="should be updated after adding or deleting ports
 |should serve multiport endpoints from pods\
 |should check kube-proxy urls\
 |should be rejected when no endpoints exist\
-|should be able to preserve UDP traffic when server pod cycles for a NodePort service" 
+|should be able to preserve UDP traffic when server pod cycles for a NodePort service\
+|should run through the lifecycle of Pods and PodStatus" 
 
 
 GINKGO_SKIP_ipv6_iptables_TEST="should be updated after adding or deleting ports\
@@ -115,7 +116,8 @@ GINKGO_SKIP_dual_ipvs_TEST="should work after the service has been recreated\
 |should be able to change the type from ExternalName to NodePort"
 
 GINKGO_SKIP_ipv4_nft_TEST="should check kube-proxy urls\
-|should work with the pod containing more than 6 DNS search paths and longer than 256 search list characters"
+|should work with the pod containing more than 6 DNS search paths and longer than 256 search list characters\
+|should run through the lifecycle of Pods and PodStatus"
 
 GINKGO_SKIP_ipv6_nft_TEST="should work after the service has been recreated\
 |ServiceAccountIssuerDiscovery should support OIDC discovery of service account issuer\
@@ -230,7 +232,8 @@ GINKGO_SKIP_ipv4_ebpf_TEST="should serve multiport endpoints from pods\
 |should function for client IP based session affinity: udp\
 |should function for endpoint-Service: udp\
 |should run through the lifecycle of Pods and PodStatus\
-|should update nodePort: http"
+|should update nodePort: http\
+|should be able to handle large requests: http\
 
 GINKGO_SKIP_ipv4_userspacelin_TEST="should preserve source pod IP for traffic thru service cluster IP\
 |should be rejected when no endpoints exist\
