@@ -233,7 +233,7 @@ GINKGO_SKIP_ipv4_ebpf_TEST="should serve multiport endpoints from pods\
 |should function for endpoint-Service: udp\
 |should run through the lifecycle of Pods and PodStatus\
 |should update nodePort: http\
-|should be able to handle large requests: http\
+|should be able to handle large requests: http"
 
 GINKGO_SKIP_ipv4_userspacelin_TEST="should preserve source pod IP for traffic thru service cluster IP\
 |should be rejected when no endpoints exist\
