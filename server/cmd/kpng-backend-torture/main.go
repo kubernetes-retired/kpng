@@ -17,10 +17,11 @@ limitations under the License.
 package main
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"flag"
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"strconv"
 	"time"
@@ -46,8 +47,12 @@ var (
 func main() {
 	flag.Parse()
 
-	rand.Seed(time.Now().UnixNano())
-	instanceID = rand.Uint64()
+	var b [8]byte
+  _, err := rand.Read(b[:])
+  if err != nil {
+      panic("cannot seed math/rand package with cryptographically secure random number generator")
+  }
+	instanceID = binary.LittleEndian.Uint64(b[:])
 
 	srv := grpc.NewServer()
 

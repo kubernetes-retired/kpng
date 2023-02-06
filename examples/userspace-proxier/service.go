@@ -17,16 +17,11 @@ limitations under the License.
 package main
 
 import (
-	"math/rand"
-	"time"
+	"crypto/rand"
+	"math/big"
 
 	"sigs.k8s.io/kpng/api/localv1"
 )
-
-func init() {
-	// we want to seed the rng
-	rand.Seed(time.Now().UnixNano())
-}
 
 // service is the operational view of a service for userspace-proxing
 type service struct {
@@ -47,7 +42,11 @@ func (svc *service) RandomEndpoint() string {
 		return ""
 	}
 
-	return eps[rand.Intn(len(eps))].targetIP
+	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(len(eps))))
+  if err != nil {
+      panic(err)
+  }
+	return eps[nBig.Int64()].targetIP
 }
 
 func (svc *service) AddEndpoint(key string, ep *localv1.Endpoint) {
