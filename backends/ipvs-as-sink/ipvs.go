@@ -57,6 +57,7 @@ const (
 	connReuseMinSupportedKernelVersion = "4.1"
 	// https://github.com/torvalds/linux/commit/35dfb013149f74c2be1ff9c78f14e6a3cd1539d1
 	connReuseFixedKernelVersion = "5.9"
+	readHeaderTimeout = time.Second * 5
 )
 
 func init() {
@@ -293,7 +294,12 @@ func (s *Backend) ServeProxyMode(errCh chan error) {
 	})
 
 	fn := func() {
-		err := http.ListenAndServe(bindAddress, proxyMux)
+		server := &http.Server{
+			Addr: bindAddress,
+			Handler: proxyMux,
+			ReadHeaderTimeout: readHeaderTimeout,
+		}
+		err := server.ListenAndServe()
 		if err != nil {
 			klog.Errorf("starting http server for proxyMode failed: %v", err)
 			if errCh != nil {

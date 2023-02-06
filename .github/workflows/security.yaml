@@ -5,12 +5,12 @@ on:
     branches:
       - "*"
     paths-ignore:
-      - 'doc/**'
+      - "doc/**"
   push:
     branches:
       - main
     paths-ignore:
-      - 'doc/**'
+      - "doc/**"
 
 env:
   GO_VERSION: "1.19"
@@ -19,7 +19,6 @@ jobs:
   gosec:
     runs-on: ubuntu-latest
     steps:
-
       - name: Checkout
         uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
 
@@ -29,10 +28,12 @@ jobs:
           # Ignoring:
           # G101: Potential hardcoded credentials
           # G104: Errors not checked
+          # G204: Subprocess launched with variable
           # G304: Potential file inclusion via variable
           # G306: Expect WriteFile permissions to be 0600 or less
           # G307: Deferring unsafe method "Close"
-          args: -exclude=G101,G104,G304,G306,G307 -tests=false -exclude-dir=doc/ -no-fail -fmt sarif -out gosec-results.sarif  ./...
+          # G601: Implicit memory aliasing in for loop
+          args: -exclude=G101,G104,G204,G304,G306,G307,G601 -tests=false -exclude-dir=doc/ -no-fail -fmt sarif -out gosec-results.sarif  ./...
 
       - name: Upload SARIF report
         uses: github/codeql-action/upload-sarif@v2

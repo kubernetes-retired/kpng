@@ -2,10 +2,11 @@ package ipvsfullsate
 
 import (
 	"fmt"
+	"net/http"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/server/mux"
-	"net/http"
 	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/ipsets"
 	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/iptables"
 	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/ipvs"
@@ -27,6 +28,11 @@ type Controller struct {
 	ipsetsManager *ipsets.Manager
 	iptManager    *iptables.Manager
 }
+
+const (
+	readHeaderTimeout = time.Second * 5
+)
+
 
 func newController() Controller {
 	return Controller{
@@ -53,7 +59,12 @@ func (c *Controller) ServeProxyMode(errCh chan error) {
 	})
 
 	fn := func() {
-		err := http.ListenAndServe(bindAddress, proxyMux)
+		server := &http.Server{
+			Addr: bindAddress,
+			Handler: proxyMux,
+			ReadHeaderTimeout: readHeaderTimeout,
+		}
+		err := server.ListenAndServe()
 		if err != nil {
 			klog.Errorf("starting http server for proxyMode failed: %v", err)
 			if errCh != nil {

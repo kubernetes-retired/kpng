@@ -115,9 +115,9 @@ func (r *rangeAllocator) nextFreePort() int {
 
 	// choose random port
 	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(r.Size)))
-  if err != nil {
-      panic(err)
-  }
+	if err != nil {
+		panic(err)
+	}
 	j := int(nBig.Int64())
 
 	if b := r.used.Bit(j); b == 0 {

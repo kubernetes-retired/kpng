@@ -43,9 +43,9 @@ func (svc *service) RandomEndpoint() string {
 	}
 
 	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(len(eps))))
-  if err != nil {
-      panic(err)
-  }
+	if err != nil {
+		panic(err)
+	}
 	return eps[nBig.Int64()].targetIP
 }
 

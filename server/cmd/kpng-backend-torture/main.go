@@ -48,10 +48,10 @@ func main() {
 	flag.Parse()
 
 	var b [8]byte
-  _, err := rand.Read(b[:])
-  if err != nil {
-      panic("cannot seed math/rand package with cryptographically secure random number generator")
-  }
+	_, err := rand.Read(b[:])
+	if err != nil {
+		panic("cannot seed math/rand package with cryptographically secure random number generator")
+	}
 	instanceID = binary.LittleEndian.Uint64(b[:])
 
 	srv := grpc.NewServer()

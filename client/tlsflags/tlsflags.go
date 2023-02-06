@@ -55,7 +55,7 @@ func (f *Flags) Config() (cfg *tls.Config) {
 		return
 	}
 
-	cfg = &tls.Config{}
+	cfg = &tls.Config{MinVersion: tls.VersionTLS12}
 
 	if f.KeyFile != "" || f.CertFile != "" {
 		cert, err := tls.LoadX509KeyPair(f.CertFile, f.KeyFile)
