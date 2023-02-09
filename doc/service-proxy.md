@@ -13,7 +13,14 @@ network plugins to implement NetworkPolicy correctly without making
 assumptions about the behavior of the service proxy.
 
 (The rest of this document assumes that you already generally
-understand Kubernetes Services from an end-user point of view.)
+understand [Kubernetes
+Services](https://kubernetes.io/docs/concepts/services-networking/)
+and [the service
+proxy](https://kubernetes.io/docs/reference/networking/virtual-ips/)
+from an end-user point of view. In particular, it does not bother to
+explain certain service features whose behavior on the service proxy
+side is already fully understandable just from the end-user
+documentation.)
 
 ## Note on Dual Stack, and Legacy vs "Modern" APIs
 
@@ -45,12 +52,13 @@ proxying by DNAT'ing (and sometimes SNAT'ing) connections. Any service
 proxy implementation must do something at least vaguely equivalent to
 this, but it may not always literally be NAT.
 
-For example, the userspace proxy (which, admittedly, is deprecated),
-does not NAT connections, but instead accepts inbound connections to
-service IPs in userspace, and then creates new outbound connections to
-the endpoint IPs, and then copies data between the connections. (Thus,
-all connections passing through the userspace proxy will arrive at
-their endpoint with a node IP as their source IP.)
+For example, kpng's userspace proxy (and the now-removed upstream
+userspace proxy it was based on), does not NAT connections, but
+instead accepts inbound connections to service IPs in userspace, and
+then creates new outbound connections to the endpoint IPs, and then
+copies data between the connections. (Thus, all connections passing
+through the userspace proxy will arrive at their endpoint with a node
+IP as their source IP.)
 
 In other cases, some proxies may be able to do clever hacks to avoid
 NAT'ing (especially SNAT'ing) that would otherwise be needed.
@@ -59,30 +67,42 @@ NAT'ing (especially SNAT'ing) that would otherwise be needed.
 
 A service may accept connections to a variety of IPs and ports:
 
-  - the service's `.spec.clusterIPs`, on any of the
-    `.spec.ports[*].port`s
+  - the service's `.spec.clusterIPs`, on any port listed in
+    `.spec.ports[*].port`
 
-  - any of the service's `.spec.externalIPs`, on any of the 
-    `.spec.ports[*].port`s
+  - any of the service's `.spec.externalIPs`, on any port listed in
+    `.spec.ports[*].port`
 
-  - any of the service's `.status.loadBalancer.ingress[*].ip`s, on any
-    of the `.spec.ports[*].port`s
+  - any of the service's `.status.loadBalancer.ingress[*].ip` IPs, on
+    any port listed in `.spec.ports[*].port`
 
-  - any local IP, on any of the service's `.spec.ports[*].nodePort`s
+  - any local IP, on any port listed in `.spec.ports[*].nodePort`
 
       - (Actually, _by default_ kube-proxy accepts NodePort
         connections on any IP, but it also allows you to restrict
         NodePorts to a specific subset of node IPs by passing the
         `--nodeport-addresses` flag.)
 
-If a service has at least one endpoint that is "ready" (according to
-its `.endpoints[].conditions.ready`), then connections to any of the
-above destinations should be randomly DNAT'ed to one of the ready
-endpoint IPs (with the destination port changed to the corresponding
-`.spec.port[].targetPort` value, if that is set). If a service does
-not have any "ready" endpoints, then connections to any of the above
-destinations should be rejected (ie, actively refused with an ICMP
-error; not simply dropped).
+      - The iptables backend of kube-proxy even allows NodePort
+        connections on `127.0.0.1` (but not `::1`), though the ipvs
+        backend does not, and this behavior is considered deprecated
+        and can be disabled.
+
+If a service has at least one usable endpoint, then connections to any
+of the above destinations should be randomly DNAT'ed to one of the
+usable endpoint IPs (with the destination port changed to the
+corresponding `.spec.port[].targetPort` value, if that is set). If a
+service does not have any usable endpoints, then connections to any of
+the above destinations should be rejected (ie, actively refused with
+an ICMP error; not simply dropped).
+
+By default, the "usable" endpoints are ones that are "serving" and not
+"terminating" (according to their conditions in their EndpointSlice's
+`.endpoints[].conditions`). However, if a service has no serving,
+non-terminating endpoints, but it does have serving, terminating
+endpoints, then we use those instead. This new behavior improves
+service availability, particularly in the case of
+`externalTrafficPolicy: Local` services.
 
 ## SNAT / Masquerading
 
@@ -105,13 +125,14 @@ to ensure that it does. Eg:
     reply directly to itself, rather than sending it back to the host
     network namespace for un-DNAT'ing first.
 
-  - Likewise, if a host-network process tries to connect to a NodePort
-    service via `127.0.0.1` or `::1`, it is necessary to SNAT the
-    packet, since otherwise the destination pod would think the packet
-    came from its own `127.0.0.1`/`::1`. (In fact, the kernel will log
-    a warning if you try to DNAT-but-not-SNAT a packet whose source IP
-    is `127.0.0.1`, and it will simply refuse to DNAT-but-not-SNAT a
-    packet whose source IP is `::1`.)
+  - Likewise, if the proxy supports localhost NodePort connections,
+    and a host-network process tries to connect to a NodePort service
+    via `127.0.0.1`, it is necessary to SNAT the packet, since
+    otherwise the destination pod would think the packet came from its
+    own `127.0.0.1`. (In fact, the kernel will log a warning if you
+    try to DNAT-but-not-SNAT a packet whose source IP is `127.0.0.1`,
+    and it will simply refuse to DNAT a packet whose source IP is
+    `::1`.)
 
   - For connections where both the source and the destination are not
     local to the node (eg, an external client connecting to a NodePort
@@ -219,18 +240,30 @@ circuited by the service proxy.
 ## "Local" Internal and External Traffic Policy
 
 If a service has `.spec.internalTrafficPolicy` set to `"Local"`, then
-"internal" traffic to the service (that is, traffic which comes from a
-pod or node in the cluster) should only be redirected to endpoint IPs
-on the node that the connection originated from. (If there are no
-endpoint IPs on that node then internal connections to the service
-from that node should be rejected.)
+"internal" traffic to the service (that is, traffic to the ClusterIPs)
+should only be redirected to endpoint IPs on the node that the
+connection originated from. If there are no endpoint IPs on that node
+then internal connections to the service from that node should be
+dropped.
 
 If a service has `.spec.externalTrafficPolicy` set to `"Local"`, then
-"external" traffic to the service (that is, traffic which comes from a
-source outside the cluster) should only be redirected to endpoint IPs
-on the node where the connection first arrives in the cluster. (If
-there are no local endpoint IPs on that node then external connections
-to the service via that node should be dropped, _not_ rejected.)
+"external" traffic to the service (that is, traffic to NodePorts,
+ExternalIPs, or Load Balancer IPs) should only be redirected to
+endpoint IPs on the node where the connection first arrives in the
+cluster. If there are no local endpoint IPs on that node then external
+connections to the service via that node should be dropped.
+
+(For external traffic policy in particular, it is important that
+"wrongly-directed" traffic be _dropped_, not _rejected_, because there
+is a race condition between when the proxy stops accepting new
+connections for a service on a particular node versus when the load
+balancer _notices_ that the proxy has stopped accepting new
+connections. During that time, if the load balancer sends a connection
+to a "bad" node, we drop the packets so that the client will think
+there was just a transient network problem and retry (hopefully
+getting directed to a valid node this time). If we rejected the
+packets, the client would get back an error and might think the
+service was actually unavailable.)
 
 In the case of `externalTrafficPolicy: Local`, since the traffic is
 guaranteed to not leave the node, there is no need to SNAT it, so the
@@ -243,15 +276,6 @@ proxy short circuits it or not. Thus, when a pod connects to an
 `externalTrafficPolicy: Local` service via its load balancer IP, the
 connection must succeed _even if the pod is on a node with no
 endpoints for that service_.)
-
-If the `ProxyTerminatingEndpoints` feature is enabled, then when
-generating rules for an `externalTrafficPolicy: Local` service, if
-there are no local endpoints for the service which are "ready" (ie,
-`.endpoints[].conditions.ready` is either unset or `true`), then the
-proxy should fall back to using any endpoints which are both "Serving"
-and "Terminating" (ie, `.endpoints[].conditions.serving` is either
-unset or `true`, and `.endpoints[].conditions.terminating` is `true`
-(not unset)).
 
 ## NodePort "Health" Checks
 
@@ -335,25 +359,18 @@ implement this.
 
 ## Port Listeners
 
-For service NodePorts, as well as external IPs where the IP is
-assigned to that node, kube-proxy will attempt to open a listening
-socket on `:${node_port}` or `${external_ip}:${port}`, and it
-will refuse to create the rules for that port/IP if it cannot create
-the listening socket. This ensures that it's not possible to create a
-service rule that steals traffic away from a running server on the
-node, and likewise that a server can't later be started that wants to
-listen on the IP/port that has been claimed by a service rule.
+In the past, for service NodePorts, as well as external IPs where the
+IP is assigned to that node, kube-proxy would attempt to open a
+listening socket on `:${node_port}` or `${external_ip}:${port}`, in an
+attempt to ensure that it was not possible to create a service rule
+that steals traffic away from a running server on the node, and
+likewise that a server couldn't later be started that wants to listen on
+the IP/port that has been claimed by a service rule.
 
-(If kube-proxy was started with `--nodeport-addresses`, then it
-creates listening sockets for NodePort services on only the indicated
-IPs, rather than on the unspecified address.)
-
-(This is not done for load balancer IPs, because the assumed model
-there is that the load balancer IP is an external cloud load balancer.)
-
-There is code in `k8s.io/utils/net` to help with this. This feature is
-vaguely controversial and is only ambiguously considered a best
-practice...
+There were various problems with this behavior though (both in concept
+and in implementation) and this is no longer done. Instead, kube-proxy
+simply assumes that nodes will not try to run services on ports in the
+NodePort range.
 
 ## Other Lessons
 
