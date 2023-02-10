@@ -15,6 +15,10 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const (
+	readHeaderTimeout = time.Second * 5
+)
+
 var Kpng_k8s_api_events = prometheus.NewCounter(prometheus.CounterOpts{
 	Name: "kpng_k8s_api_events_total",
 	Help: "The total number of received events from the Kubernetes API",
@@ -40,6 +44,7 @@ func StartMetricsServer(bindAddress string,
 			server = &http.Server{
 				Addr:    bindAddress,
 				Handler: mux,
+				ReadHeaderTimeout: readHeaderTimeout,
 			}
 			err = server.ListenAndServe()
 
