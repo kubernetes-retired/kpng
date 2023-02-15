@@ -7,17 +7,39 @@ import (
 	"text/template"
 )
 
-const iptablesRestoreCmd = "iptables-restore"
+const ip4tablesRestoreCmd = "iptables-restore"
+const ip6tablesRestoreCmd = "ip6tables-restore"
 
 var DefaultChains = []Chain{ChainPreRouting, ChainInput, ChainForward, ChainOutput, ChainPostRouting}
 
 type Manager struct {
-	data     map[Table]TableData
+	dataV4   map[Table]TableData
+	dataV6   map[Table]TableData
 	template *template.Template
 }
 
+func getIptablesRestoreCmd(protocolFamily ProtocolFamily) string {
+	if protocolFamily == ProtocolFamilyIPv4 {
+		return ip4tablesRestoreCmd
+	}
+	return ip6tablesRestoreCmd
+}
+
 func NewManager() *Manager {
-	data := map[Table]TableData{
+	dataV4 := map[Table]TableData{
+		TableNat: {
+			Table:  TableNat,
+			Chains: []Chain{ChainPreRouting, ChainInput, ChainOutput, ChainPostRouting},
+			Rules:  []Rule{},
+		},
+		TableFilter: {
+			Table:  TableFilter,
+			Chains: []Chain{ChainInput, ChainForward, ChainOutput},
+			Rules:  []Rule{},
+		},
+	}
+
+	dataV6 := map[Table]TableData{
 		TableNat: {
 			Table:  TableNat,
 			Chains: []Chain{ChainPreRouting, ChainInput, ChainOutput, ChainPostRouting},
@@ -36,47 +58,86 @@ func NewManager() *Manager {
 	}
 
 	iptTemplate, err := template.New("Template").Funcs(funcMap).Parse(Template)
-	klog.V(2).ErrorS(err, "error parsing iptables template")
+	if err != nil {
+		klog.Fatalf("error parsing iptables template: Template, error: %e", err)
+	}
 
 	iptTemplate, err = iptTemplate.New("TableTemplate").Parse(TableTemplate)
-	klog.V(2).ErrorS(err, "error parsing iptables template")
+	if err != nil {
+		klog.Fatalf("error parsing iptables template: TableTemplate, error: %e", err)
+	}
 
 	iptTemplate, err = iptTemplate.New("ChainTemplate").Parse(ChainTemplate)
-	klog.V(2).ErrorS(err, "error parsing iptables template")
+	if err != nil {
+		klog.Fatalf("error parsing iptables template: ChainTemplate, error: %e", err)
+	}
 
 	iptTemplate, err = iptTemplate.New("RuleTemplate").Parse(RuleTemplate)
-	klog.V(2).ErrorS(err, "error parsing iptables template")
+	if err != nil {
+		klog.Fatalf("error parsing iptables template: RuleTemplate, error: %e", err)
+	}
 
 	iptTemplate, err = iptTemplate.New("MatchTemplate").Parse(MatchTemplate)
-	klog.V(2).ErrorS(err, "error parsing iptables template")
+	if err != nil {
+		klog.Fatalf("error parsing iptables template: MatchTemplate, error: %e", err)
+	}
 
 	iptTemplate, err = iptTemplate.New("ProtocolTemplate").Parse(ProtocolTemplate)
-	klog.V(2).ErrorS(err, "error parsing iptables template")
+	if err != nil {
+		klog.Fatalf("error parsing iptables template: ProtocolTemplate, error: %e", err)
+	}
 
 	return &Manager{
-		data:     data,
+		dataV4:   dataV4,
+		dataV6:   dataV6,
 		template: iptTemplate,
 	}
 }
 
-func (m *Manager) AddChain(chain Chain, table Table) {
-	tableData, _ := m.data[table]
-	tableData.Chains = append(tableData.Chains, chain)
-	m.data[table] = tableData
+func (m *Manager) AddChain(chain Chain, table Table, protocolFamily ProtocolFamily) {
+	if protocolFamily == ProtocolFamilyIPv4 {
+		tableData, _ := m.dataV4[table]
+		tableData.Chains = append(tableData.Chains, chain)
+		m.dataV4[table] = tableData
+	} else {
+		tableData, _ := m.dataV6[table]
+		tableData.Chains = append(tableData.Chains, chain)
+		m.dataV6[table] = tableData
+	}
 }
 
-func (m *Manager) AddRule(rule Rule, table Table) {
-	tableData, _ := m.data[table]
-	tableData.Rules = append(tableData.Rules, rule)
-	m.data[table] = tableData
+func (m *Manager) AddRule(rule Rule, table Table, protocolFamily ProtocolFamily) {
+	if protocolFamily == ProtocolFamilyIPv4 {
+		tableData, _ := m.dataV4[table]
+		tableData.Rules = append(tableData.Rules, rule)
+		m.dataV4[table] = tableData
+	} else {
+		tableData, _ := m.dataV6[table]
+		tableData.Rules = append(tableData.Rules, rule)
+		m.dataV6[table] = tableData
+	}
+
 }
 
 func (m *Manager) Apply() {
-	data := make([]TableData, 0)
-	for _, d := range m.data {
+	var data []TableData
+
+	// render & restore ipv4 table data
+	data = make([]TableData, 0)
+	for _, d := range m.dataV4 {
 		data = append(data, d)
 	}
+	m.renderAndRestoreTable(data, ProtocolFamilyIPv4)
 
+	// render & restore ipv6 table data
+	data = make([]TableData, 0)
+	for _, d := range m.dataV6 {
+		data = append(data, d)
+	}
+	m.renderAndRestoreTable(data, ProtocolFamilyIPv6)
+}
+
+func (m *Manager) renderAndRestoreTable(data []TableData, protocolFamily ProtocolFamily) {
 	//########################################################################
 	reader, writer := io.Pipe()
 	errChan := make(chan error, 1)
@@ -88,12 +149,15 @@ func (m *Manager) Apply() {
 	//########################################################################
 
 	runner := exec.New()
-	cmd := runner.Command(iptablesRestoreCmd)
+	cmd := runner.Command(getIptablesRestoreCmd(protocolFamily))
 	cmd.SetStdin(reader)
 
 	output, err := cmd.CombinedOutput()
-	klog.V(2).ErrorS(err, "unable to write iptable rules", "output", string(output))
+	if err != nil {
+		klog.Fatalf("unable to write iptable rules output: %s error: %e", string(output), err)
+	}
 	_ = reader.Close()
+
 }
 
 func NeedQuotes(option MatchModuleOption) bool {

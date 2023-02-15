@@ -72,7 +72,7 @@ type IPSet struct {
 	SetType SetType
 	// HashFamily specifies the protocol family of the IP addresses to be stored in the set.
 	// The default is inet, i.e IPv4.  If users want to use IPv6, they should specify inet6.
-	HashFamily string
+	HashFamily ProtocolFamily
 	// HashSize specifies the hash table size of ipset.
 	HashSize int
 	// MaxElem specifies the max element number of ipset.
@@ -126,7 +126,7 @@ func (set *IPSet) setIPSetDefaults() {
 	}
 	// Default protocol is IPv4
 	if set.HashFamily == "" {
-		set.HashFamily = ProtocolFamilyIPV4
+		set.HashFamily = ProtocolFamilyIPv4
 	}
 	// Default ipset type is "hash:ip,port"
 	if len(set.SetType) == 0 {

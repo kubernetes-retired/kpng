@@ -1,6 +1,7 @@
 package ipvsfullsate
 
 import (
+	v1 "k8s.io/api/core/v1"
 	ipsets2 "sigs.k8s.io/kpng/backends/ipvsfullstate/internal/ipsets"
 	"sigs.k8s.io/kpng/client"
 )
@@ -22,50 +23,54 @@ func (c *Controller) addServiceEndpointsForLoadBalancer(serviceEndpoints *client
 	// iterate over service ports
 	for _, portMapping := range service.Ports {
 
-		// iterate over LoadBalancerIPs
-		for _, loadBalancerIP := range getLoadBalancerIPs(service) {
+		// iterate over ipFamily
+		for _, ipFamily := range []v1.IPFamily{v1.IPv4Protocol, v1.IPv6Protocol} {
 
-			// STEP 2. create virtual server for LoadBalancerIP
-			server := newVirtualServerForLoadBalancer(loadBalancerIP, service, portMapping)
-			c.ipvsManager.ApplyServer(server)
+			// iterate over LoadBalancerIPs
+			for _, loadBalancerIP := range getLoadBalancerIPs(service, ipFamily) {
 
-			// STEP 3. add entry for LoadBalancerIP to kubeLoadBalancerSet
-			set = c.ipsetsManager.GetSetByName(kubeLoadBalancerSet)
-			entry = newEntryForLoadBalancer(loadBalancerIP, portMapping)
-			c.ipsetsManager.AddEntry(entry, set)
+				// STEP 2. create virtual server for LoadBalancerIP
+				server := newVirtualServerForLoadBalancer(loadBalancerIP, service, portMapping)
+				c.ipvsManager.ApplyServer(server)
 
-			// STEP 4. add entry for LoadBalancerIP to kubeLoadBalancerLocalSet,
-			// if external traffic policy is local
-			if service.GetExternalTrafficToLocal() {
-				set = c.ipsetsManager.GetSetByName(kubeLoadBalancerLocalSet)
+				// STEP 3. add entry for LoadBalancerIP to kubeLoadBalancerIPSet
+				set = c.ipsetsManager.GetSetByName(kubeLoadBalancerIPSet[ipFamily])
 				entry = newEntryForLoadBalancer(loadBalancerIP, portMapping)
 				c.ipsetsManager.AddEntry(entry, set)
-			}
 
-			// STEP 5. add entry for LoadBalancerIP and SourceRanges to kubeLoadBalancerSourceCIDRSet
-			for _, sourceRange := range getSourceRangesForLoadBalancer(service) {
-				set = c.ipsetsManager.GetSetByName(kubeLoadBalancerSourceCIDRSet)
-				entry = newEntryForLoadBalancerSourceRange(loadBalancerIP, sourceRange, portMapping)
-				c.ipsetsManager.AddEntry(entry, set)
-			}
+				// STEP 4. add entry for LoadBalancerIP to kubeLoadBalancerLocalIPSet,
+				// if external traffic policy is local
+				if service.GetExternalTrafficToLocal() {
+					set = c.ipsetsManager.GetSetByName(kubeLoadBalancerLocalIPSet[ipFamily])
+					entry = newEntryForLoadBalancer(loadBalancerIP, portMapping)
+					c.ipsetsManager.AddEntry(entry, set)
+				}
 
-			// STEP 6. add entry for LoadBalancerIP to kubeLoadbalancerFWSet, if source ranges is configured
-			if len(getSourceRangesForLoadBalancer(service)) > 0 {
-				set = c.ipsetsManager.GetSetByName(kubeLoadbalancerFWSet)
-				entry = newEntryForLoadBalancer(loadBalancerIP, portMapping)
-				c.ipsetsManager.AddEntry(entry, set)
-			}
+				// STEP 5. add entry for LoadBalancerIP and SourceRanges to kubeLoadBalancerSourceCIDRIPSet
+				for _, sourceRange := range getSourceRangesForLoadBalancer(service) {
+					set = c.ipsetsManager.GetSetByName(kubeLoadBalancerSourceCIDRIPSet[ipFamily])
+					entry = newEntryForLoadBalancerSourceRange(loadBalancerIP, sourceRange, portMapping)
+					c.ipsetsManager.AddEntry(entry, set)
+				}
 
-			// TODO entries to kubeLoadBalancerSourceIPSet; take reference from upstream ipvs proxier
+				// STEP 6. add entry for LoadBalancerIP to kubeLoadbalancerFWIPSet, if source ranges is configured
+				if len(getSourceRangesForLoadBalancer(service)) > 0 {
+					set = c.ipsetsManager.GetSetByName(kubeLoadbalancerFWIPSet[ipFamily])
+					entry = newEntryForLoadBalancer(loadBalancerIP, portMapping)
+					c.ipsetsManager.AddEntry(entry, set)
+				}
 
-			// iterate over service endpoints
-			for _, endpoint := range endpoints {
-				// iterate over EndpointIPs
-				for _, endpointIp := range endpoint.IPs.V4 {
-					// STEP 7. add endpoint as a destination to virtual server
-					destination := newIpvsDestination(endpointIp, endpoint, portMapping)
-					c.ipvsManager.AddDestination(destination, server)
+				// TODO entries to kubeLoadBalancerSourceIPSet; take reference from upstream ipvs proxier
 
+				// iterate over service endpoints
+				for _, endpoint := range endpoints {
+					// iterate over EndpointIPs
+					for _, endpointIp := range getEndpointIPs(endpoint, ipFamily) {
+						// STEP 7. add endpoint as a destination to virtual server
+						destination := newIpvsDestination(endpointIp, endpoint, portMapping)
+						c.ipvsManager.AddDestination(destination, server)
+
+					}
 				}
 			}
 		}
