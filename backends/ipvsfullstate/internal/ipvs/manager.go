@@ -6,6 +6,7 @@ import (
 	IPVSLib "github.com/google/seesaw/ipvs"
 	"github.com/vishvananda/netlink"
 	"k8s.io/klog/v2"
+	netutils "k8s.io/utils/net"
 	"net"
 	"sigs.k8s.io/kpng/client/diffstore"
 )
@@ -223,7 +224,11 @@ func (m *Manager) Apply() {
 }
 
 func asDummyIP(ip string) string {
-	return ip + "/32"
+	if netutils.IsIPv4String(ip) {
+		return ip + "/32"
+	} else {
+		return ip + "/128"
+	}
 }
 
 // bindIpToInterface adds IP address to the network interface.

@@ -1,38 +1,73 @@
 package ipvsfullsate
 
 import (
+	v1 "k8s.io/api/core/v1"
+	netutils "k8s.io/utils/net"
 	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/ipvs"
 )
 
-// getClusterIPs safely returns ClusterIPs associated with the service.
-func getClusterIPs(service *localv1.Service) []string {
+// getClusterIPs returns ClusterIPs for given IPFamily associated with the service.
+func getClusterIPs(service *localv1.Service, ipFamily v1.IPFamily) []string {
 	IPs := make([]string, 0)
 	if service.IPs.ClusterIPs != nil {
-		return service.IPs.ClusterIPs.V4
+		if ipFamily == v1.IPv4Protocol {
+			return service.IPs.ClusterIPs.GetV4()
+		} else if ipFamily == v1.IPv6Protocol {
+			return service.IPs.ClusterIPs.GetV6()
+		}
 	}
 	return IPs
 }
 
-// getExternalIPs safely returns ExternalIPs associated with the service.
-func getExternalIPs(service *localv1.Service) []string {
+// getExternalIPs safely returns ExternalIPs for given IPFamily associated with the service.
+func getExternalIPs(service *localv1.Service, ipFamily v1.IPFamily) []string {
 	IPs := make([]string, 0)
 	if service.IPs.ExternalIPs != nil {
-		return service.IPs.ExternalIPs.V4
+		if ipFamily == v1.IPv4Protocol {
+			return service.IPs.ExternalIPs.GetV4()
+		} else if ipFamily == v1.IPv6Protocol {
+			return service.IPs.ExternalIPs.GetV6()
+		}
 	}
 	return IPs
 }
 
-// getNodeIPs safely returns all Node IPs.
-func getNodeIPs() []string {
-	return *NodeAddresses
+// getNodeIPs safely returns all Node IPs for given IPFamily.
+func getNodeIPs(ipFamily v1.IPFamily) []string {
+	IPs := make([]string, 0)
+	for _, ip := range *NodeAddresses {
+		if ipFamily == v1.IPv4Protocol && netutils.IsIPv4String(ip) {
+			IPs = append(IPs, ip)
+		} else if ipFamily == v1.IPv6Protocol && netutils.IsIPv6String(ip) {
+			IPs = append(IPs, ip)
+		}
+	}
+	return IPs
 }
 
-// getLoadBalancerIPs safely returns LoadBalancerIPs associated with the service.
-func getLoadBalancerIPs(service *localv1.Service) []string {
+// getLoadBalancerIPs safely returns LoadBalancerIPs for given IPFamily associated with the service.
+func getLoadBalancerIPs(service *localv1.Service, ipFamily v1.IPFamily) []string {
 	IPs := make([]string, 0)
 	if service.IPs.LoadBalancerIPs != nil {
-		return service.IPs.LoadBalancerIPs.V4
+		if ipFamily == v1.IPv4Protocol {
+			return service.IPs.LoadBalancerIPs.GetV4()
+		} else if ipFamily == v1.IPv6Protocol {
+			return service.IPs.LoadBalancerIPs.GetV6()
+		}
+	}
+	return IPs
+}
+
+// getEndpointIPs returns EndpointIPs for given IPFamily associated with the endpoint.
+func getEndpointIPs(endpoint *localv1.Endpoint, ipFamily v1.IPFamily) []string {
+	IPs := make([]string, 0)
+	if endpoint.IPs != nil {
+		if ipFamily == v1.IPv4Protocol {
+			return endpoint.IPs.GetV4()
+		} else if ipFamily == v1.IPv6Protocol {
+			return endpoint.IPs.GetV6()
+		}
 	}
 	return IPs
 }

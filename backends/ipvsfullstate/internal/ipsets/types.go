@@ -37,11 +37,26 @@ const (
 // DefaultPortRange defines the default bitmap:port valid port range.
 const DefaultPortRange string = "0-65535"
 
+type ProtocolFamily string
+
 const (
-	// ProtocolFamilyIPV4 represents IPv4 protocol.
-	ProtocolFamilyIPV4 = "inet"
-	// ProtocolFamilyIPV6 represents IPv6 protocol.
-	ProtocolFamilyIPV6 = "inet6"
+	// ProtocolFamilyIPv4 represents IPv4 protocol.
+	ProtocolFamilyIPv4 = "inet"
+	// ProtocolFamilyIPv6 represents IPv6 protocol.
+	ProtocolFamilyIPv6 = "inet6"
+)
+
+func (p ProtocolFamily) String() string {
+	return string(p)
+}
+
+type Protocol string
+
+func (p Protocol) String() string {
+	return string(p)
+}
+
+const (
 	// ProtocolTCP represents TCP protocol.
 	ProtocolTCP = "tcp"
 	// ProtocolUDP represents UDP protocol.
