@@ -260,6 +260,7 @@ function create_cluster {
       kind: Cluster
       apiVersion: kind.x-k8s.io/v1alpha4
       networking:
+          kubeProxyMode: none
           ipFamily: "${ip_family}"
           podSubnet: "${CLUSTER_CIDR}"
           serviceSubnet: "${SERVICE_CLUSTER_IP_RANGE}"
@@ -276,10 +277,6 @@ EOF
       "${kind_log_level}" \
       "--config=${artifacts_directory}/kind-config.yaml"
     if_error_exit "cannot create kind cluster ${cluster_name}"
-
-    # Patch kube-proxy to set the verbosity level
-    "${bin_dir}/kubectl" patch -n kube-system daemonset/kube-proxy \
-       --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/command/-", "value": "--v='"${kind_cluster_log_level}"'" }]'
 
     "${bin_dir}/kind" get kubeconfig --internal --name "${cluster_name}" > "${artifacts_directory}/kubeconfig.conf"
     "${bin_dir}/kind" get kubeconfig --name "${cluster_name}" > "${artifacts_directory}/${KUBECONFIG_TESTS}"
@@ -362,7 +359,6 @@ function install_kpng {
     ###########################################################################
     # Description:                                                            #
     # Install KPNG following these steps:                                     #
-    #   - removes existing kube-proxy                                         #
     #   - load kpng container image                                           #
     #   - create service account, clusterbinding and configmap for kpng       #
     #   - deploy kpng from the template generated                             #
@@ -384,13 +380,6 @@ function install_kpng {
     
     [ -f "${bin_dir}/kubectl" ]
     if_error_exit "File \"${bin_dir}/kubectl\" does not exist"
-
-    # remove kube-proxy
-    "${bin_dir}/kubectl" --context "${k8s_context}" delete \
-        --namespace "${NAMESPACE}" \
-        daemonset.apps/kube-proxy 1> /dev/null
-    if_error_exit "cannot delete delete daemonset.apps kube-proxy"
-    pass_message "Removed daemonset.apps/kube-proxy."
 
     # preload kpng image
     # TODO move this to ci:
