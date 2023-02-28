@@ -30,7 +30,7 @@ jobs:
     name: local-up-kpng
     needs: setup
     runs-on: ubuntu-latest
-    # timeout-minutes: 100
+    timeout-minutes: 30  #Guys is 30 minutes ok, or too much? Currently on Github runners it takes 5m 30s
     steps:
     - name: checkout
       uses: actions/checkout@v2
