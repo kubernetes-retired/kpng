@@ -17,9 +17,9 @@ limitations under the License.
 package userspacelin
 
 import (
+	"crypto/rand"
 	"errors"
 	"math/big"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -71,7 +71,6 @@ type rangeAllocator struct {
 	ports chan int
 	used  big.Int
 	lock  sync.Mutex
-	rand  *rand.Rand
 }
 
 func newPortRangeAllocator(r net.PortRange, autoFill bool) PortAllocator {
@@ -81,7 +80,6 @@ func newPortRangeAllocator(r net.PortRange, autoFill bool) PortAllocator {
 	ra := &rangeAllocator{
 		PortRange: r,
 		ports:     make(chan int, portsBufSize),
-		rand:      rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 	if autoFill {
 		go wait.Forever(func() { ra.fillPorts() }, nextFreePortCooldown)
@@ -116,7 +114,12 @@ func (r *rangeAllocator) nextFreePort() int {
 	defer r.lock.Unlock()
 
 	// choose random port
-	j := r.rand.Intn(r.Size)
+	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(r.Size)))
+	if err != nil {
+		panic(err)
+	}
+	j := int(nBig.Int64())
+
 	if b := r.used.Bit(j); b == 0 {
 		r.used.SetBit(&r.used, j, 1)
 		return j + r.Base

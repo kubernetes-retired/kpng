@@ -1,6 +1,7 @@
 package ipvsfullsate
 
 import (
+	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/ipsets"
 	"sigs.k8s.io/kpng/client"
@@ -22,37 +23,41 @@ func (c *Controller) addServiceEndpointsForNodePort(serviceEndpoints *client.Ser
 	// iterate over service ports
 	for _, portMapping := range service.Ports {
 
-		// iterate over NodeIPs
-		for _, nodeIP := range getNodeIPs() {
+		// iterate over ipFamily
+		for _, ipFamily := range []v1.IPFamily{v1.IPv4Protocol, v1.IPv6Protocol} {
 
-			// STEP 2. create virtual server for NodeIP
-			server := newVirtualServerForNodePort(nodeIP, service, portMapping)
-			c.ipvsManager.ApplyServer(server)
+			// iterate over NodeIPs
+			for _, nodeIP := range getNodeIPs(ipFamily) {
 
-			// STEP 3. add entry for NodeIP to [kubeNodePortSetTCP|kubeNodePortSetUDP|kubeNodePortSetSCTP]
-			// depending on the protocol
-			// TODO entry for kubeNodePortSetTCP & kubeNodePortSetUDP should be added once only as they will be same for every node, right now diffstore handles the duplicates.
-			set = c.ipsetsManager.GetSetByName(getNodePortIpSetNameByProtocol(portMapping.Protocol))
-			entry = newEntryForNodePort(nodeIP, portMapping)
-			c.ipsetsManager.AddEntry(entry, set)
+				// STEP 2. create virtual server for NodeIP
+				server := newVirtualServerForNodePort(nodeIP, service, portMapping)
+				c.ipvsManager.ApplyServer(server)
 
-			// STEP 4. add entry for NodeIP to [kubeNodePortLocalSetTCP|kubeNodePortLocalSetUDP|kubeNodePortLocalSetSCTP]
-			// depending on the protocol if external traffic policy is local
-			// TODO entry for kubeNodePortLocalSetTCP & kubeNodePortLocalSetUDP should be added once only as they will be same for every node, right now diffstore handles the duplicates.
-			if service.GetExternalTrafficToLocal() {
-				set = c.ipsetsManager.GetSetByName(getNodePortLocalIpSetNameByProtocol(portMapping.Protocol))
+				// STEP 3. add entry for NodeIP to [kubeNodePortTCPIPSet|kubeNodePortUDPIPSet|kubeNodePortSCTPIPSet]
+				// depending on the protocol
+				// TODO entry for kubeNodePortTCPIPSet & kubeNodePortUDPIPSet should be added once only as they will be same for every node, right now diffstore handles the duplicates.
+				set = c.ipsetsManager.GetSetByName(getNodePortIpSetNameByProtocol(ipFamily, portMapping.Protocol))
 				entry = newEntryForNodePort(nodeIP, portMapping)
 				c.ipsetsManager.AddEntry(entry, set)
-			}
 
-			// iterate over service endpoints
-			for _, endpoint := range endpoints {
-				// iterate over EndpointIPs
-				for _, endpointIp := range endpoint.IPs.V4 {
+				// STEP 4. add entry for NodeIP to [kubeNodePortLocalTCPIPSet|kubeNodePortLocalUDPIPSet|kubeNodePortLocalSCTPIPSet]
+				// depending on the protocol if external traffic policy is local
+				// TODO entry for kubeNodePortLocalTCPIPSet & kubeNodePortLocalUDPIPSet should be added once only as they will be same for every node, right now diffstore handles the duplicates.
+				if service.GetExternalTrafficToLocal() {
+					entry = newEntryForNodePort(nodeIP, portMapping)
+					set = c.ipsetsManager.GetSetByName(getNodePortLocalIpSetNameByProtocol(ipFamily, portMapping.Protocol))
+					c.ipsetsManager.AddEntry(entry, set)
+				}
 
-					// STEP 5. add endpoint as a destination to virtual server
-					destination := newIpvsDestination(endpointIp, endpoint, portMapping)
-					c.ipvsManager.AddDestination(destination, server)
+				// iterate over service endpoints
+				for _, endpoint := range endpoints {
+					// iterate over EndpointIPs
+					for _, endpointIp := range getEndpointIPs(endpoint, ipFamily) {
+
+						// STEP 5. add endpoint as a destination to virtual server
+						destination := newIpvsDestination(endpointIp, endpoint, portMapping)
+						c.ipvsManager.AddDestination(destination, server)
+					}
 				}
 			}
 		}
@@ -60,31 +65,31 @@ func (c *Controller) addServiceEndpointsForNodePort(serviceEndpoints *client.Ser
 }
 
 // getNodePortIpSetNameByProtocol returns NodePort IPSet name for
-// the given protocol, defaults to TCP.
-func getNodePortIpSetNameByProtocol(protocol localv1.Protocol) string {
+// the given ipFamily and protocol, defaults to TCP.
+func getNodePortIpSetNameByProtocol(ipFamily v1.IPFamily, protocol localv1.Protocol) string {
 	switch protocol {
 	case localv1.Protocol_SCTP:
-		return kubeNodePortSetSCTP
+		return kubeNodePortSCTPIPSet[ipFamily]
 	case localv1.Protocol_TCP:
-		return kubeNodePortSetTCP
+		return kubeNodePortTCPIPSet[ipFamily]
 	case localv1.Protocol_UDP:
-		return kubeNodePortSetUDP
+		return kubeNodePortUDPIPSet[ipFamily]
 	default:
-		return kubeNodePortSetTCP
+		return kubeNodePortTCPIPSet[ipFamily]
 	}
 }
 
 // getNodePortLocalIpSetNameByProtocol returns NodePortLocal IPSet name for
-// the given protocol, defaults to TCP.
-func getNodePortLocalIpSetNameByProtocol(protocol localv1.Protocol) string {
+// the given ipFamily and protocol, defaults to TCP.
+func getNodePortLocalIpSetNameByProtocol(ipFamily v1.IPFamily, protocol localv1.Protocol) string {
 	switch protocol {
 	case localv1.Protocol_SCTP:
-		return kubeNodePortLocalSetSCTP
+		return kubeNodePortLocalSCTPIPSet[ipFamily]
 	case localv1.Protocol_TCP:
-		return kubeNodePortLocalSetTCP
+		return kubeNodePortLocalTCPIPSet[ipFamily]
 	case localv1.Protocol_UDP:
-		return kubeNodePortLocalSetUDP
+		return kubeNodePortLocalUDPIPSet[ipFamily]
 	default:
-		return kubeNodePortLocalSetTCP
+		return kubeNodePortLocalTCPIPSet[ipFamily]
 	}
 }

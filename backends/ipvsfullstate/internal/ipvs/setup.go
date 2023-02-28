@@ -26,7 +26,7 @@ const (
 
 func (m *Manager) Setup() error {
 	var err error
-	klog.V(3).Info("stated initializing ipvs manager")
+	klog.V(3).Info("initializing ipvs manager")
 
 	err = initializeKernelConfig(NewLinuxKernelHandler())
 	if err != nil {
