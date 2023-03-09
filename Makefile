@@ -94,6 +94,18 @@ e2e-ipv6-ipvs: go_mod_tests_requirement
 e2e-dual-ipvs: go_mod_tests_requirement
 	./hack/test_e2e.sh -i dual -b ipvs
 
+## E2E with IPV4 and IPVS
+e2e-ipv4-ipvsfullstate: go_mod_tests_requirement
+	./hack/test_e2e.sh -i ipv4 -b ipvsfullstate
+
+## E2E with IPV6 and IPVS
+e2e-ipv6-ipvsfullstate: go_mod_tests_requirement
+	./hack/test_e2e.sh -i ipv6 -b ipvsfullstate
+
+## E2E with DUAL and IPVS
+e2e-dual-ipvsfullstate: go_mod_tests_requirement
+	./hack/test_e2e.sh -i dual -b ipvsfullstate
+
 ## E2E with IPV4 and NFT
 e2e-ipv4-nft: go_mod_tests_requirement
 	./hack/test_e2e.sh -i ipv4 -b nft

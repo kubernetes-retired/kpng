@@ -39,7 +39,18 @@ jobs:
     
     - name: build backends/ipvs-as-sink
       run: ./hack/test_backend_build.sh ipvs
-  
+
+  ipvsfullstate:
+    name: build backend package ipvsfullstate
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: build backends/ipvsfullstate
+        run: ./hack/test_backend_build.sh ipvsfullstate
+
   nft:
     name: build backend package nft
     needs: setup
