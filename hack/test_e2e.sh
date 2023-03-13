@@ -14,10 +14,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-if [[ $OSTYPE == 'darwin'* ]]; then
-  info_message "The kpng build script only works on linux... Exiting now!"
-  exit 1
-fi
 
 shopt -s expand_aliases
 
@@ -42,6 +38,11 @@ GINKGO_PROVIDER="local"
 source "${SCRIPT_DIR}"/utils.sh
 source "${SCRIPT_DIR}"/common.sh
 source "${SCRIPT_DIR}"/test_skip_list.sh
+
+if [[ $OSTYPE == 'darwin'* ]]; then
+  info_message "The kpng build script only works on linux... Exiting now!"
+  exit 1
+fi
 
 function if_error_warning {
     ###########################################################################
@@ -260,7 +261,7 @@ function create_cluster {
       kind: Cluster
       apiVersion: kind.x-k8s.io/v1alpha4
       networking:
-          kubeProxyMode: none
+          kubeProxyMode: "none"
           ipFamily: "${ip_family}"
           podSubnet: "${CLUSTER_CIDR}"
           serviceSubnet: "${SERVICE_CLUSTER_IP_RANGE}"
@@ -970,6 +971,7 @@ function help {
     exit 1 # Exit script after printing help
 }
 tmp_dir=$(dirname "$0")
+echo ${tmp_dir}
 base_dir=$(cd "${tmp_dir}" && pwd)
 ci_mode=false
 devel_mode=false
