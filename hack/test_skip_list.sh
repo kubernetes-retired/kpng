@@ -115,6 +115,24 @@ GINKGO_SKIP_dual_ipvs_TEST="should work after the service has been recreated\
 |should be able to create a functioning NodePort service\
 |should be able to change the type from ExternalName to NodePort"
 
+GINKGO_SKIP_ipv4_ipvsfullstate_TEST="should have session affinity work for NodePort service\
+|should have session affinity timeout work for NodePort service\
+|should be able to switch session affinity for NodePort service"
+
+GINKGO_SKIP_ipv6_ipvsfullstate_TEST="should have session affinity work for NodePort service\
+|should have session affinity timeout work for NodePort service\
+|should be able to switch session affinity for NodePort service\
+|should be able to change the type from NodePort to ExternalName\
+|should be able to change the type from ClusterIP to ExternalName\
+|should create endpoints for unready pods\
+|should provide DNS for services\
+|should provide DNS for pods for Subdomain\
+|should provide DNS for the cluster"
+
+GINKGO_SKIP_dual_ipvsfullstate_TEST="should have session affinity work for NodePort service\
+|should have session affinity timeout work for NodePort service\
+|should be able to switch session affinity for NodePort service"
+
 GINKGO_SKIP_ipv4_nft_TEST="should check kube-proxy urls\
 |should work with the pod containing more than 6 DNS search paths and longer than 256 search list characters\
 |should run through the lifecycle of Pods and PodStatus"

@@ -10,3 +10,4 @@ temp/
 .vscode/
 kpng-bin/
 tilt.env
+.idea
