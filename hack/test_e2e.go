@@ -55,12 +55,17 @@ func set_host_network_settings(ip_family string) {
 	//
 	// Arguments: 
 	//	arg1: ip_family
-
-
+	///////////////////////////////////////////////////////////////////////
+	set_sysctl("net.ipv4.ip_forward", 1)
+	if ip_family = "ipv6" {
+		//TODO 
+		fmt.Println("TODO :-)")
+	}	
 }
 
+
 func main() {
-	fmt.Println("Verify Host Networking Settings")
-	set_sysctl("net.ipv4.ip_forward", 1)
+	fmt.Println("Ola :-)")
+	
 
 }
