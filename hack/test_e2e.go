@@ -21,6 +21,10 @@ func if_error_exit(error_msg error) {
 	}
 } 
 
+func add_to_path(directory string) {
+
+}
+
 func set_sysctl(attribute string, value int) {
     // Description:
     // Set a sysctl attribute to value
@@ -63,9 +67,53 @@ func set_host_network_settings(ip_family string) {
 	}	
 }
 
+func install_binaries(bin_directory string, k8s_version string, os string) {
+    
+    // Description:
+    // Copy binaries from the net to binaries directory
+    //
+    // Arguments:
+    //   arg1: binary directory, path to where ginko will be installed
+    //   arg2: Kubernetes version
+    //  arg3: OS, name of the operating system
+	/////////////////////////////////////////////////////////////////////////////////
+	wd, err := os.Getwd()
+	if_error_exit(err)
+	
+	if wd != basename_dir {
+		err = os.Chdir(basename_dir)
+		if_error_exit
+	}
+	os.MkdirAll() ...
+
+}
+
+
+
+
 
 func main() {
 	fmt.Println("Ola :-)")
-	
+	var e2e_dir string = ""
+	var bin_dir string = ""	
+
+	wd, err := os.Getwd
+	if_error_exit(err)
+	const basename_dir = wd
+
+
+	if e2e_dir == "" {
+		pwd, err := os.Getwd()
+		if_error_exit(err)
+		e2e_dir = pwd + "/temp_go/e2e"
+	} 
+	if bin_dir == "" {
+		bin_dir = e2e_dir + "/bin"
+	}
+
+
+
+
+
 
 }
