@@ -21,7 +21,7 @@ source "${SCRIPT_DIR}/common.sh"
 
 : ${IMAGE:="test/kpng:latest"}
 : ${PULL:="IfNotPresent"}
-: ${BACKEND:="nft"}
+: ${BACKEND:="iptables"} # Temporary until we fix https://github.com/kubernetes-sigs/kpng/issues/467 the kernelmodule nft not loading?
 : ${CONFIG_MAP_NAME:=kpng}
 : ${SERVICE_ACCOUNT_NAME:=kpng}
 : ${NAMESPACE:=kube-system}
