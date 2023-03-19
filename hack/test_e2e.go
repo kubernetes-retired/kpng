@@ -29,7 +29,6 @@ func add_to_path(directory string) {
     // Arguments:                                                              #
     //   arg1:  directory                                                      #	
 	///////////////////////////////////////////////////////////////////////
-
 	_, err := os.Stat(directory)
 	if err != nil && os.IsNotExist(err) {
 		if_error_exit(err)
@@ -38,18 +37,29 @@ func add_to_path(directory string) {
 	path := os.Getenv("PATH")
 	fmt.Println(path)
 
-	if !(strings.Contains(path, ":" + directory + ":")) && !(strings.Contains(path, ":" + directory)) {
+	// Check if the directory path is in the $PATH env variable 
+	// I believe the package regexp can be used. Couldn't figure out the right pattern. For now 
+	// will use the following approach
+	// TODO(Maybe!): Check using the regexp package
+	path_set := strings.Split(path, ":") 
+	dir_path_exist := false
+	for _, s := range path_set {
+		if directory == s {
+			dir_path_exist = true
+			break
+		}
+	}
+
+	if !dir_path_exist {
 		fmt.Println(directory)
 		fmt.Println("Directory Not in the $PATH env! :(")
 		updated_path := path + ":" + directory
 		err = os.Setenv("PATH", updated_path)
-		//cmd :=exec.Command("export", updated_path)
-		//err = cmd.Run()
 		if_error_exit(err)
 		fmt.Println(os.Getenv("PATH"))
-		fmt.Println("Directory, NOW, is in the $PATH env! :)")
+		fmt.Println("Directory, NOW, is in the $PATH env! hooray:)")
 	}
-	fmt.Println("Directory exist hooray :)")
+
 }
 
 func set_sysctl(attribute string, value int) {
