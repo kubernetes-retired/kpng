@@ -10,6 +10,11 @@ import (
 	"strings"
 ) 
 
+const (
+	KIND_VERSION="v0.17.0"
+
+)
+
 func if_error_exit(error_msg error) {
     // Description:
     // Validate if previous command failed and show an error msg (if provided) 
@@ -34,8 +39,10 @@ func add_to_path(directory string) {
 		if_error_exit(err)
 	}
 
+	fmt.Println("Adding the directory to $PATH env variable")
+	fmt.Println()
 	path := os.Getenv("PATH")
-	fmt.Println(path)
+	fmt.Println("Current $PATH: ", path)
 
 	// Check if the directory path is in the $PATH env variable 
 	// I believe the package regexp can be used. Couldn't figure out the right pattern. For now 
@@ -50,14 +57,14 @@ func add_to_path(directory string) {
 		}
 	}
 
+	fmt.Println("New directory: ", directory)
 	if !dir_path_exist {
-		fmt.Println(directory)
-		fmt.Println("Directory Not in the $PATH env! :(")
+		fmt.Println("The directory is NOT in the $PATH env variable! :(")
 		updated_path := path + ":" + directory
 		err = os.Setenv("PATH", updated_path)
 		if_error_exit(err)
 		fmt.Println(os.Getenv("PATH"))
-		fmt.Println("Directory, NOW, is in the $PATH env! hooray:)")
+		fmt.Println("The directory is NOW in the $PATH env variable! hooray:)")
 	}
 
 }
@@ -104,6 +111,47 @@ func set_host_network_settings(ip_family string) {
 	}	
 }
 
+func setup_kind(install_directory, operating_system string) {
+	///////////////////////////////////////////////////////////////////////////
+	// Description:                                                            
+    // setup kind if not available in the system                               
+    //                                                                         
+    // Arguments:                                                              
+    //   arg1: installation directory, path to where kind will be installed     
+	///////////////////////////////////////////////////////////////////////////
+	_, err := os.Stat(install_directory)
+	if err != nil && os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+
+	_, err = os.Stat(install_directory + "/kind")
+	if err != nil && os.IsNotExist(err) {
+		fmt.Println()
+		fmt.Println("Downloading kind ...")
+	}
+
+	tmp_file, err := os.CreateTemp("/tmp", "kind_setup")
+	if_error_exit(err)
+	defer os.Remove(tmp_file.Name()) // Clean up. QUESTION: As we will end up moving the temp file, is this necessary? 
+
+	url := "https://kind.sigs.k8s.io/dl/" + KIND_VERSION + "/kind-" + operating_system + "-amd64"
+	fmt.Printf("Temp filename: %s\n", tmp_file.Name())
+	cmd := exec.Command("curl", "-L", url, "-o", tmp_file.Name())	
+	err = cmd.Run()
+	if_error_exit(err)
+	// TODO: Need to find out how to display, the curl ongoing download details, on the terminal
+
+
+	cmd = exec.Command("sudo", "mv", tmp_file.Name(), install_directory + "/kind")
+	_ = cmd.Run()
+	//if_error_exit(err) 
+	cmd = exec.Command("sudo", "chmod", "+rx", install_directory + "/kind")
+	_ = cmd.Run()
+	cmd = exec.Command("sudo", "chown", "root.root", install_directory + "/kind")
+	
+	fmt.Println("The kind tool is set.")
+}
+
 func install_binaries(bin_directory, k8s_version, operating_system, base_dir_path string, ) {
     
     // Description:
@@ -123,7 +171,9 @@ func install_binaries(bin_directory, k8s_version, operating_system, base_dir_pat
 	}
 	err = os.MkdirAll(bin_directory, 0755) 
 
-	add_to_path(bin_directory)
+	add_to_path(bin_directory) 
+
+	setup_kind(bin_directory, operating_system)
 
 }
 
@@ -132,7 +182,7 @@ func install_binaries(bin_directory, k8s_version, operating_system, base_dir_pat
 
 
 func main() {
-	fmt.Println("Ola :-)")
+	fmt.Println("Hello :)")
 	var e2e_dir string = ""
 	var bin_dir string = ""	
 
@@ -150,7 +200,16 @@ func main() {
 		bin_dir = e2e_dir + "/bin"
 	}
 
-	install_binaries(bin_dir, "1.19", "linux", base_dir)
+	// Get the OS
+	var buffer bytes.Buffer 
+	cmd_string := "uname | tr '[:upper:]' '[:lower:]'"
+	cmd := exec.Command("bash", "-c", cmd_string) // I need to better understand the -c option! And also try to implement it using Cmd.StdinPipe
+	cmd.Stdout = &buffer
+	err = cmd.Run()
+	if_error_exit(err)
+	OS := strings.TrimSpace(buffer.String())
+
+	install_binaries(bin_dir, "1.19", OS, base_dir)
 
 
 }
