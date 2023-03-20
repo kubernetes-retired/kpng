@@ -125,31 +125,47 @@ func setup_kind(install_directory, operating_system string) {
 	}
 
 	_, err = os.Stat(install_directory + "/kind")
-	if err != nil && os.IsNotExist(err) {
+	if err == nil {
+		fmt.Println("The kind tool is already set in your system.")
+	} else if err != nil && os.IsNotExist(err) {
 		fmt.Println()
 		fmt.Println("Downloading kind ...")
-	}
 
-	tmp_file, err := os.CreateTemp("/tmp", "kind_setup")
-	if_error_exit(err)
-	defer os.Remove(tmp_file.Name()) // Clean up. QUESTION: As we will end up moving the temp file, is this necessary? 
-
-	url := "https://kind.sigs.k8s.io/dl/" + KIND_VERSION + "/kind-" + operating_system + "-amd64"
-	fmt.Printf("Temp filename: %s\n", tmp_file.Name())
-	cmd := exec.Command("curl", "-L", url, "-o", tmp_file.Name())	
-	err = cmd.Run()
-	if_error_exit(err)
-	// TODO: Need to find out how to display, the curl ongoing download details, on the terminal
-
-
-	cmd = exec.Command("sudo", "mv", tmp_file.Name(), install_directory + "/kind")
-	_ = cmd.Run()
-	//if_error_exit(err) 
-	cmd = exec.Command("sudo", "chmod", "+rx", install_directory + "/kind")
-	_ = cmd.Run()
-	cmd = exec.Command("sudo", "chown", "root.root", install_directory + "/kind")
+		tmp_file, err := os.CreateTemp("/tmp", "kind_setup")
+		if_error_exit(err)
+		defer os.Remove(tmp_file.Name()) // Clean up. QUESTION: As we will end up moving the temp file, is this necessary? 
 	
-	fmt.Println("The kind tool is set.")
+		url := "https://kind.sigs.k8s.io/dl/" + KIND_VERSION + "/kind-" + operating_system + "-amd64"
+		fmt.Printf("Temp filename: %s\n", tmp_file.Name())
+		cmd := exec.Command("curl", "-L", url, "-o", tmp_file.Name())	
+		err = cmd.Run()
+		if_error_exit(err)
+		// TODO: Need to find out how to display, the curl ongoing download details, on the terminal
+	
+		cmd = exec.Command("sudo", "mv", tmp_file.Name(), install_directory + "/kind")
+		_ = cmd.Run()
+		//if_error_exit(err) 
+		cmd = exec.Command("sudo", "chmod", "+rx", install_directory + "/kind")
+		_ = cmd.Run()
+		cmd = exec.Command("sudo", "chown", "root.root", install_directory + "/kind")
+		
+		fmt.Println("The kind tool is set.")		
+	}
+}
+
+func setup_kubectl(install_directory, k8s_version, operating_system string) {
+    // Description:                                                            
+    // setup kubectl if not available in the system                            
+    //                                                                         
+    // Arguments:                                                              
+    //   arg1: installation directory, path to where kubectl will be installed 
+    //   arg2: Kubernetes version                                              
+    //   arg3: OS, name of the operating system                                
+	///////////////////////////////////////////////////////////////////////////
+
+
+
+	
 }
 
 func install_binaries(bin_directory, k8s_version, operating_system, base_dir_path string, ) {
