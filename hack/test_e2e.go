@@ -28,6 +28,25 @@ func if_error_exit(error_msg error) {
 	}
 } 
 
+func command_exist(cmd_test string) bool {
+	///////////////////////////////////////////////////////////////////////////
+	// Description:                                                            
+    // Checkt if a binary exists                                               
+    //                                                                         
+    // Arguments:                                                              
+    //   arg1: binary name                                                     
+	///////////////////////////////////////////////////////////////////////////
+	
+	cmd_script := "command -v " + cmd_test + " > /dev/null 2>&1"
+	cmd := exec.Command("bash", "-c", cmd_script)
+	err := cmd.Run()
+	
+	if err == nil {
+		return true
+	}
+	return false
+}
+
 func add_to_path(directory string) {
     // Description:                                                            #
     // Add directory to path                                                   #
@@ -239,6 +258,46 @@ func setup_ginkgo(install_directory, k8s_version, operating_system string) {
 
 }
 
+func setup_bpf2go(install_directory string) {
+	///////////////////////////////////////////////////////////////////////////
+    // Description:                                                            
+    // Install bpf2go binary                                                   
+    //                                                                         
+    // Arguments:                                                              
+    //   arg1: installation directory, path to where bpf2go will be installed  
+	///////////////////////////////////////////////////////////////////////////
+
+	if ! command_exist("bpf2go") {
+		if ! command_exist("go") {
+			fmt.Println("Dependency not met: 'bpf2go' not installed and cannot install with 'go'")
+			os.Exit(1)
+		} 
+		
+		fmt.Println("'bpf2go' not found, installing with 'go'")
+		_, err := os.Stat(install_directory)
+		if err != nil && os.IsNotExist(err) {
+			log.Fatal(err)
+		}
+		// set GOBIN to bin_directory to ensure that binary is in search path	
+		_ = os.Setenv("GOBIN", install_directory)
+		// remove GOPATH just to be sure
+		_ = os.Setenv("GOPATH", "")
+
+		cmd := exec.Command("go", "install", "github.com/cilium/ebpf/cmd/bpf2go@v0.9.2")
+		err = cmd.Run()
+		if_error_exit(err)
+	
+		var buffer bytes.Buffer
+		cmd = exec.Command("which", "bpf2go")
+		cmd.Stdout = &buffer
+		err = cmd.Run()
+		if_error_exit(err)
+		fmt.Printf("The tool bpf2go is installed at: %s\n", buffer.String())	
+	} 
+} 
+
+
+
 func install_binaries(bin_directory, k8s_version, operating_system, base_dir_path string, ) {
     
     // Description:
@@ -263,6 +322,7 @@ func install_binaries(bin_directory, k8s_version, operating_system, base_dir_pat
 	setup_kind(bin_directory, operating_system)
 	setup_kubectl(bin_directory, k8s_version, operating_system)
 	setup_ginkgo(bin_directory, k8s_version, operating_system)
+	setup_bpf2go(bin_directory)
 }
 
 
