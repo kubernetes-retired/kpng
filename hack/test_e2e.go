@@ -12,6 +12,7 @@ import (
 
 const (
 	KIND_VERSION="v0.17.0"
+	K8S_VERSION="v1.25.3"
 
 )
 
@@ -163,7 +164,32 @@ func setup_kubectl(install_directory, k8s_version, operating_system string) {
     //   arg3: OS, name of the operating system                                
 	///////////////////////////////////////////////////////////////////////////
 
-
+	// Check if the installation directory exist
+	_, err := os.Stat(install_directory)
+	if_error_exit(err)
+	// If kubectl is not installed, install it.
+	_, err = os.Stat(install_directory + "/kubectl")
+	if err == nil {
+		fmt.Println("Kubectl is already installed in the System.")
+	} else if err != nil && os.IsNotExist(err) {
+		// Show message "Downloading kubectl ..."
+		fmt.Println("Downloading kubectl ...") 
+		// Create tem file
+		tmp_file, err := os.CreateTemp(".", "kubectl_setup")
+		if_error_exit(err)
+		// Download kubectl
+		url := "https://dl.k8s.io/" + k8s_version + "/bin/" + operating_system + "/amd64/kubectl"
+		cmd := exec.Command("curl", "-L", url, "-o", tmp_file.Name())
+		err = cmd.Run()
+		if_error_exit(err)
+		//mv, chmod, chown 
+		cmd = exec.Command("sudo", "mv", tmp_file.Name(), install_directory + "/kubectl")
+		_ = cmd.Run()
+		cmd = exec.Command("sudo", "chmod", "+rx", install_directory + "/kubectl")
+		_ = cmd.Run()
+		cmd = exec.Command("sudo", "chown", "root.root", install_directory + "/kubectl")
+		_ = cmd.Run()
+	}
 
 	
 }
@@ -190,7 +216,7 @@ func install_binaries(bin_directory, k8s_version, operating_system, base_dir_pat
 	add_to_path(bin_directory) 
 
 	setup_kind(bin_directory, operating_system)
-
+	setup_kubectl(bin_directory, k8s_version, operating_system )
 }
 
 
@@ -225,7 +251,7 @@ func main() {
 	if_error_exit(err)
 	OS := strings.TrimSpace(buffer.String())
 
-	install_binaries(bin_dir, "1.19", OS, base_dir)
+	install_binaries(bin_dir, K8S_VERSION, OS, base_dir)
 
 
 }
