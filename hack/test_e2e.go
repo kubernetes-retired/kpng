@@ -189,9 +189,54 @@ func setup_kubectl(install_directory, k8s_version, operating_system string) {
 		_ = cmd.Run()
 		cmd = exec.Command("sudo", "chown", "root.root", install_directory + "/kubectl")
 		_ = cmd.Run()
+
+		fmt.Println("The Kubectl tool is set.")
 	}
 
 	
+}
+
+func setup_ginkgo(install_directory, k8s_version, operating_system string) {
+    ///////////////////////////////////////////////////////////////////////////
+	// Description:
+    // setup ginkgo and e2e.test
+    //
+    // # Arguments:
+    //   arg1: binary directory, path to where ginko will be installed
+    //   arg2: Kubernetes version
+    //  arg3: OS, name of the operating system
+	/////////////////////////////////////////////////////////////////////////// 
+
+	//Create temp directory
+	tmp_dir, err := os.MkdirTemp(".", "ginkgo_setup_")  //I think this should only happen in case ginkgo and e2e.test are not installed. Fix later
+	if_error_exit(err)
+	defer os.RemoveAll(tmp_dir) //Clean up
+
+	_, ginkgo_exist := os.Stat(install_directory + "/ginkgo")
+	_, e2e_test_exist := os.Stat(install_directory + "/e2e.test")
+
+	if os.IsNotExist(ginkgo_exist) || os.IsNotExist(e2e_test_exist) {
+		fmt.Println("Downloading ginkgo and e2e.test ...")
+		url := "https://dl.k8s.io/" + k8s_version + "/kubernetes-test-" + operating_system + "-amd64.tar.gz"
+		out_file := tmp_dir + "/kubernetes-test-" + operating_system + "-amd64.tar.gz"
+
+		cmd := exec.Command("curl", "-L", url, "-o", out_file)
+		err = cmd.Run()
+		if_error_exit(err)
+
+		tar_file := tmp_dir + "/kubernetes-test-" + operating_system + "-amd64.tar.gz" 
+		cmd_string := "tar xvzf " + tar_file + " --directory " + install_directory + " --strip-components=3 kubernetes/test/bin/ginkgo kubernetes/test/bin/e2e.test &> /dev/null"
+		cmd = exec.Command("bash", "-c", cmd_string)
+		err = cmd.Run()
+		if_error_exit(err)
+
+		fmt.Println("The tools ginko and e2e.test have been set up.")
+
+	} else {
+		fmt.Println("The tools ginko and e2e.test have already been set up.")
+	}
+
+
 }
 
 func install_binaries(bin_directory, k8s_version, operating_system, base_dir_path string, ) {
@@ -216,7 +261,8 @@ func install_binaries(bin_directory, k8s_version, operating_system, base_dir_pat
 	add_to_path(bin_directory) 
 
 	setup_kind(bin_directory, operating_system)
-	setup_kubectl(bin_directory, k8s_version, operating_system )
+	setup_kubectl(bin_directory, k8s_version, operating_system)
+	setup_ginkgo(bin_directory, k8s_version, operating_system)
 }
 
 
