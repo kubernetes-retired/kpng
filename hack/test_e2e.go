@@ -13,7 +13,7 @@ import (
 const (
 	KIND_VERSION="v0.17.0"
 	K8S_VERSION="v1.25.3"
-
+	
 )
 
 func if_error_exit(error_msg error) {
@@ -361,8 +361,45 @@ func install_binaries(bin_directory, k8s_version, operating_system, base_dir_pat
 	setup_bpf2go(bin_directory)
 }
 
+func detect_container_engine(container_engine string) {
+	///////////////////////////////////////////////////////////////////////////
+    // Description:                                                           
+    // Detect Container Engine, by default it is docker but developers might   
+    // use real alternatives like podman. The project welcome both.            
+    //                                                                         
+    // Arguments:                                                              
+    //   None
+	///////////////////////////////////////////////////////////////////////////                                                                  	
+	// If docker is not available, let's check if podman exists
+	cmd := exec.Command(container_engine) 
+	err := cmd.Run()
+	if err != nil {
+		container_engine = "podman"
+		cmd = exec.Command(container_engine, "--help")
+		err = cmd.Run() 
+		if err != nil {
+			fmt.Println("The e2e tests currently support docker and podman as the container engine. Please install either of them")
+			os.Exit(1)
+		}
+	}
+	fmt.Println("Detected Container Engine:", container_engine)
+}
 
+func prepare_container() {
+	///////////////////////////////////////////////////////////////////////////
+	// Description:
+    // Prepare container  
+    //                                                      
+    // Arguments:
+    //   arg1: Path of dockerfile
+    //   arg2: ci_mode
+	///////////////////////////////////////////////////////////////////////////
 
+	CONTAINER_ENGINE := "docker"
+
+	detect_container_engine(CONTAINER_ENGINE)
+
+}
 
 
 func main() {
@@ -394,5 +431,6 @@ func main() {
 	OS := strings.TrimSpace(buffer.String())
 
 	install_binaries(bin_dir, K8S_VERSION, OS, base_dir)
+	prepare_container()
 
 }
