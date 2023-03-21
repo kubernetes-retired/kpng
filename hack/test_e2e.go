@@ -131,6 +131,42 @@ func set_host_network_settings(ip_family string) {
 	}	
 }
 
+func verify_sysctl_setting(attribute string, value int) {
+	///////////////////////////////////////////////////////////////////////////
+	// Description:                                                            
+    // Verify that a sysctl attribute setting has a value                      
+    //                                                                         
+    // Arguments:                                                              
+    //   arg1: attribute                                                       
+    //   arg2: value                                                           
+	///////////////////////////////////////////////////////////////////////////
+
+	// Get the current value of the attribute and store it in the result variable
+	var buffer bytes.Buffer
+	cmd := exec.Command("sysctl", "-n", attribute)
+	cmd.Stdout = &buffer
+	err := cmd.Run()
+	if_error_exit(err)
+	result, err := strconv.Atoi(strings.TrimSpace(buffer.String()))
+
+	if value != result {
+		fmt.Printf("Failure: \"sysctl -n %s\" returned \"%d\", not \"%d\" as expected.\n", attribute, result, value)	
+		os.Exit(1)
+	}
+}
+
+func verify_host_network_settings(ip_family string) {
+	///////////////////////////////////////////////////////////////////////////
+	// Description:                                                            
+	// Verify hosts network settings                                           
+	//                                                                         
+	// Arguments:                                                              
+	//   arg1: ip_family                                                       
+	///////////////////////////////////////////////////////////////////////////
+
+	verify_sysctl_setting("net.ipv4.ip_forward", 1)
+} 
+
 func setup_kind(install_directory, operating_system string) {
 	///////////////////////////////////////////////////////////////////////////
 	// Description:                                                            
@@ -358,6 +394,5 @@ func main() {
 	OS := strings.TrimSpace(buffer.String())
 
 	install_binaries(bin_dir, K8S_VERSION, OS, base_dir)
-
 
 }
