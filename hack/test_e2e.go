@@ -8,13 +8,17 @@ import (
 	"bytes"
 	"strconv"
 	"strings"
+	"path"
 ) 
 
 const (
 	KIND_VERSION="v0.17.0"
 	K8S_VERSION="v1.25.3"
+	KPNG_IMAGE_TAG_NAME="kpng:test_270323_0904"
 	
 )
+
+var kpng_dir string
 
 func if_error_exit(error_msg error) {
     // Description:
@@ -361,7 +365,7 @@ func install_binaries(bin_directory, k8s_version, operating_system, base_dir_pat
 	setup_bpf2go(bin_directory)
 }
 
-func detect_container_engine(container_engine string) {
+func detect_container_engine(CONTAINER_ENGINE string) {
 	///////////////////////////////////////////////////////////////////////////
     // Description:                                                           
     // Detect Container Engine, by default it is docker but developers might   
@@ -371,21 +375,81 @@ func detect_container_engine(container_engine string) {
     //   None
 	///////////////////////////////////////////////////////////////////////////                                                                  	
 	// If docker is not available, let's check if podman exists
-	cmd := exec.Command(container_engine) 
+	cmd := exec.Command(CONTAINER_ENGINE) 
 	err := cmd.Run()
 	if err != nil {
-		container_engine = "podman"
-		cmd = exec.Command(container_engine, "--help")
+		CONTAINER_ENGINE = "podman"
+		cmd = exec.Command(CONTAINER_ENGINE, "--help")
 		err = cmd.Run() 
 		if err != nil {
 			fmt.Println("The e2e tests currently support docker and podman as the container engine. Please install either of them")
 			os.Exit(1)
 		}
 	}
-	fmt.Println("Detected Container Engine:", container_engine)
+	fmt.Println("Detected Container Engine:", CONTAINER_ENGINE)
 }
 
-func prepare_container() {
+func container_build(CONTAINER_FILE string, ci_mode bool, CONTAINER_ENGINE string) {
+	///////////////////////////////////////////////////////////////////////////
+    // Description:                                                            
+    // build a container image for KPNG                                        
+    //                                                                         
+    // Arguments:                                                              
+    //   arg1: Path for E2E installation directory, or the empty string         
+    //   arg2: ci_mode        
+	///////////////////////////////////////////////////////////////////////////
+	
+	// QUESTION to Jay: Is it necessary to have this variables in capital letters?
+	
+	// Running locally it's not necessary to show all info
+	QUIET_MODE := "--quiet"
+	if ci_mode == true {
+		QUIET_MODE = ""
+	}
+
+	fmt.Println(CONTAINER_FILE)
+
+	_, err := os.Stat(CONTAINER_FILE)
+	if err != nil && os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+
+	err = os.Chdir(kpng_dir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	wd, _ := os.Getwd()
+
+	fmt.Println("Workind directory: ", wd)
+	if QUIET_MODE == "" {
+		fmt.Println("Find me here!")
+		cmd_string_debug := CONTAINER_ENGINE + "build" + QUIET_MODE + "-t" + KPNG_IMAGE_TAG_NAME + "-f" + CONTAINER_FILE + "."
+		fmt.Println(cmd_string_debug)
+		cmd := exec.Command("docker", "build", "-t", "kpng:test_270323_0904", "-f", "/home/emabota/go/src/kpng/Dockerfile", ".")
+		//cmd := exec.Command(CONTAINER_ENGINE, "build", QUIET_MODE, "-t", KPNG_IMAGE_TAG_NAME, "-f", CONTAINER_FILE, ".")
+		err = cmd.Run()
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		cmd := exec.Command(CONTAINER_ENGINE, "build", QUIET_MODE, "-t", KPNG_IMAGE_TAG_NAME, "-f", CONTAINER_FILE, ".")
+		err = cmd.Run()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	err = os.Chdir(kpng_dir + "/hack")
+	if err != nil {
+		log.Fatal(err)
+	}
+	wd, _ = os.Getwd()
+	fmt.Println("Workind directory: ", wd)
+	fmt.Println("Image build and tag ${KPNG_IMAGE_TAG_NAME} is set.")
+
+}
+
+func prepare_container(dockerfile string, ci_mode bool) {
 	///////////////////////////////////////////////////////////////////////////
 	// Description:
     // Prepare container  
@@ -396,22 +460,28 @@ func prepare_container() {
 	///////////////////////////////////////////////////////////////////////////
 
 	CONTAINER_ENGINE := "docker"
-
+	fmt.Println("KPNG Dir: ", kpng_dir)
 	detect_container_engine(CONTAINER_ENGINE)
+	container_build(dockerfile, ci_mode, CONTAINER_ENGINE) 
 
 }
 
 
 func main() {
 	fmt.Println("Hello :)")
-	var e2e_dir string = ""
-	var bin_dir string = ""	
+
+	var ci_mode bool = true
+	var dockerfile string
+	//var e2e_dir string = ""
+	//var bin_dir string = ""	
+	
 
 	wd, err := os.Getwd()
 	if_error_exit(err)
 	base_dir := wd //How can I have this variable as a constant??? 
+	kpng_dir = path.Dir(wd)
 
-
+/*
 	if e2e_dir == "" {
 		pwd, err := os.Getwd()
 		if_error_exit(err)
@@ -420,7 +490,7 @@ func main() {
 	if bin_dir == "" {
 		bin_dir = e2e_dir + "/bin"
 	}
-
+*/
 	// Get the OS
 	var buffer bytes.Buffer 
 	cmd_string := "uname | tr '[:upper:]' '[:lower:]'"
@@ -428,9 +498,18 @@ func main() {
 	cmd.Stdout = &buffer
 	err = cmd.Run()
 	if_error_exit(err)
-	OS := strings.TrimSpace(buffer.String())
+	//OS := strings.TrimSpace(buffer.String())
 
-	install_binaries(bin_dir, K8S_VERSION, OS, base_dir)
-	prepare_container()
+
+	// Get the path to the Dockerfile
+	cmd = exec.Command("dirname", base_dir)
+	buffer.Reset()
+	cmd.Stdout = &buffer
+	err = cmd.Run()
+	if_error_exit(err)
+	dockerfile = strings.TrimSpace(buffer.String()) + "/Dockerfile"
+
+	//install_binaries(bin_dir, K8S_VERSION, OS, base_dir)
+	prepare_container(dockerfile, ci_mode)
 
 }
