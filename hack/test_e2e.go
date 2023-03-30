@@ -18,7 +18,7 @@ const (
 	
 )
 
-var kpng_dir string
+var kpng_dir, CONTAINER_ENGINE string
 
 func if_error_exit(error_msg error) {
     // Description:
@@ -365,7 +365,7 @@ func install_binaries(bin_directory, k8s_version, operating_system, base_dir_pat
 	setup_bpf2go(bin_directory)
 }
 
-func detect_container_engine(CONTAINER_ENGINE string) {
+func detect_container_engine() {
 	///////////////////////////////////////////////////////////////////////////
     // Description:                                                           
     // Detect Container Engine, by default it is docker but developers might   
@@ -374,10 +374,12 @@ func detect_container_engine(CONTAINER_ENGINE string) {
     // Arguments:                                                              
     //   None
 	///////////////////////////////////////////////////////////////////////////                                                                  	
-	// If docker is not available, let's check if podman exists
+	
+	CONTAINER_ENGINE = "docker"
 	cmd := exec.Command(CONTAINER_ENGINE) 
 	err := cmd.Run()
 	if err != nil {
+		// If docker is not available, let's check if podman exists
 		CONTAINER_ENGINE = "podman"
 		cmd = exec.Command(CONTAINER_ENGINE, "--help")
 		err = cmd.Run() 
@@ -389,7 +391,7 @@ func detect_container_engine(CONTAINER_ENGINE string) {
 	fmt.Println("Detected Container Engine:", CONTAINER_ENGINE)
 }
 
-func container_build(CONTAINER_FILE string, ci_mode bool, CONTAINER_ENGINE string) {
+func container_build(CONTAINER_FILE string, ci_mode bool) {
 	///////////////////////////////////////////////////////////////////////////
     // Description:                                                            
     // build a container image for KPNG                                        
@@ -407,8 +409,6 @@ func container_build(CONTAINER_FILE string, ci_mode bool, CONTAINER_ENGINE strin
 		QUIET_MODE = ""
 	}
 
-	fmt.Println(CONTAINER_FILE)
-
 	_, err := os.Stat(CONTAINER_FILE)
 	if err != nil && os.IsNotExist(err) {
 		log.Fatal(err)
@@ -418,15 +418,9 @@ func container_build(CONTAINER_FILE string, ci_mode bool, CONTAINER_ENGINE strin
 	if err != nil {
 		log.Fatal(err)
 	}
-	wd, _ := os.Getwd()
 
-	fmt.Println("Workind directory: ", wd)
 	if QUIET_MODE == "" {
-		fmt.Println("Find me here!")
-		cmd_string_debug := CONTAINER_ENGINE + "build" + QUIET_MODE + "-t" + KPNG_IMAGE_TAG_NAME + "-f" + CONTAINER_FILE + "."
-		fmt.Println(cmd_string_debug)
-		cmd := exec.Command("docker", "build", "-t", "kpng:test_270323_0904", "-f", "/home/emabota/go/src/kpng/Dockerfile", ".")
-		//cmd := exec.Command(CONTAINER_ENGINE, "build", QUIET_MODE, "-t", KPNG_IMAGE_TAG_NAME, "-f", CONTAINER_FILE, ".")
+		cmd := exec.Command(CONTAINER_ENGINE, "build", "-t", KPNG_IMAGE_TAG_NAME, "-f", CONTAINER_FILE, ".")
 		err = cmd.Run()
 		if err != nil {
 			log.Fatal(err)
@@ -443,10 +437,7 @@ func container_build(CONTAINER_FILE string, ci_mode bool, CONTAINER_ENGINE strin
 	if err != nil {
 		log.Fatal(err)
 	}
-	wd, _ = os.Getwd()
-	fmt.Println("Workind directory: ", wd)
-	fmt.Println("Image build and tag ${KPNG_IMAGE_TAG_NAME} is set.")
-
+	fmt.Printf("Image build and tag %s is set.\n", KPNG_IMAGE_TAG_NAME)
 }
 
 func prepare_container(dockerfile string, ci_mode bool) {
@@ -459,10 +450,8 @@ func prepare_container(dockerfile string, ci_mode bool) {
     //   arg2: ci_mode
 	///////////////////////////////////////////////////////////////////////////
 
-	CONTAINER_ENGINE := "docker"
-	fmt.Println("KPNG Dir: ", kpng_dir)
-	detect_container_engine(CONTAINER_ENGINE)
-	container_build(dockerfile, ci_mode, CONTAINER_ENGINE) 
+	detect_container_engine()
+	container_build(dockerfile, ci_mode) 
 
 }
 
