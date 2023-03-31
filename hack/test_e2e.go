@@ -18,7 +18,9 @@ const (
 	KPNG_IMAGE_TAG_NAME="kpng:test_270323_0904" 
 	CLUSTER_CIDR_V4="10.1.0.0/16"
 	SERVICE_CLUSTER_IP_RANGE_V4="10.2.0.0/16"
-	
+	KINDEST_NODE_IMAGE="docker.io/kindest/node"
+	E2E_K8S_VERSION="v1.25.3"
+	KUBECONFIG_TESTS="kubeconfig_tests.conf"
 )
 
 var kpng_dir, CONTAINER_ENGINE string
@@ -509,44 +511,49 @@ func create_cluster(cluster_name, bin_dir, ip_family, artifacts_directory string
 		ClusterCidr string
 		ServiceClusterIpRange string
 	}
-	
+
 	const KIND_CONFIG_TEMPLATE = `
-	kind: Cluster
-	apiVersion: kind.x-k8s.io/v1alpha4
-	networking:
-		ipFamily: {{ .IpFamily }}
-		podSubnet: {{ .ClusterCidr }}
-		serviceSubnet: {{ .ServiceClusterIpRange }}
-	nodes:
-	- role: control-plane
-	- role: worker
-	- role: worker	
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+    ipFamily: {{ .IpFamily }}
+    podSubnet: {{ .ClusterCidr }}
+    serviceSubnet: {{ .ServiceClusterIpRange }}
+nodes:
+- role: control-plane
+- role: worker
+- role: worker	
 `	
+	var (
+		kind = bin_dir + "/kind"
+		kubectl = bin_dir + "/kubectl"
+	)
+
 
 	_, err := os.Stat(bin_dir)
 	if err != nil && os.IsNotExist(err) {
 		log.Fatal(err)
 	}
 
-	_, err = os.Stat(bin_dir + "/kind")
+	_, err = os.Stat(kind)
 	if err != nil && os.IsNotExist(err) {
 		log.Fatal(err)
 	}
 
-	_, err = os.Stat(bin_dir + "/kubectl")
+	_, err = os.Stat(kubectl)
 	if err != nil && os.IsNotExist(err) {
 		log.Fatal(err)
 	}
 
-	cmd_string := bin_dir + "/kind get clusters | grep -q " + cluster_name
+	cmd_string := kind + " get clusters | grep -q " + cluster_name
 	cmd := exec.Command("bash", "-c", cmd_string)
 	err = cmd.Run()
 	if err == nil {
-		cmd_string = bin_dir + "/kind delete clusters | grep -q " + cluster_name
+		cmd_string = kind + " delete cluster --name " + cluster_name
 		cmd = exec.Command("bash", "-c", cmd_string)
 		err = cmd.Run()
 		if err != nil {
-			log.Fatalf("Cannot delete cluster ${cluster_name}", err)
+			log.Fatalf("Cannot delete cluster %s\n", cluster_name, err)
 		}
 		fmt.Printf("Previous cluster %s deleted.\n", cluster_name)
 	}
@@ -556,11 +563,11 @@ func create_cluster(cluster_name, bin_dir, ip_family, artifacts_directory string
 	if strings.TrimSpace(kind_cluster_log_level) == "" {
 		kind_cluster_log_level = "4"
 	}
-/*	kind_log_level := "-v3"
+	kind_log_level := "-v3"
 	if ci_mode == true {
-		kind_log_level := "-v7"
+		kind_log_level = "-v7"
 	}
-
+/*
 	// Potentially enable --logging-format
 	scheduler_extra_args := "\"v\": \"" + kind_cluster_log_level + "\""
 	controllerManager_extra_args := "\"v\": \"" + kind_cluster_log_level + "\""
@@ -574,7 +581,7 @@ func create_cluster(cluster_name, bin_dir, ip_family, artifacts_directory string
         SERVICE_CLUSTER_IP_RANGE = SERVICE_CLUSTER_IP_RANGE_V4
 	}
 
-	fmt.Println("Preparing to setup %s cluster ...", cluster_name)
+	fmt.Printf("Preparing to setup %s cluster ...\n", cluster_name)
 	// Create cluster
 	// Create the config file
 	tmpl, err := template.New("kind_config_template").Parse(KIND_CONFIG_TEMPLATE)	
@@ -596,7 +603,61 @@ func create_cluster(cluster_name, bin_dir, ip_family, artifacts_directory string
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("kind-config.yaml was successfully created!")
+	
+	cmd_string_set := []string {
+		kind + " create cluster ",
+		"--name " + cluster_name,
+		" --image " + KINDEST_NODE_IMAGE + ":" + E2E_K8S_VERSION,
+		" --retain",
+		" --wait=1m ",
+		kind_log_level,
+		" --config=" + artifacts_directory + "/kind-config.yaml",
+	}
+	cmd_string = ""
+	for _, s := range cmd_string_set {
+		cmd_string += s
+	}
+	
+	cmd = exec.Command("bash", "-c", cmd_string)
+	err = cmd.Run()
+	if err != nil {
+		log.Fatalf("Can not create kind cluster %s\n", cluster_name, err)
+	} 
+
+	// Patch kube-proxy to set the verbosity level
+	cmd_string_set = []string {
+		kubectl + " patch -n kube-system daemonset/kube-proxy ",
+		"--type='json' ",
+		"-p='[{\"op\": \"add\", \"path\": \"/spec/template/spec/containers/0/command/-\", \"value\": \"--v=" + kind_cluster_log_level + "\" }]'",
+	}
+	cmd_string = ""
+	for _, s := range cmd_string_set {
+		cmd_string += s
+	}
+	cmd = exec.Command("bash", "-c", cmd_string)
+	err = cmd.Run()
+	if err != nil {
+		log.Fatalf("Cannot patch kube-proxy.\n", err)
+	}
+	fmt.Println("Kube-proxy patched! Guys how can I test this? To find out if it was really successful.")
+
+	// Generate the file kubeconfig.conf on the artifacts directory
+	cmd_string = kind + " get kubeconfig --internal --name " + cluster_name +" > " + artifacts_directory + "/kubeconfig.conf"
+	cmd = exec.Command("bash", "-c", cmd_string)
+	err = cmd.Run()
+	if err != nil {
+		log.Fatalf("Failed to create the file kubeconfig.conf.\n", err)
+	}
+
+	// Generate the file KUBECONFIG_TESTS on the artifacts directory
+	cmd_string = kind + " get kubeconfig --name " + cluster_name +" > " + artifacts_directory + "/" + KUBECONFIG_TESTS
+	cmd = exec.Command("bash", "-c", cmd_string)
+	err = cmd.Run()
+	if err != nil {
+		log.Fatalf("Failed to create the file KUBECONFIG_TESTS.\n", err)
+	}
+
+	fmt.Printf("Cluster %s is created.\n", cluster_name)
 
 }
 
@@ -628,7 +689,7 @@ func create_imfrastructure_and_run_tests(e2e_dir, ip_family, backend, bin_dir, s
 		log.Fatal(err)
 	}
 
-	fmt.Println(cluster_name)
+	fmt.Println("Cluster name: ", cluster_name)
 
 	create_cluster(cluster_name, bin_dir, ip_family, artifacts_directory, ci_mode)
 
@@ -677,7 +738,7 @@ func main() {
 	cmd.Stdout = &buffer
 	err = cmd.Run()
 	if_error_exit(err)
-	//OS := strings.TrimSpace(buffer.String())
+	OS := strings.TrimSpace(buffer.String())
 
 
 	// Get the path to the Dockerfile
@@ -688,7 +749,7 @@ func main() {
 	if_error_exit(err)
 	dockerfile = strings.TrimSpace(buffer.String()) + "/Dockerfile"
 
-	//install_binaries(bin_dir, K8S_VERSION, OS, base_dir)
+	install_binaries(bin_dir, K8S_VERSION, OS, base_dir)
 	prepare_container(dockerfile, ci_mode)
 
 	tmp_suffix := ""
