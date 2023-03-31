@@ -9,12 +9,15 @@ import (
 	"strconv"
 	"strings"
 	"path"
+	"text/template"
 ) 
 
 const (
 	KIND_VERSION="v0.17.0"
 	K8S_VERSION="v1.25.3"
-	KPNG_IMAGE_TAG_NAME="kpng:test_270323_0904"
+	KPNG_IMAGE_TAG_NAME="kpng:test_270323_0904" 
+	CLUSTER_CIDR_V4="10.1.0.0/16"
+	SERVICE_CLUSTER_IP_RANGE_V4="10.2.0.0/16"
 	
 )
 
@@ -52,11 +55,11 @@ func command_exist(cmd_test string) bool {
 }
 
 func add_to_path(directory string) {
-    // Description:                                                            #
-    // Add directory to path                                                   #
-    //                                                                         #
-    // Arguments:                                                              #
-    //   arg1:  directory                                                      #	
+    // Description:                                                            //
+    // Add directory to path                                                   //
+    //                                                                         //
+    // Arguments:                                                              //
+    //   arg1:  directory                                                      //	
 	///////////////////////////////////////////////////////////////////////
 	_, err := os.Stat(directory)
 	if err != nil && os.IsNotExist(err) {
@@ -440,6 +443,46 @@ func container_build(CONTAINER_FILE string, ci_mode bool) {
 	fmt.Printf("Image build and tag %s is set.\n", KPNG_IMAGE_TAG_NAME)
 }
 
+func set_e2e_dir(e2e_dir string) {
+	/////////////////////////////////////////////////////////////////////////////
+    // Description:                                                            //
+    // Set E2E directory                                                       //
+    //                                                                         //
+    // Arguments:                                                              //
+    //   arg1: Path for E2E installation directory                             //
+    /////////////////////////////////////////////////////////////////////////////
+	
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = os.Chdir(kpng_dir + "/hack")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = os.Stat(e2e_dir)
+	if err != nil && os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+
+	_, err = os.Stat(e2e_dir + "/artifacts") 
+	if err == nil {
+		fmt.Println("The directory \"artifacts\" already exist!")
+	} else if err != nil && os.IsNotExist(err) {
+		err = os.Mkdir(e2e_dir + "/artifacts", 0755)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	err = os.Chdir(wd)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func prepare_container(dockerfile string, ci_mode bool) {
 	///////////////////////////////////////////////////////////////////////////
 	// Description:
@@ -455,14 +498,161 @@ func prepare_container(dockerfile string, ci_mode bool) {
 
 }
 
+func create_cluster(cluster_name, bin_dir, ip_family, artifacts_directory string, ci_mode bool) {
+    /////////////////////////////////////////////////////////////////////////////
+    // Description:                                                            //
+    // Create kind cluster                                                     //
+    //                                                                         //
+    /////////////////////////////////////////////////////////////////////////////
+	type KindConfigData struct {
+		IpFamily string
+		ClusterCidr string
+		ServiceClusterIpRange string
+	}
+	
+	const KIND_CONFIG_TEMPLATE = `
+	kind: Cluster
+	apiVersion: kind.x-k8s.io/v1alpha4
+	networking:
+		ipFamily: {{ .IpFamily }}
+		podSubnet: {{ .ClusterCidr }}
+		serviceSubnet: {{ .ServiceClusterIpRange }}
+	nodes:
+	- role: control-plane
+	- role: worker
+	- role: worker	
+`	
+
+	_, err := os.Stat(bin_dir)
+	if err != nil && os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+
+	_, err = os.Stat(bin_dir + "/kind")
+	if err != nil && os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+
+	_, err = os.Stat(bin_dir + "/kubectl")
+	if err != nil && os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+
+	cmd_string := bin_dir + "/kind get clusters | grep -q " + cluster_name
+	cmd := exec.Command("bash", "-c", cmd_string)
+	err = cmd.Run()
+	if err == nil {
+		cmd_string = bin_dir + "/kind delete clusters | grep -q " + cluster_name
+		cmd = exec.Command("bash", "-c", cmd_string)
+		err = cmd.Run()
+		if err != nil {
+			log.Fatalf("Cannot delete cluster ${cluster_name}", err)
+		}
+		fmt.Printf("Previous cluster %s deleted.\n", cluster_name)
+	}
+
+	// Default Log level for all components in test clusters
+	kind_cluster_log_level := os.Getenv("KIND_CLUSTER_LOG_LEVEL")
+	if strings.TrimSpace(kind_cluster_log_level) == "" {
+		kind_cluster_log_level = "4"
+	}
+/*	kind_log_level := "-v3"
+	if ci_mode == true {
+		kind_log_level := "-v7"
+	}
+
+	// Potentially enable --logging-format
+	scheduler_extra_args := "\"v\": \"" + kind_cluster_log_level + "\""
+	controllerManager_extra_args := "\"v\": \"" + kind_cluster_log_level + "\""
+	apiServer_extra_args := "\"v\": \"" + kind_cluster_log_level + "\""
+*/
+	var CLUSTER_CIDR, SERVICE_CLUSTER_IP_RANGE string
+	
+	switch ip_family {
+	case "ipv4":
+		CLUSTER_CIDR = CLUSTER_CIDR_V4
+        SERVICE_CLUSTER_IP_RANGE = SERVICE_CLUSTER_IP_RANGE_V4
+	}
+
+	fmt.Println("Preparing to setup %s cluster ...", cluster_name)
+	// Create cluster
+	// Create the config file
+	tmpl, err := template.New("kind_config_template").Parse(KIND_CONFIG_TEMPLATE)	
+	if err != nil {
+		log.Fatalf("Unable to create template %v", err)
+	}
+	kind_config_template_data := KindConfigData {
+		IpFamily:			 	ip_family,
+		ClusterCidr:			CLUSTER_CIDR,
+		ServiceClusterIpRange:	SERVICE_CLUSTER_IP_RANGE,
+	}
+
+	yamlDestPath := artifacts_directory + "/kind-config.yaml"
+	f, err := os.Create(yamlDestPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = tmpl.Execute(f, kind_config_template_data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("kind-config.yaml was successfully created!")
+
+}
+
+func create_imfrastructure_and_run_tests(e2e_dir, ip_family, backend, bin_dir, suffix string, developer_mode, ci_mode bool, deployment_model string, export_metrics, include_specific_failed_tests bool) {
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Description:                                                            
+    // create_infrastructure_and_run_tests                                     
+    //                                                                         
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	artifacts_directory := e2e_dir + "/artifacts"
+	cluster_name := "kpng-e2e-" + ip_family + "-" + backend + suffix
+
+	_ = os.Setenv("E2E_DIR", e2e_dir)
+    _ = os.Setenv("E2E_ARTIFACTS", artifacts_directory)
+    _ = os.Setenv("E2E_CLUSTER_NAME", cluster_name)
+    _ = os.Setenv("E2E_IP_FAMILY", ip_family)
+    _ = os.Setenv("E2E_BACKEND", backend)
+    _ = os.Setenv("E2E_DEPLOYMENT_MODEL", deployment_model)
+    _ = os.Setenv("E2E_EXPORT_METRICS", strconv.FormatBool(export_metrics))
+	
+	_, err := os.Stat(artifacts_directory)
+	if err != nil && os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+
+	_, err = os.Stat(bin_dir)
+	if err != nil && os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+
+	fmt.Println(cluster_name)
+
+	create_cluster(cluster_name, bin_dir, ip_family, artifacts_directory, ci_mode)
+
+
+
+}
 
 func main() {
 	fmt.Println("Hello :)")
 
 	var ci_mode bool = true
 	var dockerfile string
-	//var e2e_dir string = ""
-	//var bin_dir string = ""	
+	var e2e_dir string = ""
+	var bin_dir string = ""	
+	var (
+		ip_family		 				= "ipv4"
+		backend							= "iptables"
+		suffix							= ""
+		developer_mode					= true
+		deployment_model				= "single-process-per-node"
+		export_metrics					= false 
+		include_specific_failed_tests	= true
+		cluster_count					= 1
+	)
 	
 
 	wd, err := os.Getwd()
@@ -470,7 +660,7 @@ func main() {
 	base_dir := wd //How can I have this variable as a constant??? 
 	kpng_dir = path.Dir(wd)
 
-/*
+
 	if e2e_dir == "" {
 		pwd, err := os.Getwd()
 		if_error_exit(err)
@@ -479,7 +669,7 @@ func main() {
 	if bin_dir == "" {
 		bin_dir = e2e_dir + "/bin"
 	}
-*/
+
 	// Get the OS
 	var buffer bytes.Buffer 
 	cmd_string := "uname | tr '[:upper:]' '[:lower:]'"
@@ -501,4 +691,13 @@ func main() {
 	//install_binaries(bin_dir, K8S_VERSION, OS, base_dir)
 	prepare_container(dockerfile, ci_mode)
 
+	tmp_suffix := ""
+	if cluster_count == 1 {
+		if len(suffix) > 0 {
+			tmp_suffix = "-" + suffix
+		}
+		set_e2e_dir(e2e_dir + tmp_suffix)
+	}
+
+	create_imfrastructure_and_run_tests(e2e_dir, ip_family, backend, bin_dir, suffix, developer_mode, ci_mode, deployment_model, export_metrics, include_specific_failed_tests)
 }
