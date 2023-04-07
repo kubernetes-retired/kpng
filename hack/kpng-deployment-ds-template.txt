@@ -14,6 +14,9 @@ spec:
     metadata:
       labels:
         app: kpng
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9099"
     spec:
       # to enable progressive deployment on existing cluster you can use node labels:
       #nodeSelector:
@@ -80,6 +83,9 @@ spec:
         - name: GOLANG_PROTOBUF_REGISTRATION_CONFLICT
           value: warn
         name: kpng
+        ports:
+        - containerPort: 9099
+          protocol: TCP
         volumeMounts:
         - name: empty
           mountPath: /k8s
