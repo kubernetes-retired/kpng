@@ -33,7 +33,7 @@ Our goal is to:
 - make the kube proxy extensible from a command line and backend perspective
 - learn as much as we can about k8s service networking, and build an upstream community around it
 
-And that goes for people working on KPNG especially.  So don't hesitate to join us, but just be ready for alot of work and low level troubleshooting.
+And that goes for people working on KPNG especially.  So don't hesitate to join us, but just be ready for a lot of work and low level troubleshooting.
 
 ## KPNG News
 
