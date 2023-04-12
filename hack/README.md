@@ -74,7 +74,7 @@ kpng-e2e-ipv4-iptables-worker2
 `# docker exec -it ${NODE_NAME_HERE} sh`
 
 ```
-# docker exec -it kpng-e2e-ipv4-ipvs-worker sh
+# docker exec -it kpng-e2e-ipv4-iptables-control-plane sh
 # hostname
 kpng-e2e-ipv4-iptables-control-plane
 ```
