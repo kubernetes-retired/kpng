@@ -1,6 +1,9 @@
 controller:
 
   admissionWebhooks:
+    # disable this because kube api-server blows up when creating an ingress rule
+    #   probably because of the special cluster config
+    enabled: false
     patch:
       image:
         digest: ""
