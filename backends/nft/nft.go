@@ -205,8 +205,11 @@ func addDispatchChains(table *nftable) {
 	}
 
 	// DNAT
-	if table.Chains.Has("z_dispatch_svc_dnat") {
-		fmt.Fprint(dnatAll, "  jump z_dispatch_svc_dnat\n")
+	dispatchProtos := []string{"tcp", "udp", "sctp"}
+	for _, proto := range dispatchProtos {
+		if table.Chains.Has("z_dispatch_svc_dnat_" + proto) {
+			fmt.Fprint(dnatAll, "  jump z_dispatch_svc_dnat_"+proto+"\n")
+		}
 	}
 
 	if table.Chains.Has("dnat_external") {
@@ -228,8 +231,10 @@ func addDispatchChains(table *nftable) {
 	filterAll := table.Chains.Get("z_filter_all")
 	fmt.Fprint(filterAll, "  ct state invalid drop\n")
 
-	if table.Chains.Has("z_dispatch_svc_filter") {
-		fmt.Fprint(filterAll, "  jump z_dispatch_svc_filter\n")
+	for _, proto := range dispatchProtos {
+		if table.Chains.Has("z_dispatch_svc_filter_" + proto) {
+			fmt.Fprint(filterAll, "  jump z_dispatch_svc_filter_"+proto+"\n")
+		}
 	}
 
 	if table.Chains.Has("filter_external") {

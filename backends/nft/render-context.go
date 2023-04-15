@@ -106,13 +106,31 @@ func (ctx *renderContext) addServiceEndpoints(serviceEndpoints *fullstate.Servic
 
 	for _, i := range []struct {
 		suffix, target string
+		proto          localv1.Protocol
 	}{
-		{"_dnat", dnatChainName},
-		{"_filter", filterChainName},
+		{"_dnat_tcp", dnatChainName, localv1.Protocol_TCP},
+		{"_dnat_udp", dnatChainName, localv1.Protocol_UDP},
+		{"_dnat_sctp", dnatChainName, localv1.Protocol_SCTP},
+		{"_filter_tcp", filterChainName, localv1.Protocol_TCP},
+		{"_filter_udp", filterChainName, localv1.Protocol_UDP},
+		{"_filter_sctp", filterChainName, localv1.Protocol_SCTP},
 	} {
 		if ctx.table.Chains.Get(i.target).Len() == 0 {
 			continue
 		}
+
+		ports := make([]*localv1.PortMapping, 0, len(svc.Ports))
+		for _, port := range svc.Ports {
+			if port.Protocol == i.proto {
+				ports = append(ports, port)
+			}
+		}
+
+		if len(ports) == 0 {
+			continue
+		}
+
+		protoMatch := protoMatch(i.proto)
 
 		vmapItem := ctx.table.Chains.GetItem("z_dispatch_svc" + i.suffix)
 		vmap := vmapItem.Value()
@@ -120,25 +138,31 @@ func (ctx *renderContext) addServiceEndpoints(serviceEndpoints *fullstate.Servic
 		first := false
 		if vmap.Len() == 0 {
 			// first time here
-			vmap.WriteString("  " + ctx.table.Family + " daddr vmap {\n    ")
+			vmap.WriteString("  " + ctx.table.Family + " daddr . " + protoMatch + " vmap {\n    ")
 			vmapItem.Defer(func(vmap *Leaf) {
 				vmap.WriteString(" }\n")
 			})
 			first = true
 		}
 
-		for idx, ip := range ips {
-			if first {
-				first = false
-			} else if idx%5 == 0 {
-				vmap.WriteString(",\n    ")
-			} else {
-				vmap.WriteString(", ")
-			}
+		n := 0
+		for _, ip := range ips {
+			for _, port := range ports {
+				if first {
+					first = false
+				} else if n%5 == 0 {
+					vmap.WriteString(",\n    ")
+				} else {
+					vmap.WriteString(", ")
+				}
+				n++
 
-			vmap.WriteString(ip)
-			vmap.WriteString(": jump ")
-			vmap.WriteString(i.target)
+				vmap.WriteString(ip)
+				vmap.WriteString(" . ")
+				vmap.WriteString(strconv.Itoa(int(port.Port)))
+				vmap.WriteString(": jump ")
+				vmap.WriteString(i.target)
+			}
 		}
 	}
 }
