@@ -106,21 +106,21 @@ func ExampleRenderBasicService() {
 	//   tcp dport 82 reject
 	//   fib daddr type local tcp dport 58081 reject
 	//  }
-	//  chain z_dispatch_svc_dnat {
-	//   ip daddr vmap {
-	//     10.0.0.1: jump svc_my-ns_my-svc_dnat }
+	//  chain z_dispatch_svc_dnat_tcp {
+	//   ip daddr . tcp dport vmap {
+	//     10.0.0.1 . 80: jump svc_my-ns_my-svc_dnat, 10.0.0.1 . 81: jump svc_my-ns_my-svc_dnat, 10.0.0.1 . 82: jump svc_my-ns_my-svc_dnat }
 	//  }
-	//  chain z_dispatch_svc_filter {
-	//   ip daddr vmap {
-	//     10.0.0.1: jump svc_my-ns_my-svc_filter }
+	//  chain z_dispatch_svc_filter_tcp {
+	//   ip daddr . tcp dport vmap {
+	//     10.0.0.1 . 80: jump svc_my-ns_my-svc_filter, 10.0.0.1 . 81: jump svc_my-ns_my-svc_filter, 10.0.0.1 . 82: jump svc_my-ns_my-svc_filter }
 	//  }
 	//  chain z_dnat_all {
-	//   jump z_dispatch_svc_dnat
+	//   jump z_dispatch_svc_dnat_tcp
 	//   fib daddr type local jump nodeports_dnat
 	//  }
 	//  chain z_filter_all {
 	//   ct state invalid drop
-	//   jump z_dispatch_svc_filter
+	//   jump z_dispatch_svc_filter_tcp
 	//   fib daddr type local jump nodeports_filter
 	//  }
 	//  chain z_hook_filter_forward {
@@ -221,21 +221,21 @@ func ExampleRenderServiceWithClientIPAffinity() {
 	//   tcp dport 82 reject
 	//   fib daddr type local tcp dport 58081 reject
 	//  }
-	//  chain z_dispatch_svc_dnat {
-	//   ip daddr vmap {
-	//     10.0.0.1: jump svc_my-ns_my-svc_dnat }
+	//  chain z_dispatch_svc_dnat_tcp {
+	//   ip daddr . tcp dport vmap {
+	//     10.0.0.1 . 80: jump svc_my-ns_my-svc_dnat, 10.0.0.1 . 81: jump svc_my-ns_my-svc_dnat, 10.0.0.1 . 82: jump svc_my-ns_my-svc_dnat }
 	//  }
-	//  chain z_dispatch_svc_filter {
-	//   ip daddr vmap {
-	//     10.0.0.1: jump svc_my-ns_my-svc_filter }
+	//  chain z_dispatch_svc_filter_tcp {
+	//   ip daddr . tcp dport vmap {
+	//     10.0.0.1 . 80: jump svc_my-ns_my-svc_filter, 10.0.0.1 . 81: jump svc_my-ns_my-svc_filter, 10.0.0.1 . 82: jump svc_my-ns_my-svc_filter }
 	//  }
 	//  chain z_dnat_all {
-	//   jump z_dispatch_svc_dnat
+	//   jump z_dispatch_svc_dnat_tcp
 	//   fib daddr type local jump nodeports_dnat
 	//  }
 	//  chain z_filter_all {
 	//   ct state invalid drop
-	//   jump z_dispatch_svc_filter
+	//   jump z_dispatch_svc_filter_tcp
 	//   fib daddr type local jump nodeports_filter
 	//  }
 	//  chain z_hook_filter_forward {
