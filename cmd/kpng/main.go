@@ -49,6 +49,8 @@ func main() {
 	cmd := cobra.Command{
 		Use: "kpng",
 	}
+	// parse command line flags
+	flag.Parse()
 
 	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 
