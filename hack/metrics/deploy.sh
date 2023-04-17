@@ -12,7 +12,7 @@ METRICS_NS=${METRICS_NS:-"metrics"}
 #   these images down from remote registries
 
 images=(
-  "k8s.gcr.io/ingress-nginx/controller:v1.1.1@sha256:0bc88eb15f9e7f84e8e56c14fa5735aaa488b840983f87bd79b1054190e660de"
+  "k8s.gcr.io/ingress-nginx/controller:v1.1.1"
   "grafana/grafana:8.3.4"
   "quay.io/kiwigrid/k8s-sidecar:1.15.1"
   "k8s.gcr.io/kube-state-metrics/kube-state-metrics:v2.0.0"

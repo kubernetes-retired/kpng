@@ -13,8 +13,32 @@ nodes:
         kind: InitConfiguration
         nodeRegistration:
           kubeletExtraArgs:
-            node-labels: "kube-proxy=kpng"
+            node-labels: "kube-proxy=kpng,ingress-ready=true"
             authorization-mode: "AlwaysAllow"
+      - |
+        kind: ClusterConfiguration
+        metadata:
+          name: config
+        etcd:
+          local:
+            extraArgs:
+              "listen-metrics-urls": "http://0.0.0.0:2381"
+        apiServer:
+          extraArgs:
+            "v": "3"
+        scheduler:
+          extraArgs:
+            "v": "3"
+        controllerManager:
+          extraArgs:
+            "v": "3"
+    extraPortMappings:
+    - containerPort: 80
+      hostPort: 80
+      protocol: TCP
+    - containerPort: 443
+      hostPort: 443
+      protocol: TCP
   - role: worker
     kubeadmConfigPatches:
       - |
