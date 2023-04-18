@@ -53,12 +53,12 @@ func main() {
 	flag.Parse()
 
 	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
-
+	ctx := setupGlobal()
 	cmd.AddCommand(
-		kube2storeCmd(), // no-op?
-		file2storeCmd(),
-		api2storeCmd(),
-		local2sinkCmd(),
+		kube2storeCmd(ctx), // no-op?
+		file2storeCmd(ctx),
+		api2storeCmd(ctx),
+		local2sinkCmd(ctx),
 		versionCmd(),
 	)
 

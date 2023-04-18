@@ -38,7 +38,7 @@ var (
 // api2storeCmd is gives a feature to KPNG which allows you to read data from a KPNG server
 // and write it to a backend.  It can be used if you dont want to watch the K8s API, but want
 // to send data from another KPNG instance down to a backend.
-func api2storeCmd() *cobra.Command {
+func api2storeCmd(ctx context.Context) *cobra.Command {
 	// API to * command
 	api2sCmd := &cobra.Command{
 		Use:   "api",
@@ -49,7 +49,6 @@ func api2storeCmd() *cobra.Command {
 	api2storeJob.BindFlags(flags)
 
 	store := proxystore.New()
-	ctx := setupGlobal()
 
 	run := func() {
 		api2storeCmdRun(ctx, store)
@@ -63,7 +62,6 @@ func api2storeCmd() *cobra.Command {
 
 // api2storeCmdRun kicks off the api2store job.
 func api2storeCmdRun(ctx context.Context, store *proxystore.Store) {
-	ctx = setupGlobal()
 	api2storeJob.Store = store
 	api2storeJob.Run(ctx)
 }

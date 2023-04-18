@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 
 	"sigs.k8s.io/kpng/client/localsink"
@@ -24,7 +26,7 @@ import (
 	"sigs.k8s.io/kpng/server/jobs/api2local"
 )
 
-func local2sinkCmd() *cobra.Command {
+func local2sinkCmd(ctx context.Context) *cobra.Command {
 	// local to * command
 	cmd := &cobra.Command{
 		Use:   "local",
@@ -37,7 +39,6 @@ func local2sinkCmd() *cobra.Command {
 	job.BindFlags(flags)
 
 	cmd.AddCommand(builder.LocalCmds(func(sink localsink.Sink) (err error) {
-		ctx := setupGlobal()
 		job.Sink = sink
 		job.Run(ctx)
 		return

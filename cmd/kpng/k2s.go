@@ -49,7 +49,7 @@ var (
 
 // kube2storeCmd generates the kube-to-store command, which is the "normal" way to run KPNG,
 // wherein you read data in from kubernetes, and push it into a store (file, API, or local backend such as NFT).
-func kube2storeCmd() *cobra.Command {
+func kube2storeCmd(ctx context.Context) *cobra.Command {
 	// kube to * command
 	k2sCmd := &cobra.Command{
 		Use:   "kube",
@@ -63,7 +63,6 @@ func kube2storeCmd() *cobra.Command {
 	// k8sCfg is the configuration of how we interact w/ and watch the K8s APIServer
 	k8sCfg.BindFlags(k2sCmd.PersistentFlags())
 
-	ctx := setupGlobal()
 	store := proxystore.New()
 	run := func() {
 		kube2storeCmdRun(ctx, store)

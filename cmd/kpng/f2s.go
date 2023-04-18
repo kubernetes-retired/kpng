@@ -34,7 +34,7 @@ var f2sInput string
 // a networking model easily and send it to a store (i.e. a backend) of your choosing.  Its commonly
 // used for local development against a known kubernetes networking statespace (see the example in the doc/)
 // folder of an input YAML that works with this command.
-func file2storeCmd() *cobra.Command {
+func file2storeCmd(ctx context.Context) *cobra.Command {
 	// file to * command
 	f2sCmd := &cobra.Command{
 		Use:   "file",
@@ -44,7 +44,6 @@ func file2storeCmd() *cobra.Command {
 	flags := f2sCmd.PersistentFlags()
 	flags.StringVarP(&f2sInput, "input", "i", "globalv1-state.yaml", "Input file for the globalv1-state")
 
-	ctx := setupGlobal()
 	store := proxystore.New()
 	run := func() {
 		file2storeCmdRun(ctx, store)
