@@ -52,6 +52,6 @@ diff=$(find_files | xargs gofmt -d -s 2>&1) || true
 if [[ -n "${diff}" ]]; then
   echo "${diff}" >&2
   echo >&2
-  echo "Run ./hack/update-gofmt.sh" >&2
+  echo "Lint issues found, run ./hack/update-gofmt.sh to fix." >&2
   exit 1
 fi
