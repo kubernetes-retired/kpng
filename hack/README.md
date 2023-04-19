@@ -149,7 +149,8 @@ pushing directly to a local registry and configuring kind to use this reg, so do
 isnt required.
 - Or a `tilt` recipe which hot reloads all kpng on code changes.
 
-
+## Code formating
+**We should run `hack/verify-gofmt.sh` before submitting a PR it checks whether the source code needs to be formatted or not and if anything fails run `hack/update-gofmt.sh` to actually format sources**.
 
 
 
