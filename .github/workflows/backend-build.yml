@@ -13,10 +13,13 @@ jobs:
     name: setup
     runs-on: ubuntu-latest
     steps:
+    - name: checkout
+      uses: actions/checkout@v2
+
     - name: setup Go
       uses: actions/setup-go@v2
       with:
-        go-version: '1.19'
+        go-version-file: go.work
 
   iptables:
     name: build backend package iptables
@@ -25,7 +28,7 @@ jobs:
     steps:
     - name: checkout
       uses: actions/checkout@v2
-    
+
     - name: build backends/iptables
       run: ./hack/test_backend_build.sh iptables
 
@@ -36,7 +39,7 @@ jobs:
     steps:
     - name: checkout
       uses: actions/checkout@v2
-    
+
     - name: build backends/ipvs-as-sink
       run: ./hack/test_backend_build.sh ipvs
 
@@ -58,18 +61,18 @@ jobs:
     steps:
     - name: checkout
       uses: actions/checkout@v2
-    
+
     - name: build backends/nft
       run: ./hack/test_backend_build.sh nft
 
-  ebpf: 
+  ebpf:
     name: build backend package ebpf
     needs: setup
     runs-on: ubuntu-latest
     steps:
     - name: checkout
       uses: actions/checkout@v2
-    
+
     - name: build backends/ebpf
       run: ./hack/test_backend_build.sh ebpf
 
@@ -83,4 +86,3 @@ jobs:
 
     - name: build backends/userspacelin
       run: ./hack/test_backend_build.sh userspacelin
-
