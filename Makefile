@@ -147,7 +147,7 @@ build:
 		./...
 	@echo "\tkpng $(YELLOW)$(PLATFORM)$(RESET) binaries available in: $(GREEN)$(BUILD_DIR)/$(PLATFORM)/$(VERSION)$(RESET)\n"
 
-## Create Kind cluster for Tilt. It requires backend(b) and ipfamily (i) as args. eg: make tilt-setup i=ipv4 b=nft
+## Create Kind cluster for Tilt. It requires backend(b) and ipfamily (i) as args. eg: make tilt-setup i=ipv4 b=nft m=split-process-per-node
 tilt-setup:
 	./hack/tilt/setup.sh  -i $(i) -b $(b) -m $(m) 
 
