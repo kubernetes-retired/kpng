@@ -17,8 +17,8 @@ limitations under the License.
 package diffstore
 
 import (
-	"golang.org/x/exp/constraints"
 	"github.com/google/btree"
+	"golang.org/x/exp/constraints"
 )
 
 type Item[K constraints.Ordered, V Leaf] struct {

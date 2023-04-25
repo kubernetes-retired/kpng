@@ -20,12 +20,12 @@ import "testing"
 
 func TestLess(t *testing.T) {
 	kvs := []kv{
-		kv{"ns/aaa", nil},
-		kv{"ns/aaa/0", nil},
-		kv{"ns/aaa-udp", nil},
-		kv{"ns/aaa-udp/0", nil},
-		kv{"ns/bbb", nil},
-		kv{"ns/ccc/0", nil},
+		{"ns/aaa", nil},
+		{"ns/aaa/0", nil},
+		{"ns/aaa-udp", nil},
+		{"ns/aaa-udp/0", nil},
+		{"ns/bbb", nil},
+		{"ns/ccc/0", nil},
 	}
 
 	for i := 1; i < len(kvs); i++ {

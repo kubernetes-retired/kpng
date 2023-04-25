@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 package iptables
 
 import (
 	"crypto/sha256"
 	"encoding/base32"
+
 	"sigs.k8s.io/kpng/backends/iptables/util"
 )
 

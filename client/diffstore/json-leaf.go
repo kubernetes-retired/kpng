@@ -19,8 +19,8 @@ package diffstore
 import (
 	"encoding/json"
 
-	"golang.org/x/exp/constraints"
 	"github.com/cespare/xxhash"
+	"golang.org/x/exp/constraints"
 )
 
 func NewJSONStore[K constraints.Ordered, T any]() *Store[K, *JSONLeaf[T]] {

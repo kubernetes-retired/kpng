@@ -21,6 +21,10 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
+
+	"github.com/google/seesaw/ipvs"
+	"github.com/vishvananda/netlink"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/version"
@@ -28,20 +32,15 @@ import (
 	"k8s.io/apiserver/pkg/server/mux"
 	"k8s.io/klog/v2"
 
-	"time"
-
-	"sigs.k8s.io/kpng/backends/ipvs-as-sink/exec"
-	"sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
-	"sigs.k8s.io/kpng/client/serviceevents"
-
-	"github.com/google/seesaw/ipvs"
-	"github.com/vishvananda/netlink"
-
 	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/backendcmd"
 	"sigs.k8s.io/kpng/client/localsink"
 	"sigs.k8s.io/kpng/client/localsink/decoder"
 	"sigs.k8s.io/kpng/client/localsink/filterreset"
+	"sigs.k8s.io/kpng/client/serviceevents"
+
+	"sigs.k8s.io/kpng/backends/ipvs-as-sink/exec"
+	"sigs.k8s.io/kpng/backends/ipvs-as-sink/util"
 )
 
 // In IPVS proxy mode, the following flags need to be set
@@ -57,7 +56,7 @@ const (
 	connReuseMinSupportedKernelVersion = "4.1"
 	// https://github.com/torvalds/linux/commit/35dfb013149f74c2be1ff9c78f14e6a3cd1539d1
 	connReuseFixedKernelVersion = "5.9"
-	readHeaderTimeout = time.Second * 5
+	readHeaderTimeout           = time.Second * 5
 )
 
 func init() {
@@ -295,8 +294,8 @@ func (s *Backend) ServeProxyMode(errCh chan error) {
 
 	fn := func() {
 		server := &http.Server{
-			Addr: bindAddress,
-			Handler: proxyMux,
+			Addr:              bindAddress,
+			Handler:           proxyMux,
 			ReadHeaderTimeout: readHeaderTimeout,
 		}
 		err := server.ListenAndServe()
