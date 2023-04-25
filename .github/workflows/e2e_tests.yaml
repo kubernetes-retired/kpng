@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: setup Go
       uses: actions/setup-go@v3
       with:
@@ -36,20 +36,20 @@ jobs:
         backend: ["iptables", "nft", "ipvs", "ipvsfullstate", "ebpf", "userspacelin"]
         exclude:
           - ipFamily: "ipv6"
-            backend: "ebpf"
+            backend:  "ebpf"
           - ipFamily: "dual"
-            backend: "ebpf"
+            backend:  "ebpf"
           - ipFamily: "ipv6"
-            backend: "userspacelin"
+            backend:  "userspacelin"
           - ipFamily: "dual"
-            backend: "userspacelin"
+            backend:  "userspacelin"
     env:
       JOB_NAME: "kpng-e2e-${{ matrix.ipFamily }}-${{ matrix.backend }}"
       IP_FAMILY: ${{ matrix.ipFamily }}
       BACKEND: ${{ matrix.backend }}
     steps:
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: setup ebpf backend dependencies
       run: |
