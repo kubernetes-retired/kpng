@@ -19,8 +19,8 @@ package endpoints
 import (
 	"google.golang.org/protobuf/proto"
 
-	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/api/globalv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/server/proxystore"
 )
 

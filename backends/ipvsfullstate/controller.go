@@ -33,7 +33,6 @@ const (
 	readHeaderTimeout = time.Second * 5
 )
 
-
 func newController() Controller {
 	return Controller{
 		// ipvsManager manages virtual servers and destinations with linux kernel; leverage diffstore to avoid recreating objects
@@ -60,8 +59,8 @@ func (c *Controller) ServeProxyMode(errCh chan error) {
 
 	fn := func() {
 		server := &http.Server{
-			Addr: bindAddress,
-			Handler: proxyMux,
+			Addr:              bindAddress,
+			Handler:           proxyMux,
 			ReadHeaderTimeout: readHeaderTimeout,
 		}
 		err := server.ListenAndServe()

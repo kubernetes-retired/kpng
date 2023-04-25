@@ -261,8 +261,8 @@ func getNetworkInfo(hns HCNUtils, hnsNetworkName string) (*hnsNetworkInfo, error
 
 // NewProxier returns a new Proxier
 func NewProxier(
-	syncPeriod time.Duration,    //
-	minSyncPeriod time.Duration, //
+	syncPeriod time.Duration,
+	minSyncPeriod time.Duration,
 	masqueradeAll bool,
 	masqueradeBit int,
 	clusterCIDR string,

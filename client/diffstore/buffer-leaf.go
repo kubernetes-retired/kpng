@@ -19,8 +19,8 @@ package diffstore
 import (
 	"bytes"
 
-	"golang.org/x/exp/constraints"
 	"github.com/cespare/xxhash"
+	"golang.org/x/exp/constraints"
 )
 
 func NewBufferStore[K constraints.Ordered]() *Store[K, *BufferLeaf] {
