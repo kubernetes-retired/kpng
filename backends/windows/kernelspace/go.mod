@@ -1,6 +1,6 @@
 module sigs.k8s.io/kpng/backends/windows/kernelspace
 
-go 1.19
+go 1.20
 
 require (
 	github.com/Microsoft/hcsshim v0.9.4

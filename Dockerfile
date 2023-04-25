@@ -1,9 +1,9 @@
-from alpine:3.16 as gomods
+from alpine:3.17 as gomods
 
 copy . /src/
 run cd /src/ && find -type f \! \( -name go.work -o -name go.mod -o -name go.sum \) -exec rm {} +
 
-from golang:1.19.2-alpine3.16 as build
+from golang:1.20.3-alpine3.17 as build
 
 # install dependencies
 run apk add --update --no-cache \
@@ -27,7 +27,7 @@ add . ./
 run go install -trimpath -buildvcs=false ./cmd/...
 
 # the real image
-from alpine:3.16
+from alpine:3.17
 entrypoint ["/bin/kpng"]
 run apk add --update iptables ip6tables iproute2 ipvsadm nftables ipset conntrack-tools
 copy --from=build /go/bin/ /bin/
