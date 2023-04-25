@@ -12,13 +12,13 @@ jobs:
     name: setup
     runs-on: ubuntu-latest
     steps:
-   - name: checkout
+    - name: checkout
       uses: actions/checkout@v2
     - name: setup Go
       uses: actions/setup-go@v3
       with:
         go-version-file: go.work
-      id: go
+        id: go
 
     - name: Install dependencies
       run: |

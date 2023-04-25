@@ -6,7 +6,7 @@ on:
       - master
   pull_request:
     branches:
-      — master
+      - master
 
 jobs:
   gofmt:
@@ -15,16 +15,18 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v2
+
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-        go-version-file: go.work
+          go-version-file: go.work
           stable: 'false'
 
       - name: Install dependencies
         run: |
           go version
           go install golang.org/x/lint/golint@latest
+
       - name: checkout
         uses: actions/checkout@v2
 
