@@ -1,9 +1,9 @@
-package ipvsfullsate
+package ipvs
 
 import (
 	"fmt"
 	v1 "k8s.io/api/core/v1"
-	ipt "sigs.k8s.io/kpng/backends/ipvsfullstate/internal/iptables"
+	ipt "sigs.k8s.io/kpng/backends/ipvs/internal/iptables"
 )
 
 // masqueradeMark should match the mark of kubelet

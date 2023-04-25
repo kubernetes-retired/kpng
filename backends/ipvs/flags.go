@@ -1,4 +1,4 @@
-package ipvsfullsate
+package ipvs
 
 import (
 	"net"

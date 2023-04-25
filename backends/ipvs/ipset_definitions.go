@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ipvsfullsate
+package ipvs
 
 import (
 	v1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/ipsets"
+	"sigs.k8s.io/kpng/backends/ipvs/internal/ipsets"
 )
 
 var (

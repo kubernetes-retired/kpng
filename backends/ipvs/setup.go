@@ -14,13 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ipvsfullsate
+package ipvs
 
 import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/ipsets"
-	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/iptables"
+	"sigs.k8s.io/kpng/backends/ipvs/internal/ipsets"
+	"sigs.k8s.io/kpng/backends/ipvs/internal/iptables"
 )
 
 // Setup is used for setting up the backend, initialize ipvs, ipsets and iptales.

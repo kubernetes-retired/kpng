@@ -4,8 +4,7 @@ use (
 	./api
 	./backends/ebpf
 	./backends/iptables
-	./backends/ipvs-as-sink
-	./backends/ipvsfullstate
+	./backends/ipvs
 	./backends/nft
 	./backends/userspacelin
 	./backends/windows/kernelspace

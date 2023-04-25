@@ -1,4 +1,4 @@
-package ipvsfullsate
+package ipvs
 
 import (
 	"fmt"
@@ -7,9 +7,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/server/mux"
-	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/ipsets"
-	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/iptables"
-	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/ipvs"
+	"sigs.k8s.io/kpng/backends/ipvs/internal/ipsets"
+	"sigs.k8s.io/kpng/backends/ipvs/internal/iptables"
+	"sigs.k8s.io/kpng/backends/ipvs/internal/ipvs"
 	"sigs.k8s.io/kpng/client"
 
 	"k8s.io/klog/v2"

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ipvsfullsate
+package ipvs
 
 import (
 	"github.com/spf13/pflag"
@@ -41,7 +41,7 @@ func init() {
 	}
 
 	klog.V(3).Infof("Registering host %s", hostname)
-	backendcmd.Register("to-ipvsfullstate", func() backendcmd.Cmd {
+	backendcmd.Register("to-ipvs", func() backendcmd.Cmd {
 		return &backend{
 			cfg: localsink.Config{NodeName: hostname},
 		}

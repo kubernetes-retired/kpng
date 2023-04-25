@@ -25,7 +25,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/kpng/backends/ipvs-as-sink/exec"
+	"k8s.io/utils/exec"
 )
 
 const (

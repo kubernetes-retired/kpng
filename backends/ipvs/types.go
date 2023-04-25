@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ipvsfullsate
+package ipvs
 
 import (
 	"sigs.k8s.io/kpng/api/localv1"
