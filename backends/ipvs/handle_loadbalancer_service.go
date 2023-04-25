@@ -1,8 +1,8 @@
-package ipvsfullsate
+package ipvs
 
 import (
 	v1 "k8s.io/api/core/v1"
-	ipsets2 "sigs.k8s.io/kpng/backends/ipvsfullstate/internal/ipsets"
+	"sigs.k8s.io/kpng/backends/ipvs/internal/ipsets"
 	"sigs.k8s.io/kpng/client"
 )
 
@@ -14,8 +14,8 @@ func (c *Controller) addServiceEndpointsForLoadBalancer(serviceEndpoints *client
 	// will further create ClusterIP components.
 	c.addServiceEndpointsForNodePort(serviceEndpoints)
 
-	var entry *ipsets2.Entry
-	var set *ipsets2.Set
+	var entry *ipsets.Entry
+	var set *ipsets.Set
 
 	service := serviceEndpoints.Service
 	endpoints := serviceEndpoints.Endpoints

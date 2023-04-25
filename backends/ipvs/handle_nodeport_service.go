@@ -1,9 +1,9 @@
-package ipvsfullsate
+package ipvs
 
 import (
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/kpng/api/localv1"
-	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/ipsets"
+	"sigs.k8s.io/kpng/backends/ipvs/internal/ipsets"
 	"sigs.k8s.io/kpng/client"
 )
 

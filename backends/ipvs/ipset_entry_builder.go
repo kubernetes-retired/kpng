@@ -1,8 +1,8 @@
-package ipvsfullsate
+package ipvs
 
 import (
 	"sigs.k8s.io/kpng/api/localv1"
-	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/ipsets"
+	"sigs.k8s.io/kpng/backends/ipvs/internal/ipsets"
 )
 
 // newEntryForClusterIP creates entry for ClusterIP for kubeClusterIPSet.

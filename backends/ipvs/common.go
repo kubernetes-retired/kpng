@@ -1,10 +1,10 @@
-package ipvsfullsate
+package ipvs
 
 import (
 	v1 "k8s.io/api/core/v1"
 	netutils "k8s.io/utils/net"
 	"sigs.k8s.io/kpng/api/localv1"
-	"sigs.k8s.io/kpng/backends/ipvsfullstate/internal/ipvs"
+	"sigs.k8s.io/kpng/backends/ipvs/internal/ipvs"
 )
 
 // getClusterIPs returns ClusterIPs for given IPFamily associated with the service.
