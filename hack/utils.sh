@@ -24,8 +24,8 @@ function if_error_exit {
     ###########################################################################
     if [ "$?" != "0" ]; then
         if [ -n "$1" ]; then
-            RED="\e[91m"
-            ENDCOLOR="\e[0m"
+            RED="\033[91m"
+            ENDCOLOR="\033[0m"
             echo -e "[ ${RED}FAILED${ENDCOLOR} ] ${1}"
         fi
         exit 1
@@ -44,8 +44,8 @@ function pass_message {
         echo "pass_message() requires a message"
         exit 1
     fi
-    GREEN="\e[92m"
-    ENDCOLOR="\e[0m"
+    GREEN="\033[92m"
+    ENDCOLOR="\033[0m"
     echo -e "[ ${GREEN}PASSED${ENDCOLOR} ] ${1}"
 }
 
@@ -61,8 +61,8 @@ function info_message {
         echo "info_message() requires a message"
         exit 1
     fi
-    BLUE="\e[94m"
-    ENDCOLOR="\e[0m"
+    BLUE="\033[94m"
+    ENDCOLOR="\033[0m"
     echo -e "[ ${BLUE}INFO${ENDCOLOR} ] ${1}"
 }
 
@@ -92,7 +92,7 @@ function add_to_path {
 command_exists() {
     ###########################################################################
     # Description:                                                            #
-    # Checkt if a binary exists                                               #
+    # Checks if a binary exists                                               #
     #                                                                         #
     # Arguments:                                                              #
     #   arg1: binary name                                                     #

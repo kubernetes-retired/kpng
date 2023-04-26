@@ -21,7 +21,7 @@ source "${SCRIPT_DIR}/common.sh"
 
 : ${IMAGE:="test/kpng:latest"}
 : ${PULL:="IfNotPresent"}
-: ${BACKEND:="nft"}
+: ${BACKEND:="iptables"} # Temporary until we fix https://github.com/kubernetes-sigs/kpng/issues/467 the kernelmodule nft not loading?
 : ${CONFIG_MAP_NAME:=kpng}
 : ${SERVICE_ACCOUNT_NAME:=kpng}
 : ${NAMESPACE:=kube-system}
@@ -29,6 +29,7 @@ source "${SCRIPT_DIR}/common.sh"
 : ${BACKEND_ARGS:="['local', 'to-${BACKEND}', '--v=${KPNG_DEBUG_LEVEL}']"}
 : ${SERVER_ARGS:="['kube','--kubeconfig=/var/lib/kpng/kubeconfig.conf', '--exportMetrics=0.0.0.0:9099', 'to-api']"}
 : ${DEPLOYMENT_MODEL:="split-process-per-node"}
+: ${DEPLOY_PROMETHEUS:="false"}
 
 echo -n "this will deploy kpng with docker image $IMAGE, pull policy '$PULL' and the '$BACKEND' backend. Press enter to confirm, C-c to cancel"
 read
@@ -94,3 +95,8 @@ cd "${0%/*}"
 build_kpng
 install_k8s
 install_kpng
+if [[ $DEPLOY_PROMETHEUS == "true" ]]; then
+  pushd metrics
+    ./deploy.sh
+  popd
+fi

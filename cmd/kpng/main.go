@@ -44,10 +44,16 @@ var (
 
 // main starts the kpng program by running the command sent by the user.  This is the entry point to kpng!
 func main() {
+	metricsPort := "9099"
+	setupPrometheusServer(context.TODO(), fmt.Sprintf("0.0.0.0:%s", metricsPort))
+
 	klog.InitFlags(flag.CommandLine)
 
 	cmd := cobra.Command{
 		Use: "kpng",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			klog.Infof("persistent pre run: %s\n", cmd.Name())
+		},
 	}
 
 	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
@@ -65,18 +71,24 @@ func main() {
 	}
 }
 
+func setupPrometheusServer(ctx context.Context, address string) {
+	prometheus.MustRegister(metrics.Kpng_k8s_api_events)
+	prometheus.MustRegister(metrics.Kpng_node_local_events)
+	klog.Infof("exporting metrics to: %v ", address)
+	metrics.StartMetricsServer(address, ctx.Done())
+}
+
 // setupGlobal sets up global processes that need to run regardless of what mode you are running KPNG in.
 // this is a grab bag where you put stuff that, one way or other, has to happen.
 
 func setupGlobal() (ctx context.Context) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	if len(*exportMetrics) != 0 {
-		prometheus.MustRegister(metrics.Kpng_k8s_api_events)
-		prometheus.MustRegister(metrics.Kpng_node_local_events)
-		klog.Infof("exporting metrics to: %v ", *exportMetrics)
-		metrics.StartMetricsServer(*exportMetrics, ctx.Done())
+	out := ""
+	if exportMetrics != nil {
+		out = *exportMetrics
 	}
+	klog.Infof("setup global, exportMetrics value: %+v\n", out)
 
 	// handle exit signals
 	go func() {

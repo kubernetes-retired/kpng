@@ -1,11 +1,11 @@
 module sigs.k8s.io/kpng/backends/windows/kernelspace
 
-go 1.19
+go 1.20
 
 require (
 	github.com/Microsoft/hcsshim v0.9.4
 	k8s.io/api v0.25.2
-	k8s.io/apimachinery v0.25.2
+	k8s.io/apimachinery v0.25.4
 	k8s.io/client-go v0.25.2
 	k8s.io/component-base v0.25.2
 	k8s.io/klog/v2 v2.80.1
@@ -16,7 +16,7 @@ require (
 
 require (
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/net v0.0.0-20221004154528-8021a29435af // indirect
+	golang.org/x/net v0.7.0 // indirect
 )
 
 require (
@@ -41,9 +41,9 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	golang.org/x/sys v0.0.0-20221010170243-090e33056c14 // indirect
-	golang.org/x/term v0.0.0-20220919170432-7a66f970e087 // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/term v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.0.0-20220922220347-f3bd1da661af // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

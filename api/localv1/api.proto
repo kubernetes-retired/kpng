@@ -95,6 +95,8 @@ message Service {
     };
 
     bool InternalTrafficToLocal = 12;
+
+    int32 HealthCheckNodePort = 13;
 }
 
 message IPFilter {

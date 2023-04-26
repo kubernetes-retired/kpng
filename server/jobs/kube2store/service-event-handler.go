@@ -116,6 +116,9 @@ func (h *serviceEventHandler) onChange(obj interface{}) {
 		service.Ports = append(service.Ports, p)
 	}
 
+	// healthcheck node port
+	service.HealthCheckNodePort = svc.Spec.HealthCheckNodePort
+
 	h.s.Update(func(tx *proxystore.Tx) {
 		klog.V(3).Info("service ", service.Namespace, "/", service.Name)
 		tx.SetService(service)

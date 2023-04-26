@@ -14,6 +14,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+source "${SCRIPT_DIR}"/utils.sh
+source "${SCRIPT_DIR}"/common.sh
+source "${SCRIPT_DIR}"/test_skip_list.sh
+
 if [[ $OSTYPE == 'darwin'* ]]; then
   info_message "The kpng build script only works on linux... Exiting now!"
   exit 1
@@ -28,20 +35,15 @@ shopt -s expand_aliases
 CONTAINER_ENGINE="docker"
 KPNG_IMAGE_TAG_NAME="kpng:test"
 KUBECONFIG_TESTS="kubeconfig_tests.conf"
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # ginkgo
 GINKGO_NUMBER_OF_NODES=25
-GINKGO_FOCUS="\[Conformance\]|\[sig-network\]"
+GINKGO_FOCUS=${GINKGO_FOCUS:-"\[Conformance\]|\[sig-network\]"}
 GINKGO_SKIP_TESTS="machinery|Feature|Federation|PerformanceDNS|Disruptive|Serial|LoadBalancer|KubeProxy|GCE|Netpol|NetworkPolicy"
 GINKGO_REPORT_DIR="artifacts/reports"
 GINKGO_DUMP_LOGS_ON_FAILURE=false
 GINKGO_DISABLE_LOG_DUMP=true
 GINKGO_PROVIDER="local"
-
-source "${SCRIPT_DIR}"/utils.sh
-source "${SCRIPT_DIR}"/common.sh
-source "${SCRIPT_DIR}"/test_skip_list.sh
 
 function if_error_warning {
     ###########################################################################
@@ -53,8 +55,8 @@ function if_error_warning {
     ###########################################################################
     if [ "$?" != "0" ]; then
         if [ -n "$1" ]; then
-            RED="\e[91m"
-            ENDCOLOR="\e[0m"
+            RED="\033[91m"
+            ENDCOLOR="\033[0m"
             echo -e "[ ${RED}FAILED${ENDCOLOR} ] ${1}"
         fi
     fi
@@ -79,9 +81,9 @@ function result_message {
         echo "result_message() requires a message"
         exit 1
     fi
-    RED="\e[91m"
-    GREEN="\e[92m"    
-    ENDCOLOR="\e[0m"
+    RED="\033[91m"
+    GREEN="\033[92m"    
+    ENDCOLOR="\033[0m"
 
     if [ "${result}" == "0" ] ; then
 	echo -e "${GREEN}[SUCCESS!] ${message} succeded!!! ${ENDCOLOR}"
@@ -1027,7 +1029,7 @@ if  [[ "${cluster_count}" -lt "2" ]] && ${print_report}; then
     help
 fi
 
-if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|ipvsfullstate|ebpf|userspacelin|not-kpng)$ ]]; then
+if ! [[ "${backend}" =~ ^(iptables|nft|ipvs|ebpf|userspacelin|not-kpng)$ ]]; then
     echo "user must specify the supported backend"
     help
 fi

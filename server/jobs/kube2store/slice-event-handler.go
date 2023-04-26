@@ -19,11 +19,11 @@ package kube2store
 import (
 	"sort"
 
-	"k8s.io/klog/v2"
 	discovery "k8s.io/api/discovery/v1"
+	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/api/globalv1"
+	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/server/proxystore"
 )
 

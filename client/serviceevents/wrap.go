@@ -36,12 +36,11 @@ var _ decoder.Interface = wrapper{}
 // A good practice is to ensure your decoder is implementing what you expect
 // this way:
 //
-//     type MyBackend struct { }
+//	type MyBackend struct { }
 //
-//     var _ servicevents.PortsListener   = &MyBackend{}
-//     var _ servicevents.IPsListener     = &MyBackend{}
-//     var _ servicevents.IPPortsListener = &MyBackend{}
-//
+//	var _ servicevents.PortsListener   = &MyBackend{}
+//	var _ servicevents.IPsListener     = &MyBackend{}
+//	var _ servicevents.IPPortsListener = &MyBackend{}
 func Wrap(backend decoder.Interface) decoder.Interface {
 	l := New()
 
