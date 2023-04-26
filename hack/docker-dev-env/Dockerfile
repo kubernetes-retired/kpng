@@ -1,4 +1,4 @@
-from golang:1.19.2-alpine3.16
+from golang:1.19.4-alpine3.17
 
 # system dependencies
 run apk add --update --no-cache \
@@ -11,7 +11,7 @@ run go install github.com/cortesi/modd/cmd/modd@latest \
  && rm -fr /go/pkg
 
 # gRPC dependencies
-run apk add --no-cache protobuf=3.18.1-r3
+run apk add --no-cache protobuf=3.21.9-r0
 run go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1 \
  && rm -fr /go/pkg
 run go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0 \

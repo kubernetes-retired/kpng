@@ -21,9 +21,10 @@ package kernelspace
 
 import (
 	"strings"
-	"k8s.io/klog/v2"
 
 	"github.com/Microsoft/hcsshim/hcn"
+
+	"k8s.io/klog/v2"
 )
 
 func isOverlay(hnsNetworkInfo *hnsNetworkInfo) bool {

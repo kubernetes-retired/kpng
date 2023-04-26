@@ -3,9 +3,9 @@ go 1.19
 use (
 	./api
 	./backends/ebpf
+	./backends/healthchecks
 	./backends/iptables
-	./backends/ipvs-as-sink
-	./backends/ipvsfullstate
+	./backends/ipvs
 	./backends/nft
 	./backends/userspacelin
 	./backends/windows/kernelspace

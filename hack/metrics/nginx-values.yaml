@@ -1,0 +1,36 @@
+controller:
+
+  admissionWebhooks:
+    # disable this because kube api-server blows up when creating an ingress rule
+    #   probably because of the special cluster config
+    enabled: false
+    patch:
+      image:
+        digest: ""
+
+  hostPort:
+    enabled: true
+
+  metrics:
+    enabled: true
+
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "10254"
+  
+  image:
+    # repository: "k8s.gcr.io/ingress-nginx/controller:v1.1.1"
+    # tag: "v1.7.0"
+    digest: ""
+  
+  nodeSelector:
+    ingress-ready: "true"
+
+  service:
+    type: NodePort
+  
+  tolerations:
+   - key: "node-role.kubernetes.io/control-plane"
+     operator: "Exists"
+     effect: "NoSchedule"

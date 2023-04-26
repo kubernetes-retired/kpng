@@ -16,5 +16,4 @@ limitations under the License.
 
 // this magically loads the Register functions...
 
-
 package storecmds

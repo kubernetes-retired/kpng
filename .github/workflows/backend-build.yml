@@ -13,10 +13,13 @@ jobs:
     name: setup
     runs-on: ubuntu-latest
     steps:
+    - name: checkout
+      uses: actions/checkout@v3
+
     - name: setup Go
       uses: actions/setup-go@v2
       with:
-        go-version: '1.19'
+        go-version-file: go.work
 
   iptables:
     name: build backend package iptables
@@ -24,32 +27,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: checkout
-      uses: actions/checkout@v2
-    
+      uses: actions/checkout@v3
+
     - name: build backends/iptables
       run: ./hack/test_backend_build.sh iptables
 
-  ipvs-as-sink:
-    name: build backend package ipvs-as-sink
+  ipvs:
+    name: build backend package ipvs
     needs: setup
     runs-on: ubuntu-latest
     steps:
     - name: checkout
-      uses: actions/checkout@v2
-    
-    - name: build backends/ipvs-as-sink
+      uses: actions/checkout@v3
+
+    - name: build backends/ipvs
       run: ./hack/test_backend_build.sh ipvs
-
-  ipvsfullstate:
-    name: build backend package ipvsfullstate
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout
-        uses: actions/checkout@v2
-
-      - name: build backends/ipvsfullstate
-        run: ./hack/test_backend_build.sh ipvsfullstate
 
   nft:
     name: build backend package nft
@@ -57,19 +49,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: checkout
-      uses: actions/checkout@v2
-    
+      uses: actions/checkout@v3
+
     - name: build backends/nft
       run: ./hack/test_backend_build.sh nft
 
-  ebpf: 
+  ebpf:
     name: build backend package ebpf
     needs: setup
     runs-on: ubuntu-latest
     steps:
     - name: checkout
-      uses: actions/checkout@v2
-    
+      uses: actions/checkout@v3
+
     - name: build backends/ebpf
       run: ./hack/test_backend_build.sh ebpf
 
@@ -79,8 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: build backends/userspacelin
       run: ./hack/test_backend_build.sh userspacelin
-

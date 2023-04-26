@@ -7,18 +7,18 @@ on:
     branches:
       - master
 
-env:
-  GO_VERSION: "1.19"
-
 jobs:
   setup:
     name: setup
     runs-on: ubuntu-latest
     steps:
+    - name: checkout
+      uses: actions/checkout@v3
+
     - name: setup Go
       uses: actions/setup-go@v3
       with:
-        go-version: ${{ env.GO_VERSION }}
+        go-version-file: go.work
       id: go
 
     - name: Install dependencies
@@ -33,8 +33,7 @@ jobs:
     timeout-minutes: 30  #Guys is 30 minutes ok, or too much? Currently on Github runners it takes 5m 30s
     steps:
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
-    - name: KPNG local up 
+    - name: KPNG local up
       run: ./hack/kpng-local-up.sh
-

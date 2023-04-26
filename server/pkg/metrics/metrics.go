@@ -42,8 +42,8 @@ func StartMetricsServer(bindAddress string,
 		go utilwait.Until(func() {
 			var err error
 			server = &http.Server{
-				Addr:    bindAddress,
-				Handler: mux,
+				Addr:              bindAddress,
+				Handler:           mux,
 				ReadHeaderTimeout: readHeaderTimeout,
 			}
 			err = server.ListenAndServe()

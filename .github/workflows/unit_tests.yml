@@ -13,10 +13,12 @@ jobs:
     name: run unit tests
     runs-on: ubuntu-latest
     steps:
+    - name: checkout
+      uses: actions/checkout@v3
     - name: Setup Go
       uses: actions/setup-go@v2
       with:
-        go-version: '1.19'
+        go-version-file: go.work
         stable: 'false'
 
     - name: Install dependencies
@@ -26,7 +28,7 @@ jobs:
         sudo apt-get install -y libnl-3-dev libnl-genl-3-dev
 
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: run unit tests
       run: ./hack/test_unit.sh

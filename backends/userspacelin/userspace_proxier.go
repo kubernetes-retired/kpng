@@ -636,7 +636,7 @@ func (proxier *UserspaceLinux) serviceChange(previous, current *localv1.Service,
 		// the oldest service info (or nil) because correct unmerging
 		// depends on the next update/del after a merge, not subsequent
 		// updates.
-		change = &UserspaceServiceChangeTracker{items: map[types.NamespacedName]*userspaceServiceChange{svcName: &userspaceServiceChange{previous: previous}}}
+		change = &UserspaceServiceChangeTracker{items: map[types.NamespacedName]*userspaceServiceChange{svcName: {previous: previous}}}
 		proxier.serviceChanges[svcName] = change
 	}
 
