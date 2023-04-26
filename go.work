@@ -3,6 +3,7 @@ go 1.19
 use (
 	./api
 	./backends/ebpf
+	./backends/healthchecks
 	./backends/iptables
 	./backends/ipvs
 	./backends/nft
