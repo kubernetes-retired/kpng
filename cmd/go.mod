@@ -1,6 +1,6 @@
 module sigs.k8s.io/kpng/cmd
 
-go 1.19
+go 1.20
 
 require (
 	golang.org/x/oauth2 v0.0.0-20221006150949-b44042a4b9c1 // indirect

@@ -1,6 +1,6 @@
 module sigs.k8s.io/kpng/backends/ipvs
 
-go 1.19
+go 1.20
 
 require (
 	github.com/google/seesaw v0.0.0-20230304143336-8264e023fc51
