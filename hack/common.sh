@@ -29,12 +29,12 @@ KPNG_SERVER_ADDRESS="unix:///k8s/proxy.sock"
 KPNG_DEBUG_LEVEL=4
 
 # kind
-KIND_VERSION="v0.17.0"
+KIND_VERSION="v0.18.0"
 # Users can specify docker.io, quay.io registry
 KINDEST_NODE_IMAGE="docker.io/kindest/node"
 
 CLUSTER_NAME="kpng-proxy"
-K8S_VERSION="v1.25.3"
+K8S_VERSION="v1.27.1"
 OS=$(uname| tr '[:upper:]' '[:lower:]')
 
 function add_to_path {
@@ -107,7 +107,7 @@ function setup_kind {
 
 
     if ! [ -f "${install_directory}"/kind ] ; then
-        info_message -e "\nDownloading kind ..."
+        info_message "Downloading kind ..."
 
         local tmp_file=$(mktemp -q)
         if_error_exit "Could not create temp file, mktemp failed"
@@ -146,7 +146,7 @@ function setup_kubectl {
 
 
     if ! [ -f "${install_directory}"/kubectl ] ; then
-        info_message -e "\nDownloading kubectl ..."
+        info_message "Downloading kubectl ..."
 
         local tmp_file=$(mktemp -q)
         if_error_exit "Could not create temp file, mktemp failed"
@@ -182,8 +182,8 @@ function setup_ginkgo {
     local temp_directory=$(mktemp -qd)
 
     if ! [ -f "${bin_dir}"/ginkgo ] || ! [ -f "${bin_dir}"/e2e.test ] ; then
-        info_message -e "\nDownloading ginkgo and e2e.test ..."
-        curl -L https://dl.k8s.io/"${k8s_version}"/kubernetes-test-"${os}"-amd64.tar.gz \
+        info_message "Downloading ginkgo and e2e.test ..."
+        curl -L https://dl.k8s.io/release/"${k8s_version}"/kubernetes-test-"${os}"-amd64.tar.gz \
             -o "${temp_directory}"/kubernetes-test-"${os}"-amd64.tar.gz
         if_error_exit "cannot download kubernetes-test package"
 

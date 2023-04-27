@@ -29,8 +29,8 @@ fi
 shopt -s expand_aliases
 
 : "${E2E_GO_VERSION:="1.18.4"}"
-: "${E2E_K8S_VERSION:="v1.25.3"}"
 : "${E2E_TIMEOUT_MINUTES:=100}"
+: "${E2E_K8S_VERSION:="v1.27.1"}"
 
 CONTAINER_ENGINE="docker"
 KPNG_IMAGE_TAG_NAME="kpng:test"
