@@ -28,8 +28,8 @@ fi
 
 shopt -s expand_aliases
 
-: "${E2E_GO_VERSION:="1.18.4"}"
-: "${E2E_K8S_VERSION:="v1.25.3"}"
+: "${E2E_GO_VERSION:="1.19.6"}"
+: "${E2E_K8S_VERSION:="v1.26.0"}"
 : "${E2E_TIMEOUT_MINUTES:=100}"
 
 CONTAINER_ENGINE="docker"
@@ -470,7 +470,8 @@ function install_kpng {
 
     "${bin_dir}/kubectl" --context "${k8s_context}" --namespace="${NAMESPACE}" rollout status daemonset kpng -w --request-timeout=3m 1> /dev/null
     if_error_exit "timeout waiting kpng rollout"
-
+    kubectl logs daemonset.apps/kpng -n kube-system
+    kubectl describe daemonset.apps/kpng -n kube-system
     pass_message "Installation of kpng is done.\n"
 }
 
@@ -695,9 +696,13 @@ function create_infrastructure_and_run_tests {
         install_kpng "${cluster_name}" "${bin_dir}"
     fi
     local result=0
+    kubectl logs daemonset.apps/kpng -n kube-system
+    kubectl describe daemonset.apps/kpng -n kube-system
     if ! ${devel_mode} ; then
 	run_tests "${e2e_dir}" "${bin_dir}" "false" "${ip_family}" "${backend}" "${include_specific_failed_tests}"
 	result=$?
+	kubectl logs daemonset.apps/kpng -n kube-system
+    kubectl describe daemonset.apps/kpng -n kube-system
 	#need to clean this up
 	if [ "${ci_mode}" = false ] ; then
             clean_artifacts "${e2e_dir}" "${bin_dir}" 
