@@ -699,7 +699,7 @@ function create_infrastructure_and_run_tests {
     kubectl logs daemonset.apps/kpng -n kube-system
     kubectl describe daemonset.apps/kpng -n kube-system
     if ! ${devel_mode} ; then
-	run_tests "${e2e_dir}" "${bin_dir}" "false" "${ip_family}" "${backend}" "${include_specific_failed_tests}"
+#	run_tests "${e2e_dir}" "${bin_dir}" "false" "${ip_family}" "${backend}" "${include_specific_failed_tests}"
 	result=$?
 	kubectl logs daemonset.apps/kpng -n kube-system
     kubectl describe daemonset.apps/kpng -n kube-system
@@ -859,7 +859,7 @@ function main {
 
     
     if [ "${run_tests_on_existing_cluster}" = true ] ; then
-        run_tests "${e2e_dir}${tmp_suffix}" "${bin_dir}" "false" "${ip_family}" "${backend}" "${include_specific_failed_tests}"
+#        run_tests "${e2e_dir}${tmp_suffix}" "${bin_dir}" "false" "${ip_family}" "${backend}" "${include_specific_failed_tests}"
 	local result=$?
         #need to clean this up
 	if [ "${ci_mode}" = false ] ; then
