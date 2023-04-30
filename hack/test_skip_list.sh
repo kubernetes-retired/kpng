@@ -39,10 +39,10 @@ GINKGO_SKIP_ipv6_iptables_TEST="should be updated after adding or deleting ports
 |should be able to change the type from ClusterIP to ExternalName\
 |should create endpoints for unready pods\
 |should provide DNS for services\
+|should provide DNS for pods for Subdomain\
 |should support a Service with multiple ports specified in multiple EndpointSlices" 
 
 #|should check kube-proxy urls\
-#|should provide DNS for pods for Subdomain\
 #|should function for endpoint-Service: udp\
 #|should be able to preserve UDP traffic when server pod cycles for a NodePort service\
 
