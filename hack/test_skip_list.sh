@@ -23,10 +23,10 @@ GINKGO_SKIP_ipv4_iptables_TEST="should be updated after adding or deleting ports
 |should support a Service with multiple ports specified in multiple EndpointSlices\
 |should support a Service with multiple endpoint IPs specified in multiple EndpointSlices\
 |should check kube-proxy urls\
+|should be able to preserve UDP traffic when server pod cycles for a NodePort service\
 |should support a Service with multiple endpoint IPs specified in multiple EndpointSlices"
 
 #|should be rejected when no endpoints exist\
-#|should be able to preserve UDP traffic when server pod cycles for a NodePort service\
 #|should run through the lifecycle of Pods and PodStatus\
 
 
@@ -249,10 +249,10 @@ GINKGO_SKIP_ipv4_ebpf_TEST="should work after the service has been recreated\
 |should provide DNS for pods for Subdomain\
 |should update nodePort: udp\
 |should function for pod-Service: http\
+|should function for node-Service: http\
 |should support a Service with multiple endpoint IPs specified in multiple EndpointSlices"
 
 #|should update endpoints: http\
-#|Networking Granular Checks: Services [It] should function for node-Service: http\
 #|should check kube-proxy urls\
 #|should function for service endpoints using hostNetwork\
 #|should be able to handle large requests: udp\
