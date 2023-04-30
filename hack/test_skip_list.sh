@@ -34,14 +34,14 @@ GINKGO_SKIP_ipv6_iptables_TEST="should be updated after adding or deleting ports
 |should serve multiport endpoints from pods\
 |should mirror a custom Endpoint with multiple subsets and same IP address\
 |should support a Service with multiple endpoint IPs specified in multiple EndpointSlices\
+|should provide DNS for the cluster\
+|should be able to change the type from NodePort to ExternalName\
+|should be able to change the type from ClusterIP to ExternalName\
+|should create endpoints for unready pods\
+|should provide DNS for services\
 |should support a Service with multiple ports specified in multiple EndpointSlices" 
 
 #|should check kube-proxy urls\
-#|should be able to change the type from ClusterIP to ExternalName\
-#|should create endpoints for unready pods\
-#|should be able to change the type from NodePort to ExternalName\
-#|should provide DNS for services\
-#|should provide DNS for the cluster\
 #|should provide DNS for pods for Subdomain\
 #|should function for endpoint-Service: udp\
 #|should be able to preserve UDP traffic when server pod cycles for a NodePort service\
@@ -167,6 +167,11 @@ GINKGO_SKIP_ipv6_nft_TEST="should work after the service has been recreated\
 |should be able to handle large requests: http\
 |should update nodePort: http\
 |should function for client IP based session affinity: http\
+|should provide DNS for the cluster\
+|should be able to change the type from NodePort to ExternalName\
+|should be able to change the type from ClusterIP to ExternalName\
+|should create endpoints for unready pods\
+|should provide DNS for services\
 |should mirror a custom Endpoint with multiple subsets and same IP address"
 
 #|should update endpoints: http\
@@ -174,13 +179,8 @@ GINKGO_SKIP_ipv6_nft_TEST="should work after the service has been recreated\
 #|should work after the service has been recreated\
 #|work after the service has been recreated\
 #|should update endpoints: udp\
-#|should provide DNS for services\
-#|should provide DNS for the cluster\
-#|should be able to change the type from NodePort to ExternalName\
 #|ServiceAccountIssuerDiscovery should support OIDC discovery of service account issuer\
-#|should be able to change the type from ClusterIP to ExternalName\
 #|should be able to handle large requests: udp\
-#|should create endpoints for unready pods\
 #|should function for client IP based session affinity: udp\
 #|should function for endpoint-Service: http\
 #|should function for endpoint-Service: udp\
