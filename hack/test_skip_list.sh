@@ -1,4 +1,4 @@
-#!/bin/bash
+f#!/bin/bash
 # shellcheck disable=SC2181,SC2155,SC2128
 #
 # Copyright 2022 The Kubernetes Authors.
@@ -249,18 +249,18 @@ GINKGO_SKIP_ipv4_ebpf_TEST="should work after the service has been recreated\
 |should provide DNS for the cluster\
 |should provide DNS for pods for Subdomain\
 |should update nodePort: udp\
+|should function for endpoint-Service: http\
 |should function for pod-Service: http\
+|should update endpoints: http\
 |should function for node-Service: http\
+|should function for pod-Service: udp\
 |should support a Service with multiple endpoint IPs specified in multiple EndpointSlices"
 
-#|should update endpoints: http\
 #|should check kube-proxy urls\
 #|should function for service endpoints using hostNetwork\
 #|should be able to handle large requests: udp\
 #|should update endpoints: udp\
-#|should function for pod-Service: udp\
 #|should function for multiple endpoint-Services with same selector\
-#|should function for endpoint-Service: http\
 #|should function for pod-Service: udp\
 #|should run through the lifecycle of Pods and PodStatus\
 #|should update nodePort: http\
