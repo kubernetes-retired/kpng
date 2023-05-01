@@ -171,11 +171,11 @@ GINKGO_SKIP_ipv6_nft_TEST="should work after the service has been recreated\
 |should be able to change the type from NodePort to ExternalName\
 |should be able to change the type from ClusterIP to ExternalName\
 |should create endpoints for unready pods\
+|should update nodePort: udp\
 |should provide DNS for services\
 |should mirror a custom Endpoint with multiple subsets and same IP address"
 
 #|should update endpoints: http\
-#|should update nodePort: udp\
 #|should work after the service has been recreated\
 #|work after the service has been recreated\
 #|should update endpoints: udp\
@@ -220,6 +220,7 @@ GINKGO_SKIP_ipv4_ebpf_TEST="should work after the service has been recreated\
 |should be able to switch session affinity for service with type clusterIP\
 |should be able to switch session affinity for NodePort service\
 |should be able to create a functioning NodePort service\
+|should function for client IP based session affinity: udp\
 |should be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is true\
 |should be able to change the type from ExternalName to NodePort\
 |should be able to change the type from ExternalName to ClusterIP\
@@ -261,7 +262,6 @@ GINKGO_SKIP_ipv4_ebpf_TEST="should work after the service has been recreated\
 #|should function for multiple endpoint-Services with same selector\
 #|should function for endpoint-Service: http\
 #|should function for pod-Service: udp\
-#|should function for client IP based session affinity: udp\
 #|should run through the lifecycle of Pods and PodStatus\
 #|should update nodePort: http\
 #|should be able to handle large requests: http\
