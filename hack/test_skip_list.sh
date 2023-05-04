@@ -173,6 +173,8 @@ GINKGO_SKIP_ipv6_nft_TEST="should work after the service has been recreated\
 |should create endpoints for unready pods\
 |should update nodePort: udp\
 |should provide DNS for services\
+|should function for endpoint-Service: http\
+|should function for endpoint-Service: udp\
 |should mirror a custom Endpoint with multiple subsets and same IP address"
 
 #|should update endpoints: http\
@@ -182,8 +184,6 @@ GINKGO_SKIP_ipv6_nft_TEST="should work after the service has been recreated\
 #|ServiceAccountIssuerDiscovery should support OIDC discovery of service account issuer\
 #|should be able to handle large requests: udp\
 #|should function for client IP based session affinity: udp\
-#|should function for endpoint-Service: http\
-#|should function for endpoint-Service: udp\
 #|should function for node-Service: http\
 #|should function for pod-Service: http\
 #|should function for pod-Service: udp\
