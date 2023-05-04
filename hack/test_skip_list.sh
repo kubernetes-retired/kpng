@@ -175,9 +175,9 @@ GINKGO_SKIP_ipv6_nft_TEST="should work after the service has been recreated\
 |should provide DNS for services\
 |should function for endpoint-Service: http\
 |should function for endpoint-Service: udp\
+|should update endpoints: http\
 |should mirror a custom Endpoint with multiple subsets and same IP address"
 
-#|should update endpoints: http\
 #|should work after the service has been recreated\
 #|work after the service has been recreated\
 #|should update endpoints: udp\
