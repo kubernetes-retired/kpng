@@ -33,7 +33,7 @@ jobs:
       fail-fast: false
       matrix:
         ipFamily: ["ipv4", "ipv6", "dual"]
-        backend: ["iptables", "nft", "ebpf", "userspacelin"]
+        backend: ["iptables", "ipvs", "nft", "ebpf", "userspacelin"]
         exclude:
           - ipFamily: "ipv6"
             backend:  "ebpf"
@@ -59,6 +59,12 @@ jobs:
           echo "PATH=$PATH" >> $GITHUB_ENV
           go install github.com/cilium/ebpf/cmd/bpf2go@v0.9.2
           sudo apt-get install -y clang llvm libelf-dev libpcap-dev gcc-multilib build-essential
+        fi
+
+    - name: initialize ipvs module via ipvsadm
+      run: |
+        if [[ ${{ env.BACKEND }} == "ipvs" ]]; then
+          sudo apt-get update && sudo apt-get install ipvsadm && sudo ipvsadm -L
         fi
 
     - name: run e2e tests
