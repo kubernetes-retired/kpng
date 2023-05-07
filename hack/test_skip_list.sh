@@ -70,6 +70,10 @@ GINKGO_SKIP_ipv4_ipvs_TEST="should check kube-proxy urls\
 |should be able to create a functioning NodePort service\
 |should create endpoints for unready pods\
 |should be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is true\
+|should support a Service with multiple endpoint IPs specified in multiple EndpointSlices\
+|should serve endpoints on same port and different protocols\
+|should support a Service with multiple ports specified in multiple EndpointSlices\
+|should mirror a custom Endpoint with multiple subsets and same IP address\
 |should function for multiple endpoint-Services with same selecto"
 
 GINKGO_SKIP_ipv6_ipvs_TEST="should have session affinity work for NodePort service\
@@ -99,6 +103,11 @@ GINKGO_SKIP_ipv6_ipvs_TEST="should have session affinity work for NodePort servi
 |should provide DNS for the cluster\
 |should run through the lifecycle of Pods and PodStatus\
 |should function for endpoint-Service: http\
+|should be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is true\
+|should support a Service with multiple endpoint IPs specified in multiple EndpointSlices\
+|should serve endpoints on same port and different protocols\
+|should support a Service with multiple ports specified in multiple EndpointSlices\
+|should mirror a custom Endpoint with multiple subsets and same IP address\
 |should function for pod-Service: http"
 
 GINKGO_SKIP_dual_ipvs_TEST="should work after the service has been recreated\
@@ -122,6 +131,11 @@ GINKGO_SKIP_dual_ipvs_TEST="should work after the service has been recreated\
 |should be able to switch session affinity for NodePort service\
 |should function for multiple endpoint-Services with same selector\
 |should be able to create a functioning NodePort service\
+|should be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is true\
+|should support a Service with multiple endpoint IPs specified in multiple EndpointSlices\
+|should serve endpoints on same port and different protocols\
+|should support a Service with multiple ports specified in multiple EndpointSlices\
+|should mirror a custom Endpoint with multiple subsets and same IP address\
 |should be able to change the type from ExternalName to NodePort"
 
 GINKGO_SKIP_ipv4_nft_TEST="should check kube-proxy urls\
@@ -273,7 +287,4 @@ GINKGO_SKIP_ipv4_userspacelin_TEST="should preserve source pod IP for traffic th
 |should run through the lifecycle of Pods and PodStatus\
 |should support a Service with multiple ports specified in multiple EndpointSlices\
 |should support a Service with multiple endpoint IPs specified in multiple EndpointSlices\
-|should mirror a custom Endpoint with multiple subsets and same IP address" 
-
-
-
+|should mirror a custom Endpoint with multiple subsets and same IP address"
