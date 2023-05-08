@@ -32,7 +32,6 @@ type ServiceEndpoints struct {
 type Callback func(item <-chan *ServiceEndpoints)
 type Setup func()
 
-// EndpointsClient is a simple client to kube-proxy's Endpoints API.
 type Sink struct {
 	Config    *localsink.Config
 	Callback  Callback

@@ -43,13 +43,13 @@ func main() {
 
 	flags := cmd.Flags()
 	flags.BoolVar(&once, "once", false, "run only one loop")
-	epc = client.New(flags)
+	lc = client.New(flags)
 
 	cmd.Execute()
 }
 
 var (
-	epc  *client.EndpointsClient
+	lc   *client.LocalClient
 	conn *grpc.ClientConn
 	once bool
 )
@@ -64,7 +64,7 @@ func run() {
 	}
 
 	if conn == nil {
-		c, err := epc.Dial()
+		c, err := lc.Dial()
 		if isCanceled(err) {
 			return
 		} else if err != nil {
@@ -76,7 +76,7 @@ func run() {
 		conn = c
 	}
 
-	ctx := epc.Context()
+	ctx := lc.Context()
 
 	cli := globalv1.NewSetsClient(conn)
 

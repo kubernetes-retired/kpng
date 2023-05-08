@@ -58,7 +58,7 @@ type Runner struct {
 	cpuprofile string
 	NodeName   string
 
-	epc *EndpointsClient
+	lc *LocalClient
 }
 
 func (r *Runner) BindFlags(flags FlagSet) {
@@ -66,7 +66,7 @@ func (r *Runner) BindFlags(flags FlagSet) {
 	flag.StringVar(&r.cpuprofile, "cpuprofile", "", "write cpu profile to file")
 	flag.StringVar(&r.NodeName, "node-name", func() string { s, _ := os.Hostname(); return s }(), "node name to request to the proxy server")
 
-	r.epc = New(flags)
+	r.lc = New(flags)
 }
 
 // ArrayBackend creates a Callback from the given array handlers
@@ -88,7 +88,7 @@ func (r *Runner) RunBackend(handler fullstate.Callback) {
 }
 
 func (r *Runner) RunSink(sink localsink.Sink) {
-	r.epc.Sink = sink
+	r.lc.Sink = sink
 
 	if r.cpuprofile != "" {
 		f, err := os.Create(r.cpuprofile)
@@ -99,12 +99,12 @@ func (r *Runner) RunSink(sink localsink.Sink) {
 		defer pprof.StopCPUProfile()
 	}
 
-	r.epc.CancelOnSignals()
+	r.lc.CancelOnSignals()
 
-	r.epc.Sink.Setup()
+	r.lc.Sink.Setup()
 
 	for {
-		canceled := r.epc.Next()
+		canceled := r.lc.Next()
 
 		if canceled {
 			//klog.Infof("finished")
