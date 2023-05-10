@@ -30,7 +30,8 @@ shopt -s expand_aliases
 
 : "${E2E_GO_VERSION:="1.18.4"}"
 : "${E2E_TIMEOUT_MINUTES:=100}"
-: "${E2E_K8S_VERSION:="v1.27.1@sha256:9915f5629ef4d29f35b478e819249e89cfaffcbfeebda4324e5c01d53d937b09"}"
+: "${E2E_K8S_VERSION:="v1.27.1"}"
+: "${E2E_K8S_SHA:="@sha256:9915f5629ef4d29f35b478e819249e89cfaffcbfeebda4324e5c01d53d937b09"}
 
 CONTAINER_ENGINE="docker"
 KPNG_IMAGE_TAG_NAME="kpng:test"
@@ -272,7 +273,7 @@ function create_cluster {
 EOF
     "${bin_dir}/kind" create cluster \
       --name "${cluster_name}"                     \
-      --image "${KINDEST_NODE_IMAGE}":"${E2E_K8S_VERSION}"    \
+      --image "${KINDEST_NODE_IMAGE}":"${E2E_K8S_VERSION}""${E2E_K8S_SHA}"    \
       --retain \
       --wait=1m \
       "${kind_log_level}" \
