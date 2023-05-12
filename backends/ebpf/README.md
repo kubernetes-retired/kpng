@@ -5,7 +5,7 @@
 * Linux Kernel > 5.15 (hasn't be tested on earlier versions)
 * llvm and clang :
     - Fedora `sudo dnf -y install llvm clang`
-    - Ubuntu `sudo apt-get -y install llvm clang`
+    - Ubuntu `sudo apt-get -y install llvm clang gcc-multilib`
 * libbpf -> v0.8.0 is Automatically downloaded with `make bytecode` target
 * [cilium/ebpf requirements](https://github.com/cilium/ebpf#requirements)
 * Bpf2go 
