@@ -52,29 +52,12 @@ GINKGO_SKIP_dual_iptables_TEST="should be updated after adding or deleting ports
 |should mirror a custom Endpoint with multiple subsets and same IP address" 
     
 GINKGO_SKIP_ipv4_ipvs_TEST="should check kube-proxy urls\
-|should work after the service has been recreated\
-|should be able to preserve UDP traffic when server pod cycles for a NodePort service\
-|should not be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is false\
-|should implement service.kubernetes.io/service-proxy-name\
-|should be able to update service type to NodePort listening on same port number but different protocols\
-|hould have session affinity timeout work for service with type clusterIP\
-|should be able to preserve UDP traffic when initial unready endpoints get ready\
 |should be able to switch session affinity for NodePort service\
-|should drop INVALID conntrack entries\
-|should have session affinity timeout work for NodePort service\
-|should be able to preserve UDP traffic when server pod cycles for a ClusterIP service\
-|should be able to switch session affinity for service with type clusterIP\
 |should have session affinity work for NodePort service\
-|should be able to change the type from ExternalName to NodePort\
-|should implement service.kubernetes.io/headless\
-|should be able to create a functioning NodePort service\
-|should create endpoints for unready pods\
-|should be able to connect to terminating and unready endpoints if PublishNotReadyAddresses is true\
+|should have session affinity timeout work for NodePort service\
 |should support a Service with multiple endpoint IPs specified in multiple EndpointSlices\
-|should serve endpoints on same port and different protocols\
 |should support a Service with multiple ports specified in multiple EndpointSlices\
-|should mirror a custom Endpoint with multiple subsets and same IP address\
-|should function for multiple endpoint-Services with same selecto"
+|should mirror a custom Endpoint with multiple subsets and same IP address"
 
 GINKGO_SKIP_ipv6_ipvs_TEST="should have session affinity work for NodePort service\
 |should have session affinity timeout work for NodePort service\
