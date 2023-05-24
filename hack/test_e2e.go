@@ -22,7 +22,6 @@ const (
 	E2E_K8S_VERSION="v1.25.3"
 	KUBECONFIG_TESTS="kubeconfig_tests.conf"
 )
-
 // System data
 const (
 	NAMESPACE="kube-system"
@@ -34,30 +33,30 @@ const (
 	KPNG_SERVER_ADDRESS="unix:///k8s/proxy.sock"
 	KPNG_DEBUG_LEVEL="4"
 )
+// Ginkgo
+const (
+	GINKGO_SKIP_TESTS="machinery|Feature|Federation|PerformanceDNS|Disruptive|Serial|LoadBalancer|KubeProxy|GCE|Netpol|NetworkPolicy"
+	GINKGO_FOCUS="\\[Conformance\\]|\\[sig-network\\]"
+	GINKGO_NUMBER_OF_NODES=25
+	GINKGO_PROVIDER="local"
+	GINKGO_DUMP_LOGS_ON_FAILURE=false
+	GINKGO_REPORT_DIR="artifacts/reports"
+	GINKGO_DISABLE_LOG_DUMP=true
+)
 
 var kpng_dir, CONTAINER_ENGINE string
 
+// if_error_exit validate if previous command failed and show an error msg (if provided).
+//
+// If an error message is not provided, it will just exit.
 func if_error_exit(error_msg error) {
-    // Description:
-    // Validate if previous command failed and show an error msg (if provided) 
-    //
-	// Arguments:
-	// $1 - error message if not provided, it will just exit
-	///////////////////////////////////////////////////////////////////////////
 	if error_msg != nil {
 		log.Fatal(error_msg)
 	}
 } 
 
+// command_exist check if a binary(cmd_test) exists. It returns True or False 
 func command_exist(cmd_test string) bool {
-	///////////////////////////////////////////////////////////////////////////
-	// Description:                                                            
-    // Checkt if a binary exists                                               
-    //                                                                         
-    // Arguments:                                                              
-    //   arg1: binary name                                                     
-	///////////////////////////////////////////////////////////////////////////
-	
 	cmd_script := "command -v " + cmd_test + " > /dev/null 2>&1"
 	cmd := exec.Command("bash", "-c", cmd_script)
 	err := cmd.Run()
@@ -68,13 +67,8 @@ func command_exist(cmd_test string) bool {
 	return false
 }
 
+// add_to_path add directory to path.
 func add_to_path(directory string) {
-    // Description:                                                            //
-    // Add directory to path                                                   //
-    //                                                                         //
-    // Arguments:                                                              //
-    //   arg1:  directory                                                      //	
-	///////////////////////////////////////////////////////////////////////
 	_, err := os.Stat(directory)
 	if err != nil && os.IsNotExist(err) {
 		if_error_exit(err)
@@ -110,14 +104,8 @@ func add_to_path(directory string) {
 
 }
 
+// set_sysctl set a sysctl value to an attribute
 func set_sysctl(attribute string, value int) {
-    // Description:
-    // Set a sysctl attribute to value
-    //                                         
-    // Arguments:
-    //   arg1: attribute
-    //   arg2: value
-	///////////////////////////////////////////////////////////////
 	var buffer bytes.Buffer
 	cmd := exec.Command("sysct", "-n", attribute )
 	cmd.Stdout = &buffer
@@ -138,13 +126,8 @@ func set_sysctl(attribute string, value int) {
 	}
 }
 
+// set_host_network_settings prepare hosts network settings 
 func set_host_network_settings(ip_family string) {
-	// Description: 
-	// Prepare hosts network settings 
-	//
-	// Arguments: 
-	//	arg1: ip_family
-	///////////////////////////////////////////////////////////////////////
 	set_sysctl("net.ipv4.ip_forward", 1)
 	if ip_family == "ipv6" {
 		//TODO 
@@ -152,16 +135,8 @@ func set_host_network_settings(ip_family string) {
 	}	
 }
 
+// verify_sysctl_setting verify that a sysctl attribute setting has a value.
 func verify_sysctl_setting(attribute string, value int) {
-	///////////////////////////////////////////////////////////////////////////
-	// Description:                                                            
-    // Verify that a sysctl attribute setting has a value                      
-    //                                                                         
-    // Arguments:                                                              
-    //   arg1: attribute                                                       
-    //   arg2: value                                                           
-	///////////////////////////////////////////////////////////////////////////
-
 	// Get the current value of the attribute and store it in the result variable
 	var buffer bytes.Buffer
 	cmd := exec.Command("sysctl", "-n", attribute)
@@ -176,26 +151,13 @@ func verify_sysctl_setting(attribute string, value int) {
 	}
 }
 
+// verify_host_network_settings verify hosts network settings                                           
 func verify_host_network_settings(ip_family string) {
-	///////////////////////////////////////////////////////////////////////////
-	// Description:                                                            
-	// Verify hosts network settings                                           
-	//                                                                         
-	// Arguments:                                                              
-	//   arg1: ip_family                                                       
-	///////////////////////////////////////////////////////////////////////////
-
 	verify_sysctl_setting("net.ipv4.ip_forward", 1)
 } 
 
+// setup_kind setup kind in the install_directory if not available in the operating_system.
 func setup_kind(install_directory, operating_system string) {
-	///////////////////////////////////////////////////////////////////////////
-	// Description:                                                            
-    // setup kind if not available in the system                               
-    //                                                                         
-    // Arguments:                                                              
-    //   arg1: installation directory, path to where kind will be installed     
-	///////////////////////////////////////////////////////////////////////////
 	_, err := os.Stat(install_directory)
 	if err != nil && os.IsNotExist(err) {
 		log.Fatal(err)
@@ -230,17 +192,9 @@ func setup_kind(install_directory, operating_system string) {
 	}
 }
 
+// setup_kubectl setup kubectl for k8s_version, in the install_directory if not available in the operating_system.
 func setup_kubectl(install_directory, k8s_version, operating_system string) {
-    // Description:                                                            
-    // setup kubectl if not available in the system                            
-    //                                                                         
-    // Arguments:                                                              
-    //   arg1: installation directory, path to where kubectl will be installed 
-    //   arg2: Kubernetes version                                              
-    //   arg3: OS, name of the operating system                                
-	///////////////////////////////////////////////////////////////////////////
-
-	// Check if the installation directory exist
+ 	// Check if the installation directory exist
 	_, err := os.Stat(install_directory)
 	if_error_exit(err)
 	// If kubectl is not installed, install it.
@@ -268,21 +222,10 @@ func setup_kubectl(install_directory, k8s_version, operating_system string) {
 
 		fmt.Println("The Kubectl tool is set.")
 	}
-
-	
 }
 
+// setup_ginkgo setup ginkgo and e2e.test, for k8s_version, in the install_directory, if not available on the operating_system.
 func setup_ginkgo(install_directory, k8s_version, operating_system string) {
-    ///////////////////////////////////////////////////////////////////////////
-	// Description:
-    // setup ginkgo and e2e.test
-    //
-    // Arguments:
-    //   arg1: binary directory, path to where ginko will be installed
-    //   arg2: Kubernetes version
-    //  arg3: OS, name of the operating system
-	/////////////////////////////////////////////////////////////////////////// 
-
 	//Create temp directory
 	tmp_dir, err := os.MkdirTemp(".", "ginkgo_setup_")  //I think this should only happen in case ginkgo and e2e.test are not installed. Fix later
 	if_error_exit(err)
@@ -311,19 +254,10 @@ func setup_ginkgo(install_directory, k8s_version, operating_system string) {
 	} else {
 		fmt.Println("The tools ginko and e2e.test have already been set up.")
 	}
-
-
 }
 
+// setup_bpf2go install bpf2go binary.
 func setup_bpf2go(install_directory string) {
-	///////////////////////////////////////////////////////////////////////////
-    // Description:                                                            
-    // Install bpf2go binary                                                   
-    //                                                                         
-    // Arguments:                                                              
-    //   arg1: installation directory, path to where bpf2go will be installed  
-	///////////////////////////////////////////////////////////////////////////
-
 	if ! command_exist("bpf2go") {
 		if ! command_exist("go") {
 			fmt.Println("Dependency not met: 'bpf2go' not installed and cannot install with 'go'")
@@ -353,18 +287,8 @@ func setup_bpf2go(install_directory string) {
 	} 
 } 
 
-
-
+// Copy binaries from the net to the binaries directory.
 func install_binaries(bin_directory, k8s_version, operating_system, base_dir_path string, ) {
-    
-    // Description:
-    // Copy binaries from the net to binaries directory
-    //
-    // Arguments:
-    //   arg1: binary directory, path to where ginko will be installed
-    //   arg2: Kubernetes version
-    //  arg3: OS, name of the operating system
-	/////////////////////////////////////////////////////////////////////////////////
 	wd, err := os.Getwd()
 	if_error_exit(err)
 	
@@ -382,16 +306,9 @@ func install_binaries(bin_directory, k8s_version, operating_system, base_dir_pat
 	setup_bpf2go(bin_directory)
 }
 
+// detect_container_engine detect container engine, by default it is docker but developers might   
+// use real alternatives like podman. The project welcome both.
 func detect_container_engine() {
-	///////////////////////////////////////////////////////////////////////////
-    // Description:                                                           
-    // Detect Container Engine, by default it is docker but developers might   
-    // use real alternatives like podman. The project welcome both.            
-    //                                                                         
-    // Arguments:                                                              
-    //   None
-	///////////////////////////////////////////////////////////////////////////                                                                  	
-	
 	CONTAINER_ENGINE = "docker"
 	cmd := exec.Command(CONTAINER_ENGINE) 
 	err := cmd.Run()
@@ -408,16 +325,8 @@ func detect_container_engine() {
 	fmt.Println("Detected Container Engine:", CONTAINER_ENGINE)
 }
 
+// container_build build a container image for KPNG.
 func container_build(CONTAINER_FILE string, ci_mode bool) {
-	///////////////////////////////////////////////////////////////////////////
-    // Description:                                                            
-    // build a container image for KPNG                                        
-    //                                                                         
-    // Arguments:                                                              
-    //   arg1: Path for E2E installation directory, or the empty string         
-    //   arg2: ci_mode        
-	///////////////////////////////////////////////////////////////////////////
-	
 	// QUESTION to Jay: Is it necessary to have this variables in capital letters?
 	
 	// Running locally it's not necessary to show all info
@@ -457,15 +366,8 @@ func container_build(CONTAINER_FILE string, ci_mode bool) {
 	fmt.Printf("Image build and tag %s is set.\n", KPNG_IMAGE_TAG_NAME)
 }
 
+// set_e2e_dir set E2E directory.
 func set_e2e_dir(e2e_dir string) {
-	/////////////////////////////////////////////////////////////////////////////
-    // Description:                                                            //
-    // Set E2E directory                                                       //
-    //                                                                         //
-    // Arguments:                                                              //
-    //   arg1: Path for E2E installation directory                             //
-    /////////////////////////////////////////////////////////////////////////////
-	
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
@@ -497,27 +399,14 @@ func set_e2e_dir(e2e_dir string) {
 	}
 }
 
+// prepare_container prepare container based on the dockerfile. 
 func prepare_container(dockerfile string, ci_mode bool) {
-	///////////////////////////////////////////////////////////////////////////
-	// Description:
-    // Prepare container  
-    //                                                      
-    // Arguments:
-    //   arg1: Path of dockerfile
-    //   arg2: ci_mode
-	///////////////////////////////////////////////////////////////////////////
-
 	detect_container_engine()
 	container_build(dockerfile, ci_mode) 
-
 }
 
+// create_cluster create a kind cluster.
 func create_cluster(cluster_name, bin_dir, ip_family, artifacts_directory string, ci_mode bool) {
-    /////////////////////////////////////////////////////////////////////////////
-    // Description:                                                            //
-    // Create kind cluster                                                     //
-    //                                                                         //
-    /////////////////////////////////////////////////////////////////////////////
 	type KindConfigData struct {
 		IpFamily string
 		ClusterCidr string
@@ -673,12 +562,8 @@ nodes:
 
 }
 
+// wait_until_cluster_is_ready wait pods with selector k8s-app=kube-dns be ready and operational.
 func wait_until_cluster_is_ready(cluster_name, bin_dir string, ci_mode bool) {
-    /////////////////////////////////////////////////////////////////////////////
-    // Description:                                                            //
-    // Wait pods with selector k8s-app=kube-dns be ready and operational       //
-    //                                                                         //
-    /////////////////////////////////////////////////////////////////////////////
 
 	k8s_context := "kind-" + cluster_name
 	kubectl := bin_dir + "/kubectl"
@@ -716,15 +601,12 @@ func wait_until_cluster_is_ready(cluster_name, bin_dir string, ci_mode bool) {
 	fmt.Printf("%s is operational.\n",cluster_name)
 }
 
+// install_kpng install KPNG following these steps:
+//   - removes existing kube-proxy
+//   - load kpng container image
+//   - create service account, clusterbinding and configmap for kpng
+//   - deploy kpng from the template generated
 func install_kpng(cluster_name, bin_dir string) {
-    ///////////////////////////////////////////////////////////////////////////
-    // Description:                                                            //
-    // Install KPNG following these steps:                                     //
-    //   - removes existing kube-proxy                                         //
-    //   - load kpng container image                                           //
-    //   - create service account, clusterbinding and configmap for kpng       //
-    //   - deploy kpng from the template generated                             //
-    ///////////////////////////////////////////////////////////////////////////	
 
 	k8s_context := "kind-" + cluster_name
 	kubectl 	:= bin_dir + "/kubectl"
@@ -832,12 +714,72 @@ func install_kpng(cluster_name, bin_dir string) {
 
 }
 
+// run_tests execute the tests with ginkgo.
+func run_tests(e2e_dir, bin_dir string, parallel_ginkgo_tests bool, ip_family, backend string, include_specific_failed_tests bool) {
+
+	artifacts_directory := e2e_dir + "/artifacts"
+	ginkgo := bin_dir + "/ginkgo"
+	e2e_test := bin_dir + "/e2e.test"
+
+	_, err := os.Stat(artifacts_directory + "/" + KUBECONFIG_TESTS)
+	if err != nil && os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+	_, err = os.Stat(bin_dir)
+	if err != nil && os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+	_, err = os.Stat(bin_dir + "/e2e.test")
+	if err != nil && os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+	_, err = os.Stat(bin_dir + "/ginkgo")
+	if err != nil && os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+
+	// Ginkgo regexes
+	ginkgo_skip := GINKGO_SKIP_TESTS
+	ginkgo_focus := ""
+	if strings.TrimSpace(GINKGO_FOCUS) == "" {
+		ginkgo_focus = "\\[Conformance\\]"
+	} else {
+		ginkgo_focus = GINKGO_FOCUS
+	}
+	
+	var skip_set_name,  skip_set_ref string
+
+	if include_specific_failed_tests == false {
+	// Find ip_type and backend specific skip sets	
+		skip_set_name = "GINKGO_SKIP_" + ip_family + "_" + backend + "_TEST"
+		skip_set_ref = skip_set_name
+		if len(strings.TrimSpace(skip_set_ref)) > 0 {
+			ginkgo_skip = ginkgo_skip + "|" + skip_set_ref
+		}	
+	}
+
+	// setting this env prevents ginkgo e2e from trying to run provider setup
+	_ = os.Setenv("KUBERNETES_CONFORMANCE_TEST", "'y'")
+	// setting these is required to make RuntimeClass tests work ... :/
+	_ = os.Setenv("KUBE_CONTAINER_RUNTIME", "remote")
+	_ = os.Setenv("KUBE_CONTAINER_RUNTIME_ENDPOINT", "unix:///run/containerd/containerd.sock")
+	_ = os.Setenv("KUBE_CONTAINER_RUNTIME_NAME", "containerd")
+
+	cmd := exec.Command(ginkgo, "--nodes", strconv.Itoa(GINKGO_NUMBER_OF_NODES), "--focus", ginkgo_focus, "--skip", ginkgo_skip, e2e_test, 
+		"--kubeconfig", artifacts_directory + "/" + KUBECONFIG_TESTS, "--provider", GINKGO_PROVIDER, "--dump-logs-on-failure", strconv.FormatBool(GINKGO_DUMP_LOGS_ON_FAILURE), 
+	 	"--report-dir", GINKGO_REPORT_DIR, "--disable-log-dump", strconv.FormatBool(GINKGO_DISABLE_LOG_DUMP))
+	err = cmd.Run()
+	
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Println("Ginkgo Tests were executed")
+	}
+
+}
+
+// create_infrastructure_and_run_tests.
 func create_imfrastructure_and_run_tests(e2e_dir, ip_family, backend, bin_dir, suffix string, developer_mode, ci_mode bool, deployment_model string, export_metrics, include_specific_failed_tests bool) {
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Description:                                                            
-    // create_infrastructure_and_run_tests                                     
-    //                                                                         
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	artifacts_directory := e2e_dir + "/artifacts"
 	cluster_name := "kpng-e2e-" + ip_family + "-" + backend + suffix
@@ -874,6 +816,9 @@ func create_imfrastructure_and_run_tests(e2e_dir, ip_family, backend, bin_dir, s
 		install_kpng(cluster_name, bin_dir)
 	}
 
+	if developer_mode == true {
+		run_tests(e2e_dir, bin_dir, false, ip_family, backend, include_specific_failed_tests)
+	}
 
 }
 
