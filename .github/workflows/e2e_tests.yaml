@@ -58,7 +58,7 @@ jobs:
           export PATH=$PATH:$GOBIN
           echo "PATH=$PATH" >> $GITHUB_ENV
           go install github.com/cilium/ebpf/cmd/bpf2go@v0.9.2
-          sudo apt-get install -y clang llvm libelf-dev libpcap-dev gcc-multilib build-essential
+          sudo apt-get update && sudo apt-get install -y clang llvm libelf-dev libpcap-dev gcc-multilib build-essential
         fi
 
     - name: initialize ipvs module via ipvsadm
