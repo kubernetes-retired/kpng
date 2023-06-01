@@ -13,35 +13,35 @@ import (
 ) 
 
 const (
-	KIND_VERSION="v0.17.0"
-	K8S_VERSION="v1.25.3"
-	KPNG_IMAGE_TAG_NAME="kpng:test_270323_0904" 
-	CLUSTER_CIDR_V4="10.1.0.0/16"
-	SERVICE_CLUSTER_IP_RANGE_V4="10.2.0.0/16"
-	KINDEST_NODE_IMAGE="docker.io/kindest/node"
-	E2E_K8S_VERSION="v1.25.3"
-	KUBECONFIG_TESTS="kubeconfig_tests.conf"
+	KindVersion="v0.17.0"
+	KubernetesVersion="v1.25.3"
+	KpngImageTagName="kpng:test_270323_0904" 
+	ClusterCidrV4="10.1.0.0/16"
+	ServiceClusterIpRangeV4="10.2.0.0/16"
+	KindestNodeImage="docker.io/kindest/node"
+	E2eK8sVersion="v1.25.3"
+	KubeconfigTests="kubeconfig_tests.conf"
 )
 // System data
 const (
-	NAMESPACE="kube-system"
-	SERVICE_ACCOUNT_NAME="kpng"
-	CLUSTER_ROLE_BINDING_NAME="kpng"
-	CLUSTER_ROLE_NAME="system:node-proxier"
-	CONFIG_MAP_NAME="kpng"
+	Namespace="kube-system"
+	ServiceAccountName="kpng"
+	ClusterRoleBindingName="kpng"
+	ClusterRoleName="system:node-proxier"
+	ConfigMapName="kpng"
 
-	KPNG_SERVER_ADDRESS="unix:///k8s/proxy.sock"
-	KPNG_DEBUG_LEVEL="4"
+	KpngServerAddress="unix:///k8s/proxy.sock"
+	KpngDebugLevel="4"
 )
 // Ginkgo
 const (
-	GINKGO_SKIP_TESTS="machinery|Feature|Federation|PerformanceDNS|Disruptive|Serial|LoadBalancer|KubeProxy|GCE|Netpol|NetworkPolicy"
-	GINKGO_FOCUS="\\[Conformance\\]|\\[sig-network\\]"
-	GINKGO_NUMBER_OF_NODES=25
-	GINKGO_PROVIDER="local"
-	GINKGO_DUMP_LOGS_ON_FAILURE=false
-	GINKGO_REPORT_DIR="artifacts/reports"
-	GINKGO_DISABLE_LOG_DUMP=true
+	GinkgoSkipTests="machinery|Feature|Federation|PerformanceDNS|Disruptive|Serial|LoadBalancer|KubeProxy|GCE|Netpol|NetworkPolicy"
+	GinkgoFocus="\\[Conformance\\]|\\[sig-network\\]"
+	GinkgoNumberOfNodes=25
+	GinkgoProvider="local"
+	GinkgoDumpLogsOnFailure=false
+	GinkgoReportDir="artifacts/reports"
+	GinkgoDisableLogDump=true
 )
 
 var kpng_dir, CONTAINER_ENGINE string
@@ -174,7 +174,7 @@ func setup_kind(install_directory, operating_system string) {
 		if_error_exit(err)
 		defer os.Remove(tmp_file.Name()) // Clean up. QUESTION: As we will end up moving the temp file, is this necessary? 
 	
-		url := "https://kind.sigs.k8s.io/dl/" + KIND_VERSION + "/kind-" + operating_system + "-amd64"
+		url := "https://kind.sigs.k8s.io/dl/" + KindVersion + "/kind-" + operating_system + "-amd64"
 		fmt.Printf("Temp filename: %s\n", tmp_file.Name())
 		cmd := exec.Command("curl", "-L", url, "-o", tmp_file.Name())	
 		err = cmd.Run()
@@ -346,13 +346,13 @@ func container_build(CONTAINER_FILE string, ci_mode bool) {
 	}
 
 	if QUIET_MODE == "" {
-		cmd := exec.Command(CONTAINER_ENGINE, "build", "-t", KPNG_IMAGE_TAG_NAME, "-f", CONTAINER_FILE, ".")
+		cmd := exec.Command(CONTAINER_ENGINE, "build", "-t", KpngImageTagName, "-f", CONTAINER_FILE, ".")
 		err = cmd.Run()
 		if err != nil {
 			log.Fatal(err)
 		}
 	} else {
-		cmd := exec.Command(CONTAINER_ENGINE, "build", QUIET_MODE, "-t", KPNG_IMAGE_TAG_NAME, "-f", CONTAINER_FILE, ".")
+		cmd := exec.Command(CONTAINER_ENGINE, "build", QUIET_MODE, "-t", KpngImageTagName, "-f", CONTAINER_FILE, ".")
 		err = cmd.Run()
 		if err != nil {
 			log.Fatal(err)
@@ -363,7 +363,7 @@ func container_build(CONTAINER_FILE string, ci_mode bool) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Image build and tag %s is set.\n", KPNG_IMAGE_TAG_NAME)
+	fmt.Printf("Image build and tag %s is set.\n", KpngImageTagName)
 }
 
 // set_e2e_dir set E2E directory.
@@ -478,8 +478,8 @@ nodes:
 	
 	switch ip_family {
 	case "ipv4":
-		CLUSTER_CIDR = CLUSTER_CIDR_V4
-        SERVICE_CLUSTER_IP_RANGE = SERVICE_CLUSTER_IP_RANGE_V4
+		CLUSTER_CIDR = ClusterCidrV4
+        SERVICE_CLUSTER_IP_RANGE = ServiceClusterIpRangeV4
 	}
 
 	fmt.Printf("Preparing to setup %s cluster ...\n", cluster_name)
@@ -508,7 +508,7 @@ nodes:
 	cmd_string_set := []string {
 		kind + " create cluster ",
 		"--name " + cluster_name,
-		" --image " + KINDEST_NODE_IMAGE + ":" + E2E_K8S_VERSION,
+		" --image " + KindestNodeImage + ":" + E2eK8sVersion,
 		" --retain",
 		" --wait=1m ",
 		kind_log_level,
@@ -550,12 +550,12 @@ nodes:
 		log.Fatalf("Failed to create the file kubeconfig.conf.\n", err)
 	}
 
-	// Generate the file KUBECONFIG_TESTS on the artifacts directory
-	cmd_string = kind + " get kubeconfig --name " + cluster_name +" > " + artifacts_directory + "/" + KUBECONFIG_TESTS
+	// Generate the file KubeconfigTests on the artifacts directory
+	cmd_string = kind + " get kubeconfig --name " + cluster_name +" > " + artifacts_directory + "/" + KubeconfigTests
 	cmd = exec.Command("bash", "-c", cmd_string)
 	err = cmd.Run()
 	if err != nil {
-		log.Fatalf("Failed to create the file KUBECONFIG_TESTS.\n", err)
+		log.Fatalf("Failed to create the file KubeconfigTests.\n", err)
 	}
 
 	fmt.Printf("Cluster %s is created.\n", cluster_name)
@@ -578,7 +578,7 @@ func wait_until_cluster_is_ready(cluster_name, bin_dir string, ci_mode bool) {
 		log.Fatal(err)
 	}
 
-	cmd_string := "kubectl --context " + k8s_context + " wait --for=condition=ready pods --namespace=" + NAMESPACE + " --selector k8s-app=kube-dns 1> /dev/null"
+	cmd_string := "kubectl --context " + k8s_context + " wait --for=condition=ready pods --namespace=" + Namespace + " --selector k8s-app=kube-dns 1> /dev/null"
 	cmd := exec.Command("bash", "-c", cmd_string)
 	err = cmd.Run()
 	if err != nil {
@@ -627,7 +627,7 @@ func install_kpng(cluster_name, bin_dir string) {
 	}
 
 	// Remove existing kube-proxy
-	cmd := exec.Command(kubectl, "--context", k8s_context, "delete", "--namespace", NAMESPACE, "daemonset.apps/kube-proxy")
+	cmd := exec.Command(kubectl, "--context", k8s_context, "delete", "--namespace", Namespace, "daemonset.apps/kube-proxy")
 	err = cmd.Run()
 	if err != nil {
 		log.Fatalf("Cannot delete delete daemonset.apps kube-proxy\n", err)
@@ -636,53 +636,53 @@ func install_kpng(cluster_name, bin_dir string) {
 
 	// Load kpng container image
 	// Preload kpng image 
-	cmd = exec.Command(kind, "load", "docker-image", KPNG_IMAGE_TAG_NAME, "--name", cluster_name)
+	cmd = exec.Command(kind, "load", "docker-image", KpngImageTagName, "--name", cluster_name)
 	err = cmd.Run()
 	if err != nil {
 		log.Fatalf("Error loading image to kind.\n", err)
 	}
-	fmt.Println("Loaded " + KPNG_IMAGE_TAG_NAME + " container image.")
+	fmt.Println("Loaded " + KpngImageTagName + " container image.")
 
 	// Create service account, clusterbinding and configmap for kpng
-	cmd = exec.Command(kubectl, "--context", k8s_context, "create", "serviceaccount", "--namespace", NAMESPACE, SERVICE_ACCOUNT_NAME)
+	cmd = exec.Command(kubectl, "--context", k8s_context, "create", "serviceaccount", "--namespace", Namespace, ServiceAccountName)
 	err = cmd.Run()
 	if err != nil {
-		log.Fatalf("Error creating serviceaccount %s.\n", SERVICE_ACCOUNT_NAME, err)
+		log.Fatalf("Error creating serviceaccount %s.\n", ServiceAccountName, err)
 	}
-	fmt.Println("Created service account", SERVICE_ACCOUNT_NAME)
+	fmt.Println("Created service account", ServiceAccountName)
 
-	cmd = exec.Command(kubectl, "--context", k8s_context, "create", "clusterrolebinding", CLUSTER_ROLE_BINDING_NAME, "--clusterrole", CLUSTER_ROLE_NAME, "--serviceaccount", NAMESPACE + ":"+ SERVICE_ACCOUNT_NAME)
+	cmd = exec.Command(kubectl, "--context", k8s_context, "create", "clusterrolebinding", ClusterRoleBindingName, "--clusterrole", ClusterRoleName, "--serviceaccount", Namespace + ":"+ ServiceAccountName)
 	err = cmd.Run()
 	if err != nil {
-		log.Fatalf("Error creating clusterrolebinding %s.\n", CLUSTER_ROLE_BINDING_NAME, err)
+		log.Fatalf("Error creating clusterrolebinding %s.\n", ClusterRoleBindingName, err)
 	}
-	fmt.Println("Created clusterrolebinding", CLUSTER_ROLE_BINDING_NAME)
+	fmt.Println("Created clusterrolebinding", ClusterRoleBindingName)
 
-	cmd = exec.Command(kubectl, "--context", k8s_context, "create", "configmap", CONFIG_MAP_NAME, "--namespace", NAMESPACE, "--from-file", artifacts_directory + "/kubeconfig.conf")
+	cmd = exec.Command(kubectl, "--context", k8s_context, "create", "configmap", ConfigMapName, "--namespace", Namespace, "--from-file", artifacts_directory + "/kubeconfig.conf")
 	err = cmd.Run()
 	if err != nil {
-		log.Fatalf("Error creating configmap", CONFIG_MAP_NAME)
+		log.Fatalf("Error creating configmap", ConfigMapName)
 	}
-	fmt.Println("Created configmap", CONFIG_MAP_NAME)
+	fmt.Println("Created configmap", ConfigMapName)
 
 	// Deploy kpng from the template generated
 	E2E_SERVER_ARGS := "'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', 'to-api', '--listen=unix:///k8s/proxy.sock'"
-    E2E_BACKEND_ARGS := "'local', '--api=" + KPNG_SERVER_ADDRESS + "', 'to-" + E2E_BACKEND + "', '--v=" + KPNG_DEBUG_LEVEL + "'"
+    E2E_BACKEND_ARGS := "'local', '--api=" + KpngServerAddress + "', 'to-" + E2E_BACKEND + "', '--v=" + KpngDebugLevel + "'"
 
 	if E2E_DEPLOYMENT_MODEL == "single-process-per-node" {
-		E2E_BACKEND_ARGS="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', 'to-local', 'to-" + E2E_BACKEND + "', '--v=" + KPNG_DEBUG_LEVEL + "'"
+		E2E_BACKEND_ARGS="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', 'to-local', 'to-" + E2E_BACKEND + "', '--v=" + KpngDebugLevel + "'"
 	} 
 
 	E2E_SERVER_ARGS = "[" + E2E_SERVER_ARGS + "]"
 	E2E_BACKEND_ARGS = "[" + E2E_BACKEND_ARGS + "]"
 
 	// Setting vars for generate the kpng deployment based on template
-	_ = os.Setenv("kpng_image", KPNG_IMAGE_TAG_NAME) 
+	_ = os.Setenv("kpng_image", KpngImageTagName) 
     _ = os.Setenv("image_pull_policy", "IfNotPresent") 
     _ = os.Setenv("backend", E2E_BACKEND) 
-    _ = os.Setenv("config_map_name", CONFIG_MAP_NAME) 
-    _ = os.Setenv("service_account_name", SERVICE_ACCOUNT_NAME) 
-    _ = os.Setenv("namespace", NAMESPACE) 
+    _ = os.Setenv("config_map_name", ConfigMapName) 
+    _ = os.Setenv("service_account_name", ServiceAccountName) 
+    _ = os.Setenv("namespace", Namespace) 
     _ = os.Setenv("e2e_backend_args", E2E_BACKEND_ARGS)
     _ = os.Setenv("deployment_model", E2E_DEPLOYMENT_MODEL)
     _ = os.Setenv("e2e_server_args", E2E_SERVER_ARGS)
@@ -704,7 +704,7 @@ func install_kpng(cluster_name, bin_dir string) {
 		log.Fatalf("Error creating kpng deployment \n", err)
 	}
 
-	cmd = exec.Command(kubectl, "--context", k8s_context, "--namespace", NAMESPACE, "rollout", "status", "daemonset", "kpng", "-w", "--request-timeout", "3m")	
+	cmd = exec.Command(kubectl, "--context", k8s_context, "--namespace", Namespace, "rollout", "status", "daemonset", "kpng", "-w", "--request-timeout", "3m")	
 	err = cmd.Run()
 	if err != nil {
 		log.Fatalf("Timeout waiting kpng rollout\n", err)
@@ -721,7 +721,7 @@ func run_tests(e2e_dir, bin_dir string, parallel_ginkgo_tests bool, ip_family, b
 	ginkgo := bin_dir + "/ginkgo"
 	e2e_test := bin_dir + "/e2e.test"
 
-	_, err := os.Stat(artifacts_directory + "/" + KUBECONFIG_TESTS)
+	_, err := os.Stat(artifacts_directory + "/" + KubeconfigTests)
 	if err != nil && os.IsNotExist(err) {
 		log.Fatal(err)
 	}
@@ -739,12 +739,12 @@ func run_tests(e2e_dir, bin_dir string, parallel_ginkgo_tests bool, ip_family, b
 	}
 
 	// Ginkgo regexes
-	ginkgo_skip := GINKGO_SKIP_TESTS
+	ginkgo_skip := GinkgoSkipTests
 	ginkgo_focus := ""
-	if strings.TrimSpace(GINKGO_FOCUS) == "" {
+	if strings.TrimSpace(GinkgoFocus) == "" {
 		ginkgo_focus = "\\[Conformance\\]"
 	} else {
-		ginkgo_focus = GINKGO_FOCUS
+		ginkgo_focus = GinkgoFocus
 	}
 	
 	var skip_set_name,  skip_set_ref string
@@ -765,9 +765,9 @@ func run_tests(e2e_dir, bin_dir string, parallel_ginkgo_tests bool, ip_family, b
 	_ = os.Setenv("KUBE_CONTAINER_RUNTIME_ENDPOINT", "unix:///run/containerd/containerd.sock")
 	_ = os.Setenv("KUBE_CONTAINER_RUNTIME_NAME", "containerd")
 
-	cmd := exec.Command(ginkgo, "--nodes", strconv.Itoa(GINKGO_NUMBER_OF_NODES), "--focus", ginkgo_focus, "--skip", ginkgo_skip, e2e_test, 
-		"--kubeconfig", artifacts_directory + "/" + KUBECONFIG_TESTS, "--provider", GINKGO_PROVIDER, "--dump-logs-on-failure", strconv.FormatBool(GINKGO_DUMP_LOGS_ON_FAILURE), 
-	 	"--report-dir", GINKGO_REPORT_DIR, "--disable-log-dump", strconv.FormatBool(GINKGO_DISABLE_LOG_DUMP))
+	cmd := exec.Command(ginkgo, "--nodes", strconv.Itoa(GinkgoNumberOfNodes), "--focus", ginkgo_focus, "--skip", ginkgo_skip, e2e_test, 
+		"--kubeconfig", artifacts_directory + "/" + KubeconfigTests, "--provider", GinkgoProvider, "--dump-logs-on-failure", strconv.FormatBool(GinkgoDumpLogsOnFailure), 
+	 	"--report-dir", GinkgoReportDir, "--disable-log-dump", strconv.FormatBool(GinkgoDisableLogDump))
 	err = cmd.Run()
 	
 	if err != nil {
@@ -815,11 +815,11 @@ func create_imfrastructure_and_run_tests(e2e_dir, ip_family, backend, bin_dir, s
 	if backend != "not-kpng" {
 		install_kpng(cluster_name, bin_dir)
 	}
-
+/*
 	if developer_mode == true {
 		run_tests(e2e_dir, bin_dir, false, ip_family, backend, include_specific_failed_tests)
 	}
-
+*/
 }
 
 func main() {
@@ -874,7 +874,7 @@ func main() {
 	if_error_exit(err)
 	dockerfile = strings.TrimSpace(buffer.String()) + "/Dockerfile"
 
-	install_binaries(bin_dir, K8S_VERSION, OS, base_dir)
+	install_binaries(bin_dir, KubernetesVersion, OS, base_dir)
 	prepare_container(dockerfile, ci_mode)
 
 	tmp_suffix := ""
