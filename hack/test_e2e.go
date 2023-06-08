@@ -46,17 +46,17 @@ const (
 
 var kpngDir, containerEngine string
 
-// if_error_exit validate if previous command failed and show an error msg (if provided).
+// ifErrorExit validate if previous command failed and show an error msg (if provided).
 //
 // If an error message is not provided, it will just exit.
-func if_error_exit(errorMsg error) {
+func ifErrorExit(errorMsg error) {
 	if errorMsg != nil {
 		log.Fatal(errorMsg)
 	}
 } 
 
-// command_exist check if a binary(cmdTest) exists. It returns True or False 
-func command_exist(cmdTest string) bool {
+// commandExist check if a binary(cmdTest) exists. It returns True or False 
+func commandExist(cmdTest string) bool {
 	cmd_script := "command -v " + cmdTest + " > /dev/null 2>&1"
 	cmd := exec.Command("bash", "-c", cmd_script)
 	err := cmd.Run()
@@ -67,11 +67,11 @@ func command_exist(cmdTest string) bool {
 	return false
 }
 
-// add_to_path add directory to path.
-func add_to_path(directory string) {
+// addToPath add directory to path.
+func addToPath(directory string) {
 	_, err := os.Stat(directory)
 	if err != nil && os.IsNotExist(err) {
-		if_error_exit(err)
+		ifErrorExit(err)
 	}
 
 	fmt.Println("Adding the directory to $PATH env variable")
@@ -97,21 +97,21 @@ func add_to_path(directory string) {
 		fmt.Println("The directory is NOT in the $PATH env variable! :(")
 		updated_path := path + ":" + directory
 		err = os.Setenv("PATH", updated_path)
-		if_error_exit(err)
+		ifErrorExit(err)
 		fmt.Println(os.Getenv("PATH"))
 		fmt.Println("The directory is NOW in the $PATH env variable! hooray:)")
 	}
 
 }
 
-// set_sysctl set a sysctl value to an attribute
-func set_sysctl(attribute string, value int) {
+// setSysctl set a sysctl value to an attribute
+func setSysctl(attribute string, value int) {
 	var buffer bytes.Buffer
 	cmd := exec.Command("sysct", "-n", attribute )
 	cmd.Stdout = &buffer
 	//result, err := cmd.Output() //cmd.Output() returns bytes. How to convert bytes to int?
 	err := cmd.Run()
-	if_error_exit(err)
+	ifErrorExit(err)
 
 	result_str := strings.TrimSpace(buffer.String())
 	result_int, err := strconv.Atoi(result_str)
@@ -122,27 +122,27 @@ func set_sysctl(attribute string, value int) {
 		variable_value := attribute + "=" + strconv.Itoa(value)
 		cmd = exec.Command("sudo", "sysctl", "-w", variable_value)
 		err = cmd.Run()
-		if_error_exit(err)
+		ifErrorExit(err)
 	}
 }
 
-// set_host_network_settings prepare hosts network settings 
-func set_host_network_settings(ipFamily string) {
-	set_sysctl("net.ipv4.ip_forward", 1)
+// setHostNetworkSettings prepare hosts network settings 
+func setHostNetworkSettings(ipFamily string) {
+	setSysctl("net.ipv4.ip_forward", 1)
 	if ipFamily == "ipv6" {
 		//TODO 
 		fmt.Println("TODO :-)")
 	}	
 }
 
-// verify_sysctl_setting verify that a sysctl attribute setting has a value.
-func verify_sysctl_setting(attribute string, value int) {
+// verifySysctlSetting verify that a sysctl attribute setting has a value.
+func verifySysctlSetting(attribute string, value int) {
 	// Get the current value of the attribute and store it in the result variable
 	var buffer bytes.Buffer
 	cmd := exec.Command("sysctl", "-n", attribute)
 	cmd.Stdout = &buffer
 	err := cmd.Run()
-	if_error_exit(err)
+	ifErrorExit(err)
 	result, err := strconv.Atoi(strings.TrimSpace(buffer.String()))
 
 	if value != result {
@@ -151,13 +151,13 @@ func verify_sysctl_setting(attribute string, value int) {
 	}
 }
 
-// verify_host_network_settings verify hosts network settings                                           
-func verify_host_network_settings(ipFamily string) {
-	verify_sysctl_setting("net.ipv4.ip_forward", 1)
+// verifyHostNetworkSettings verify hosts network settings                                           
+func verifyHostNetworkSettings(ipFamily string) {
+	verifySysctlSetting("net.ipv4.ip_forward", 1)
 } 
 
-// setup_kind setup kind in the installDirectory if not available in the operatingSystem.
-func setup_kind(installDirectory, operatingSystem string) {
+// setupKind setup kind in the installDirectory if not available in the operatingSystem.
+func setupKind(installDirectory, operatingSystem string) {
 	_, err := os.Stat(installDirectory)
 	if err != nil && os.IsNotExist(err) {
 		log.Fatal(err)
@@ -171,19 +171,19 @@ func setup_kind(installDirectory, operatingSystem string) {
 		fmt.Println("Downloading kind ...")
 
 		tmp_file, err := os.CreateTemp("/tmp", "kind_setup")
-		if_error_exit(err)
+		ifErrorExit(err)
 		defer os.Remove(tmp_file.Name()) // Clean up. QUESTION: As we will end up moving the temp file, is this necessary? 
 	
 		url := "https://kind.sigs.k8s.io/dl/" + KindVersion + "/kind-" + operatingSystem + "-amd64"
 		fmt.Printf("Temp filename: %s\n", tmp_file.Name())
 		cmd := exec.Command("curl", "-L", url, "-o", tmp_file.Name())	
 		err = cmd.Run()
-		if_error_exit(err)
+		ifErrorExit(err)
 		// TODO: Need to find out how to display, the curl ongoing download details, on the terminal
 	
 		cmd = exec.Command("sudo", "mv", tmp_file.Name(), installDirectory + "/kind")
 		_ = cmd.Run()
-		//if_error_exit(err) 
+		//ifErrorExit(err) 
 		cmd = exec.Command("sudo", "chmod", "+rx", installDirectory + "/kind")
 		_ = cmd.Run()
 		cmd = exec.Command("sudo", "chown", "root.root", installDirectory + "/kind")
@@ -192,11 +192,11 @@ func setup_kind(installDirectory, operatingSystem string) {
 	}
 }
 
-// setup_kubectl setup kubectl for k8sVersion, in the installDirectory if not available in the operatingSystem.
-func setup_kubectl(installDirectory, k8sVersion, operatingSystem string) {
+// setupKubectl setup kubectl for k8sVersion, in the installDirectory if not available in the operatingSystem.
+func setupKubectl(installDirectory, k8sVersion, operatingSystem string) {
  	// Check if the installation directory exist
 	_, err := os.Stat(installDirectory)
-	if_error_exit(err)
+	ifErrorExit(err)
 	// If kubectl is not installed, install it.
 	_, err = os.Stat(installDirectory + "/kubectl")
 	if err == nil {
@@ -206,12 +206,12 @@ func setup_kubectl(installDirectory, k8sVersion, operatingSystem string) {
 		fmt.Println("Downloading kubectl ...") 
 		// Create tem file
 		tmp_file, err := os.CreateTemp(".", "kubectl_setup")
-		if_error_exit(err)
+		ifErrorExit(err)
 		// Download kubectl
 		url := "https://dl.k8s.io/" + k8sVersion + "/bin/" + operatingSystem + "/amd64/kubectl"
 		cmd := exec.Command("curl", "-L", url, "-o", tmp_file.Name())
 		err = cmd.Run()
-		if_error_exit(err)
+		ifErrorExit(err)
 		//mv, chmod, chown 
 		cmd = exec.Command("sudo", "mv", tmp_file.Name(), installDirectory + "/kubectl")
 		_ = cmd.Run()
@@ -224,11 +224,11 @@ func setup_kubectl(installDirectory, k8sVersion, operatingSystem string) {
 	}
 }
 
-// setup_ginkgo setup ginkgo and e2e.test, for k8sVersion, in the installDirectory, if not available on the operatingSystem.
-func setup_ginkgo(installDirectory, k8sVersion, operatingSystem string) {
+// setupGinkgo setup ginkgo and e2e.test, for k8sVersion, in the installDirectory, if not available on the operatingSystem.
+func setupGinkgo(installDirectory, k8sVersion, operatingSystem string) {
 	//Create temp directory
 	tmp_dir, err := os.MkdirTemp(".", "ginkgo_setup_")  //I think this should only happen in case ginkgo and e2e.test are not installed. Fix later
-	if_error_exit(err)
+	ifErrorExit(err)
 	defer os.RemoveAll(tmp_dir) //Clean up
 
 	_, ginkgo_exist := os.Stat(installDirectory + "/ginkgo")
@@ -241,13 +241,13 @@ func setup_ginkgo(installDirectory, k8sVersion, operatingSystem string) {
 
 		cmd := exec.Command("curl", "-L", url, "-o", out_file)
 		err = cmd.Run()
-		if_error_exit(err)
+		ifErrorExit(err)
 
 		tar_file := tmp_dir + "/kubernetes-test-" + operatingSystem + "-amd64.tar.gz" 
 		cmd_string := "tar xvzf " + tar_file + " --directory " + installDirectory + " --strip-components=3 kubernetes/test/bin/ginkgo kubernetes/test/bin/e2e.test &> /dev/null"
 		cmd = exec.Command("bash", "-c", cmd_string)
 		err = cmd.Run()
-		if_error_exit(err)
+		ifErrorExit(err)
 
 		fmt.Println("The tools ginko and e2e.test have been set up.")
 
@@ -256,10 +256,10 @@ func setup_ginkgo(installDirectory, k8sVersion, operatingSystem string) {
 	}
 }
 
-// setup_bpf2go install bpf2go binary.
-func setup_bpf2go(installDirectory string) {
-	if ! command_exist("bpf2go") {
-		if ! command_exist("go") {
+// setupBpf2go install bpf2go binary.
+func setupBpf2go(installDirectory string) {
+	if ! commandExist("bpf2go") {
+		if ! commandExist("go") {
 			fmt.Println("Dependency not met: 'bpf2go' not installed and cannot install with 'go'")
 			os.Exit(1)
 		} 
@@ -276,39 +276,39 @@ func setup_bpf2go(installDirectory string) {
 
 		cmd := exec.Command("go", "install", "github.com/cilium/ebpf/cmd/bpf2go@v0.9.2")
 		err = cmd.Run()
-		if_error_exit(err)
+		ifErrorExit(err)
 	
 		var buffer bytes.Buffer
 		cmd = exec.Command("which", "bpf2go")
 		cmd.Stdout = &buffer
 		err = cmd.Run()
-		if_error_exit(err)
+		ifErrorExit(err)
 		fmt.Printf("The tool bpf2go is installed at: %s\n", buffer.String())	
 	} 
 } 
 
-// Copy binaries from the net to the binaries directory.
-func install_binaries(binDirectory, k8sVersion, operatingSystem, baseDirPath string, ) {
+// installBinaries copy binaries from the net to the binaries directory.
+func installBinaries(binDirectory, k8sVersion, operatingSystem, baseDirPath string, ) {
 	wd, err := os.Getwd()
-	if_error_exit(err)
+	ifErrorExit(err)
 	
 	if wd != baseDirPath {
 		err = os.Chdir(baseDirPath)
-		if_error_exit(err)
+		ifErrorExit(err)
 	}
 	err = os.MkdirAll(binDirectory, 0755) 
 
-	add_to_path(binDirectory) 
+	addToPath(binDirectory) 
 
-	setup_kind(binDirectory, operatingSystem)
-	setup_kubectl(binDirectory, k8sVersion, operatingSystem)
-	setup_ginkgo(binDirectory, k8sVersion, operatingSystem)
-	setup_bpf2go(binDirectory)
+	setupKind(binDirectory, operatingSystem)
+	setupKubectl(binDirectory, k8sVersion, operatingSystem)
+	setupGinkgo(binDirectory, k8sVersion, operatingSystem)
+	setupBpf2go(binDirectory)
 }
 
-// detect_container_engine detect container engine, by default it is docker but developers might   
+// detectContainerEngine detect container engine, by default it is docker but developers might   
 // use real alternatives like podman. The project welcome both.
-func detect_container_engine() {
+func detectContainerEngine() {
 	containerEngine = "docker"
 	cmd := exec.Command(containerEngine) 
 	err := cmd.Run()
@@ -325,8 +325,8 @@ func detect_container_engine() {
 	fmt.Println("Detected Container Engine:", containerEngine)
 }
 
-// container_build build a container image for KPNG.
-func container_build(containerFile string, ciMode bool) {
+// containerBuild build a container image for KPNG.
+func containerBuild(containerFile string, ciMode bool) {
 	// QUESTION to Jay: Is it necessary to have this variables in capital letters?
 	
 	// Running locally it's not necessary to show all info
@@ -366,8 +366,8 @@ func container_build(containerFile string, ciMode bool) {
 	fmt.Printf("Image build and tag %s is set.\n", KpngImageTagName)
 }
 
-// set_e2e_dir set E2E directory.
-func set_e2e_dir(e2eDir string) {
+// setE2eDir set E2E directory.
+func setE2eDir(e2eDir string) {
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
@@ -399,14 +399,14 @@ func set_e2e_dir(e2eDir string) {
 	}
 }
 
-// prepare_container prepare container based on the dockerfile. 
-func prepare_container(dockerfile string, ciMode bool) {
-	detect_container_engine()
-	container_build(dockerfile, ciMode) 
+// prepareContainer prepare container based on the dockerfile. 
+func prepareContainer(dockerfile string, ciMode bool) {
+	detectContainerEngine()
+	containerBuild(dockerfile, ciMode) 
 }
 
-// create_cluster create a kind cluster.
-func create_cluster(clusterName, binDir, ipFamily, artifactsDirectory string, ciMode bool) {
+// createCluster create a kind cluster.
+func createCluster(clusterName, binDir, ipFamily, artifactsDirectory string, ciMode bool) {
 	type KindConfigData struct {
 		IpFamily string
 		ClusterCidr string
@@ -562,8 +562,8 @@ nodes:
 
 }
 
-// wait_until_cluster_is_ready wait pods with selector k8s-app=kube-dns be ready and operational.
-func wait_until_cluster_is_ready(clusterName, binDir string, ciMode bool) {
+// waitUntilClusterIsReady wait pods with selector k8s-app=kube-dns be ready and operational.
+func waitUntilClusterIsReady(clusterName, binDir string, ciMode bool) {
 
 	k8s_context := "kind-" + clusterName
 	kubectl := binDir + "/kubectl"
@@ -601,12 +601,12 @@ func wait_until_cluster_is_ready(clusterName, binDir string, ciMode bool) {
 	fmt.Printf("%s is operational.\n",clusterName)
 }
 
-// install_kpng install KPNG following these steps:
+// installKpng install KPNG following these steps:
 //   - removes existing kube-proxy
 //   - load kpng container image
 //   - create service account, clusterbinding and configmap for kpng
 //   - deploy kpng from the template generated
-func install_kpng(clusterName, binDir string) {
+func installKpng(clusterName, binDir string) {
 
 	k8s_context := "kind-" + clusterName
 	kubectl 	:= binDir + "/kubectl"
@@ -689,7 +689,7 @@ func install_kpng(clusterName, binDir string) {
 
 	// TODO: Change kpngDir to SCRIPT_DIR
 	//go run "${SCRIPT_DIR}"/kpng-ds-yaml-gen.go "${SCRIPT_DIR}"/kpng-deployment-ds-template.txt  "${artifactsDirectory}"/kpng-deployment-ds.yaml	
-	//if_error_exit "error generating kpng deployment YAML"
+	//ifErrorExit "error generating kpng deployment YAML"
 	SCRIPT_DIR := kpngDir + "/hack"
 
 	cmd = exec.Command("go", "run", SCRIPT_DIR + "/kpng-ds-yaml-gen.go", SCRIPT_DIR + "/kpng-deployment-ds-template.txt", artifactsDirectory + "/kpng-deployment-ds.yaml")
@@ -714,8 +714,8 @@ func install_kpng(clusterName, binDir string) {
 
 }
 
-// run_tests execute the tests with ginkgo.
-func run_tests(e2eDir, binDir string, parallelGinkgoTests bool, ipFamily, backend string, includeSpecificFailedTests bool) {
+// runTests execute the tests with ginkgo.
+func runTests(e2eDir, binDir string, parallelGinkgoTests bool, ipFamily, backend string, includeSpecificFailedTests bool) {
 
 	artifactsDirectory := e2eDir + "/artifacts"
 	ginkgo := binDir + "/ginkgo"
@@ -778,8 +778,8 @@ func run_tests(e2eDir, binDir string, parallelGinkgoTests bool, ipFamily, backen
 
 }
 
-// create_infrastructure_and_run_tests.
-func create_imfrastructure_and_run_tests(e2eDir, ipFamily, backend, binDir, suffix string, developerMode, ciMode bool, deploymentModel string, exportMetrics, includeSpecificFailedTests bool) {
+// createInfrastructureAndRunTests create_infrastructure_and_run_tests.
+func createInfrastructureAndRunTests(e2eDir, ipFamily, backend, binDir, suffix string, developerMode, ciMode bool, deploymentModel string, exportMetrics, includeSpecificFailedTests bool) {
 
 	artifactsDirectory := e2eDir + "/artifacts"
 	clusterName := "kpng-e2e-" + ipFamily + "-" + backend + suffix
@@ -804,8 +804,8 @@ func create_imfrastructure_and_run_tests(e2eDir, ipFamily, backend, binDir, suff
 
 	fmt.Println("Cluster name: ", clusterName)
 
-	create_cluster(clusterName, binDir, ipFamily, artifactsDirectory, ciMode)
-	wait_until_cluster_is_ready(clusterName, binDir, ciMode)
+	createCluster(clusterName, binDir, ipFamily, artifactsDirectory, ciMode)
+	waitUntilClusterIsReady(clusterName, binDir, ciMode)
 
 	err = os.WriteFile(e2eDir + "/clustername", []byte(clusterName), 0664)
 	if err != nil {
@@ -813,11 +813,11 @@ func create_imfrastructure_and_run_tests(e2eDir, ipFamily, backend, binDir, suff
 	}
 
 	if backend != "not-kpng" {
-		install_kpng(clusterName, binDir)
+		installKpng(clusterName, binDir)
 	}
 /*
 	if developerMode == true {
-		run_tests(e2eDir, binDir, false, ipFamily, backend, includeSpecificFailedTests)
+		runTests(e2eDir, binDir, false, ipFamily, backend, includeSpecificFailedTests)
 	}
 */
 }
@@ -842,14 +842,14 @@ func main() {
 	
 
 	wd, err := os.Getwd()
-	if_error_exit(err)
+	ifErrorExit(err)
 	base_dir := wd //How can I have this variable as a constant??? 
 	kpngDir = path.Dir(wd)
 
 
 	if e2eDir == "" {
 		pwd, err := os.Getwd()
-		if_error_exit(err)
+		ifErrorExit(err)
 		e2eDir = pwd + "/temp_go/e2e"
 	} 
 	if binDir == "" {
@@ -862,7 +862,7 @@ func main() {
 	cmd := exec.Command("bash", "-c", cmd_string) // I need to better understand the -c option! And also try to implement it using Cmd.StdinPipe
 	cmd.Stdout = &buffer
 	err = cmd.Run()
-	if_error_exit(err)
+	ifErrorExit(err)
 	OS := strings.TrimSpace(buffer.String())
 
 
@@ -871,19 +871,19 @@ func main() {
 	buffer.Reset()
 	cmd.Stdout = &buffer
 	err = cmd.Run()
-	if_error_exit(err)
+	ifErrorExit(err)
 	dockerfile = strings.TrimSpace(buffer.String()) + "/Dockerfile"
 
-	install_binaries(binDir, KubernetesVersion, OS, base_dir)
-	prepare_container(dockerfile, ciMode)
+	installBinaries(binDir, KubernetesVersion, OS, base_dir)
+	prepareContainer(dockerfile, ciMode)
 
 	tmp_suffix := ""
 	if cluster_count == 1 {
 		if len(suffix) > 0 {
 			tmp_suffix = "-" + suffix
 		}
-		set_e2e_dir(e2eDir + tmp_suffix)
+		setE2eDir(e2eDir + tmp_suffix)
 	}
 
-	create_imfrastructure_and_run_tests(e2eDir, ipFamily, backend, binDir, suffix, developerMode, ciMode, deploymentModel, exportMetrics, includeSpecificFailedTests)
+	createInfrastructureAndRunTests(e2eDir, ipFamily, backend, binDir, suffix, developerMode, ciMode, deploymentModel, exportMetrics, includeSpecificFailedTests)
 }
