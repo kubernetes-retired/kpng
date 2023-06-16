@@ -1,3 +1,19 @@
+/*
+Test_e2e performs tests on the Kubernetes cluster. 
+It creates a kubernetes cluster based in kind + kpng, and performs ginkgo tests on it. 
+
+Usage:
+
+	./test_e2e.go [-i ip_family] [-b backend]
+
+The flags are:
+
+	-i 
+		Set ip_family(ipv4/ipv6/dual) name in the e2e test runs.
+	-b 
+		Set backend (iptables/nft/ipvs/ebpf/userspacelin/not-kpng/) name in the e2e test runs.
+		"not-kpng" is used to be able to validate and compare results
+*/
 package main
 
 import (
@@ -33,7 +49,7 @@ const (
 	KpngServerAddress="unix:///k8s/proxy.sock"
 	KpngDebugLevel="4"
 )
-// Ginkgo
+// Ginkgo constants
 const (
 	GinkgoSkipTests="machinery|Feature|Federation|PerformanceDNS|Disruptive|Serial|LoadBalancer|KubeProxy|GCE|Netpol|NetworkPolicy"
 	GinkgoFocus="\\[Conformance\\]|\\[sig-network\\]"
@@ -44,7 +60,9 @@ const (
 	GinkgoDisableLogDump=true
 )
 
-var kpngDir, containerEngine string
+// KpngPath is the path to the kpng folder. TODO: is it possible to make it a constant? 
+// ContainerEngine will contain the container engine being used(Currently docker or podman).
+var kpngPath, containerEngine string
 
 // ifErrorExit validate if previous command failed and show an error msg (if provided).
 //
@@ -340,7 +358,7 @@ func containerBuild(containerFile string, ciMode bool) {
 		log.Fatal(err)
 	}
 
-	err = os.Chdir(kpngDir)
+	err = os.Chdir(kpngPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -359,7 +377,7 @@ func containerBuild(containerFile string, ciMode bool) {
 		}
 	}
 
-	err = os.Chdir(kpngDir + "/hack")
+	err = os.Chdir(kpngPath + "/hack")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -373,7 +391,7 @@ func setE2eDir(e2eDir string) {
 		log.Fatal(err)
 	}
 
-	err = os.Chdir(kpngDir + "/hack")
+	err = os.Chdir(kpngPath + "/hack")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -687,10 +705,10 @@ func installKpng(clusterName, binDir string) {
     _ = os.Setenv("deployment_model", e2eDeploymentModel)
     _ = os.Setenv("e2e_server_args", e2eServerArgs)
 
-	// TODO: Change kpngDir to scriptDir
+	// TODO: Change kpngPath to scriptDir
 	//go run "${scriptDir}"/kpng-ds-yaml-gen.go "${scriptDir}"/kpng-deployment-ds-template.txt  "${artifactsDirectory}"/kpng-deployment-ds.yaml	
 	//ifErrorExit "error generating kpng deployment YAML"
-	scriptDir := kpngDir + "/hack"
+	scriptDir := kpngPath + "/hack"
 
 	cmd = exec.Command("go", "run", scriptDir + "/kpng-ds-yaml-gen.go", scriptDir + "/kpng-deployment-ds-template.txt", artifactsDirectory + "/kpng-deployment-ds.yaml")
 	err = cmd.Run()
@@ -844,7 +862,7 @@ func main() {
 	wd, err := os.Getwd()
 	ifErrorExit(err)
 	baseDir := wd //How can I have this variable as a constant??? 
-	kpngDir = path.Dir(wd)
+	kpngPath = path.Dir(wd)
 
 
 	if e2eDir == "" {
