@@ -75,6 +75,9 @@ func ifErrorExit(errorMsg error) {
 
 // commandExist check if a binary(cmdTest) exists. It returns True or False 
 func commandExist(cmdTest string) bool {
+	// Command is a Bash builtin command. 
+	// It execute a simple command or display information about commands.
+	// "command -v" print a description of COMMAND similar to the `type' builtin
 	cmdScript := "command -v " + cmdTest + " > /dev/null 2>&1"
 	cmd := exec.Command("bash", "-c", cmdScript)
 	err := cmd.Run()
