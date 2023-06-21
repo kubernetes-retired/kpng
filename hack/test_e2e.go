@@ -67,6 +67,7 @@ var kpngPath, containerEngine string
 // ifErrorExit validate if previous command failed and show an error msg (if provided).
 //
 // If an error message is not provided, it will just exit.
+// TODO: This function may no longer be necessary, as we most probable can only use log.Fatal(err). Replace ifErrorExit by log.Fatal
 func ifErrorExit(errorMsg error) {
 	if errorMsg != nil {
 		log.Fatal(errorMsg)
@@ -88,7 +89,7 @@ func commandExist(cmdTest string) bool {
 	return false
 }
 
-// addToPath add directory to path.
+// addToPath add a directory to the $PATH env variable.
 func addToPath(directory string) {
 	_, err := os.Stat(directory)
 	if err != nil && os.IsNotExist(err) {
@@ -100,9 +101,9 @@ func addToPath(directory string) {
 	path := os.Getenv("PATH")
 	fmt.Println("Current $PATH: ", path)
 
-	// Check if the directory path is in the $PATH env variable 
-	// I believe the package regexp can be used. Couldn't figure out the right pattern. For now 
-	// will use the following approach
+	// Check if the directory path is in the $PATH env variable. 
+	// I believe the package regexp can be used. Couldn't figure out the right pattern. 
+	// For now will use the following approach
 	// TODO(Maybe!): Check using the regexp package
 	pathSet := strings.Split(path, ":") 
 	dirPathExist := false
@@ -140,8 +141,8 @@ func setSysctl(attribute string, value int) {
 	fmt.Printf("Checking sysctls value: %d vs result: %d\n", value, resultInt)
 	if value != resultInt {
 		fmt.Printf("Setting: \"sysctl -w %s=%d\"\n", attribute, value)
-		variableValue := attribute + "=" + strconv.Itoa(value)
-		cmd = exec.Command("sudo", "sysctl", "-w", variableValue)
+		attributeValue := attribute + "=" + strconv.Itoa(value)
+		cmd = exec.Command("sudo", "sysctl", "-w", attributeValue)
 		err = cmd.Run()
 		ifErrorExit(err)
 	}
@@ -153,7 +154,7 @@ func setHostNetworkSettings(ipFamily string) {
 	if ipFamily == "ipv6" {
 		//TODO 
 		fmt.Println("TODO :-)")
-	}	
+	}
 }
 
 // verifySysctlSetting verify that a sysctl attribute setting has a value.
@@ -164,8 +165,9 @@ func verifySysctlSetting(attribute string, value int) {
 	cmd.Stdout = &buffer
 	err := cmd.Run()
 	ifErrorExit(err)
-	result, err := strconv.Atoi(strings.TrimSpace(buffer.String()))
 
+	result, err := strconv.Atoi(strings.TrimSpace(buffer.String()))
+	ifErrorExit(err)
 	if value != result {
 		fmt.Printf("Failure: \"sysctl -n %s\" returned \"%d\", not \"%d\" as expected.\n", attribute, result, value)	
 		os.Exit(1)
@@ -200,7 +202,7 @@ func setupKind(installDirectory, operatingSystem string) {
 		cmd := exec.Command("curl", "-L", url, "-o", tmpFile.Name())	
 		err = cmd.Run()
 		ifErrorExit(err)
-		// TODO: Need to find out how to display, the curl ongoing download details, on the terminal
+		// TODO: Find out how to show progress of the curl ongoing download, on the terminal
 	
 		cmd = exec.Command("sudo", "mv", tmpFile.Name(), installDirectory + "/kind")
 		_ = cmd.Run()
@@ -213,7 +215,7 @@ func setupKind(installDirectory, operatingSystem string) {
 	}
 }
 
-// setupKubectl setup kubectl for k8sVersion, in the installDirectory if not available in the operatingSystem.
+// setupKubectl setup kubectl for k8sVersion, in the installDirectory, if not available in the operatingSystem.
 func setupKubectl(installDirectory, k8sVersion, operatingSystem string) {
  	// Check if the installation directory exist
 	_, err := os.Stat(installDirectory)
@@ -245,7 +247,7 @@ func setupKubectl(installDirectory, k8sVersion, operatingSystem string) {
 	}
 }
 
-// setupGinkgo setup ginkgo and e2e.test, for k8sVersion, in the installDirectory, if not available on the operatingSystem.
+// setupGinkgo setup ginkgo and e2e.test for k8sVersion in the installDirectory, if not available on the operatingSystem.
 func setupGinkgo(installDirectory, k8sVersion, operatingSystem string) {
 	//Create temp directory
 	tmpDir, err := os.MkdirTemp(".", "ginkgo_setup_")  //I think this should only happen in case ginkgo and e2e.test are not installed. Fix later
@@ -308,13 +310,15 @@ func setupBpf2go(installDirectory string) {
 	} 
 } 
 
-// installBinaries copy binaries from the net to the binaries directory.
-func installBinaries(binDirectory, k8sVersion, operatingSystem, baseDirPath string, ) {
+// InstallBinaries copy binaries from the net to the binaries directory.
+// BinDirectory is the bin directory that will be created in the hackDir and where the binaries will be installed
+// HackDirectory is the directory that contains the script test_e2e.go, and the binDirectory 
+func installBinaries(binDirectory, k8sVersion, operatingSystem, hackDirectory string, ) {
 	wd, err := os.Getwd()
 	ifErrorExit(err)
 	
-	if wd != baseDirPath {
-		err = os.Chdir(baseDirPath)
+	if wd != hackDirectory {
+		err = os.Chdir(hackDirectory)
 		ifErrorExit(err)
 	}
 	err = os.MkdirAll(binDirectory, 0755) 
@@ -864,7 +868,7 @@ func main() {
 
 	wd, err := os.Getwd()
 	ifErrorExit(err)
-	baseDir := wd //How can I have this variable as a constant??? 
+	hackDir := wd // TODO: How can I have this variable, hackDir, as a constant??? 
 	kpngPath = path.Dir(wd)
 
 
@@ -888,14 +892,14 @@ func main() {
 
 
 	// Get the path to the Dockerfile
-	cmd = exec.Command("dirname", baseDir)
+	cmd = exec.Command("dirname", hackDir)
 	buffer.Reset()
 	cmd.Stdout = &buffer
 	err = cmd.Run()
 	ifErrorExit(err)
 	dockerfile = strings.TrimSpace(buffer.String()) + "/Dockerfile"
 
-	installBinaries(binDir, KubernetesVersion, OS, baseDir)
+	installBinaries(binDir, KubernetesVersion, OS, hackDir)
 	prepareContainer(dockerfile, ciMode)
 
 	tmpSuffix := ""
