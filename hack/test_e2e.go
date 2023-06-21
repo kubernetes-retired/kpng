@@ -313,7 +313,7 @@ func setupBpf2go(installDirectory string) {
 // InstallBinaries copy binaries from the net to the binaries directory.
 // BinDirectory is the bin directory that will be created in the hackDir and where the binaries will be installed
 // HackDirectory is the directory that contains the script test_e2e.go, and the binDirectory 
-func installBinaries(binDirectory, k8sVersion, operatingSystem, hackDirectory string, ) {
+func installBinaries(binDirectory, k8sVersion, operatingSystem, hackDirectory string) {
 	wd, err := os.Getwd()
 	ifErrorExit(err)
 	
@@ -350,11 +350,10 @@ func detectContainerEngine() {
 	fmt.Println("Detected Container Engine:", containerEngine)
 }
 
-// containerBuild build a container image for KPNG.
+// containerBuild build a container image for KPNG based on the containerFile.
 func containerBuild(containerFile string, ciMode bool) {
-	// QUESTION to Jay: Is it necessary to have this variables in capital letters?
-	
 	// Running locally it's not necessary to show all info
+	// TODO: check if this QuietMode := "--quiet" is really in effect.
 	QuietMode := "--quiet"
 	if ciMode == true {
 		QuietMode = ""
@@ -392,6 +391,9 @@ func containerBuild(containerFile string, ciMode bool) {
 }
 
 // setE2eDir set E2E directory.
+// OBSERVATION: this function isn't exactly about setting the "e2e" directory, as it already exist at the moment it's called! 
+// Instead it is about creating the directory "artifacts" inside the "e2e" directory.
+// TODO: consider changing the name from setE2eDir to setArtifacts.
 func setE2eDir(e2eDir string) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -402,7 +404,7 @@ func setE2eDir(e2eDir string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	// By now the directory e2eDir should already exist as it was created on the installBinaries function
 	_, err = os.Stat(e2eDir)
 	if err != nil && os.IsNotExist(err) {
 		log.Fatal(err)
@@ -417,7 +419,7 @@ func setE2eDir(e2eDir string) {
 			log.Fatal(err)
 		}
 	}
-
+	// TODO: Not sure if this is really necessary. Test later.
 	err = os.Chdir(wd)
 	if err != nil {
 		log.Fatal(err)
@@ -454,7 +456,6 @@ nodes:
 		kind = binDir + "/kind"
 		kubectl = binDir + "/kubectl"
 	)
-
 
 	_, err := os.Stat(binDir)
 	if err != nil && os.IsNotExist(err) {
@@ -530,6 +531,8 @@ nodes:
 		log.Fatal(err)
 	}
 	
+	// The cmdStringSet is created just so I don't have to create manually a long string for cmdString variable. 
+	// It's easier to manage the string in this way. 
 	cmdStringSet := []string {
 		kind + " create cluster ",
 		"--name " + clusterName,
@@ -587,7 +590,7 @@ nodes:
 
 }
 
-// waitUntilClusterIsReady wait pods with selector k8s-app=kube-dns be ready and operational.
+// waitUntilClusterIsReady wait for pods with selector k8s-app=kube-dns to be ready and operational.
 func waitUntilClusterIsReady(clusterName, binDir string, ciMode bool) {
 
 	k8sContext := "kind-" + clusterName
@@ -655,12 +658,12 @@ func installKpng(clusterName, binDir string) {
 	cmd := exec.Command(kubectl, "--context", k8sContext, "delete", "--namespace", Namespace, "daemonset.apps/kube-proxy")
 	err = cmd.Run()
 	if err != nil {
-		log.Fatalf("Cannot delete delete daemonset.apps kube-proxy\n", err)
+		log.Fatalf("Cannot delete daemonset.apps kube-proxy\n", err)
 	}
 	fmt.Println("Removed daemonset.apps/kube-proxy.")
 
-	// Load kpng container image
-	// Preload kpng image 
+	// Load kpng container image.
+	// Preload kpng image. 
 	cmd = exec.Command(kind, "load", "docker-image", KpngImageTagName, "--name", clusterName)
 	err = cmd.Run()
 	if err != nil {
@@ -695,13 +698,13 @@ func installKpng(clusterName, binDir string) {
     e2eBackendArgs := "'local', '--api=" + KpngServerAddress + "', 'to-" + e2eBackend + "', '--v=" + KpngDebugLevel + "'"
 
 	if e2eDeploymentModel == "single-process-per-node" {
-		e2eBackendArgs="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', 'to-local', 'to-" + e2eBackend + "', '--v=" + KpngDebugLevel + "'"
+		e2eBackendArgs = "'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', 'to-local', 'to-" + e2eBackend + "', '--v=" + KpngDebugLevel + "'"
 	} 
 
 	e2eServerArgs = "[" + e2eServerArgs + "]"
 	e2eBackendArgs = "[" + e2eBackendArgs + "]"
 
-	// Setting vars for generate the kpng deployment based on template
+	// Setting vars for generate the kpng deployment based on the template
 	_ = os.Setenv("kpng_image", KpngImageTagName) 
     _ = os.Setenv("image_pull_policy", "IfNotPresent") 
     _ = os.Setenv("backend", e2eBackend) 
