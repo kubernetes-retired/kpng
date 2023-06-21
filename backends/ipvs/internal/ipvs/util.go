@@ -16,7 +16,6 @@ package ipvs
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
@@ -51,7 +50,7 @@ type procSysctl struct {
 
 // GetSysctl returns the value for the specified sysctl setting
 func (*procSysctl) GetSysctl(sysctl string) (int, error) {
-	data, err := ioutil.ReadFile(path.Join(sysctlBase, sysctl))
+	data, err := os.ReadFile(path.Join(sysctlBase, sysctl))
 	if err != nil {
 		return -1, err
 	}
@@ -64,7 +63,7 @@ func (*procSysctl) GetSysctl(sysctl string) (int, error) {
 
 // SetSysctl modifies the specified sysctl flag to the new value
 func (*procSysctl) SetSysctl(sysctl string, newVal int) error {
-	return ioutil.WriteFile(path.Join(sysctlBase, sysctl), []byte(strconv.Itoa(newVal)), 0640)
+	return os.WriteFile(path.Join(sysctlBase, sysctl), []byte(strconv.Itoa(newVal)), 0640)
 }
 
 // EnsureSysctl sets a kernel sysctl to a given numeric value.
@@ -142,7 +141,7 @@ func (handle *LinuxKernelHandler) GetModules() ([]string, error) {
 	if err == os.ErrNotExist {
 		klog.Error(err, "Failed to read file /proc/modules, assuming this is a kernel without loadable modules support enabled")
 		kernelConfigFile := fmt.Sprintf("/boot/config-%s", kernelVersionStr)
-		kConfig, err := ioutil.ReadFile(kernelConfigFile)
+		kConfig, err := os.ReadFile(kernelConfigFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read Kernel Config file %s with error %w", kernelConfigFile, err)
 		}
@@ -164,7 +163,7 @@ func (handle *LinuxKernelHandler) GetModules() ([]string, error) {
 	}
 
 	builtinModsFilePath := fmt.Sprintf("/lib/modules/%s/modules.builtin", kernelVersionStr)
-	b, err := ioutil.ReadFile(builtinModsFilePath)
+	b, err := os.ReadFile(builtinModsFilePath)
 	if err != nil {
 		klog.Error(err, "Failed to read builtin modules file, you can ignore this message when kube-proxy is running inside container without mounting /lib/modules", "filePath", builtinModsFilePath)
 	}
@@ -192,7 +191,7 @@ func (handle *LinuxKernelHandler) GetModules() ([]string, error) {
 // GetKernelVersion returns currently running kernel version.
 func (handle *LinuxKernelHandler) GetKernelVersion() (string, error) {
 	kernelVersionFile := "/proc/sys/kernel/osrelease"
-	fileContent, err := ioutil.ReadFile(kernelVersionFile)
+	fileContent, err := os.ReadFile(kernelVersionFile)
 	if err != nil {
 		return "", fmt.Errorf("error reading osrelease file %q: %v", kernelVersionFile, err)
 	}
@@ -203,7 +202,7 @@ func (handle *LinuxKernelHandler) GetKernelVersion() (string, error) {
 // getFirstColumn reads all the content from r into memory and return a
 // slice which consists of the first word from each line.
 func getFirstColumn(r io.Reader) ([]string, error) {
-	b, err := ioutil.ReadAll(r)
+	b, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}

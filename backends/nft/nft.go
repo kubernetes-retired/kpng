@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -141,7 +140,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 	go renderNftables(pipeOut, deferred)
 
 	if *dryRun {
-		io.Copy(ioutil.Discard, cmdIn)
+		io.Copy(io.Discard, cmdIn)
 		klog.Info("not running nft (dry run mode)")
 	} else {
 		cmd := exec.Command("nft", "-f", "-")
@@ -157,7 +156,7 @@ func Callback(ch <-chan *client.ServiceEndpoints) {
 			klog.Errorf("nft failed: %v (%s)", err, elapsed)
 
 			// ensure render is finished
-			io.Copy(ioutil.Discard, cmdIn)
+			io.Copy(io.Discard, cmdIn)
 
 			if !fullResync {
 				// failsafe: rebuild everything
