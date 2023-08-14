@@ -648,6 +648,7 @@ func (t *iptables) createEndpointsChain(svcInfo *serviceInfo, allEndpoints *endp
 		}
 
 		targetPort := epInfo.PortMapping(&localv1.PortMapping{
+			Name:           svcInfo.portName,
 			TargetPortName: svcInfo.targetPortName,
 			TargetPort:     int32(svcInfo.targetPort),
 		})
@@ -747,13 +748,6 @@ func (t *iptables) writeDNATRules(svcInfo *serviceInfo, svcName types.Namespaced
 		}
 
 		targetPort := t.getTargetPort(svcInfo, endpointPortMap, *epIP)
-
-		// this seems very sly to me. Doing this because there were 2 entries being added
-		// one with the right target port and one with zero
-		// write better logic or verify how baseServiceInfo & endpointPortMap are populated
-		if targetPort == 0 {
-			continue
-		}
 		// DNAT to final destination.
 		args = append(args, "-m", protocol, "-p", protocol, "-j", "DNAT", "--to-destination", net.JoinHostPort(*epIP, strconv.Itoa(targetPort)))
 		t.natRules.Write(args)
