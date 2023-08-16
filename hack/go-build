@@ -1,3 +1,0 @@
-set -ex
-test -n "$VERSION" || VERSION=$(git describe --dirty --tags)
-CGO_ENABLED=1 go build -trimpath -o dist -ldflags "-X main.version=$VERSION" $(hack/go-list-local-mods)

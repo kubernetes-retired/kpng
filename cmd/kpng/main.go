@@ -19,7 +19,7 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
+	_ "fmt"
 	"os"
 	"runtime/pprof"
 
@@ -35,8 +35,6 @@ import (
 var (
 	cpuprofile    = flag.String("cpuprofile", "", "write cpu profile to file")
 	exportMetrics = flag.String("exportMetrics", "", "start metrics server on the specified IP:PORT")
-
-	version = "(unknown)"
 )
 
 // main starts the kpng program by running the command sent by the user.  This is the entry point to kpng!
@@ -95,14 +93,4 @@ func setupGlobal() (ctx context.Context) {
 	}
 
 	return
-}
-
-func versionCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "version",
-		Short: "print the version and quit",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println(version)
-		},
-	}
 }
