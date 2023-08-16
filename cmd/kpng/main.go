@@ -19,7 +19,7 @@ package main
 import (
 	"context"
 	"flag"
-	_ "fmt"
+	"fmt"
 	"os"
 	"runtime/pprof"
 
