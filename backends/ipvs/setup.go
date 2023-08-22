@@ -40,7 +40,7 @@ func (b *backend) Setup() {
 	// right now it's a No-Op, will shift ipset initialization there
 	err = controller.ipsetsManager.Setup()
 	if err != nil {
-		klog.Fatal("unable to initialize ipvs manager", "error", err)
+		klog.Fatal("unable to initialize ipsets manager", "error", err)
 	}
 
 	// initialize ip sets

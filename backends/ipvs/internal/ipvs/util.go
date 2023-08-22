@@ -51,7 +51,7 @@ type procSysctl struct {
 
 // GetSysctl returns the value for the specified sysctl setting
 func (*procSysctl) GetSysctl(sysctl string) (int, error) {
-	data, err := ioutil.ReadFile(path.Join(sysctlBase, sysctl))
+	data, err := os.ReadFile(path.Join(sysctlBase, sysctl))
 	if err != nil {
 		return -1, err
 	}
@@ -64,7 +64,7 @@ func (*procSysctl) GetSysctl(sysctl string) (int, error) {
 
 // SetSysctl modifies the specified sysctl flag to the new value
 func (*procSysctl) SetSysctl(sysctl string, newVal int) error {
-	return ioutil.WriteFile(path.Join(sysctlBase, sysctl), []byte(strconv.Itoa(newVal)), 0640)
+	return os.WriteFile(path.Join(sysctlBase, sysctl), []byte(strconv.Itoa(newVal)), 0640)
 }
 
 // EnsureSysctl sets a kernel sysctl to a given numeric value.
