@@ -74,7 +74,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: kind-junit-${{ env.JOB_NAME }}-${{ github.run_id }}
-        path: './hack/temp/e2e/artifacts/reports/*.xml'
+        path: './temp/e2e/artifacts/reports/*.xml'
 
     - name: Upload logs
       if: always()
@@ -87,4 +87,4 @@ jobs:
       uses: mikepenz/action-junit-report@v3
       if: always()
       with:
-        report_paths: './hack/temp/e2e/artifacts/reports/*.xml'
+        report_paths: './temp/e2e/artifacts/reports/*.xml'
