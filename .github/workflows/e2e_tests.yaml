@@ -61,12 +61,6 @@ jobs:
           sudo apt-get update && sudo apt-get install -y clang llvm libelf-dev libpcap-dev gcc-multilib build-essential
         fi
 
-    - name: initialize ipvs module via ipvsadm
-      run: |
-        if [[ ${{ env.BACKEND }} == "ipvs" ]]; then
-          sudo apt-get update && sudo apt-get install ipvsadm && sudo ipvsadm -L
-        fi
-
     - name: run e2e tests
       run: ./hack/test_e2e.sh -i ${{ env.IP_FAMILY }} -b ${{ env.BACKEND }} -c -n 1 -S
 
