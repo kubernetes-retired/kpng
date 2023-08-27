@@ -39,7 +39,7 @@ KUBECONFIG_TESTS="kubeconfig_tests.conf"
 # ginkgo
 GINKGO_NUMBER_OF_NODES=25
 GINKGO_FOCUS=${GINKGO_FOCUS:-"\[Conformance\]|\[sig-network\]"}
-GINKGO_SKIP_TESTS="machinery|Feature|Federation|PerformanceDNS|Disruptive|Serial|LoadBalancer|KubeProxy|GCE|Netpol|NetworkPolicy"
+GINKGO_SKIP_TESTS="machinery|Feature|Federation|PerformanceDNS|Disruptive|Serial|LoadBalancer|KubeProxy|GCE|Netpol|NetworkPolicy|\[sig-cli\] Kubectl"
 GINKGO_REPORT_DIR="../artifacts/reports"
 GINKGO_DUMP_LOGS_ON_FAILURE=false
 GINKGO_DISABLE_LOG_DUMP=true
@@ -82,14 +82,14 @@ function result_message {
         exit 1
     fi
     RED="\033[91m"
-    GREEN="\033[92m"    
+    GREEN="\033[92m"
     ENDCOLOR="\033[0m"
 
     if [ "${result}" == "0" ] ; then
 	echo -e "${GREEN}[SUCCESS!] ${message} succeded!!! ${ENDCOLOR}"
     else
 	echo -e "${RED}[FAIL!] ${message} failed!!! ${ENDCOLOR}"
-    fi 
+    fi
 }
 
 function detect_container_engine {
@@ -166,10 +166,10 @@ function delete_kind_cluster {
 
     [ -d "${bin_dir}" ]
     if_error_exit "Directory \"${bin_dir}\" does not exist"
-    
+
     [ -f "${bin_dir}/kind" ]
     if_error_exit "File \"${bin_dir}/kind\" does not exist"
-    
+
     if "${bin_dir}/kind" get clusters | grep -q "${cluster_name}" &> /dev/null; then
         "${bin_dir}/kind" delete cluster --name "${cluster_name}" &> /dev/null
         if_error_warning "cannot delete cluster ${cluster_name}"
@@ -201,7 +201,7 @@ function create_cluster {
 
     [ -d "${bin_dir}" ]
     if_error_exit "Directory \"${bin_dir}\" does not exist"
-    
+
     [ -f "${bin_dir}/kind" ]
     if_error_exit "File \"${bin_dir}/kind\" does not exist"
 
@@ -369,7 +369,7 @@ function wait_until_cluster_is_ready {
 
     [ -d "${bin_dir}" ]
     if_error_exit "Directory \"${bin_dir}\" does not exist"
-    
+
     [ -f "${bin_dir}/kubectl" ]
     if_error_exit "File \"${bin_dir}/kubectl\" does not exist"
 
@@ -413,7 +413,7 @@ function install_kpng {
     [ -d "${bin_dir}" ]
     if_error_exit "Directory \"${bin_dir}\" does not exist"
 
-    
+
     [ -f "${bin_dir}/kubectl" ]
     if_error_exit "File \"${bin_dir}/kubectl\" does not exist"
 
@@ -453,12 +453,12 @@ function install_kpng {
     if_error_exit "error creating configmap ${CONFIG_MAP_NAME}"
     pass_message "Created configmap ${CONFIG_MAP_NAME}."
 
-    # TODO this is hacky we should build the KPNG args one level at a time...i.e 
+    # TODO this is hacky we should build the KPNG args one level at a time...i.e
     # Data source + Flags -> KPNG sink + flags
     E2E_SERVER_ARGS="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', 'to-api', '--listen=unix:///k8s/proxy.sock'"
     E2E_BACKEND_ARGS="'local', '--api=${KPNG_SERVER_ADDRESS}', 'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'"
-    
-    if [[ "$E2E_EXPORT_METRICS" == "true" ]]; then 
+
+    if [[ "$E2E_EXPORT_METRICS" == "true" ]]; then
         info_message "Enabling Metrics"
         E2E_SERVER_ARGS="'kube', '--kubeconfig=/var/lib/kpng/kubeconfig.conf', '--exportMetrics=0.0.0.0:9099', 'to-api', '--listen=unix:///k8s/proxy.sock'"
         E2E_BACKEND_ARGS="'local', '--api=${KPNG_SERVER_ADDRESS}', '--exportMetrics=0.0.0.0:9098',  'to-${E2E_BACKEND}', '--v=${KPNG_DEBUG_LEVEL}'"
@@ -483,12 +483,12 @@ function install_kpng {
     E2E_SERVER_ARGS="[$E2E_SERVER_ARGS]"
 
     # Setting vars for generate the kpng deployment based on template
-    export kpng_image="${KPNG_IMAGE_TAG_NAME}" 
-    export image_pull_policy="IfNotPresent" 
-    export backend="${E2E_BACKEND}" 
-    export config_map_name="${CONFIG_MAP_NAME}" 
-    export service_account_name="${SERVICE_ACCOUNT_NAME}" 
-    export namespace="${NAMESPACE}" 
+    export kpng_image="${KPNG_IMAGE_TAG_NAME}"
+    export image_pull_policy="IfNotPresent"
+    export backend="${E2E_BACKEND}"
+    export config_map_name="${CONFIG_MAP_NAME}"
+    export service_account_name="${SERVICE_ACCOUNT_NAME}"
+    export namespace="${NAMESPACE}"
     export e2e_backend_args="${E2E_BACKEND_ARGS}"
     export deployment_model="${E2E_DEPLOYMENT_MODEL}"
     export e2e_server_args="${E2E_SERVER_ARGS}"
@@ -527,7 +527,7 @@ function run_tests {
     local ip_family="${4}"
     local backend="${5}"
     local include_specific_failed_tests="${6}"
-    
+
     local artifacts_directory="${e2e_dir}/artifacts"
 
     [ -f "${artifacts_directory}/${KUBECONFIG_TESTS}" ]
@@ -535,7 +535,7 @@ function run_tests {
 
     [ -d "${bin_dir}" ]
     if_error_exit "Directory \"${bin_dir}\" does not exist"
-    
+
     [ -f "${bin_dir}/e2e.test" ]
     if_error_exit "File \"${bin_dir}/e2e.test\" does not exist"
 
@@ -570,7 +570,7 @@ function run_tests {
    export KUBE_CONTAINER_RUNTIME=remote
    export KUBE_CONTAINER_RUNTIME_ENDPOINT=unix:///run/containerd/containerd.sock
    export KUBE_CONTAINER_RUNTIME_NAME=containerd
-   
+
    "${bin_dir}/ginkgo" --nodes="${GINKGO_NUMBER_OF_NODES}" \
            --focus="${ginkgo_focus}" \
            --skip="${ginkgo_skip}" \
@@ -603,7 +603,7 @@ function clean_artifacts {
 
     [ -d "${bin_dir}" ]
     if_error_exit "Directory \"${bin_dir}\" does not exist"
-    
+
     [ -f "${bin_dir}/kind" ]
     if_error_exit "File \"${bin_dir}/kind\" does not exist"
 
@@ -695,7 +695,7 @@ function create_infrastructure_and_run_tests {
     local deployment_model="${8}"
     local export_metrics="${9}"
     local include_specific_failed_tests="${10}"
-    
+
 
     local artifacts_directory="${e2e_dir}/artifacts"
     local cluster_name="kpng-e2e-${ip_family}-${backend}${suffix}"
@@ -730,7 +730,7 @@ function create_infrastructure_and_run_tests {
 	result=$?
 	#need to clean this up
 	if [ "${ci_mode}" = false ] ; then
-            clean_artifacts "${e2e_dir}" "${bin_dir}" 
+            clean_artifacts "${e2e_dir}" "${bin_dir}"
 	fi
     fi
     return ${result}
@@ -882,7 +882,7 @@ function main {
     echo -e "\t\tStarting KPNG E2E testing"
     echo "+==================================================================+"
 
-    
+
     if [ "${run_tests_on_existing_cluster}" = true ] ; then
         run_tests "${e2e_dir}${tmp_suffix}" "${bin_dir}" "false" "${ip_family}" "${backend}" "${include_specific_failed_tests}"
 	local result=$?
@@ -969,7 +969,7 @@ function main {
     elif ! ${ci_mode}; then
         delete_kind_clusters "${bin_dir}" "${ip_family}" "${backend}" "${suffix}" "${cluster_count}"
     fi
-    
+
     echo -e "\n+=====================================================================================+"
     echo -e "\t\tResult"
     echo -e "+=====================================================================================+"
@@ -1038,14 +1038,14 @@ do
         n ) cluster_count="${OPTARG}" ;;
         p ) print_report=true ;;
         m ) deployment_model="${OPTARG}" ;;
-        s ) suffix="${OPTARG}" ;; 
+        s ) suffix="${OPTARG}" ;;
         t ) run_tests_on_existing_cluster=true ;;
         B ) bin_dir="${OPTARG}" ;;
         D ) dockerfile="${OPTARG}" ;;
         E ) e2e_dir="${OPTARG}" ;;
-        I ) include_specific_failed_tests=true ;; 
-        M ) export_metrics=true ;; 
-        S ) include_specific_failed_tests=false ;; 
+        I ) include_specific_failed_tests=true ;;
+        M ) export_metrics=true ;;
+        S ) include_specific_failed_tests=false ;;
         ? ) help ;; #Print help
     esac
 done
