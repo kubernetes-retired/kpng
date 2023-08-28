@@ -135,15 +135,13 @@ function container_build {
     [ -f "${CONTAINER_FILE}" ]
     if_error_exit "cannot find ${CONTAINER_FILE}"
 
-    CMD_BUILD_IMAGE=("${CONTAINER_ENGINE} build ${QUIET_MODE} -t ${KPNG_IMAGE_TAG_NAME} -f ${CONTAINER_FILE} .")
     pushd "${0%/*}/.." > /dev/null || exit
         if [ -z "${QUIET_MODE}" ]; then
-            ${CMD_BUILD_IMAGE}
+            make image
         else
-            ${CMD_BUILD_IMAGE} &> /dev/null
-
+            make image &> /dev/null
         fi
-        if_error_exit "Failed to build kpng, command was: ${CMD_BUILD_IMAGE}"
+        if_error_exit "Failed to build kpng, command was: make image"
     popd > /dev/null || exit
 
     pass_message "Image build and tag ${KPNG_IMAGE_TAG_NAME} is set."
