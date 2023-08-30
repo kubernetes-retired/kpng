@@ -1,4 +1,5 @@
 # this is a just comment for trival change.
+# this is anonter trivial comment.
 name: PR approve GH Workflows
 
 on:
