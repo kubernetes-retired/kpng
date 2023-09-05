@@ -1,4 +1,7 @@
-on: [push]
+name: Docker Image Building
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
 
 jobs:
   dockerize:

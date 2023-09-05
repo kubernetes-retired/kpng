@@ -1,12 +1,8 @@
 name: Code format verify
 
 on:
-  push:
-    branches:
-      - master
   pull_request:
-    branches:
-      - master
+    types: [opened, edited, synchronize, reopened]
 
 jobs:
   gofmt:
