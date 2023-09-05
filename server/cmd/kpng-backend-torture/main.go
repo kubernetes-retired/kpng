@@ -46,7 +46,7 @@ var (
 
 func main() {
 	flag.Parse()
-
+	fmt.Println("This is trivial change.")
 	var b [8]byte
 	_, err := rand.Read(b[:])
 	if err != nil {
