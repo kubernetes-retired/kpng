@@ -1,6 +1,7 @@
 package ipsets
 
 import (
+	"fmt"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/exec"
 	"sigs.k8s.io/kpng/client/diffstore"
@@ -48,9 +49,17 @@ func (m *Manager) CreateSet(name string, setType SetType, protocolFamily Protoco
 func (m *Manager) AddEntry(entry *Entry, set *Set) {
 	entry.set = set
 
+	key := entry.String()
+	// Port entry is just a port number and it is the same for IPv4 and IPv6, hence we need to
+	// distinguish between KUBE-NODE-PORT-TCP and KUBE-6-NODE-PORT-TCP, so we append the
+	// ipset name to the key. It is safe to do this only here as keys are not processed in
+	// the Manager.Apply() method below.
+	if entry.SetType == BitmapPort {
+		key = fmt.Sprintf("%s-%s", key, set.GetName())
+	}
 	// since we only need create and delete operations here,
 	// setting the key to absolute value of entry.
-	m.entryStore.Get(entry.String()).Set(entry)
+	m.entryStore.Get(key).Set(entry)
 }
 
 // GetSetByName returns all sets by set name.
