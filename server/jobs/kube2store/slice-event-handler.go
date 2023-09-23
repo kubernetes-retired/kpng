@@ -55,7 +55,6 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 			ServiceName: serviceName,
 			SourceName:  eps.Name,
 			Endpoint:    &localv1.Endpoint{},
-			Conditions:  &globalv1.EndpointConditions{},
 			Topology:    &globalv1.TopologyInfo{},
 		}
 
@@ -85,8 +84,8 @@ func (h sliceEventHandler) OnAdd(obj interface{}) {
 			sort.Strings(info.Hints.Zones) // stable zone order
 		}
 
-		if r := sliceEndpoint.Conditions.Ready; r != nil && *r {
-			info.Conditions.Ready = true
+		if r := sliceEndpoint.Conditions.Ready; r != nil {
+			info.Conditions = &globalv1.EndpointConditions{Ready: *r}
 		}
 
 		for _, addr := range sliceEndpoint.Addresses {
