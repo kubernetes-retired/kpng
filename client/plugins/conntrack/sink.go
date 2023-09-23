@@ -17,6 +17,7 @@ limitations under the License.
 package conntrack
 
 import (
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/kpng/api/localv1"
 	"sigs.k8s.io/kpng/client/localsink"
 )
@@ -89,7 +90,12 @@ func (ps *Sink) DeleteEndpoint(namespace, serviceName, key string) {
 			for _, epIP := range ep.IPs.All() {
 				targetPort = port.Port
 				if port.Port == 0 {
-					targetPort = int32(ep.PortMapping(port))
+					p, err := ep.PortMapping(port)
+					if err != nil {
+						klog.V(1).InfoS("failed to map port", "err", err)
+						continue
+					}
+					targetPort = p
 				}
 				flow := Flow{
 					IPPort:     IPPort{Protocol: port.Protocol, DnatIP: svcIP, Port: targetPort},

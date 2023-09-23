@@ -17,6 +17,7 @@ limitations under the License.
 package nft
 
 import (
+	"k8s.io/klog/v2"
 	"strconv"
 
 	localv1 "sigs.k8s.io/kpng/api/localv1"
@@ -55,7 +56,8 @@ func (ctx *renderContext) addSvcChain(svc *localv1.Service, epIPs []EpIP) {
 		// filter endpoint based on port availability
 		subset := make([]EpIP, 0, len(epIPs))
 		for _, epIP := range epIPs {
-			if epIP.Endpoint.PortMapping(port) == 0 {
+			if _, err := epIP.Endpoint.PortMapping(port); err != nil {
+				klog.V(1).InfoS("failed to map port", "err", err)
 				continue
 			}
 			subset = append(subset, epIP)

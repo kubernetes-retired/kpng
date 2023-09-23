@@ -19,6 +19,7 @@ package nft
 import (
 	"encoding/hex"
 	"fmt"
+	"k8s.io/klog/v2"
 	"net/netip"
 	"strconv"
 
@@ -63,8 +64,9 @@ func (ctx *renderContext) addEndpointChain(svc *localv1.Service, epIP EpIP, svcC
 				continue
 			}
 
-			targetPort := epIP.Endpoint.PortMapping(port)
-			if targetPort == 0 {
+			targetPort, err := epIP.Endpoint.PortMapping(port)
+			if err != nil {
+				klog.V(1).InfoS("failed to map port", "err", err)
 				continue
 			}
 
