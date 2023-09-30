@@ -47,7 +47,7 @@ func ForNode(tx *proxystore.Tx, si *globalv1.ServiceInfo, nodeName string) (endp
 
 		info.Endpoint.Local = info.Topology.Node == nodeName
 
-		if !info.Conditions.Ready {
+		if info.Conditions != nil && !info.Conditions.Ready {
 			return
 		}
 

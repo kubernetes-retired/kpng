@@ -17,6 +17,8 @@ limitations under the License.
 package localv1
 
 import (
+	"fmt"
+	"k8s.io/klog/v2"
 	"net"
 )
 
@@ -29,30 +31,52 @@ func (ep *Endpoint) AddAddress(s string) (ip net.IP) {
 	return ep.IPs.Add(s)
 }
 
-func (ep *Endpoint) PortMapping(port *PortMapping) (target int32) {
-	target = port.TargetPort
-	if port.TargetPortName != "" {
+func (ep *Endpoint) PortMapping(port *PortMapping) (int32, error) {
+	nameToFind := ""
+	if port.Name != "" {
+		nameToFind = port.Name
+	} else if port.TargetPortName != "" {
+		nameToFind = port.TargetPortName
+	}
+
+	if nameToFind != "" {
 		for _, override := range ep.PortOverrides {
-			if override.Name == port.Name {
-				target = override.Port
-				break
+			if override.Name == nameToFind {
+				return override.Port, nil
 			}
 		}
+		return 0, fmt.Errorf("not found %s in port overrides", nameToFind)
 	}
-	return
+
+	if port.TargetPort > 0 {
+		return port.TargetPort, nil
+	}
+
+	return 0, fmt.Errorf("port mapping is undefined")
 }
 
 func (ep *Endpoint) PortMappings(ports []*PortMapping) (mapping map[int32]int32) {
 	mapping = make(map[int32]int32, len(ports))
 	for _, port := range ports {
-		mapping[port.Port] = ep.PortMapping(port)
+		p, err := ep.PortMapping(port)
+		if err != nil {
+			klog.V(1).InfoS("failed to map port", "err", err)
+			continue
+		}
+		mapping[port.Port] = p
 	}
 	return
 }
+
 func (ep *Endpoint) PortNameMappings(ports []*PortMapping) (mapping map[string]int32) {
 	mapping = make(map[string]int32, len(ports))
 	for _, port := range ports {
-		mapping[port.Name] = ep.PortMapping(port)
+		p, err := ep.PortMapping(port)
+		if err != nil {
+			klog.V(1).InfoS("failed to map port", "err", err)
+			continue
+		}
+		mapping[port.Name] = p
 	}
 	return
 }
