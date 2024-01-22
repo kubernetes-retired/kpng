@@ -752,8 +752,7 @@ func (t *iptables) writeDNATRules(svcInfo *serviceInfo, svcName types.Namespaced
 		}
 
 		targetPort := t.getTargetPort(svcInfo, endpointPortMap, *epIP)
-
-    // DNAT to final destination.
+		// DNAT to final destination.
 		args = append(args, "-m", protocol, "-p", protocol, "-j", "DNAT", "--to-destination", net.JoinHostPort(*epIP, strconv.Itoa(targetPort)))
 		t.natRules.Write(args)
 	}
