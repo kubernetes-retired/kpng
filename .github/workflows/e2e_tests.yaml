@@ -61,12 +61,6 @@ jobs:
           sudo apt-get update && sudo apt-get install -y clang llvm libelf-dev libpcap-dev gcc-multilib build-essential
         fi
 
-    - name: initialize ipvs module via ipvsadm
-      run: |
-        if [[ ${{ env.BACKEND }} == "ipvs" ]]; then
-          sudo apt-get update && sudo apt-get install ipvsadm && sudo ipvsadm -L
-        fi
-
     - name: run e2e tests
       run: ./hack/test_e2e.sh -i ${{ env.IP_FAMILY }} -b ${{ env.BACKEND }} -c -n 1 -S
 
@@ -80,7 +74,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: kind-junit-${{ env.JOB_NAME }}-${{ github.run_id }}
-        path: './hack/temp/e2e/artifacts/reports/*.xml'
+        path: './temp/e2e/artifacts/reports/*.xml'
 
     - name: Upload logs
       if: always()
@@ -93,4 +87,4 @@ jobs:
       uses: mikepenz/action-junit-report@v3
       if: always()
       with:
-        report_paths: './hack/temp/e2e/artifacts/reports/*.xml'
+        report_paths: './temp/e2e/artifacts/reports/*.xml'

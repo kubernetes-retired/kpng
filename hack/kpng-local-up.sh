@@ -19,7 +19,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source "${SCRIPT_DIR}/utils.sh"
 source "${SCRIPT_DIR}/common.sh"
 
-: ${IMAGE:="test/kpng:latest"}
+: ${KPNG_IMAGE_TAG_NAME:="kpng:test"}
 : ${PULL:="IfNotPresent"}
 : ${BACKEND:="iptables"} # Temporary until we fix https://github.com/kubernetes-sigs/kpng/issues/467 the kernelmodule nft not loading?
 : ${CONFIG_MAP_NAME:=kpng}
@@ -31,20 +31,21 @@ source "${SCRIPT_DIR}/common.sh"
 : ${DEPLOYMENT_MODEL:="split-process-per-node"}
 : ${DEPLOY_PROMETHEUS:="false"}
 
-echo -n "this will deploy kpng with docker image $IMAGE, pull policy '$PULL' and the '$BACKEND' backend. Press enter to confirm, C-c to cancel"
+echo -n "this will deploy kpng with docker image $KPNG_IMAGE_TAG_NAME, pull policy '$PULL' and the '$BACKEND' backend. Press enter to confirm, C-c to cancel"
 read
 
 # build the kpng image...
 function build_kpng {
     cd ../
 
-    if docker build -t $IMAGE ./ ; then
-	echo "passed build"
+    export
+    if make image ; then
+      echo "passed build"
     else
 	echo "failed build"
         exit 123
     fi
-    docker push $IMAGE
+    docker push $KPNG_IMAGE_TAG_NAME
     cd hack/
 }
 
@@ -61,7 +62,7 @@ function install_k8s {
 function install_kpng {
     echo "Applying template"
     # Setting vars for generate the kpng deployment based on template
-    export kpng_image="${IMAGE}" 
+    export kpng_image="${KPNG_IMAGE_TAG_NAME}"
     export image_pull_policy="${PULL}" 
     export backend="${BACKEND}" 
     export config_map_name="${CONFIG_MAP_NAME}" 
@@ -74,7 +75,7 @@ function install_kpng {
     go run kpng-ds-yaml-gen.go ./kpng-deployment-ds-template.txt ./kpng-deployment-ds.yaml
     if_error_exit "error generating kpng deployment YAML"
 
-    kind load docker-image $IMAGE --name kpng-proxy
+    kind load docker-image $KPNG_IMAGE_TAG_NAME --name kpng-proxy
 
     # todo(jayunit100) support antrea as a secondary CNI option to test
 

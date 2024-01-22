@@ -11,15 +11,15 @@ require (
 
 require (
 	github.com/cespare/xxhash v1.1.0 // indirect
-	github.com/go-logr/logr v1.2.3 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/go-logr/logr v1.2.4 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/spf13/cobra v1.4.0 // indirect
 	golang.org/x/exp v0.0.0-20220317015231-48e79f11773a // indirect
-	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/net v0.14.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
+	golang.org/x/text v0.12.0 // indirect
 	google.golang.org/genproto v0.0.0-20221010155953-15ba04fc1c0e // indirect
 	google.golang.org/grpc v1.50.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect

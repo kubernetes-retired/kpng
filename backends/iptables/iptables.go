@@ -647,11 +647,15 @@ func (t *iptables) createEndpointsChain(svcInfo *serviceInfo, allEndpoints *endp
 			ep = epInfo.IPs.V4[0]
 		}
 
-		targetPort := epInfo.PortMapping(&localv1.PortMapping{
+		targetPort, err := epInfo.PortMapping(&localv1.PortMapping{
 			Name:           svcInfo.portName,
 			TargetPortName: svcInfo.targetPortName,
 			TargetPort:     int32(svcInfo.targetPort),
 		})
+		if err != nil {
+			klog.V(1).InfoS("failed to map port", "err", err)
+			continue
+		}
 		endpointPortMap[ep] = targetPort
 		endpoints = append(endpoints, &ep)
 
@@ -748,15 +752,16 @@ func (t *iptables) writeDNATRules(svcInfo *serviceInfo, svcName types.Namespaced
 		}
 
 		targetPort := t.getTargetPort(svcInfo, endpointPortMap, *epIP)
-		// DNAT to final destination.
+
+    // DNAT to final destination.
 		args = append(args, "-m", protocol, "-p", protocol, "-j", "DNAT", "--to-destination", net.JoinHostPort(*epIP, strconv.Itoa(targetPort)))
 		t.natRules.Write(args)
 	}
 }
 
-// if the targetPort is string, fetch the value from endpointPortMap
+// if the targetPort is string or portName exists, fetch the value from endpointPortMap
 func (t *iptables) getTargetPort(svcInfo *serviceInfo, endpointPortMap map[string]int32, endpoint string) int {
-	if svcInfo.TargetPortName() != "" {
+	if svcInfo.PortName() != "" || svcInfo.TargetPortName() != "" {
 		return int(endpointPortMap[endpoint])
 	}
 	return svcInfo.TargetPort()

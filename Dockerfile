@@ -1,9 +1,9 @@
-from alpine:3.17 as gomods
+from alpine:3.18 as gomods
 
 copy . /src/
 run cd /src/ && find -type f \! \( -name go.work -o -name go.mod -o -name go.sum \) -exec rm {} +
 
-from golang:1.20.3-alpine3.17 as build
+from golang:1.21.0-alpine3.18 as build
 
 # install dependencies
 run apk add --update --no-cache \
@@ -13,6 +13,10 @@ run apk add --update --no-cache \
 # go mod args
 arg GOPROXY
 arg GONOSUMDB
+
+arg RELEASE
+arg GIT_REPO_URL
+arg GIT_COMMIT_HASH
 
 # cache dependencies, they don't change as much as the code
 copy --from=gomods /src/ /src/
@@ -24,10 +28,10 @@ run go mod download
 
 add . ./
 #run for f in $(find -name go.mod); do d=$(dirname $f); echo "testing in $d"; ( cd $d && go test ./... ); done
-run go install -trimpath -buildvcs=false ./cmd/...
+run go install -trimpath -buildvcs=false -ldflags "-X main.RELEASE=$RELEASE -X main.REPO=$GIT_REPO_URL -X main.COMMIT=$GIT_COMMIT_HASH" ./cmd/...
 
 # the real image
-from alpine:3.17
+from alpine:3.18
 entrypoint ["/bin/kpng"]
 run apk add --update iptables ip6tables iproute2 ipvsadm nftables ipset conntrack-tools
 copy --from=build /go/bin/ /bin/

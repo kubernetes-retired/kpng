@@ -112,6 +112,11 @@ func initializeKernelConfig(kernelHandler KernelHandler) error {
 		klog.Info("Missing br-netfilter module or unset sysctl br-nf-call-iptables, proxy may not work as intended")
 	}
 
+	_, err := kernelHandler.GetModules()
+	if err != nil {
+		return err
+	}
+
 	// Set the conntrack sysctl we need for
 	if err := EnsureSysctl(sysctl, sysctlVSConnTrack, 1); err != nil {
 		return err

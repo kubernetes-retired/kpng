@@ -16,12 +16,25 @@
 
 all: help
 
-# kpng build info
-VERSION=$(shell git describe --tags --always --long)
-LDFLAGS="-X main.version=$(VERSION)"
-ARCH="amd64"
-BUILD_DIR="kpng-bin"
-export PLATFORM=""
+# Host info
+HOST_ARCH = $(shell which go >/dev/null 2>&1 && go env GOARCH)
+export ARCH ?= $(HOST_ARCH)
+ifeq ($(ARCH),)
+    $(error mandatory variable ARCH is empty, either set it when calling the command or make sure 'go env GOARCH' works)
+endif
+BUILD_DIR=kpng-bin
+PLATFORM=""
+
+# Build info
+RELEASE ?= UNKNOWN
+GIT_REPO_URL ?= $(shell git config --get remote.origin.url)
+GIT_COMMIT_HASH ?= git-$(shell git rev-parse --short HEAD)
+LDFLAGS="-X main.RELEASE=$(RELEASE) -X main.REPO=$(GIT_REPO_URL) -X main.COMMIT=$(GIT_COMMIT_HASH)"
+
+# Image info
+CONTAINER_ENGINE ?= docker
+CONTAINER_FILE ?= $(shell echo "${PWD}/Dockerfile")
+KPNG_IMAGE_TAG_NAME ?= kpng:test
 
 # Auto Generate help from: https://gist.github.com/prwhite/8168133
 # COLORS
@@ -123,17 +136,27 @@ windows:
 	@$(MAKE) -e build
 
 build:
-	@mkdir -p $(BUILD_DIR)/$(PLATFORM)/$(VERSION)
+	@mkdir -p $(BUILD_DIR)/$(ARCH)
 	@cd cmd && \
 		env GOOS=$(PLATFORM) \
 		GOARCH=$(ARCH) \
 		go build \
 		-trimpath \
-		-o ../$(BUILD_DIR)/$(PLATFORM)/$(VERSION) \
+		-o ../$(BUILD_DIR)/$(ARCH) \
 		-v \
 		-ldflags=$(LDFLAGS) \
 		./...
-	@echo "\tkpng $(YELLOW)$(PLATFORM)$(RESET) binaries available in: $(GREEN)$(BUILD_DIR)/$(PLATFORM)/$(VERSION)$(RESET)\n"
+	@echo "\tkpng $(YELLOW)$(ARCH)$(RESET) binaries available in: $(GREEN)$(BUILD_DIR)/$(ARCH)$(RESET)\n"
+
+image:
+	$(CONTAINER_ENGINE) build \
+	$(QUIET_MODE) \
+	-t $(KPNG_IMAGE_TAG_NAME) \
+	-f $(CONTAINER_FILE) \
+	--build-arg RELEASE=$(RELEASE) \
+	--build-arg GIT_REPO_URL=$(GIT_REPO_URL) \
+	--build-arg GIT_COMMIT_HASH=$(GIT_COMMIT_HASH) \
+	.
 
 ## Create Kind cluster for Tilt. It requires backend(b) and ipfamily (i) as args. eg: make tilt-setup i=ipv4 b=nft m=split-process-per-node
 tilt-setup:

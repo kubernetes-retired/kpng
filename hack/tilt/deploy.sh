@@ -17,14 +17,14 @@
 TILT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 SCRIPT_DIR=$(dirname $TILT_DIR)
 SRC_DIR=$(dirname $SCRIPT_DIR)
-BIN_DIR=$(dirname $SCRIPT_DIR)/temp/tilt/bin 
+BIN_DIR=$(dirname $SCRIPT_DIR)/temp/tilt/bin
+export KPNG_IMAGE_TAG_NAME="kpng:latest"
 
 source ${SCRIPT_DIR}/utils.sh
-source ${SCRIPT_DIR}/common.sh 
+source ${SCRIPT_DIR}/common.sh
 
-KPNG_IMAGE="kpng"
 function build_kpng_and_load_image {
-  if docker build -t $KPNG_IMAGE:latest $SRC_DIR/ ; then
+  if (cd $SRC_DIR && make image) ; then
 	  echo "passed build"
   else
 	  echo "failed build"

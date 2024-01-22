@@ -90,14 +90,15 @@ func (ct Conntrack) Callback(ch <-chan *client.ServiceEndpoints) {
 
 				for _, ep := range seps.Endpoints {
 					for _, epIP := range ep.IPs.All() {
+						p, err := ep.PortMapping(svcPort)
+						if err != nil {
+							klog.V(1).InfoS("failed to map port", "err", err)
+							continue
+						}
 						flow := Flow{
 							IPPort:     ipp,
 							EndpointIP: epIP,
-							TargetPort: ep.PortMapping(svcPort),
-						}
-
-						if flow.TargetPort == 0 {
-							continue // no target port found
+							TargetPort: p,
 						}
 
 						ct.flows.Get(flow.Key()).Set(flow)
