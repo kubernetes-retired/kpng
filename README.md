@@ -1,3 +1,8 @@
+> **Note**: This repository is archived, and is intended for posterity and reference.
+> If you have any questions about this, please check in with us in `#sig-network` on [Kubernetes Slack][slack]!
+
+[slack]:https://kubernetes.slack.com
+
 # Kubernetes Proxy NG
 
 The Kubernetes Proxy NG a new design of kube-proxy aimed at
